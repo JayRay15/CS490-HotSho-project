@@ -1,0 +1,55 @@
+## Backend Structure
+
+backend/
+├── app/
+│   ├── __init__.py
+│   ├── main.py
+│   ├── api/
+│   │   └── routes/
+│   │       ├── __init__.py
+│   │       ├── auth.py
+│   │       ├── profile.py
+│   │       └── users.py
+│   ├── core/
+│   │   ├── config.py
+│   │   ├── database.py
+│   │   └── security.py
+│   ├── models/
+│   │   ├── __init__.py
+│   │   ├── profile.py
+│   │   └── user.py
+│   └── utils/
+│       ├── __init__.py
+│       ├── oauth.py
+│       └── validators.py
+├── tests/
+│   ├── conftest.py
+│   ├── test_auth.py
+│   └── test_profile.py
+├── README.md
+└── requirements.txt
+
+## Frontend Structure
+
+frontend/
+├── package.json
+├── tsconfig.json
+├── README.md
+├── public/
+├── src/
+│   ├── App.tsx
+│   ├── components/
+│   ├── hooks/
+│   ├── pages/
+│   ├── services/
+│   │   └── api.ts
+│   └── styles/
+│       ├── globals.css
+│       └── theme.css
+
+
+## Root Level
+
+├── README.md
+├── backend/
+└── frontend/
