@@ -7,9 +7,9 @@ import http from 'node:http';
 import https from 'node:https';
 
 const BASE_URL = 'http://localhost:5000/api';
-const AUTH0_DOMAIN = 'dev-572ox7lten831zkg.us.auth0.com';
-const AUTH0_CLIENT_ID = 'AQ5sMm6LjGTf6Eqr1As5yCIa2mFcLf6h';
-const AUTH0_CLIENT_SECRET = 'SfGpsO2BtRDNKLUTLd1W20bu2I0kYgiK5sc5RFUtS3jGli3i1olF5RavndhQH2ak';
+const AUTH0_DOMAIN = process.env.AUTH0_DOMAIN;
+const AUTH0_CLIENT_ID = process.env.AUTH0_CLIENT_ID;
+const AUTH0_CLIENT_SECRET = process.env.AUTH0_CLIENT_SECRET;
 const AUTH0_AUDIENCE = 'https://jobSeekerATS-API';
 
 // Helper function to make HTTP requests
