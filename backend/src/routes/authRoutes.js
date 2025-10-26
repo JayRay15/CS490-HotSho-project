@@ -4,7 +4,7 @@ import { checkJwt } from "../middleware/checkJwt.js";
 
 const router = express.Router();
 
-// POST /api/auth/register - Create new user account
+// POST /api/auth/register - Create new user account (requires Auth0 token)
 router.post("/register", checkJwt, register);
 
 // POST /api/auth/login - Authenticate user

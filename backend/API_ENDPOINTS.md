@@ -6,10 +6,16 @@ http://localhost:5000/api
 ```
 
 ## Authentication
-All endpoints (except health check) require a valid JWT token in the Authorization header:
+All endpoints (except health check) require a valid Auth0 JWT token in the Authorization header:
 ```
-Authorization: Bearer <your-jwt-token>
+Authorization: Bearer <your-auth0-jwt-token>
 ```
+
+### Auth0 Integration
+- Users register and authenticate through Auth0
+- Auth0 provides JWT tokens with user information
+- Backend validates tokens using `express-oauth2-jwt-bearer`
+- User data is stored in MongoDB with `auth0Id` linking to Auth0
 
 ## Response Format
 All endpoints return a consistent JSON response format:
@@ -61,21 +67,33 @@ All endpoints return a consistent JSON response format:
 
 #### Register New User
 - **POST** `/api/auth/register`
-- **Status Code:** 201 (Created), 400 (User already exists), 500 (Server error)
-- **Description:** Create new user account
+- **Status Code:** 201 (Created), 400 (User already exists), 401 (Invalid token), 500 (Server error)
+- **Description:** Create new user account linked to Auth0
 - **Auth Required:** Yes (Auth0 token)
+- **Behavior:** 
+  - Extracts user data from Auth0 token payload (`sub`, `name`, `email`, `picture`)
+  - Creates user in MongoDB with `auth0Id` linking to Auth0
+  - Returns user data without password
 
 #### Login User
 - **POST** `/api/auth/login`
-- **Status Code:** 200 (Success), 404 (User not found), 500 (Server error)
-- **Description:** Authenticate user
+- **Status Code:** 200 (Success), 404 (User not found), 401 (Invalid token), 500 (Server error)
+- **Description:** Authenticate user and return user data
 - **Auth Required:** Yes (Auth0 token)
+- **Behavior:**
+  - Validates Auth0 token
+  - Finds user by `auth0Id` from token payload
+  - Returns user profile data
 
 #### Logout User
 - **POST** `/api/auth/logout`
-- **Status Code:** 200 (Success), 500 (Server error)
-- **Description:** End user session
+- **Status Code:** 200 (Success), 401 (Invalid token), 500 (Server error)
+- **Description:** End user session (server-side cleanup)
 - **Auth Required:** Yes (Auth0 token)
+- **Behavior:**
+  - Validates Auth0 token
+  - Performs any server-side cleanup if needed
+  - Actual logout handled by Auth0 on frontend
 
 ### Profile Section Endpoints
 
@@ -83,8 +101,8 @@ All endpoints return a consistent JSON response format:
 
 ##### Add Employment
 - **POST** `/api/profile/employment`
-- **Status Code:** 200 (Success), 404 (User not found), 500 (Server error)
-- **Description:** Add new employment record
+- **Status Code:** 201 (Created), 400 (Validation error), 401 (Invalid token), 404 (User not found), 500 (Server error)
+- **Description:** Add new employment record to user profile
 - **Auth Required:** Yes
 - **Body:**
 ```json
@@ -116,8 +134,8 @@ All endpoints return a consistent JSON response format:
 
 ##### Add Skill
 - **POST** `/api/profile/skills`
-- **Status Code:** 200 (Success), 404 (User not found), 500 (Server error)
-- **Description:** Add new skill
+- **Status Code:** 201 (Created), 400 (Validation error), 401 (Invalid token), 404 (User not found), 500 (Server error)
+- **Description:** Add new skill to user profile
 - **Auth Required:** Yes
 - **Body:**
 ```json
@@ -145,8 +163,8 @@ All endpoints return a consistent JSON response format:
 
 ##### Add Education
 - **POST** `/api/profile/education`
-- **Status Code:** 200 (Success), 404 (User not found), 500 (Server error)
-- **Description:** Add new education record
+- **Status Code:** 201 (Created), 400 (Validation error), 401 (Invalid token), 404 (User not found), 500 (Server error)
+- **Description:** Add new education record to user profile
 - **Auth Required:** Yes
 - **Body:**
 ```json
@@ -179,8 +197,8 @@ All endpoints return a consistent JSON response format:
 
 ##### Add Project
 - **POST** `/api/profile/projects`
-- **Status Code:** 200 (Success), 404 (User not found), 500 (Server error)
-- **Description:** Add new project
+- **Status Code:** 201 (Created), 400 (Validation error), 401 (Invalid token), 404 (User not found), 500 (Server error)
+- **Description:** Add new project to user profile
 - **Auth Required:** Yes
 - **Body:**
 ```json
@@ -218,7 +236,24 @@ All endpoints return a consistent JSON response format:
 - **404 Not Found:** User or resource not found
 - **500 Internal Server Error:** Server-side errors
 
-## Frontend Verification
+## Testing
+
+### Automated Testing
+Run the comprehensive pipeline test:
+```bash
+cd backend/test_scripts
+node test-endpoints.js
+```
+
+This test:
+1. Gets Auth0 token
+2. Registers a new user
+3. Tests all user profile endpoints
+4. Tests all authentication endpoints
+5. Tests all profile section endpoints
+6. Provides detailed results and status codes
+
+### Frontend Verification
 
 To verify API responses and status codes:
 

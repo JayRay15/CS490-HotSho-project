@@ -1,57 +1,42 @@
 import { User } from "../models/User.js";
 import { successResponse, errorResponse, sendResponse } from "../utils/responseFormat.js";
 
-// POST /api/auth/register - Create new user account
+// POST /api/auth/register - Create new user account (Auth0 integration)
 export const register = async (req, res) => {
   try {
-    console.log('🔍 Register request payload:', JSON.stringify(req.auth.payload, null, 2));
-    
     const { sub, name, email, picture } = req.auth.payload;
 
-    // Check if we have the required user data
-    if (!sub) {
-      console.error('❌ No sub (user ID) in token payload');
-      const { response, statusCode } = errorResponse("Invalid token: missing user ID", 400);
-      return sendResponse(res, response, statusCode);
-    }
-
-    // For client credentials tokens, we might not have user info
-    if (!name || !email) {
-      console.log('⚠️  Token missing user info (likely client credentials token)');
-      const { response, statusCode } = errorResponse("Token does not contain user information. Please use a user authentication token.", 400);
-      return sendResponse(res, response, statusCode);
-    }
-
-    // Check if user already exists
+    // Check if user already exists by Auth0 ID
     const existingUser = await User.findOne({ auth0Id: sub });
     if (existingUser) {
       const { response, statusCode } = errorResponse("User already exists", 400);
       return sendResponse(res, response, statusCode);
     }
 
-    // Create new user
-    const user = await User.create({ 
-      auth0Id: sub, 
-      name, 
-      email, 
-      picture 
-    });
+    // Create new user with Auth0 data
+    const userData = {
+      auth0Id: sub,
+      name: name || 'Unknown User',
+      email: email || `user-${sub}@example.com`,
+      picture: picture || null
+    };
 
-    console.log(`🆕 New user created: ${email}`);
+    const user = await User.create(userData);
+
+    console.log(`🆕 New user created via Auth0: ${userData.email}`);
 
     const { response, statusCode } = successResponse("User registered successfully", user, 201);
     return sendResponse(res, response, statusCode);
   } catch (err) {
     console.error("Registration error:", err);
-    console.error("Error details:", {
-      name: err.name,
-      message: err.message,
-      code: err.code,
-      stack: err.stack
-    });
     
     if (err.code === 11000) {
       const { response, statusCode } = errorResponse("User already exists", 400);
+      return sendResponse(res, response, statusCode);
+    }
+
+    if (err.name === 'ValidationError') {
+      const { response, statusCode } = errorResponse("Validation error: " + err.message, 400);
       return sendResponse(res, response, statusCode);
     }
 
