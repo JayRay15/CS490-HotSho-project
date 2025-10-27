@@ -5,6 +5,7 @@ import { connectDB } from "./utils/db.js";
 import userRoutes from "./routes/userRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
+import publicAuthRoutes from "./routes/publicAuthRoutes.js";
 
 dotenv.config();
 
@@ -26,6 +27,8 @@ app.use(express.json());
 app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/profile", profileRoutes);
+// Public auth endpoints (email/password registration for local users)
+app.use("/api", publicAuthRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
