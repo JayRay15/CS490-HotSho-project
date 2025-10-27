@@ -2,19 +2,30 @@
 ├── backend/
 │   ├── src/
 │   │   ├── controllers/
-│   │   │   └── userController.js
+│   │   │   ├── userController.js
+│   │   │   ├── authController.js
+│   │   │   └── profileController.js
 │   │   ├── middleware/
 │   │   │   └── checkJwt.js
 │   │   ├── models/
 │   │   │   └── User.js
 │   │   ├── routes/
-│   │   │   └── userRoutes.js
+│   │   │   ├── userRoutes.js
+│   │   │   ├── authRoutes.js
+│   │   │   └── profileRoutes.js
 │   │   ├── utils/
-│   │   │   └── db.js
+│   │   │   ├── db.js
+│   │   │   └── responseFormat.js
 │   │   └── server.js
+│   ├── test_scripts/
+│   │   └── test-endpoints.js
 │   ├── .env
 │   ├── package.json
-│   └── jest.config.js
+│   ├── package-lock.json
+│   ├── requirements.txt
+│   ├── jest.config.js
+│   ├── API_ENDPOINTS.md
+│   └── README.md
 │
 ├── frontend/
 │   ├── src/

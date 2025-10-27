@@ -1,23 +1,61 @@
 import { User } from "../models/User.js";
+import { successResponse, errorResponse, sendResponse } from "../utils/responseFormat.js";
 
-// Called after successful Auth0 authentication
-export const registerOrGetUser = async (req, res) => {
+// GET /api/users/me - Get current user profile
+export const getCurrentUser = async (req, res) => {
   try {
-    const { sub, name, email, picture } = req.auth.payload;
+    const { sub } = req.auth.payload;
 
-    let user = await User.findOne({ auth0Id: sub });
-
+    const user = await User.findOne({ auth0Id: sub });
+    
     if (!user) {
-      user = await User.create({ auth0Id: sub, name, email, picture });
-      console.log(`🆕 New user created: ${email}`);
+      const { response, statusCode } = errorResponse("User not found", 404);
+      return sendResponse(res, response, statusCode);
     }
 
-    res.status(200).json({
-      message: "User retrieved or registered successfully",
-      user,
-    });
+    const { response, statusCode } = successResponse("User profile retrieved successfully", user);
+    return sendResponse(res, response, statusCode);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+    console.error("Get current user error:", err);
+    const { response, statusCode } = errorResponse("Internal server error", 500);
+    return sendResponse(res, response, statusCode);
+  }
+};
+
+// PUT /api/users/me - Update current user profile
+export const updateCurrentUser = async (req, res) => {
+  try {
+    const { sub } = req.auth.payload;
+    const updateData = req.body;
+
+    // Remove fields that shouldn't be updated directly
+    delete updateData.auth0Id;
+    delete updateData._id;
+    delete updateData.createdAt;
+    delete updateData.updatedAt;
+
+    const user = await User.findOneAndUpdate(
+      { auth0Id: sub },
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
+
+    if (!user) {
+      const { response, statusCode } = errorResponse("User not found", 404);
+      return sendResponse(res, response, statusCode);
+    }
+
+    const { response, statusCode } = successResponse("User profile updated successfully", user);
+    return sendResponse(res, response, statusCode);
+  } catch (err) {
+    console.error("Update current user error:", err);
+    
+    if (err.name === 'ValidationError') {
+      const { response, statusCode } = errorResponse("Validation error: " + err.message, 400);
+      return sendResponse(res, response, statusCode);
+    }
+
+    const { response, statusCode } = errorResponse("Internal server error", 500);
+    return sendResponse(res, response, statusCode);
   }
 };
