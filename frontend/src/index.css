@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+/* base app styles */
+:root {
+    --primary: #0C4A6E;
+    --accent: #EAB308;
+}
+
+html,
+body,
+#root {
+    height: 100%;
+}
+
+body {
+    @apply font-sans bg-gray-50 text-gray-900;
+}
+
+/* small utility for cards */
+.card {
+    @apply bg-white rounded-2xl shadow-md p-6;
+}
