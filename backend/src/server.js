@@ -8,18 +8,16 @@ import profileRoutes from "./routes/profileRoutes.js";
 
 dotenv.config();
 
-// Set Auth0 environment variables if not already set
-if (!process.env.AUTH0_AUDIENCE) {
-  process.env.AUTH0_AUDIENCE = 'https://jobSeekerATS-API';
-}
-if (!process.env.AUTH0_DOMAIN) {
-  process.env.AUTH0_DOMAIN = 'dev-572ox7lten831zkg.us.auth0.com';
-}
-
 connectDB();
 
 const app = express();
-app.use(cors());
+
+// Configure CORS to allow requests from frontend
+app.use(cors({
+  origin: process.env.FRONTEND_ORIGIN || "http://localhost:5173",
+  credentials: false
+}));
+
 app.use(express.json());
 
 // API Routes
