@@ -26,6 +26,7 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
+  const [employmentSuccessMessage, setEmploymentSuccessMessage] = useState(null);
   const [bioCharCount, setBioCharCount] = useState(0);
   const [profilePicture, setProfilePicture] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -235,9 +236,9 @@ export default function ProfilePage() {
       // Update employment list by removing the deleted entry
       setEmploymentList(prev => prev.filter(job => job._id !== deletingEmployment._id));
       
-      // Show success message
-      setSuccessMessage(`Employment entry for ${deletingEmployment.jobTitle} at ${deletingEmployment.company} deleted successfully!`);
-      setTimeout(() => setSuccessMessage(null), 5000);
+      // Show success message in employment section
+      setEmploymentSuccessMessage(`Employment entry for ${deletingEmployment.jobTitle} at ${deletingEmployment.company} deleted successfully!`);
+      setTimeout(() => setEmploymentSuccessMessage(null), 5000);
       
       // Close modal and reset state
       setShowDeleteModal(false);
@@ -385,6 +386,13 @@ export default function ProfilePage() {
                       <span>Add Employment</span>
                     </button>
                   </div>
+
+                  {/* Employment Success Message */}
+                  {employmentSuccessMessage && (
+                    <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-green-800 font-medium">{employmentSuccessMessage}</p>
+                    </div>
+                  )}
 
                   {employmentList && employmentList.length > 0 ? (
                     <div className="space-y-4">
@@ -744,9 +752,9 @@ export default function ProfilePage() {
             setEmploymentList(newEmployment);
             setEditingEmployment(null);
             setShowEmploymentModal(false);
-            setSuccessMessage(message);
+            setEmploymentSuccessMessage(message);
             // Auto-dismiss success message after 5 seconds
-            setTimeout(() => setSuccessMessage(null), 5000);
+            setTimeout(() => setEmploymentSuccessMessage(null), 5000);
           }}
           getToken={getToken}
           editingJob={editingEmployment}
