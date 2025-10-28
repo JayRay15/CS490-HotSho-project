@@ -225,6 +225,15 @@ export const deleteAccount = asyncHandler(async (req, res) => {
     const { response, statusCode } = errorResponse(
       "Unauthorized: missing authentication credentials",
       401,
+// POST /api/users/employment - Add employment entry
+export const addEmployment = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { jobTitle, company, location, startDate, endDate, isCurrentPosition, description } = req.body;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials", 
+      401, 
       ERROR_CODES.UNAUTHORIZED
     );
     return sendResponse(res, response, statusCode);
@@ -279,4 +288,308 @@ export const deleteAccount = asyncHandler(async (req, res) => {
 
   return sendResponse(res, response, statusCode);
 });
+
+  // Validate required fields
+  const errors = [];
+  
+  if (!jobTitle?.trim()) {
+    errors.push({ field: 'jobTitle', message: 'Job title is required and cannot be empty', value: jobTitle });
+  }
+  
+  if (!company?.trim()) {
+    errors.push({ field: 'company', message: 'Company name is required and cannot be empty', value: company });
+  }
+  
+  if (!startDate) {
+    errors.push({ field: 'startDate', message: 'Start date is required', value: startDate });
+  } else {
+    // Validate start date format - accept both YYYY-MM and MM/YYYY formats
+    let startDateObj;
+    if (startDate.includes('/')) {
+      // MM/YYYY format
+      const [month, year] = startDate.split('/');
+      startDateObj = new Date(year, month - 1, 1);
+    } else {
+      // YYYY-MM format (from month input type)
+      startDateObj = new Date(startDate);
+    }
+    
+    if (isNaN(startDateObj.getTime())) {
+      errors.push({ field: 'startDate', message: 'Invalid start date format. Please use MM/YYYY format (e.g., 10/2023)', value: startDate });
+    }
+  }
+
+  // Validate end date if provided and not current position
+  if (!isCurrentPosition && endDate) {
+    let endDateObj;
+    if (endDate.includes('/')) {
+      // MM/YYYY format
+      const [month, year] = endDate.split('/');
+      endDateObj = new Date(year, month - 1, 1);
+    } else {
+      // YYYY-MM format (from month input type)
+      endDateObj = new Date(endDate);
+    }
+    
+    if (isNaN(endDateObj.getTime())) {
+      errors.push({ field: 'endDate', message: 'Invalid end date format. Please use MM/YYYY format (e.g., 10/2023)', value: endDate });
+    } else if (startDate) {
+      // Date validation: start date should be before end date
+      let startDateObj;
+      if (startDate.includes('/')) {
+        const [month, year] = startDate.split('/');
+        startDateObj = new Date(year, month - 1, 1);
+      } else {
+        startDateObj = new Date(startDate);
+      }
+      
+      if (!isNaN(startDateObj.getTime()) && startDateObj >= endDateObj) {
+        errors.push({ field: 'endDate', message: 'End date must be after the start date', value: endDate });
+      }
+    }
+  }
+
+  // Description character limit
+  if (description && description.length > 1000) {
+    errors.push({ field: 'description', message: `Description is too long (${description.length} characters). Maximum 1000 characters allowed`, value: description });
+  }
+
+  if (errors.length > 0) {
+    const { response, statusCode } = validationErrorResponse(
+      "Please fix the following errors before submitting",
+      errors
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Create employment entry
+  const employmentEntry = {
+    jobTitle: jobTitle.trim(),
+    company: company.trim(),
+    location: location?.trim() || '',
+    startDate: (() => {
+      if (startDate.includes('/')) {
+        const [month, year] = startDate.split('/');
+        return new Date(year, month - 1, 1);
+      }
+      return new Date(startDate);
+    })(),
+    endDate: isCurrentPosition ? null : (endDate ? (() => {
+      if (endDate.includes('/')) {
+        const [month, year] = endDate.split('/');
+        return new Date(year, month - 1, 1);
+      }
+      return new Date(endDate);
+    })() : null),
+    isCurrentPosition: Boolean(isCurrentPosition),
+    description: description?.trim() || ''
+  };
+
+  // Add to user's employment array
+  const user = await User.findOneAndUpdate(
+    { auth0Id: userId },
+    { $push: { employment: employmentEntry } },
+    { new: true, runValidators: true }
+  );
+
+  if (!user) {
+    const { response, statusCode } = errorResponse(
+      "User not found", 
+      404, 
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const { response, statusCode } = successResponse("Employment entry added successfully", {
+    employment: user.employment
+  });
+  return sendResponse(res, response, statusCode);
+});
+
+// PUT /api/users/employment/:employmentId - Update employment entry
+export const updateEmployment = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { employmentId } = req.params;
+  const { jobTitle, company, location, startDate, endDate, isCurrentPosition, description } = req.body;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials", 
+      401, 
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Validate required fields
+  const errors = [];
+  
+  if (!jobTitle?.trim()) {
+    errors.push({ field: 'jobTitle', message: 'Job title is required and cannot be empty', value: jobTitle });
+  }
+  
+  if (!company?.trim()) {
+    errors.push({ field: 'company', message: 'Company name is required and cannot be empty', value: company });
+  }
+  
+  if (!startDate) {
+    errors.push({ field: 'startDate', message: 'Start date is required', value: startDate });
+  } else {
+    // Validate start date format - accept both YYYY-MM and MM/YYYY formats
+    let startDateObj;
+    if (startDate.includes('/')) {
+      const [month, year] = startDate.split('/');
+      startDateObj = new Date(year, month - 1, 1);
+    } else {
+      startDateObj = new Date(startDate);
+    }
+    
+    if (isNaN(startDateObj.getTime())) {
+      errors.push({ field: 'startDate', message: 'Invalid start date format. Please use MM/YYYY format (e.g., 10/2023)', value: startDate });
+    }
+  }
+
+  // Validate end date if provided and not current position
+  if (!isCurrentPosition && endDate) {
+    let endDateObj;
+    if (endDate.includes('/')) {
+      const [month, year] = endDate.split('/');
+      endDateObj = new Date(year, month - 1, 1);
+    } else {
+      endDateObj = new Date(endDate);
+    }
+    
+    if (isNaN(endDateObj.getTime())) {
+      errors.push({ field: 'endDate', message: 'Invalid end date format. Please use MM/YYYY format (e.g., 10/2023)', value: endDate });
+    } else if (startDate) {
+      let startDateObj;
+      if (startDate.includes('/')) {
+        const [month, year] = startDate.split('/');
+        startDateObj = new Date(year, month - 1, 1);
+      } else {
+        startDateObj = new Date(startDate);
+      }
+      
+      if (!isNaN(startDateObj.getTime()) && startDateObj >= endDateObj) {
+        errors.push({ field: 'endDate', message: 'End date must be after the start date', value: endDate });
+      }
+    }
+  }
+
+  // Description character limit
+  if (description && description.length > 1000) {
+    errors.push({ field: 'description', message: `Description is too long (${description.length} characters). Maximum 1000 characters allowed`, value: description });
+  }
+
+  if (errors.length > 0) {
+    const { response, statusCode } = validationErrorResponse(
+      "Please fix the following errors before submitting",
+      errors
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Update employment entry
+  const updatedEmployment = {
+    jobTitle: jobTitle.trim(),
+    company: company.trim(),
+    location: location?.trim() || '',
+    startDate: (() => {
+      if (startDate.includes('/')) {
+        const [month, year] = startDate.split('/');
+        return new Date(year, month - 1, 1);
+      }
+      return new Date(startDate);
+    })(),
+    endDate: isCurrentPosition ? null : (endDate ? (() => {
+      if (endDate.includes('/')) {
+        const [month, year] = endDate.split('/');
+        return new Date(year, month - 1, 1);
+      }
+      return new Date(endDate);
+    })() : null),
+    isCurrentPosition: Boolean(isCurrentPosition),
+    description: description?.trim() || ''
+  };
+
+  // Find user and update specific employment entry
+  const user = await User.findOneAndUpdate(
+    { auth0Id: userId, 'employment._id': employmentId },
+    { 
+      $set: {
+        'employment.$.jobTitle': updatedEmployment.jobTitle,
+        'employment.$.company': updatedEmployment.company,
+        'employment.$.location': updatedEmployment.location,
+        'employment.$.startDate': updatedEmployment.startDate,
+        'employment.$.endDate': updatedEmployment.endDate,
+        'employment.$.isCurrentPosition': updatedEmployment.isCurrentPosition,
+        'employment.$.description': updatedEmployment.description
+      }
+    },
+    { new: true, runValidators: true }
+  );
+
+  if (!user) {
+    const { response, statusCode } = errorResponse(
+      "User or employment entry not found", 
+      404, 
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const { response, statusCode } = successResponse("Employment entry updated successfully", {
+    employment: user.employment
+  });
+  return sendResponse(res, response, statusCode);
+});
+
+// DELETE /api/users/employment/:employmentId - Delete an employment entry
+export const deleteEmployment = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { employmentId } = req.params;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials", 
+      401, 
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  if (!employmentId) {
+    const { response, statusCode } = errorResponse(
+      "Employment ID is required", 
+      400, 
+      ERROR_CODES.VALIDATION_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Find user and remove the employment entry
+  const user = await User.findOneAndUpdate(
+    { auth0Id: userId },
+    { 
+      $pull: { employment: { _id: employmentId } }
+    },
+    { new: true }
+  );
+
+  if (!user) {
+    const { response, statusCode } = errorResponse(
+      "User not found", 
+      404, 
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const { response, statusCode } = successResponse("Employment entry deleted successfully", {
+    employment: user.employment
+  });
+  return sendResponse(res, response, statusCode);
+});
+
 

@@ -31,6 +31,7 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
+  const [employmentSuccessMessage, setEmploymentSuccessMessage] = useState(null);
   const [bioCharCount, setBioCharCount] = useState(0);
   const [profilePicture, setProfilePicture] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -38,6 +39,12 @@ export default function ProfilePage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [showEmploymentModal, setShowEmploymentModal] = useState(false);
+  const [employmentList, setEmploymentList] = useState([]);
+  const [editingEmployment, setEditingEmployment] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingEmployment, setDeletingEmployment] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load user profile data
   useEffect(() => {
@@ -50,7 +57,23 @@ export default function ProfilePage() {
       try {
         const token = await getToken();
         setAuthToken(token);
-        const response = await api.get('/api/users/me');
+        
+        // Try to get user profile
+        let response;
+        try {
+          response = await api.get('/api/users/me');
+        } catch (err) {
+          // If user not found (404), register them first
+          if (err.response?.status === 404 || err.customError?.errorCode === 3001) {
+            console.log("User not found in database, registering...");
+            await api.post('/api/auth/register');
+            // Retry getting user profile
+            response = await api.get('/api/users/me');
+          } else {
+            throw err;
+          }
+        }
+        
         const data = response.data.data;
 
         setUserData(data);
@@ -70,6 +93,7 @@ export default function ProfilePage() {
         setOriginalData(profileData);
         setBioCharCount(profileData.bio.length);
         setProfilePicture(data.picture || null);
+        setEmploymentList(data.employment || []);
       } catch (err) {
         console.error("Error loading profile:", err);
         
@@ -204,6 +228,21 @@ export default function ProfilePage() {
     e?.preventDefault();
     setError(null);
     setDeleting(true);
+  const handleEditEmployment = (job) => {
+    setEditingEmployment(job);
+    setShowEmploymentModal(true);
+  };
+
+  const handleDeleteClick = (job) => {
+    setDeletingEmployment(job);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteEmployment = async () => {
+    if (!deletingEmployment) return;
+
+    setIsDeleting(true);
+    setError(null);
 
     try {
       const token = await getToken();
@@ -222,6 +261,31 @@ export default function ProfilePage() {
       setShowDeleteModal(false);
       setDeletePassword("");
     }
+  };
+
+      await api.delete(`/api/users/employment/${deletingEmployment._id}`);
+      
+      // Update employment list by removing the deleted entry
+      setEmploymentList(prev => prev.filter(job => job._id !== deletingEmployment._id));
+      
+      // Show success message in employment section
+      setEmploymentSuccessMessage(`Employment entry for ${deletingEmployment.jobTitle} at ${deletingEmployment.company} deleted successfully!`);
+      setTimeout(() => setEmploymentSuccessMessage(null), 5000);
+      
+      // Close modal and reset state
+      setShowDeleteModal(false);
+      setDeletingEmployment(null);
+    } catch (err) {
+      console.error("Error deleting employment:", err);
+      setError(err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setDeletingEmployment(null);
   };
 
   if (!isLoaded) {
@@ -338,6 +402,126 @@ export default function ProfilePage() {
                       </div>
                     )}
                   </div>
+                </div>
+
+                {/* Employment History Section */}
+                <div className="border-b pb-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-semibold text-gray-800">Employment History</h2>
+                    <button
+                      onClick={() => setShowEmploymentModal(true)}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      <span>Add Employment</span>
+                    </button>
+                  </div>
+
+                  {/* Employment Success Message */}
+                  {employmentSuccessMessage && (
+                    <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-green-800 font-medium">{employmentSuccessMessage}</p>
+                    </div>
+                  )}
+
+                  {employmentList && employmentList.length > 0 ? (
+                    <div className="space-y-4">
+                      {employmentList
+                        .sort((a, b) => {
+                          // Current positions first
+                          if (a.isCurrentPosition && !b.isCurrentPosition) return -1;
+                          if (!a.isCurrentPosition && b.isCurrentPosition) return 1;
+                          
+                          // For current positions, sort by start date (most recent first)
+                          if (a.isCurrentPosition && b.isCurrentPosition) {
+                            return new Date(b.startDate) - new Date(a.startDate);
+                          }
+                          
+                          // For past positions, sort by end date (most recent first)
+                          return new Date(b.endDate) - new Date(a.endDate);
+                        })
+                        .map((job, index) => (
+                          <div key={job._id || index} className="border rounded-lg p-4 hover:shadow-md transition relative">
+                            {/* Current Position Badge - Top Right */}
+                            {job.isCurrentPosition && (
+                              <div className="absolute top-4 right-4">
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">
+                                  Current Position
+                                </span>
+                              </div>
+                            )}
+                            
+                            <div className="flex flex-col">
+                              {/* Job Details */}
+                              <div className="flex-1 pr-32">
+                                <h3 className="text-lg font-semibold text-gray-900">{job.jobTitle}</h3>
+                                <p className="text-gray-700 font-medium">{job.company}</p>
+                                <div className="flex items-center text-sm text-gray-600 mt-1 space-x-2">
+                                  {job.location && (
+                                    <>
+                                      <span>{job.location}</span>
+                                      <span>•</span>
+                                    </>
+                                  )}
+                                  <span>
+                                    {(() => {
+                                      const startDate = new Date(job.startDate);
+                                      const startMonth = String(startDate.getMonth() + 1).padStart(2, '0');
+                                      const startYear = startDate.getFullYear();
+                                      return `${startMonth}/${startYear}`;
+                                    })()}
+                                    {' - '}
+                                    {job.isCurrentPosition 
+                                      ? 'Present' 
+                                      : (() => {
+                                          const endDate = new Date(job.endDate);
+                                          const endMonth = String(endDate.getMonth() + 1).padStart(2, '0');
+                                          const endYear = endDate.getFullYear();
+                                          return `${endMonth}/${endYear}`;
+                                        })()
+                                    }
+                                  </span>
+                                </div>
+                                {job.description && (
+                                  <p className="mt-2 text-gray-700 whitespace-pre-wrap">{job.description}</p>
+                                )}
+                              </div>
+                              
+                              {/* Action Buttons - Bottom Right */}
+                              <div className="flex justify-end mt-3 space-x-2">
+                                <button
+                                  onClick={() => handleEditEmployment(job)}
+                                  className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                  title="Edit employment"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                  </svg>
+                                </button>
+                                
+                                {/* Hide delete button if only 1 entry */}
+                                {employmentList.length > 1 && (
+                                  <button
+                                    onClick={() => handleDeleteClick(job)}
+                                    className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                                    title="Delete employment"
+                                  >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 italic">No employment history added yet.</p>
+                  )}
                 </div>
 
                 {/* Additional Information */}
@@ -478,7 +662,12 @@ export default function ProfilePage() {
         <div 
           className="fixed inset-0 flex items-center justify-center z-50" 
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }} 
-          onClick={handleCancel}
+          onClick={(e) => {
+            // Allow closing modal by clicking backdrop even if there's an error
+            if (!isSaving) {
+              handleCancel();
+            }
+          }}
         >
           <div 
             className="bg-white rounded-lg shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto relative border border-gray-200" 
@@ -490,7 +679,8 @@ export default function ProfilePage() {
               <button
                 onClick={handleCancel}
                 disabled={isSaving}
-                className="text-gray-400 hover:text-gray-600 transition"
+                className="text-gray-400 hover:text-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                title={isSaving ? "Please wait while saving..." : "Close"}
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -556,7 +746,7 @@ export default function ProfilePage() {
                       value={formData.phone}
                       onChange={handleInputChange}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="(555) 123-4567"
+                      placeholder="1234567890 or (555) 123-4567"
                     />
                   </div>
 
@@ -676,6 +866,555 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+
+      {/* Add/Edit Employment Modal */}
+      {showEmploymentModal && (
+        <EmploymentModal
+          isOpen={showEmploymentModal}
+          onClose={() => {
+            setShowEmploymentModal(false);
+            setEditingEmployment(null);
+          }}
+          onSuccess={(newEmployment, message) => {
+            setEmploymentList(newEmployment);
+            setEditingEmployment(null);
+            setShowEmploymentModal(false);
+            setEmploymentSuccessMessage(message);
+            // Auto-dismiss success message after 5 seconds
+            setTimeout(() => setEmploymentSuccessMessage(null), 5000);
+          }}
+          getToken={getToken}
+          editingJob={editingEmployment}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && deletingEmployment && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50" 
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={(e) => {
+            if (!isDeleting) {
+              handleCancelDelete();
+            }
+          }}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 border border-gray-200" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="bg-red-50 border-b border-red-100 px-6 py-4">
+              <div className="flex items-center space-x-3">
+                <div className="flex-shrink-0">
+                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Confirm Deletion</h3>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6">
+              <p className="text-gray-700 mb-4">
+                Are you sure you want to delete this employment entry?
+              </p>
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+                <p className="font-semibold text-gray-900">{deletingEmployment.jobTitle}</p>
+                <p className="text-gray-700">{deletingEmployment.company}</p>
+              </div>
+              <p className="text-sm text-red-600 font-medium">
+                This action cannot be undone.
+              </p>
+
+              {/* Error Display */}
+              {error && (
+                <div className="mt-4">
+                  <ErrorMessage
+                    error={error}
+                    onDismiss={() => setError(null)}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 border-t">
+              <button
+                type="button"
+                onClick={handleCancelDelete}
+                disabled={isDeleting}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteEmployment}
+                disabled={isDeleting}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              >
+                {isDeleting ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    <span>Delete</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Employment Modal Component
+function EmploymentModal({ isOpen, onClose, onSuccess, getToken, editingJob }) {
+  const isEditMode = !!editingJob;
+  
+  const [formData, setFormData] = useState({
+    jobTitle: '',
+    company: '',
+    location: '',
+    startDate: '',
+    endDate: '',
+    isCurrentPosition: false,
+    description: ''
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
+  const [descCharCount, setDescCharCount] = useState(0);
+
+  // Pre-populate form when editing
+  useEffect(() => {
+    if (editingJob) {
+      const startDate = new Date(editingJob.startDate);
+      const startMonth = String(startDate.getMonth() + 1).padStart(2, '0');
+      const startYear = startDate.getFullYear();
+      const formattedStartDate = `${startMonth}/${startYear}`;
+
+      let formattedEndDate = '';
+      if (editingJob.endDate && !editingJob.isCurrentPosition) {
+        const endDate = new Date(editingJob.endDate);
+        const endMonth = String(endDate.getMonth() + 1).padStart(2, '0');
+        const endYear = endDate.getFullYear();
+        formattedEndDate = `${endMonth}/${endYear}`;
+      }
+
+      setFormData({
+        jobTitle: editingJob.jobTitle || '',
+        company: editingJob.company || '',
+        location: editingJob.location || '',
+        startDate: formattedStartDate,
+        endDate: formattedEndDate,
+        isCurrentPosition: editingJob.isCurrentPosition || false,
+        description: editingJob.description || ''
+      });
+      setDescCharCount(editingJob.description?.length || 0);
+    } else {
+      // Reset form for add mode
+      setFormData({
+        jobTitle: '',
+        company: '',
+        location: '',
+        startDate: '',
+        endDate: '',
+        isCurrentPosition: false,
+        description: ''
+      });
+      setDescCharCount(0);
+    }
+    setError(null);
+    setSuccessMessage(null);
+  }, [editingJob]);
+
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    
+    // Handle description character limit
+    if (name === 'description') {
+      if (value.length > 1000) return;
+      setDescCharCount(value.length);
+    }
+
+    // Handle date formatting for startDate and endDate
+    if (name === 'startDate' || name === 'endDate') {
+      // Remove any non-digit characters
+      let cleaned = value.replace(/\D/g, '');
+      
+      // Limit to 6 digits (MMYYYY)
+      if (cleaned.length > 6) {
+        cleaned = cleaned.substring(0, 6);
+      }
+      
+      // Format as MM/YYYY
+      let formatted = cleaned;
+      if (cleaned.length >= 3) {
+        formatted = cleaned.substring(0, 2) + '/' + cleaned.substring(2);
+      }
+      
+      setFormData(prev => ({
+        ...prev,
+        [name]: formatted
+      }));
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const validateForm = () => {
+    const errors = [];
+
+    if (!formData.jobTitle.trim()) {
+      errors.push({ field: 'jobTitle', message: 'Job title is required and cannot be empty' });
+    }
+
+    if (!formData.company.trim()) {
+      errors.push({ field: 'company', message: 'Company name is required and cannot be empty' });
+    }
+
+    if (!formData.startDate) {
+      errors.push({ field: 'startDate', message: 'Start date is required' });
+    } else {
+      // Validate MM/YYYY format
+      const datePattern = /^(0[1-9]|1[0-2])\/\d{4}$/;
+      if (!datePattern.test(formData.startDate)) {
+        errors.push({ field: 'startDate', message: 'Invalid start date format. Please use MM/YYYY (e.g., 10/2023)' });
+      } else {
+        const [month, year] = formData.startDate.split('/');
+        const startDateObj = new Date(year, month - 1, 1);
+        if (isNaN(startDateObj.getTime())) {
+          errors.push({ field: 'startDate', message: 'Invalid start date' });
+        }
+      }
+    }
+
+    // Date validation for end date
+    if (!formData.isCurrentPosition) {
+      if (!formData.endDate) {
+        errors.push({ field: 'endDate', message: 'End date is required when this is not a current position' });
+      } else {
+        const datePattern = /^(0[1-9]|1[0-2])\/\d{4}$/;
+        if (!datePattern.test(formData.endDate)) {
+          errors.push({ field: 'endDate', message: 'Invalid end date format. Please use MM/YYYY (e.g., 12/2024)' });
+        } else {
+          const [endMonth, endYear] = formData.endDate.split('/');
+          const endDateObj = new Date(endYear, endMonth - 1, 1);
+          
+          if (isNaN(endDateObj.getTime())) {
+            errors.push({ field: 'endDate', message: 'Invalid end date' });
+          } else if (formData.startDate) {
+            const startDatePattern = /^(0[1-9]|1[0-2])\/\d{4}$/;
+            if (startDatePattern.test(formData.startDate)) {
+              const [startMonth, startYear] = formData.startDate.split('/');
+              const startDateObj = new Date(startYear, startMonth - 1, 1);
+              
+              if (!isNaN(startDateObj.getTime()) && startDateObj >= endDateObj) {
+                errors.push({ field: 'endDate', message: 'End date must be after the start date' });
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Description character limit
+    if (formData.description && formData.description.length > 1000) {
+      errors.push({ field: 'description', message: `Description is too long (${formData.description.length} characters). Maximum 1000 characters allowed` });
+    }
+
+    return errors;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessMessage(null);
+
+    // Validate form
+    const validationErrors = validateForm();
+    if (validationErrors.length > 0) {
+      setError({
+        customError: {
+          errorCode: 2001,
+          message: 'Please fix the following errors before submitting:',
+          errors: validationErrors
+        }
+      });
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+
+      let response;
+      if (isEditMode) {
+        // Edit existing employment
+        response = await api.put(`/api/users/employment/${editingJob._id}`, formData);
+      } else {
+        // Add new employment
+        response = await api.post('/api/users/employment', formData);
+      }
+      
+      const successMsg = isEditMode 
+        ? 'Employment entry updated successfully!' 
+        : 'Employment entry added successfully!';
+      
+      // Call success callback with updated employment list and message
+      onSuccess(response.data.data.employment, successMsg);
+      
+      // For add mode only: clear form and show inline success message
+      if (!isEditMode) {
+        setFormData({
+          jobTitle: '',
+          company: '',
+          location: '',
+          startDate: '',
+          endDate: '',
+          isCurrentPosition: false,
+          description: ''
+        });
+        setDescCharCount(0);
+        setError(null);
+        setSuccessMessage(successMsg);
+        
+        // Auto-dismiss inline success message after 3 seconds
+        setTimeout(() => setSuccessMessage(null), 3000);
+      }
+    } catch (err) {
+      console.error(isEditMode ? "Error updating employment:" : "Error adding employment:", err);
+      setError(err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleClose = () => {
+    setFormData({
+      jobTitle: '',
+      company: '',
+      location: '',
+      startDate: '',
+      endDate: '',
+      isCurrentPosition: false,
+      description: ''
+    });
+    setDescCharCount(0);
+    setError(null);
+    setSuccessMessage(null);
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div 
+      className="fixed inset-0 flex items-center justify-center z-50" 
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }} 
+      onClick={handleClose}
+    >
+      <div 
+        className="bg-white rounded-lg shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto relative border border-gray-200" 
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Modal Header */}
+        <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center z-10">
+          <h3 className="text-2xl font-semibold">{isEditMode ? 'Edit Employment' : 'Add Employment'}</h3>
+          <button
+            onClick={handleClose}
+            disabled={isSaving}
+            className="text-gray-400 hover:text-gray-600 transition"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Modal Content */}
+        <div className="p-6">
+          {/* Success Message */}
+          {successMessage && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-green-800 font-medium">{successMessage}</p>
+            </div>
+          )}
+
+          {/* Error Display */}
+          {error && (
+            <ErrorMessage
+              error={error}
+              onDismiss={() => setError(null)}
+              className="mb-6"
+            />
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Job Title */}
+            <div>
+              <label htmlFor="jobTitle" className="block text-sm font-medium text-gray-700 mb-2">
+                Job Title <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                id="jobTitle"
+                name="jobTitle"
+                value={formData.jobTitle}
+                onChange={handleInputChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Senior Software Engineer"
+              />
+            </div>
+
+            {/* Company and Location Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-2">
+                  Company Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="company"
+                  name="company"
+                  value={formData.company}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Tech Corp"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-2">
+                  Location
+                </label>
+                <input
+                  type="text"
+                  id="location"
+                  name="location"
+                  value={formData.location}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="New York, NY"
+                />
+              </div>
+            </div>
+
+            {/* Start Date and End Date Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-2">
+                  Start Date (MM/YYYY) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="startDate"
+                  name="startDate"
+                  value={formData.startDate}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="10/2023"
+                  maxLength="7"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-2">
+                  End Date (MM/YYYY) {!formData.isCurrentPosition && <span className="text-red-500">*</span>}
+                </label>
+                <input
+                  type="text"
+                  id="endDate"
+                  name="endDate"
+                  value={formData.endDate}
+                  onChange={handleInputChange}
+                  disabled={formData.isCurrentPosition}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  placeholder="12/2024"
+                  maxLength="7"
+                />
+              </div>
+            </div>
+
+            {/* Current Position Checkbox */}
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="isCurrentPosition"
+                name="isCurrentPosition"
+                checked={formData.isCurrentPosition}
+                onChange={handleInputChange}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="isCurrentPosition" className="ml-2 block text-sm text-gray-700">
+                I currently work here
+              </label>
+            </div>
+
+            {/* Job Description */}
+            <div>
+              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
+                Job Description
+              </label>
+              <textarea
+                id="description"
+                name="description"
+                value={formData.description}
+                onChange={handleInputChange}
+                rows={5}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                placeholder="Describe your responsibilities, achievements, and key contributions..."
+              />
+              <div className="mt-1 flex justify-between items-center">
+                <p className="text-xs text-gray-500">Optional</p>
+                <p className={`text-sm ${descCharCount > 900 ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
+                  {descCharCount} / 1000 characters
+                </p>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end space-x-4 pt-6 border-t sticky bottom-0 bg-white">
+              <button
+                type="button"
+                onClick={handleClose}
+                disabled={isSaving}
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Close
+              </button>
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSaving 
+                  ? (isEditMode ? 'Updating...' : 'Saving...') 
+                  : (isEditMode ? 'Update Entry' : 'Save Entry')}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }

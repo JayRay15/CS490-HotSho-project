@@ -5,13 +5,45 @@ import ErrorMessage from "../../components/ErrorMessage";
 import { useAccountDeletionCheck } from "../../hooks/useAccountDeletionCheck";
 
 export default function Dashboard() {
-  const { isLoaded, isSignedIn, signOut } = useAuth();
+  const { isLoaded, isSignedIn, signOut, getToken } = useAuth();
   const { user } = useUser();
   
   // Check if account is deleted and auto-logout if needed
   useAccountDeletionCheck();
+  const [isRegistering, setIsRegistering] = useState(false);
 
-  if (!isLoaded) {
+  // Auto-register user in MongoDB if not already registered
+  useEffect(() => {
+    const ensureUserRegistered = async () => {
+      if (!isSignedIn) return;
+
+      setIsRegistering(true);
+      try {
+        const token = await getToken();
+        setAuthToken(token);
+        
+        // Try to get user, if not found, register them
+        try {
+          await api.get('/api/users/me');
+        } catch (err) {
+          if (err.response?.status === 404 || err.customError?.errorCode === 3001) {
+            console.log("User not found in database, registering...");
+            await api.post('/api/auth/register');
+          }
+        }
+      } catch (err) {
+        console.error("Error ensuring user registration:", err);
+      } finally {
+        setIsRegistering(false);
+      }
+    };
+
+    if (isSignedIn) {
+      ensureUserRegistered();
+    }
+  }, [isSignedIn, getToken]);
+
+  if (!isLoaded || isRegistering) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-xl">Loading...</div>

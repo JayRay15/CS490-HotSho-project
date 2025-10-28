@@ -1,5 +1,6 @@
 import express from "express";
 import { getCurrentUser, updateCurrentUser, uploadProfilePicture, deleteProfilePicture, upload, deleteAccount } from "../controllers/userController.js";
+import { getCurrentUser, updateCurrentUser, uploadProfilePicture, deleteProfilePicture, upload, addEmployment, updateEmployment, deleteEmployment } from "../controllers/userController.js";
 import { checkJwt } from "../middleware/checkJwt.js";
 
 const router = express.Router();
@@ -18,5 +19,13 @@ router.delete("/profile-picture", checkJwt, deleteProfilePicture);
 
 // DELETE /api/users/delete - Soft-delete account
 router.delete("/delete", checkJwt, deleteAccount);
+// POST /api/users/employment - Add employment entry
+router.post("/employment", checkJwt, addEmployment);
+
+// PUT /api/users/employment/:employmentId - Update employment entry
+router.put("/employment/:employmentId", checkJwt, updateEmployment);
+
+// DELETE /api/users/employment/:employmentId - Delete employment entry
+router.delete("/employment/:employmentId", checkJwt, deleteEmployment);
 
 export default router;
