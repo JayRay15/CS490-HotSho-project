@@ -1,93 +1,94 @@
-import { useAuth0 } from "@auth0/auth0-react";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { RedirectToSignIn, useAuth, useUser } from "@clerk/clerk-react";
 import api, { setAuthToken } from "../../api/axios";
 
 export default function Dashboard() {
-  const { user, isAuthenticated, isLoading, logout, getAccessTokenSilently } = useAuth0();
+  const { isLoaded, isSignedIn, getToken, signOut } = useAuth();
+  const { user } = useUser();
   const [userData, setUserData] = useState(null);
   const [error, setError] = useState(null);
-  const navigate = useNavigate();
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      navigate("/login");
-    }
-  }, [isAuthenticated, isLoading, navigate]);
-
-  useEffect(() => {
-    const fetchUserData = async () => {
+    const loadProfile = async () => {
       try {
-        console.log("🔍 Fetching user data...");
-        console.log("Auth0 user object:", user);
-        
-        // Try to get Auth0 token - this might fail without API configured
-        let token;
-        try {
-          token = await getAccessTokenSilently();
-          console.log("✅ Got token:", token?.substring(0, 50) + "...");
-        } catch (tokenErr) {
-          console.warn("⚠️  Could not get access token:", tokenErr.message);
-          // For now, just show the Auth0 user info without backend call
-          setUserData({
-            name: user.name,
-            email: user.email,
-            auth0Id: user.sub,
-            picture: user.picture
-          });
-          return;
-        }
-        
-        // Set token in axios
+        const token = await getToken();
         setAuthToken(token);
-
-        // Call backend to get or create user profile
-        console.log("📡 Calling /api/users/me");
         const response = await api.get("/api/users/me");
-        console.log("✅ Got user data from backend:", response.data);
         setUserData(response.data.data);
+        setLastUpdated(new Date());
+        setError(null);
       } catch (err) {
-        console.error("❌ Error fetching user data:", err);
-        console.error("Error response:", err.response?.data);
-        console.error("Error status:", err.response?.status);
-        
-        // If user doesn't exist, register them
+         console.error("Error fetching user data:", err);
+         console.error("Error response:", err.response?.data);
+         console.error("Error status:", err.response?.status);
+       
         if (err.response?.status === 404) {
           try {
-            console.log("📝 User not found, trying to register...");
-            const token = await getAccessTokenSilently();
+            const token = await getToken();
             setAuthToken(token);
+             console.log("Attempting to register new user...");
             const registerResponse = await api.post("/api/auth/register");
-            console.log("✅ Registration successful:", registerResponse.data);
+             console.log("Registration successful:", registerResponse.data);
             setUserData(registerResponse.data.data);
+            setLastUpdated(new Date());
+            setError(null);
           } catch (regErr) {
-            console.error("❌ Error registering user:", regErr);
-            console.error("Registration error response:", regErr.response?.data);
+             console.error("Registration error:", regErr);
+             console.error("Registration error response:", regErr.response?.data);
+            // If server says user already exists, just load profile
+            if (regErr.response?.status === 400 ||
+                /already exists/i.test(regErr.response?.data?.message || "")) {
+              try {
+                await loadProfile();
+                return;
+              } catch (_) {}
+            }
             setError(`Failed to create user profile: ${regErr.response?.data?.message || regErr.message}`);
           }
         } else {
-          // Fallback: just show Auth0 user info
-          console.warn("⚠️  Using Auth0 user data as fallback");
-          setUserData({
-            name: user.name,
-            email: user.email,
-            auth0Id: user.sub,
-            picture: user.picture
-          });
+           setError(`Failed to load user data: ${err.response?.data?.message || err.message}`);
         }
       }
     };
+    if (isSignedIn) loadProfile();
+  }, [isSignedIn, getToken]);
 
-    if (isAuthenticated && user) {
-      fetchUserData();
-    }
-  }, [isAuthenticated, user, getAccessTokenSilently]);
+  // Lightweight real-time: poll for profile changes every 3 seconds while signed in
+  useEffect(() => {
+    if (!isSignedIn) return;
 
-  const handleLogout = () => {
-    logout({ logoutParams: { returnTo: window.location.origin } });
-  };
+    let cancelled = false;
+    let timerId;
 
-  if (isLoading) {
+    const poll = async () => {
+      try {
+        const token = await getToken();
+        setAuthToken(token);
+        const response = await api.get("/api/users/me");
+        if (!cancelled) {
+          setUserData(response.data.data);
+          setLastUpdated(new Date());
+          setError(null);
+        }
+      } catch (e) {
+        // Don't surface polling errors loudly; initial fetch handles UX
+        // Console log for debugging only
+        console.debug("poll(users/me) error:", e?.response?.status || e?.message);
+      }
+    };
+
+    // Start immediate poll, then interval
+    poll();
+    timerId = setInterval(poll, 3000);
+
+    return () => {
+      cancelled = true;
+      if (timerId) clearInterval(timerId);
+    };
+  }, [isSignedIn, getToken]);
+
+  if (!isLoaded) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-xl">Loading...</div>
@@ -95,20 +96,8 @@ export default function Dashboard() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">{error}</p>
-          <button
-            onClick={handleLogout}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Logout
-          </button>
-        </div>
-      </div>
-    );
+  if (!isSignedIn) {
+    return <RedirectToSignIn />;
   }
 
   return (
@@ -117,12 +106,12 @@ export default function Dashboard() {
         <div className="flex justify-between items-start mb-6">
           <div>
             <h1 className="text-3xl font-semibold mb-2">
-              Welcome, {user?.name || user?.email} 
+              Welcome, {user?.fullName || user?.primaryEmailAddress?.emailAddress}
             </h1>
             <p className="text-gray-600">You are successfully logged in!</p>
           </div>
           <button
-            onClick={handleLogout}
+            onClick={() => signOut()}
             className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
           >
             Logout
@@ -132,11 +121,15 @@ export default function Dashboard() {
         <div className="space-y-4">
           <div className="border-t pt-4">
             <h2 className="text-xl font-semibold mb-4">Profile Information</h2>
+            {error && <p className="text-red-600 mb-4">{error}</p>}
             {userData ? (
               <div className="space-y-2">
                 <p><span className="font-medium">Name:</span> {userData.name}</p>
                 <p><span className="font-medium">Email:</span> {userData.email}</p>
-                <p><span className="font-medium">Auth0 ID:</span> {userData.auth0Id}</p>
+                <p><span className="font-medium">User ID:</span> {userData.auth0Id}</p>
+                {lastUpdated && (
+                  <p className="text-sm text-gray-500">Last updated: {lastUpdated.toLocaleTimeString()}</p>
+                )}
               </div>
             ) : (
               <p className="text-gray-500">Loading profile data...</p>

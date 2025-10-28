@@ -1,23 +1,42 @@
 import { User } from "../models/User.js";
 import { successResponse, errorResponse, sendResponse } from "../utils/responseFormat.js";
+import { clerkClient } from "@clerk/express";
 
 // POST /api/auth/register - Create new user account (Auth0 integration)
 export const register = async (req, res) => {
   try {
-    const { sub, name, email, picture } = req.auth.payload;
+    const userId = req.auth?.userId || req.auth?.payload?.sub;
+    if (!userId) {
+      const { response, statusCode } = errorResponse("Unauthorized: missing userId", 401);
+      return sendResponse(res, response, statusCode);
+    }
 
-    // Check if user already exists by Auth0 ID
-    const existingUser = await User.findOne({ auth0Id: sub });
+    // Fetch user details from Clerk
+    let name = "Unknown User";
+    let email = undefined;
+    let picture = undefined;
+    try {
+      const clerkUser = await clerkClient.users.getUser(userId);
+      name = clerkUser.fullName || `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() || "Unknown User";
+      email = clerkUser.primaryEmailAddress?.emailAddress || clerkUser.emailAddresses?.[0]?.emailAddress;
+      picture = clerkUser.imageUrl;
+    } catch (e) {
+      // If Clerk fetch fails, proceed with minimal data
+    }
+
+    // Check if user already exists by Auth0/Clerk ID
+    const existingUser = await User.findOne({ auth0Id: userId });
     if (existingUser) {
-      const { response, statusCode } = errorResponse("User already exists", 400);
+      // Make this endpoint idempotent: return the existing user as success
+      const { response, statusCode } = successResponse("User already exists", existingUser);
       return sendResponse(res, response, statusCode);
     }
 
     // Create new user with Auth0 data
     const userData = {
-      auth0Id: sub,
+      auth0Id: userId, // stores Clerk userId in this field
       name: name || 'Unknown User',
-      email: email || `user-${sub}@example.com`,
+      email: email || `user-${userId}@example.com`,
       picture: picture || null
     };
 
@@ -48,9 +67,8 @@ export const register = async (req, res) => {
 // POST /api/auth/login - Authenticate user
 export const login = async (req, res) => {
   try {
-    const { sub } = req.auth.payload;
-
-    const user = await User.findOne({ auth0Id: sub });
+    const userId = req.auth?.userId || req.auth?.payload?.sub;
+    const user = await User.findOne({ auth0Id: userId });
     
     if (!user) {
       const { response, statusCode } = errorResponse("User not found", 404);

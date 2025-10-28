@@ -1,30 +1,8 @@
-import { useAuth0 } from "@auth0/auth0-react";
-import { useEffect } from "react";
+import { SignedIn, SignedOut, SignInButton } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 
 export default function Login() {
-  const { loginWithRedirect, isAuthenticated, isLoading, error } = useAuth0();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate("/dashboard");
-    }
-  }, [isAuthenticated, navigate]);
-
-  const handleLogin = () => {
-    loginWithRedirect({
-      appState: { returnTo: "/dashboard" }
-    });
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen bg-gray-50">
-        <div className="text-xl">Loading...</div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-50">
@@ -33,29 +11,31 @@ export default function Login() {
           Welcome Back!
         </h2>
 
-        {error && (
-          <div className="mb-4 p-3 rounded bg-red-50 text-red-700 text-sm">
-            <p className="font-medium">Login error</p>
-            <p>{error.message}</p>
-            {error.message?.includes("Service not found") && (
-              <ul className="list-disc ml-5 mt-2">
-                <li>In Auth0, create an API with Identifier <code>https://jobSeekerATS-API</code> (RS256).</li>
-                <li>Then try signing in again.</li>
-              </ul>
-            )}
-          </div>
-        )}
+        {/* No custom error UI; Clerk handles errors in its UI */}
 
         <p className="text-gray-600 text-center mb-6">
           Sign in to access your Job Seeker ATS account
         </p>
 
-        <button
-          onClick={handleLogin}
-          className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-medium"
-        >
-          Sign In with Auth0
-        </button>
+        <SignedOut>
+          <SignInButton mode="modal" afterSignInUrl="/dashboard">
+            <button
+              className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-medium"
+            >
+              Sign In
+            </button>
+          </SignInButton>
+        </SignedOut>
+        <SignedIn>
+          <button
+            onClick={() => navigate("/dashboard")}
+            className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition font-medium"
+          >
+            Go to Dashboard
+          </button>
+        </SignedIn>
+
+        {/* Clerk provides UI for sign in; no manual reset needed */}
 
         <p className="mt-6 text-sm text-center text-gray-600">
           Don't have an account?{" "}

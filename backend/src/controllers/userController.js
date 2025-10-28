@@ -4,9 +4,8 @@ import { successResponse, errorResponse, sendResponse } from "../utils/responseF
 // GET /api/users/me - Get current user profile
 export const getCurrentUser = async (req, res) => {
   try {
-    const { sub } = req.auth.payload;
-
-    const user = await User.findOne({ auth0Id: sub });
+    const userId = req.auth?.userId || req.auth?.payload?.sub;
+    const user = await User.findOne({ auth0Id: userId });
     
     if (!user) {
       const { response, statusCode } = errorResponse("User not found", 404);
@@ -25,7 +24,7 @@ export const getCurrentUser = async (req, res) => {
 // PUT /api/users/me - Update current user profile
 export const updateCurrentUser = async (req, res) => {
   try {
-    const { sub } = req.auth.payload;
+    const userId = req.auth?.userId || req.auth?.payload?.sub;
     const updateData = req.body;
 
     // Remove fields that shouldn't be updated directly
@@ -35,7 +34,7 @@ export const updateCurrentUser = async (req, res) => {
     delete updateData.updatedAt;
 
     const user = await User.findOneAndUpdate(
-      { auth0Id: sub },
+      { auth0Id: userId },
       { $set: updateData },
       { new: true, runValidators: true }
     );
