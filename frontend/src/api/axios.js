@@ -45,6 +45,17 @@ api.interceptors.response.use(
             // Determine if error is retryable
             customError.canRetry = status >= 500 || status === 408 || status === 429;
             
+            // Check if this is a deleted account error (403 with specific message)
+            if (status === 403 && data?.message?.includes('deletion')) {
+                customError.isAccountDeleted = true;
+                // Store message for display after logout
+                sessionStorage.setItem("logoutMessage", data.message || "Your account access has been restricted.");
+                
+                // Import signOut dynamically to avoid circular dependencies
+                // The actual logout will be handled by the component
+                console.warn("Account deletion detected - user should be logged out");
+            }
+            
         } else if (error.request) {
             // Request made but no response received (network error)
             customError.isNetworkError = true;

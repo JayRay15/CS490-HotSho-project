@@ -24,13 +24,30 @@ export default function Login() {
 
   return (
     <div className="flex flex-col justify-center items-center min-h-screen bg-gray-50 py-8">
-      {/* Logout confirmation message */}
+      {/* Logout/Error confirmation message */}
       {logoutMessage && (
-        <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-lg flex items-center justify-between max-w-md w-full mx-auto">
-          <span>{logoutMessage}</span>
+        <div className={`mb-4 p-4 border rounded-lg flex items-start max-w-md w-full mx-auto ${
+          logoutMessage.includes('deletion') || logoutMessage.includes('restricted') || logoutMessage.includes('scheduled')
+            ? 'bg-red-50 border-red-400 text-red-800'
+            : 'bg-green-50 border-green-400 text-green-800'
+        }`}>
+          <div className="flex-1">
+            {logoutMessage.includes('deletion') || logoutMessage.includes('restricted') ? (
+              <div>
+                <p className="font-semibold mb-1">Account Access Restricted</p>
+                <p className="text-sm">{logoutMessage}</p>
+              </div>
+            ) : (
+              <span>{logoutMessage}</span>
+            )}
+          </div>
           <button
             onClick={() => setLogoutMessage(null)}
-            className="ml-2 text-green-700 hover:text-green-900 font-bold"
+            className={`ml-3 font-bold text-xl leading-none ${
+              logoutMessage.includes('deletion') || logoutMessage.includes('restricted')
+                ? 'text-red-600 hover:text-red-800'
+                : 'text-green-600 hover:text-green-800'
+            }`}
           >
             ×
           </button>

@@ -3,6 +3,7 @@ import { RedirectToSignIn, useAuth, useUser } from "@clerk/clerk-react";
 import api, { setAuthToken } from "../../api/axios";
 import ErrorMessage from "../../components/ErrorMessage";
 import ProfilePictureUpload from "../../components/ProfilePictureUpload";
+import { useAccountDeletionCheck } from "../../hooks/useAccountDeletionCheck";
 
 const INDUSTRIES = ['Technology', 'Healthcare', 'Finance', 'Education', 'Construction', 'Real Estate'];
 const EXPERIENCE_LEVELS = ['Entry', 'Mid', 'Senior', 'Executive'];
@@ -10,6 +11,10 @@ const EXPERIENCE_LEVELS = ['Entry', 'Mid', 'Senior', 'Executive'];
 export default function ProfilePage() {
   const { isLoaded, isSignedIn, getToken, signOut } = useAuth();
   const { user } = useUser();
+  
+  // Check if account is deleted and auto-logout if needed
+  useAccountDeletionCheck();
+  
   const [userData, setUserData] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -67,6 +72,10 @@ export default function ProfilePage() {
         setProfilePicture(data.picture || null);
       } catch (err) {
         console.error("Error loading profile:", err);
+        
+        // Note: Account deletion is handled by useAccountDeletionCheck hook
+        // which will automatically logout the user
+        // Just set error for display (though user will be logged out)
         setError(err);
       } finally {
         setIsLoading(false);
@@ -237,46 +246,6 @@ export default function ProfilePage() {
               <h1 className="text-3xl font-semibold mb-2">My Profile</h1>
               <p className="text-gray-600">View and manage your professional profile</p>
             </div>
-          {/* Danger Zone: Account deletion */}
-          <div className="mt-12">
-            <div className="bg-white rounded-2xl shadow-md p-6 border border-red-100">
-              <h2 className="text-xl font-semibold text-red-600 mb-2">Danger Zone</h2>
-              <p className="text-sm text-gray-700 mb-4">Deleting your account will schedule permanent removal of your personal data after a 30-day grace period. You will be logged out immediately.</p>
-              <div className="flex justify-end">
-                <button
-                  onClick={() => setShowDeleteModal(true)}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-                >
-                  Delete Account
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Delete confirmation modal */}
-          {showDeleteModal && (
-            <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0,0,0,0.48)' }} onClick={() => setShowDeleteModal(false)}>
-              <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
-                <h3 className="text-lg font-semibold mb-2">Confirm Account Deletion</h3>
-                <p className="text-sm text-gray-700 mb-4">This will schedule your account for permanent deletion in 30 days. To confirm, enter your password below (if your account uses a local password).</p>
-
-                <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
-                <input
-                  type="password"
-                  value={deletePassword}
-                  onChange={(e) => setDeletePassword(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-4"
-                />
-
-                <div className="flex justify-end space-x-2">
-                  <button onClick={() => setShowDeleteModal(false)} className="px-4 py-2 bg-gray-100 rounded-lg">Cancel</button>
-                  <button onClick={handleDeleteAccount} disabled={deleting} className="px-4 py-2 bg-red-600 text-white rounded-lg">
-                    {deleting ? 'Deleting...' : 'Confirm Delete'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
             
             {/* Profile Picture Upload */}
             <ProfilePictureUpload
@@ -407,7 +376,102 @@ export default function ProfilePage() {
             </>
           )}
         </div>
+
+        {/* Danger Zone: Account deletion - moved to bottom of page */}
+        <div className="mt-8">
+          <div className="bg-white rounded-2xl shadow-md p-6 border-2 border-red-200">
+            <h2 className="text-xl font-semibold text-red-600 mb-2">Danger Zone</h2>
+            <p className="text-sm text-gray-700 mb-4">
+              Deleting your account will schedule permanent removal of your personal data after a 30-day grace period. 
+              You will be logged out immediately and cannot access your account during this period.
+            </p>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                className="px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium"
+              >
+                Delete Account
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* Delete confirmation modal */}
+      {showDeleteModal && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50" 
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} 
+          onClick={() => {
+            setShowDeleteModal(false);
+            setDeletePassword("");
+            setError(null);
+          }}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6 mx-4" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start mb-4">
+              <div className="shrink-0">
+                <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div className="ml-3 flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Confirm Account Deletion</h3>
+                <p className="text-sm text-gray-700 mb-4">
+                  This will schedule your account for <strong>permanent deletion in 30 days</strong>. 
+                  You will be logged out immediately and cannot log in during the grace period.
+                </p>
+                <p className="text-sm text-gray-600 mb-4">
+                  If your account uses a password (not OAuth), please enter it below to confirm:
+                </p>
+              </div>
+            </div>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-800">
+                  {error?.response?.data?.error?.message || error?.message || 'Failed to delete account'}
+                </p>
+              </div>
+            )}
+
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Password (optional for OAuth users)
+            </label>
+            <input
+              type="password"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              placeholder="Enter your password"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-red-500 focus:border-transparent"
+            />
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <button 
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeletePassword("");
+                  setError(null);
+                }} 
+                disabled={deleting}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleDeleteAccount} 
+                disabled={deleting} 
+                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+              >
+                {deleting ? 'Deleting...' : 'Yes, Delete My Account'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Profile Modal */}
       {showEditModal && (

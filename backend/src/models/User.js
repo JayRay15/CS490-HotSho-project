@@ -49,9 +49,9 @@ const userSchema = new mongoose.Schema(
       immutable: true, // Cannot be changed after creation
       index: true // For fast lookups
     },
-    auth0Id: { type: String, unique: true, required: true }, // Required for Auth0 integration
+    auth0Id: { type: String, unique: true, required: true }, // Clerk user ID (stored as auth0Id for compatibility)
     email: { type: String, lowercase: true, required: true, unique: true },
-    password: { type: String }, // Optional - only for non-Auth0 users
+    password: { type: String }, // Optional - only for non-OAuth users
     name: { type: String, required: true },
     picture: { type: String },
     headline: { type: String }, // Professional title/headline

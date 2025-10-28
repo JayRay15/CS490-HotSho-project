@@ -2,10 +2,14 @@ import { useEffect, useState } from "react";
 import { RedirectToSignIn, useAuth, useUser } from "@clerk/clerk-react";
 import api, { setAuthToken, retryRequest } from "../../api/axios";
 import ErrorMessage from "../../components/ErrorMessage";
+import { useAccountDeletionCheck } from "../../hooks/useAccountDeletionCheck";
 
 export default function Dashboard() {
   const { isLoaded, isSignedIn, signOut } = useAuth();
   const { user } = useUser();
+  
+  // Check if account is deleted and auto-logout if needed
+  useAccountDeletionCheck();
 
   if (!isLoaded) {
     return (

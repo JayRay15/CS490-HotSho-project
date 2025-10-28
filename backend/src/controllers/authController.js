@@ -3,7 +3,7 @@ import { successResponse, errorResponse, sendResponse, ERROR_CODES, validationEr
 import { clerkClient } from "@clerk/express";
 import { asyncHandler } from "../middleware/errorHandler.js";
 
-// POST /api/auth/register - Create new user account (Auth0 integration)
+// POST /api/auth/register - Create new user account (Clerk integration)
 export const register = asyncHandler(async (req, res) => {
   const userId = req.auth?.userId || req.auth?.payload?.sub;
   if (!userId) {
@@ -29,12 +29,31 @@ export const register = asyncHandler(async (req, res) => {
     console.warn("Failed to fetch user from Clerk:", e.message);
   }
 
-  // Check if user already exists by Auth0/Clerk ID
-  const existingUser = await User.findOne({ auth0Id: userId });
+  // Check if user already exists by Clerk ID (exclude soft-deleted accounts)
+  const existingUser = await User.findOne({ auth0Id: userId, isDeleted: { $ne: true } });
   if (existingUser) {
     // Make this endpoint idempotent: return the existing user as success
     const { response, statusCode } = successResponse("User already exists", existingUser);
     return sendResponse(res, response, statusCode);
+  }
+
+  // Check if there's a soft-deleted account with this Clerk ID - allow re-registration
+  const deletedUser = await User.findOne({ auth0Id: userId, isDeleted: true });
+  if (deletedUser) {
+    // Check if still within grace period
+    const now = new Date();
+    if (deletedUser.deletionExpiresAt && deletedUser.deletionExpiresAt > now) {
+      const daysRemaining = Math.ceil((deletedUser.deletionExpiresAt - now) / (1000 * 60 * 60 * 24));
+      const { response, statusCode } = errorResponse(
+        `Your previous account is scheduled for deletion in ${daysRemaining} day(s). Please wait until the deletion is complete or contact support.`,
+        409,
+        ERROR_CODES.DUPLICATE_ENTRY
+      );
+      return sendResponse(res, response, statusCode);
+    }
+    // If grace period expired, permanently delete the old account now
+    await User.deleteOne({ _id: deletedUser._id });
+    console.log(`🗑️  Permanently deleted expired account: ${deletedUser.email}`);
   }
 
   // Validate email
@@ -46,8 +65,8 @@ export const register = asyncHandler(async (req, res) => {
     return sendResponse(res, response, statusCode);
   }
 
-  // Check for duplicate email
-  const emailExists = await User.findOne({ email });
+  // Check for duplicate email (exclude soft-deleted accounts)
+  const emailExists = await User.findOne({ email, isDeleted: { $ne: true } });
   if (emailExists) {
     const { response, statusCode } = errorResponse(
       "An account with this email already exists",
@@ -58,7 +77,26 @@ export const register = asyncHandler(async (req, res) => {
     return sendResponse(res, response, statusCode);
   }
 
-  // Create new user with Auth0 data
+  // Check if there's a soft-deleted account with this email
+  const deletedEmailUser = await User.findOne({ email, isDeleted: true });
+  if (deletedEmailUser) {
+    const now = new Date();
+    if (deletedEmailUser.deletionExpiresAt && deletedEmailUser.deletionExpiresAt > now) {
+      const daysRemaining = Math.ceil((deletedEmailUser.deletionExpiresAt - now) / (1000 * 60 * 60 * 24));
+      const { response, statusCode } = errorResponse(
+        `An account with this email is scheduled for deletion in ${daysRemaining} day(s). Please wait until the deletion is complete.`,
+        409,
+        ERROR_CODES.DUPLICATE_ENTRY,
+        [{ field: 'email', message: 'This email is associated with an account pending deletion', value: email }]
+      );
+      return sendResponse(res, response, statusCode);
+    }
+    // If grace period expired, permanently delete the old account now
+    await User.deleteOne({ _id: deletedEmailUser._id });
+    console.log(`🗑️  Permanently deleted expired account: ${deletedEmailUser.email}`);
+  }
+
+  // Create new user with Clerk data
   const userData = {
     auth0Id: userId,
     name: name || 'Unknown User',
@@ -68,7 +106,7 @@ export const register = asyncHandler(async (req, res) => {
 
   const user = await User.create(userData);
 
-  console.log(`🆕 New user created via Auth0: ${userData.email}`);
+  console.log(`🆕 New user created via Clerk: ${userData.email}`);
 
   const { response, statusCode } = successResponse("User registered successfully", user, 201);
   return sendResponse(res, response, statusCode);
@@ -119,7 +157,7 @@ export const login = asyncHandler(async (req, res) => {
 // POST /api/auth/logout - End user session
 export const logout = async (req, res) => {
   try {
-    // Since we're using Auth0, the actual logout is handled on the frontend
+    // Since we're using Clerk, the actual logout is handled on the frontend
     // This endpoint is for any server-side cleanup if needed
     const { response, statusCode } = successResponse("User logged out successfully");
     return sendResponse(res, response, statusCode);
