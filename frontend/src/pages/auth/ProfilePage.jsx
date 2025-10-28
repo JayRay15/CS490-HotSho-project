@@ -12,10 +12,8 @@ export default function ProfilePage() {
   const { isLoaded, isSignedIn, getToken, signOut } = useAuth();
   const { user } = useUser();
   
-  // Check if account is deleted and auto-logout if needed
-  useAccountDeletionCheck();
-  
   const [userData, setUserData] = useState(null);
+  const [accountStatus, setAccountStatus] = useState(null); // Track if account is deleted
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -63,6 +61,14 @@ export default function ProfilePage() {
         try {
           response = await api.get('/api/users/me');
         } catch (err) {
+          // Check if account is deleted (403 status)
+          if (err.response?.status === 403) {
+            console.log("Account is deleted, logging out...");
+            setAccountStatus('deleted');
+            await signOut();
+            return;
+          }
+          
           // If user not found (404), register them first
           if (err.response?.status === 404 || err.customError?.errorCode === 3001) {
             console.log("User not found in database, registering...");
@@ -76,6 +82,8 @@ export default function ProfilePage() {
         
         const data = response.data.data;
 
+        // Set account as active since we got here
+        setAccountStatus('active');
         setUserData(data);
 
         const profileData = {
@@ -96,10 +104,6 @@ export default function ProfilePage() {
         setEmploymentList(data.employment || []);
       } catch (err) {
         console.error("Error loading profile:", err);
-        
-        // Note: Account deletion is handled by useAccountDeletionCheck hook
-        // which will automatically logout the user
-        // Just set error for display (though user will be logged out)
         setError(err);
       } finally {
         setIsLoading(false);
@@ -109,7 +113,7 @@ export default function ProfilePage() {
     if (isSignedIn) {
       loadProfile();
     }
-  }, [isSignedIn, getToken]);
+  }, [isSignedIn, getToken, signOut]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -308,6 +312,33 @@ export default function ProfilePage() {
 
   if (!isSignedIn) {
     return <RedirectToSignIn />;
+  }
+
+  // Show loading while checking account status
+  if (isLoading && accountStatus === null) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-xl">Loading...</div>
+      </div>
+    );
+  }
+
+  // Show redirecting message if account is deleted
+  if (accountStatus === 'deleted') {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-xl">Redirecting...</div>
+      </div>
+    );
+  }
+
+  // Only render profile if account is active
+  if (accountStatus !== 'active') {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-xl">Loading...</div>
+      </div>
+    );
   }
 
   return (
@@ -619,7 +650,7 @@ export default function ProfilePage() {
                   You will be logged out immediately and cannot log in during the grace period.
                 </p>
                 <p className="text-sm text-gray-600 mb-4">
-                  If your account uses a password (not OAuth), please enter it below to confirm:
+                  <strong>Please enter your password to confirm this action:</strong>
                 </p>
               </div>
             </div>
@@ -633,13 +664,14 @@ export default function ProfilePage() {
             )}
 
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Password (optional for OAuth users)
+              Password <span className="text-red-600">*</span>
             </label>
             <input
               type="password"
               value={deletePassword}
               onChange={(e) => setDeletePassword(e.target.value)}
-              placeholder="Enter your password"
+              placeholder="Enter your password to confirm"
+              required
               className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-red-500 focus:border-transparent"
             />
 
@@ -657,7 +689,7 @@ export default function ProfilePage() {
               </button>
               <button 
                 onClick={handleDeleteAccount} 
-                disabled={deleting} 
+                disabled={deleting || !deletePassword.trim()} 
                 className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium"
               >
                 {deleting ? 'Deleting...' : 'Yes, Delete My Account'}
