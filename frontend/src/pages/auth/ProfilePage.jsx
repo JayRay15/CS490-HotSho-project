@@ -42,7 +42,7 @@ export default function ProfilePage() {
   const [showEmploymentModal, setShowEmploymentModal] = useState(false);
   const [employmentList, setEmploymentList] = useState([]);
   const [editingEmployment, setEditingEmployment] = useState(null);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showEmploymentDeleteModal, setShowEmploymentDeleteModal] = useState(false);
   const [deletingEmployment, setDeletingEmployment] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -228,21 +228,6 @@ export default function ProfilePage() {
     e?.preventDefault();
     setError(null);
     setDeleting(true);
-  const handleEditEmployment = (job) => {
-    setEditingEmployment(job);
-    setShowEmploymentModal(true);
-  };
-
-  const handleDeleteClick = (job) => {
-    setDeletingEmployment(job);
-    setShowDeleteModal(true);
-  };
-
-  const handleDeleteEmployment = async () => {
-    if (!deletingEmployment) return;
-
-    setIsDeleting(true);
-    setError(null);
 
     try {
       const token = await getToken();
@@ -263,6 +248,31 @@ export default function ProfilePage() {
     }
   };
 
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setDeletePassword("");
+  };
+
+  const handleEditEmployment = (job) => {
+    setEditingEmployment(job);
+    setShowEmploymentModal(true);
+  };
+
+  const handleDeleteClick = (job) => {
+    setDeletingEmployment(job);
+    setShowEmploymentDeleteModal(true);
+  };
+
+  const handleDeleteEmployment = async () => {
+    if (!deletingEmployment) return;
+
+    setIsDeleting(true);
+    setError(null);
+
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+
       await api.delete(`/api/users/employment/${deletingEmployment._id}`);
       
       // Update employment list by removing the deleted entry
@@ -273,7 +283,7 @@ export default function ProfilePage() {
       setTimeout(() => setEmploymentSuccessMessage(null), 5000);
       
       // Close modal and reset state
-      setShowDeleteModal(false);
+      setShowEmploymentDeleteModal(false);
       setDeletingEmployment(null);
     } catch (err) {
       console.error("Error deleting employment:", err);
@@ -283,8 +293,8 @@ export default function ProfilePage() {
     }
   };
 
-  const handleCancelDelete = () => {
-    setShowDeleteModal(false);
+  const handleCancelEmploymentDelete = () => {
+    setShowEmploymentDeleteModal(false);
     setDeletingEmployment(null);
   };
 
@@ -889,13 +899,13 @@ export default function ProfilePage() {
       )}
 
       {/* Delete Confirmation Modal */}
-      {showDeleteModal && deletingEmployment && (
+      {showEmploymentDeleteModal && deletingEmployment && (
         <div 
           className="fixed inset-0 flex items-center justify-center z-50" 
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
           onClick={(e) => {
             if (!isDeleting) {
-              handleCancelDelete();
+              handleCancelEmploymentDelete();
             }
           }}
         >
@@ -943,7 +953,7 @@ export default function ProfilePage() {
             <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 border-t">
               <button
                 type="button"
-                onClick={handleCancelDelete}
+                onClick={handleCancelEmploymentDelete}
                 disabled={isDeleting}
                 className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
