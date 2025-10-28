@@ -1,7 +1,9 @@
 import { SignIn } from "@clerk/clerk-react";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function Login() {
+  const navigate = useNavigate();
   const [logoutMessage, setLogoutMessage] = useState(null);
 
   useEffect(() => {
@@ -36,8 +38,7 @@ export default function Login() {
       )}
 
       <SignIn
-        routing="path"
-        path="/login"
+        routing="virtual"
         signUpUrl="/register"
         afterSignInUrl="/dashboard"
         appearance={{
@@ -47,6 +48,16 @@ export default function Login() {
           },
         }}
       />
+
+      {/* Custom Forgot Password Link */}
+      <div className="mt-4 text-center">
+        <button
+          onClick={() => navigate("/forgot-password")}
+          className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
+        >
+          Forgot your password?
+        </button>
+      </div>
     </div>
   );
 }
