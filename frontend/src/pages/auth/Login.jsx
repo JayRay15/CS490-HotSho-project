@@ -25,6 +25,15 @@ export default function Login() {
               Sign In
             </button>
           </SignInButton>
+          
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => navigate("/forgot-password")}
+              className="text-sm text-blue-600 hover:text-blue-700 underline"
+            >
+              Forgot Password?
+            </button>
+          </div>
         </SignedOut>
         <SignedIn>
           <button
@@ -34,8 +43,6 @@ export default function Login() {
             Go to Dashboard
           </button>
         </SignedIn>
-
-        {/* Clerk provides UI for sign in; no manual reset needed */}
 
         <p className="mt-6 text-sm text-center text-gray-600">
           Don't have an account?{" "}
