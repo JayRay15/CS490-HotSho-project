@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import bcrypt from "bcrypt";
+import { v4 as uuidv4 } from "uuid";
 
 const employmentSchema = new mongoose.Schema({
   company: { type: String, required: true },
@@ -41,6 +42,13 @@ const projectSchema = new mongoose.Schema({
 
 const userSchema = new mongoose.Schema(
   {
+    uuid: { 
+      type: String, 
+      unique: true, 
+      default: uuidv4, // Automatically generates UUID v4 on document creation
+      immutable: true, // Cannot be changed after creation
+      index: true // For fast lookups
+    },
     auth0Id: { type: String, unique: true, required: true }, // Required for Auth0 integration
     email: { type: String, lowercase: true, required: true, unique: true },
     password: { type: String }, // Optional - only for non-Auth0 users
