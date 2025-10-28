@@ -102,6 +102,22 @@ export default function ProfilePage() {
       errors.push({ field: 'email', message: 'Email must be valid' });
     }
 
+    // Phone validation (optional field, but if provided must be valid)
+    if (formData.phone.trim()) {
+      // Remove all non-digit characters for validation
+      const phoneDigits = formData.phone.replace(/\D/g, '');
+      if (phoneDigits.length < 10 || phoneDigits.length > 15) {
+        errors.push({ field: 'phone', message: 'Phone number must be between 10-15 digits' });
+      }
+    }
+
+    // Location validation (optional field, but if provided should have city and state)
+    if (formData.location.trim()) {
+      if (formData.location.length < 3) {
+        errors.push({ field: 'location', message: 'Location must be at least 3 characters' });
+      }
+    }
+
     if (!formData.headline.trim()) {
       errors.push({ field: 'headline', message: 'Professional headline is required' });
     }
