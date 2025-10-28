@@ -6,11 +6,15 @@ import userRoutes from "./routes/userRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
+import { startCleanupSchedule } from "./utils/cleanupDeletedUsers.js";
 
 dotenv.config();
 
 // Connect to MongoDB before starting the server
 await connectDB();
+
+// Start the automatic cleanup schedule for deleted accounts
+startCleanupSchedule();
 
 const app = express();
 

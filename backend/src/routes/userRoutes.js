@@ -1,4 +1,5 @@
 import express from "express";
+import { getCurrentUser, updateCurrentUser, uploadProfilePicture, deleteProfilePicture, upload, deleteAccount } from "../controllers/userController.js";
 import { getCurrentUser, updateCurrentUser, uploadProfilePicture, deleteProfilePicture, upload, addEmployment, updateEmployment, deleteEmployment } from "../controllers/userController.js";
 import { checkJwt } from "../middleware/checkJwt.js";
 
@@ -16,6 +17,8 @@ router.post("/profile-picture", checkJwt, upload.single('picture'), uploadProfil
 // DELETE /api/users/profile-picture - Remove profile picture
 router.delete("/profile-picture", checkJwt, deleteProfilePicture);
 
+// DELETE /api/users/delete - Soft-delete account
+router.delete("/delete", checkJwt, deleteAccount);
 // POST /api/users/employment - Add employment entry
 router.post("/employment", checkJwt, addEmployment);
 

@@ -50,6 +50,19 @@ export const getCurrentUser = asyncHandler(async (req, res) => {
     return sendResponse(res, response, statusCode);
   }
 
+  // Block access for accounts scheduled for deletion during the grace period
+  if (user.isDeleted) {
+    const now = new Date();
+    if (user.deletionExpiresAt && user.deletionExpiresAt > now) {
+      const { response, statusCode } = errorResponse(
+        "Account scheduled for deletion. Access is restricted during the 30-day grace period.",
+        403,
+        ERROR_CODES.UNAUTHORIZED
+      );
+      return sendResponse(res, response, statusCode);
+    }
+  }
+
   const { response, statusCode } = successResponse("User profile retrieved successfully", user);
   return sendResponse(res, response, statusCode);
 });
@@ -203,6 +216,15 @@ export const deleteProfilePicture = asyncHandler(async (req, res) => {
   return sendResponse(res, response, statusCode);
 });
 
+// DELETE /api/users/delete - Soft-delete current user account (requires password confirmation)
+export const deleteAccount = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { password } = req.body || {};
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
 // POST /api/users/employment - Add employment entry
 export const addEmployment = asyncHandler(async (req, res) => {
   const userId = req.auth?.userId || req.auth?.payload?.sub;
@@ -216,6 +238,56 @@ export const addEmployment = asyncHandler(async (req, res) => {
     );
     return sendResponse(res, response, statusCode);
   }
+
+  const user = await User.findOne({ auth0Id: userId });
+  if (!user) {
+    const { response, statusCode } = errorResponse("User not found", 404, ERROR_CODES.NOT_FOUND);
+    return sendResponse(res, response, statusCode);
+  }
+
+  // If user has a local password, require password confirmation
+  if (user.password) {
+    if (!password) {
+      const { response, statusCode } = validationErrorResponse(
+        "Password is required to confirm account deletion",
+        [{ field: 'password', message: 'Password confirmation is required', value: null }]
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
+    const match = await user.comparePassword(password);
+    if (!match) {
+      const { response, statusCode } = errorResponse("Incorrect password", 401, ERROR_CODES.UNAUTHORIZED);
+      return sendResponse(res, response, statusCode);
+    }
+  }
+
+  // Soft-delete: mark account as deleted and set deletion expiry (30 days)
+  const now = new Date();
+  const expires = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days
+
+  user.isDeleted = true;
+  user.deletedAt = now;
+  user.deletionExpiresAt = expires;
+  await user.save();
+
+  // Send confirmation email (best-effort) using utils/email if available
+  try {
+    const { sendDeletionEmail } = await import("../utils/email.js");
+    await sendDeletionEmail(user.email, user.name, expires);
+  } catch (err) {
+    // If email helper not configured, log and continue
+    console.warn("Deletion email not sent:", err?.message || err);
+  }
+
+  // Return success; frontend should clear client session and redirect
+  const { response, statusCode } = successResponse(
+    "Account scheduled for permanent deletion in 30 days. You have been logged out.",
+    { deletionExpiresAt: expires }
+  );
+
+  return sendResponse(res, response, statusCode);
+});
 
   // Validate required fields
   const errors = [];
