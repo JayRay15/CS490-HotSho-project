@@ -203,3 +203,84 @@ export const deleteProfilePicture = asyncHandler(async (req, res) => {
   return sendResponse(res, response, statusCode);
 });
 
+// POST /api/users/employment - Add employment entry
+export const addEmployment = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { jobTitle, company, location, startDate, endDate, isCurrentPosition, description } = req.body;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials", 
+      401, 
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Validate required fields
+  const errors = [];
+  if (!jobTitle?.trim()) {
+    errors.push({ field: 'jobTitle', message: 'Job title is required', value: jobTitle });
+  }
+  if (!company?.trim()) {
+    errors.push({ field: 'company', message: 'Company name is required', value: company });
+  }
+  if (!startDate) {
+    errors.push({ field: 'startDate', message: 'Start date is required', value: startDate });
+  }
+
+  // Date validation: start date should be before end date
+  if (startDate && endDate && !isCurrentPosition) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (start >= end) {
+      errors.push({ field: 'endDate', message: 'End date must be after start date', value: endDate });
+    }
+  }
+
+  // Description character limit
+  if (description && description.length > 1000) {
+    errors.push({ field: 'description', message: 'Description must not exceed 1000 characters', value: description });
+  }
+
+  if (errors.length > 0) {
+    const { response, statusCode } = validationErrorResponse(
+      "Validation failed for employment entry",
+      errors
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Create employment entry
+  const employmentEntry = {
+    jobTitle: jobTitle.trim(),
+    company: company.trim(),
+    location: location?.trim() || '',
+    startDate: new Date(startDate),
+    endDate: isCurrentPosition ? null : (endDate ? new Date(endDate) : null),
+    isCurrentPosition: Boolean(isCurrentPosition),
+    description: description?.trim() || ''
+  };
+
+  // Add to user's employment array
+  const user = await User.findOneAndUpdate(
+    { auth0Id: userId },
+    { $push: { employment: employmentEntry } },
+    { new: true, runValidators: true }
+  );
+
+  if (!user) {
+    const { response, statusCode } = errorResponse(
+      "User not found", 
+      404, 
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const { response, statusCode } = successResponse("Employment entry added successfully", {
+    employment: user.employment
+  });
+  return sendResponse(res, response, statusCode);
+});
+

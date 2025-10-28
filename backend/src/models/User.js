@@ -3,13 +3,13 @@ import bcrypt from "bcrypt";
 import { v4 as uuidv4 } from "uuid";
 
 const employmentSchema = new mongoose.Schema({
+  jobTitle: { type: String, required: true },
   company: { type: String, required: true },
-  position: { type: String, required: true },
+  location: { type: String },
   startDate: { type: Date, required: true },
   endDate: { type: Date },
-  current: { type: Boolean, default: false },
-  description: { type: String },
-  location: { type: String }
+  isCurrentPosition: { type: Boolean, default: false },
+  description: { type: String, maxlength: 1000 }
 }, { timestamps: true });
 
 const skillSchema = new mongoose.Schema({

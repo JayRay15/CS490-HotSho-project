@@ -175,6 +175,73 @@ All endpoints return a consistent JSON response format:
 ```
 
 
+#### Add Employment Entry
+- **POST** `/api/users/employment`
+- **Status Code:** 200 (Success), 400 (Validation error), 401 (Unauthorized), 404 (User not found), 500 (Server error)
+- **Description:** Add a new employment entry to the current user's profile
+- **Auth Required:** Yes
+- **Body:** Employment entry data
+  - **Required fields**: `jobTitle`, `company`, `startDate`
+  - **Optional fields**: `location`, `endDate`, `isCurrentPosition`, `description`
+- **Validation:**
+  - `jobTitle` - Required, trimmed
+  - `company` - Required, trimmed
+  - `startDate` - Required, valid date (Month/Year format)
+  - `endDate` - Optional (not required if `isCurrentPosition` is true), must be after `startDate`
+  - `isCurrentPosition` - Boolean, defaults to false
+  - `description` - Optional, max 1000 characters
+  - `location` - Optional, trimmed
+- **Error Codes:**
+  - `1001` - Unauthorized (missing credentials)
+  - `2001` - Validation error (missing required fields or validation failures)
+  - `3001` - Not found (user not found)
+- **Success Response Example:**
+```json
+{
+  "success": true,
+  "message": "Employment entry added successfully",
+  "timestamp": "2025-10-28T12:00:00.000Z",
+  "data": {
+    "employment": [
+      {
+        "_id": "507f1f77bcf86cd799439011",
+        "jobTitle": "Senior Software Engineer",
+        "company": "Tech Corp",
+        "location": "New York, NY",
+        "startDate": "2023-01-01T00:00:00.000Z",
+        "endDate": null,
+        "isCurrentPosition": true,
+        "description": "Leading development of scalable web applications...",
+        "createdAt": "2025-10-28T12:00:00.000Z",
+        "updatedAt": "2025-10-28T12:00:00.000Z"
+      }
+    ]
+  }
+}
+```
+- **Error Response Example:**
+```json
+{
+  "success": false,
+  "message": "Validation failed for employment entry",
+  "timestamp": "2025-10-28T12:00:00.000Z",
+  "errorCode": 2001,
+  "errors": [
+    {
+      "field": "jobTitle",
+      "message": "Job title is required",
+      "value": null
+    },
+    {
+      "field": "endDate",
+      "message": "End date must be after start date",
+      "value": "2022-12-31"
+    }
+  ]
+}
+```
+
+
 ### Authentication Endpoints
 
 #### Register New User
