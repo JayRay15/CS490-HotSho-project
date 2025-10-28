@@ -75,6 +75,35 @@ export const errorHandler = (err, req, res, next) => {
     return sendResponse(res, response, statusCode);
   }
 
+  // Handle Multer errors (file upload)
+  if (err.name === 'MulterError') {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      const { response, statusCode } = errorResponse(
+        "File is too large. Maximum size is 5 MB.",
+        400,
+        ERROR_CODES.FILE_TOO_LARGE
+      );
+      return sendResponse(res, response, statusCode);
+    }
+    
+    const { response, statusCode } = errorResponse(
+      err.message || "File upload error",
+      400,
+      ERROR_CODES.UPLOAD_FAILED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Handle file filter errors (invalid file type)
+  if (err.message && err.message.includes('Invalid file type')) {
+    const { response, statusCode } = errorResponse(
+      err.message,
+      400,
+      ERROR_CODES.INVALID_FILE_TYPE
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
   // Handle custom errors with statusCode property
   if (err.statusCode) {
     const { response, statusCode } = errorResponse(

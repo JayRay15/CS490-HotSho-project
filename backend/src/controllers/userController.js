@@ -1,6 +1,30 @@
 import { User } from "../models/User.js";
 import { successResponse, errorResponse, sendResponse, ERROR_CODES, validationErrorResponse } from "../utils/responseFormat.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
+import multer from "multer";
+
+// Configure multer for memory storage (we'll convert to Base64)
+const storage = multer.memoryStorage();
+
+const fileFilter = (req, file, cb) => {
+  // Accept only image files (JPG, PNG, GIF)
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+  
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid file type. Only JPG, PNG, and GIF are allowed.'), false);
+  }
+};
+
+export const upload = multer({
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB max file size
+  }
+});
+
 
 // GET /api/users/me - Get current user profile
 export const getCurrentUser = asyncHandler(async (req, res) => {
@@ -86,3 +110,96 @@ export const updateCurrentUser = asyncHandler(async (req, res) => {
   const { response, statusCode } = successResponse("User profile updated successfully", user);
   return sendResponse(res, response, statusCode);
 });
+
+// POST /api/users/profile-picture - Upload profile picture
+export const uploadProfilePicture = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials", 
+      401, 
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Check if file was provided
+  if (!req.file) {
+    const { response, statusCode } = errorResponse(
+      "No file provided",
+      400,
+      ERROR_CODES.NO_FILE_PROVIDED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  try {
+    // Convert buffer to Base64
+    const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+
+    // Update user's picture field
+    const user = await User.findOneAndUpdate(
+      { auth0Id: userId },
+      { $set: { picture: base64Image } },
+      { new: true, runValidators: true }
+    );
+
+    if (!user) {
+      const { response, statusCode } = errorResponse(
+        "User not found", 
+        404, 
+        ERROR_CODES.NOT_FOUND
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
+    const { response, statusCode } = successResponse("Profile picture uploaded successfully", {
+      picture: user.picture
+    });
+    return sendResponse(res, response, statusCode);
+  } catch (error) {
+    console.error("Error uploading profile picture:", error);
+    const { response, statusCode } = errorResponse(
+      "Failed to upload profile picture",
+      500,
+      ERROR_CODES.UPLOAD_FAILED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+});
+
+// DELETE /api/users/profile-picture - Remove profile picture
+export const deleteProfilePicture = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials", 
+      401, 
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const user = await User.findOneAndUpdate(
+    { auth0Id: userId },
+    { $unset: { picture: "" } }, // Remove picture field
+    { new: true }
+  );
+
+  if (!user) {
+    const { response, statusCode } = errorResponse(
+      "User not found", 
+      404, 
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const { response, statusCode } = successResponse("Profile picture removed successfully", {
+    picture: null
+  });
+  return sendResponse(res, response, statusCode);
+});
+

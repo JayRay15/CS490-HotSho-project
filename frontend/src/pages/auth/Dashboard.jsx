@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { RedirectToSignIn, useAuth, useUser } from "@clerk/clerk-react";
 import api, { setAuthToken, retryRequest } from "../../api/axios";
 import ErrorMessage from "../../components/ErrorMessage";
+import ProfilePictureUpload from "../../components/ProfilePictureUpload";
 
 export default function Dashboard() {
   const { isLoaded, isSignedIn, getToken, signOut } = useAuth();
@@ -137,7 +138,21 @@ export default function Dashboard() {
 
         <div className="space-y-4">
           <div className="border-t pt-4">
-            <h2 className="text-xl font-semibold mb-4">Profile Information</h2>
+            {/* Profile Information Header with Picture on the right */}
+            <div className="flex justify-between items-start mb-4">
+              <h2 className="text-xl font-semibold">Profile Information</h2>
+              <div className="ml-4">
+                <ProfilePictureUpload
+                  currentPicture={userData?.picture}
+                  onUploadSuccess={(newPicture) => {
+                    setUserData(prev => ({ ...prev, picture: newPicture }));
+                  }}
+                  onDeleteSuccess={() => {
+                    setUserData(prev => ({ ...prev, picture: null }));
+                  }}
+                />
+              </div>
+            </div>
             
             {/* Error display with retry option */}
             {error && (

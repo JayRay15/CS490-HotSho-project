@@ -80,6 +80,74 @@ All endpoints return a consistent JSON response format:
   - `2001` - Validation error (invalid fields)
   - `3001` - Not found (user not found)
 
+#### Upload Profile Picture
+- **POST** `/api/users/profile-picture`
+- **Status Code:** 200 (Success), 400 (Validation error), 401 (Unauthorized), 404 (User not found), 500 (Server error)
+- **Description:** Upload a profile picture for the current user
+- **Auth Required:** Yes
+- **Content-Type:** `multipart/form-data`
+- **Body:** Form data with `picture` field containing image file
+- **Validation:**
+  - Accepts: JPG, PNG, GIF
+  - Maximum file size: 5MB
+  - File is automatically stored as Base64 in database
+- **Error Codes:**
+  - `1001` - Unauthorized (missing credentials)
+  - `3001` - Not found (user not found)
+  - `4001` - Invalid file type (not JPG/PNG/GIF)
+  - `4002` - File too large (exceeds 5MB)
+  - `4003` - Upload failed (server error during processing)
+  - `4004` - No file provided
+- **Success Response Example:**
+```json
+{
+  "success": true,
+  "message": "Profile picture uploaded successfully",
+  "timestamp": "2025-10-28T12:00:00.000Z",
+  "data": {
+    "picture": "data:image/jpeg;base64,/9j/4AAQSkZJRg..."
+  }
+}
+```
+- **Error Response Examples:**
+```json
+{
+  "success": false,
+  "message": "No file provided",
+  "timestamp": "2025-10-28T12:00:00.000Z",
+  "errorCode": 4004
+}
+```
+```json
+{
+  "success": false,
+  "message": "Invalid file type. Only JPG, PNG, and GIF are allowed.",
+  "timestamp": "2025-10-28T12:00:00.000Z",
+  "errorCode": 4001
+}
+```
+
+#### Delete Profile Picture
+- **DELETE** `/api/users/profile-picture`
+- **Status Code:** 200 (Success), 401 (Unauthorized), 404 (User not found), 500 (Server error)
+- **Description:** Remove the current user's profile picture
+- **Auth Required:** Yes
+- **Error Codes:**
+  - `1001` - Unauthorized (missing credentials)
+  - `3001` - Not found (user not found)
+- **Success Response Example:**
+```json
+{
+  "success": true,
+  "message": "Profile picture removed successfully",
+  "timestamp": "2025-10-28T12:00:00.000Z",
+  "data": {
+    "picture": null
+  }
+}
+```
+
+
 ### Authentication Endpoints
 
 #### Register New User
