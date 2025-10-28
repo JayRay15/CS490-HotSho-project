@@ -43,7 +43,23 @@ export default function ProfilePage() {
       try {
         const token = await getToken();
         setAuthToken(token);
-        const response = await api.get('/api/users/me');
+        
+        // Try to get user profile
+        let response;
+        try {
+          response = await api.get('/api/users/me');
+        } catch (err) {
+          // If user not found (404), register them first
+          if (err.response?.status === 404 || err.customError?.errorCode === 3001) {
+            console.log("User not found in database, registering...");
+            await api.post('/api/auth/register');
+            // Retry getting user profile
+            response = await api.get('/api/users/me');
+          } else {
+            throw err;
+          }
+        }
+        
         const data = response.data.data;
 
         setUserData(data);
@@ -413,7 +429,12 @@ export default function ProfilePage() {
         <div 
           className="fixed inset-0 flex items-center justify-center z-50" 
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }} 
-          onClick={handleCancel}
+          onClick={(e) => {
+            // Allow closing modal by clicking backdrop even if there's an error
+            if (!isSaving) {
+              handleCancel();
+            }
+          }}
         >
           <div 
             className="bg-white rounded-lg shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto relative border border-gray-200" 
@@ -425,7 +446,8 @@ export default function ProfilePage() {
               <button
                 onClick={handleCancel}
                 disabled={isSaving}
-                className="text-gray-400 hover:text-gray-600 transition"
+                className="text-gray-400 hover:text-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                title={isSaving ? "Please wait while saving..." : "Close"}
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
