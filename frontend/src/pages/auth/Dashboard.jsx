@@ -2,51 +2,87 @@ import { useEffect, useState } from "react";
 import { RedirectToSignIn, useAuth, useUser } from "@clerk/clerk-react";
 import api, { setAuthToken, retryRequest } from "../../api/axios";
 import ErrorMessage from "../../components/ErrorMessage";
-import { useAccountDeletionCheck } from "../../hooks/useAccountDeletionCheck";
 
 export default function Dashboard() {
   const { isLoaded, isSignedIn, signOut, getToken } = useAuth();
   const { user } = useUser();
   
-  // Check if account is deleted and auto-logout if needed
-  useAccountDeletionCheck();
   const [isRegistering, setIsRegistering] = useState(false);
+  const [isCheckingAccount, setIsCheckingAccount] = useState(true);
+  const [accountStatus, setAccountStatus] = useState(null); // 'active', 'deleted', or null
 
-  // Auto-register user in MongoDB if not already registered
+  // Check account status first before showing dashboard
   useEffect(() => {
-    const ensureUserRegistered = async () => {
-      if (!isSignedIn) return;
+    const checkAccountAndRegister = async () => {
+      if (!isSignedIn) {
+        setIsCheckingAccount(false);
+        return;
+      }
 
+      setIsCheckingAccount(true);
       setIsRegistering(true);
+      
       try {
         const token = await getToken();
         setAuthToken(token);
         
-        // Try to get user, if not found, register them
+        // Try to get user data
         try {
-          await api.get('/api/users/me');
+          const response = await api.get('/api/users/me');
+          setAccountStatus('active');
         } catch (err) {
+          // Check if account is deleted/restricted (403 error)
+          if (err?.response?.status === 403) {
+            console.log("Account is deleted or restricted - forcing logout");
+            setAccountStatus('deleted');
+            sessionStorage.setItem(
+              "logoutMessage", 
+              err?.response?.data?.message || "Your account has been scheduled for deletion and cannot be accessed."
+            );
+            // Delay signOut slightly to ensure state is set
+            setTimeout(() => signOut(), 100);
+            return;
+          }
+          
+          // If user not found (404), register them
           if (err.response?.status === 404 || err.customError?.errorCode === 3001) {
             console.log("User not found in database, registering...");
             await api.post('/api/auth/register');
+            setAccountStatus('active');
+          } else {
+            // Other errors - treat as active but log error
+            console.error("Error checking user status:", err);
+            setAccountStatus('active');
           }
         }
       } catch (err) {
-        console.error("Error ensuring user registration:", err);
+        console.error("Error in account check:", err);
+        setAccountStatus('active'); // Fail open to avoid blocking legitimate users
       } finally {
         setIsRegistering(false);
+        setIsCheckingAccount(false);
       }
     };
 
     if (isSignedIn) {
-      ensureUserRegistered();
+      checkAccountAndRegister();
     }
-  }, [isSignedIn, getToken]);
+  }, [isSignedIn, getToken, signOut]);
 
-  if (!isLoaded || isRegistering) {
+  // Show loading while checking account or Clerk is loading
+  if (!isLoaded || isCheckingAccount || isRegistering) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-xl">Loading...</div>
+      </div>
+    );
+  }
+
+  // Don't render dashboard if account is deleted
+  if (accountStatus === 'deleted') {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-xl">Redirecting...</div>
       </div>
     );
   }
