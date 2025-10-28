@@ -360,9 +360,19 @@ export default function ProfilePage() {
                           return new Date(b.endDate) - new Date(a.endDate);
                         })
                         .map((job, index) => (
-                          <div key={job._id || index} className="border rounded-lg p-4 hover:shadow-md transition">
-                            <div className="flex justify-between items-start">
-                              <div className="flex-1">
+                          <div key={job._id || index} className="border rounded-lg p-4 hover:shadow-md transition relative">
+                            {/* Current Position Badge - Top Right */}
+                            {job.isCurrentPosition && (
+                              <div className="absolute top-4 right-4">
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">
+                                  Current Position
+                                </span>
+                              </div>
+                            )}
+                            
+                            <div className="flex flex-col">
+                              {/* Job Details */}
+                              <div className="flex-1 pr-32">
                                 <h3 className="text-lg font-semibold text-gray-900">{job.jobTitle}</h3>
                                 <p className="text-gray-700 font-medium">{job.company}</p>
                                 <div className="flex items-center text-sm text-gray-600 mt-1 space-x-2">
@@ -395,18 +405,23 @@ export default function ProfilePage() {
                                   <p className="mt-2 text-gray-700 whitespace-pre-wrap">{job.description}</p>
                                 )}
                               </div>
-                              <button
-                                onClick={() => handleEditEmployment(job)}
-                                className="ml-4 p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                                title="Edit employment"
-                              >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                </svg>
-                              </button>
+                              
+                              {/* Edit Button - Bottom Right */}
+                              <div className="flex justify-end mt-3">
+                                <button
+                                  onClick={() => handleEditEmployment(job)}
+                                  className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                  title="Edit employment"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                  </svg>
+                                </button>
+                              </div>
                             </div>
                           </div>
                         ))}
+
                     </div>
                   ) : (
                     <p className="text-gray-500 italic">No employment history added yet.</p>
