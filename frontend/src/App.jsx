@@ -10,11 +10,11 @@ function App() {
     <Router>
       <Navbar />
       <Routes>
-        <Route path="/" element={<Register />} />
-        <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/" element={<Login />} />
       </Routes>
     </Router>
   );

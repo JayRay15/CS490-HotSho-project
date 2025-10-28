@@ -77,9 +77,24 @@ export default function ForgotPassword() {
       return;
     }
 
-    // Validate password
+    // Validate password - comprehensive validation matching registration rules
     if (!newPassword || newPassword.length < 8) {
       setError("Password must be at least 8 characters");
+      return;
+    }
+
+    if (!/(?=.*[a-z])/.test(newPassword)) {
+      setError("Password must contain at least one lowercase letter");
+      return;
+    }
+
+    if (!/(?=.*[A-Z])/.test(newPassword)) {
+      setError("Password must contain at least one uppercase letter");
+      return;
+    }
+
+    if (!/(?=.*\d)/.test(newPassword)) {
+      setError("Password must contain at least one number");
       return;
     }
 
@@ -215,6 +230,9 @@ export default function ForgotPassword() {
                 minLength="8"
                 disabled={isSubmitting}
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Must be 8+ characters with uppercase, lowercase, and number
+              </p>
             </div>
 
             <div className="mb-4">
