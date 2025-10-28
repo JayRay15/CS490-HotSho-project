@@ -339,11 +339,21 @@ export default function ProfilePage() {
                                     </>
                                   )}
                                   <span>
-                                    {new Date(job.startDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}
+                                    {(() => {
+                                      const startDate = new Date(job.startDate);
+                                      const startMonth = String(startDate.getMonth() + 1).padStart(2, '0');
+                                      const startYear = startDate.getFullYear();
+                                      return `${startMonth}/${startYear}`;
+                                    })()}
                                     {' - '}
                                     {job.isCurrentPosition 
                                       ? 'Present' 
-                                      : new Date(job.endDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })
+                                      : (() => {
+                                          const endDate = new Date(job.endDate);
+                                          const endMonth = String(endDate.getMonth() + 1).padStart(2, '0');
+                                          const endYear = endDate.getFullYear();
+                                          return `${endMonth}/${endYear}`;
+                                        })()
                                     }
                                   </span>
                                 </div>
@@ -609,8 +619,6 @@ export default function ProfilePage() {
           onClose={() => setShowEmploymentModal(false)}
           onSuccess={(newEmployment) => {
             setEmploymentList(newEmployment);
-            setSuccessMessage('Employment entry added successfully!');
-            setTimeout(() => setSuccessMessage(null), 3000);
           }}
           getToken={getToken}
         />
@@ -632,6 +640,7 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken }) {
   });
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
   const [descCharCount, setDescCharCount] = useState(0);
 
   const handleInputChange = (e) => {
@@ -641,6 +650,29 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken }) {
     if (name === 'description') {
       if (value.length > 1000) return;
       setDescCharCount(value.length);
+    }
+
+    // Handle date formatting for startDate and endDate
+    if (name === 'startDate' || name === 'endDate') {
+      // Remove any non-digit characters
+      let cleaned = value.replace(/\D/g, '');
+      
+      // Limit to 6 digits (MMYYYY)
+      if (cleaned.length > 6) {
+        cleaned = cleaned.substring(0, 6);
+      }
+      
+      // Format as MM/YYYY
+      let formatted = cleaned;
+      if (cleaned.length >= 3) {
+        formatted = cleaned.substring(0, 2) + '/' + cleaned.substring(2);
+      }
+      
+      setFormData(prev => ({
+        ...prev,
+        [name]: formatted
+      }));
+      return;
     }
 
     setFormData(prev => ({
@@ -653,24 +685,57 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken }) {
     const errors = [];
 
     if (!formData.jobTitle.trim()) {
-      errors.push({ field: 'jobTitle', message: 'Job title is required' });
+      errors.push({ field: 'jobTitle', message: 'Job title is required and cannot be empty' });
     }
 
     if (!formData.company.trim()) {
-      errors.push({ field: 'company', message: 'Company name is required' });
+      errors.push({ field: 'company', message: 'Company name is required and cannot be empty' });
     }
 
     if (!formData.startDate) {
       errors.push({ field: 'startDate', message: 'Start date is required' });
+    } else {
+      // Validate MM/YYYY format
+      const datePattern = /^(0[1-9]|1[0-2])\/\d{4}$/;
+      if (!datePattern.test(formData.startDate)) {
+        errors.push({ field: 'startDate', message: 'Invalid start date format. Please use MM/YYYY (e.g., 10/2023)' });
+      } else {
+        const [month, year] = formData.startDate.split('/');
+        const startDateObj = new Date(year, month - 1, 1);
+        if (isNaN(startDateObj.getTime())) {
+          errors.push({ field: 'startDate', message: 'Invalid start date' });
+        }
+      }
     }
 
-    // Date validation: start date should be before end date
-    if (formData.startDate && formData.endDate && !formData.isCurrentPosition) {
-      const start = new Date(formData.startDate);
-      const end = new Date(formData.endDate);
-      if (start >= end) {
-        errors.push({ field: 'endDate', message: 'End date must be after start date' });
+    // Date validation for end date
+    if (!formData.isCurrentPosition && formData.endDate) {
+      const datePattern = /^(0[1-9]|1[0-2])\/\d{4}$/;
+      if (!datePattern.test(formData.endDate)) {
+        errors.push({ field: 'endDate', message: 'Invalid end date format. Please use MM/YYYY (e.g., 12/2024)' });
+      } else {
+        const [endMonth, endYear] = formData.endDate.split('/');
+        const endDateObj = new Date(endYear, endMonth - 1, 1);
+        
+        if (isNaN(endDateObj.getTime())) {
+          errors.push({ field: 'endDate', message: 'Invalid end date' });
+        } else if (formData.startDate) {
+          const startDatePattern = /^(0[1-9]|1[0-2])\/\d{4}$/;
+          if (startDatePattern.test(formData.startDate)) {
+            const [startMonth, startYear] = formData.startDate.split('/');
+            const startDateObj = new Date(startYear, startMonth - 1, 1);
+            
+            if (!isNaN(startDateObj.getTime()) && startDateObj >= endDateObj) {
+              errors.push({ field: 'endDate', message: 'End date must be after the start date' });
+            }
+          }
+        }
       }
+    }
+
+    // Description character limit
+    if (formData.description && formData.description.length > 1000) {
+      errors.push({ field: 'description', message: `Description is too long (${formData.description.length} characters). Maximum 1000 characters allowed` });
     }
 
     return errors;
@@ -679,6 +744,7 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+    setSuccessMessage(null);
 
     // Validate form
     const validationErrors = validateForm();
@@ -686,7 +752,7 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken }) {
       setError({
         customError: {
           errorCode: 2001,
-          message: 'Please fix the following errors:',
+          message: 'Please fix the following errors before submitting:',
           errors: validationErrors
         }
       });
@@ -704,6 +770,9 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken }) {
       // Call success callback with updated employment list
       onSuccess(response.data.data.employment);
       
+      // Show success message in modal
+      setSuccessMessage('Employment entry added successfully!');
+      
       // Clear form but keep modal open
       setFormData({
         jobTitle: '',
@@ -716,6 +785,9 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken }) {
       });
       setDescCharCount(0);
       setError(null);
+      
+      // Auto-dismiss success message after 3 seconds
+      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       console.error("Error adding employment:", err);
       setError(err);
@@ -736,6 +808,7 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken }) {
     });
     setDescCharCount(0);
     setError(null);
+    setSuccessMessage(null);
     onClose();
   };
 
@@ -767,6 +840,13 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken }) {
 
         {/* Modal Content */}
         <div className="p-6">
+          {/* Success Message */}
+          {successMessage && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-green-800 font-medium">{successMessage}</p>
+            </div>
+          )}
+
           {/* Error Display */}
           {error && (
             <ErrorMessage
@@ -830,30 +910,34 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-2">
-                  Start Date <span className="text-red-500">*</span>
+                  Start Date (MM/YYYY) <span className="text-red-500">*</span>
                 </label>
                 <input
-                  type="month"
+                  type="text"
                   id="startDate"
                   name="startDate"
                   value={formData.startDate}
                   onChange={handleInputChange}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="10/2023"
+                  maxLength="7"
                 />
               </div>
 
               <div>
                 <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-2">
-                  End Date {!formData.isCurrentPosition && <span className="text-red-500">*</span>}
+                  End Date (MM/YYYY) {!formData.isCurrentPosition && <span className="text-red-500">*</span>}
                 </label>
                 <input
-                  type="month"
+                  type="text"
                   id="endDate"
                   name="endDate"
                   value={formData.endDate}
                   onChange={handleInputChange}
                   disabled={formData.isCurrentPosition}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  placeholder="12/2024"
+                  maxLength="7"
                 />
               </div>
             </div>

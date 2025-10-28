@@ -219,33 +219,72 @@ export const addEmployment = asyncHandler(async (req, res) => {
 
   // Validate required fields
   const errors = [];
+  
   if (!jobTitle?.trim()) {
-    errors.push({ field: 'jobTitle', message: 'Job title is required', value: jobTitle });
+    errors.push({ field: 'jobTitle', message: 'Job title is required and cannot be empty', value: jobTitle });
   }
+  
   if (!company?.trim()) {
-    errors.push({ field: 'company', message: 'Company name is required', value: company });
+    errors.push({ field: 'company', message: 'Company name is required and cannot be empty', value: company });
   }
+  
   if (!startDate) {
     errors.push({ field: 'startDate', message: 'Start date is required', value: startDate });
+  } else {
+    // Validate start date format - accept both YYYY-MM and MM/YYYY formats
+    let startDateObj;
+    if (startDate.includes('/')) {
+      // MM/YYYY format
+      const [month, year] = startDate.split('/');
+      startDateObj = new Date(year, month - 1, 1);
+    } else {
+      // YYYY-MM format (from month input type)
+      startDateObj = new Date(startDate);
+    }
+    
+    if (isNaN(startDateObj.getTime())) {
+      errors.push({ field: 'startDate', message: 'Invalid start date format. Please use MM/YYYY format (e.g., 10/2023)', value: startDate });
+    }
   }
 
-  // Date validation: start date should be before end date
-  if (startDate && endDate && !isCurrentPosition) {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    if (start >= end) {
-      errors.push({ field: 'endDate', message: 'End date must be after start date', value: endDate });
+  // Validate end date if provided and not current position
+  if (!isCurrentPosition && endDate) {
+    let endDateObj;
+    if (endDate.includes('/')) {
+      // MM/YYYY format
+      const [month, year] = endDate.split('/');
+      endDateObj = new Date(year, month - 1, 1);
+    } else {
+      // YYYY-MM format (from month input type)
+      endDateObj = new Date(endDate);
+    }
+    
+    if (isNaN(endDateObj.getTime())) {
+      errors.push({ field: 'endDate', message: 'Invalid end date format. Please use MM/YYYY format (e.g., 10/2023)', value: endDate });
+    } else if (startDate) {
+      // Date validation: start date should be before end date
+      let startDateObj;
+      if (startDate.includes('/')) {
+        const [month, year] = startDate.split('/');
+        startDateObj = new Date(year, month - 1, 1);
+      } else {
+        startDateObj = new Date(startDate);
+      }
+      
+      if (!isNaN(startDateObj.getTime()) && startDateObj >= endDateObj) {
+        errors.push({ field: 'endDate', message: 'End date must be after the start date', value: endDate });
+      }
     }
   }
 
   // Description character limit
   if (description && description.length > 1000) {
-    errors.push({ field: 'description', message: 'Description must not exceed 1000 characters', value: description });
+    errors.push({ field: 'description', message: `Description is too long (${description.length} characters). Maximum 1000 characters allowed`, value: description });
   }
 
   if (errors.length > 0) {
     const { response, statusCode } = validationErrorResponse(
-      "Validation failed for employment entry",
+      "Please fix the following errors before submitting",
       errors
     );
     return sendResponse(res, response, statusCode);
@@ -256,8 +295,20 @@ export const addEmployment = asyncHandler(async (req, res) => {
     jobTitle: jobTitle.trim(),
     company: company.trim(),
     location: location?.trim() || '',
-    startDate: new Date(startDate),
-    endDate: isCurrentPosition ? null : (endDate ? new Date(endDate) : null),
+    startDate: (() => {
+      if (startDate.includes('/')) {
+        const [month, year] = startDate.split('/');
+        return new Date(year, month - 1, 1);
+      }
+      return new Date(startDate);
+    })(),
+    endDate: isCurrentPosition ? null : (endDate ? (() => {
+      if (endDate.includes('/')) {
+        const [month, year] = endDate.split('/');
+        return new Date(year, month - 1, 1);
+      }
+      return new Date(endDate);
+    })() : null),
     isCurrentPosition: Boolean(isCurrentPosition),
     description: description?.trim() || ''
   };
