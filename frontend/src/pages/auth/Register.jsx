@@ -1,43 +1,52 @@
-import { SignedIn, SignedOut, SignUpButton } from "@clerk/clerk-react";
-import { useNavigate } from "react-router-dom";
+import { SignUp } from "@clerk/clerk-react";
+import { useEffect, useState } from "react";
 
 export default function Register() {
-  const navigate = useNavigate();
+  const [logoutMessage, setLogoutMessage] = useState(null);
+
+  useEffect(() => {
+    // Check for logout success message
+    const message = sessionStorage.getItem("logoutMessage");
+    if (message) {
+      setLogoutMessage(message);
+      sessionStorage.removeItem("logoutMessage");
+      
+      // Auto-hide message after 5 seconds
+      const timer = setTimeout(() => {
+        setLogoutMessage(null);
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-50">
-      <div className="bg-white p-8 rounded-2xl shadow-md w-96">
-        <h2 className="text-2xl font-semibold mb-6 text-center">
-          Create Account
-        </h2>
-
-        <p className="text-gray-600 text-center mb-6">
-          Sign up to start using Job Seeker ATS
-        </p>
-
-        <SignedOut>
-          <SignUpButton mode="modal" afterSignUpUrl="/dashboard" afterSignInUrl="/dashboard">
-            <button className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-medium">
-              Sign Up
-            </button>
-          </SignUpButton>
-        </SignedOut>
-        <SignedIn>
+    <div className="flex flex-col justify-center items-center min-h-screen bg-gray-50 py-8">
+      {/* Logout confirmation message */}
+      {logoutMessage && (
+        <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-lg flex items-center justify-between max-w-md w-full mx-auto">
+          <span>{logoutMessage}</span>
           <button
-            onClick={() => navigate("/dashboard")}
-            className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition font-medium"
+            onClick={() => setLogoutMessage(null)}
+            className="ml-2 text-green-700 hover:text-green-900 font-bold"
           >
-            Go to Dashboard
+            ×
           </button>
-        </SignedIn>
+        </div>
+      )}
 
-        <p className="mt-6 text-sm text-center text-gray-600">
-          Already have an account?{" "}
-          <a href="/login" className="text-blue-600 underline hover:text-blue-700">
-            Sign in
-          </a>
-        </p>
-      </div>
+      <SignUp
+        routing="path"
+        path="/register"
+        signInUrl="/login"
+        afterSignUpUrl="/dashboard"
+        appearance={{
+          elements: {
+            rootBox: "mx-auto",
+            card: "shadow-md",
+          },
+        }}
+      />
     </div>
   );
 }
