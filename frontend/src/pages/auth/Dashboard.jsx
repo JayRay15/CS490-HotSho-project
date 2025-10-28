@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { RedirectToSignIn, useAuth, useUser } from "@clerk/clerk-react";
-import api, { setAuthToken } from "../../api/axios";
+import api, { setAuthToken, retryRequest } from "../../api/axios";
+import ErrorMessage from "../../components/ErrorMessage";
 
 export default function Dashboard() {
   const { isLoaded, isSignedIn, getToken, signOut } = useAuth();
@@ -8,51 +9,65 @@ export default function Dashboard() {
   const [userData, setUserData] = useState(null);
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadProfile = async () => {
+    setError(null);
+    setIsLoading(true);
+    
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      
+      // Use retry mechanism for network resilience
+      const response = await retryRequest(async () => {
+        return await api.get("/api/users/me");
+      });
+      
+      setUserData(response.data.data);
+      setLastUpdated(new Date());
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching user data:", err);
+      
+      // If user not found, try to register
+      if (err.response?.status === 404 || err.customError?.errorCode === 3001) {
+        try {
+          const token = await getToken();
+          setAuthToken(token);
+          console.log("Attempting to register new user...");
+          
+          const registerResponse = await api.post("/api/auth/register");
+          console.log("Registration successful:", registerResponse.data);
+          
+          setUserData(registerResponse.data.data);
+          setLastUpdated(new Date());
+          setError(null);
+        } catch (regErr) {
+          console.error("Registration error:", regErr);
+          
+          // If server says user already exists, retry loading profile
+          if (regErr.response?.status === 409 || regErr.customError?.errorCode === 3003) {
+            try {
+              await loadProfile();
+              return;
+            } catch (_) {
+              // Fall through to set error
+            }
+          }
+          setError(regErr);
+        }
+      } else {
+        setError(err);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        const token = await getToken();
-        setAuthToken(token);
-        const response = await api.get("/api/users/me");
-        setUserData(response.data.data);
-        setLastUpdated(new Date());
-        setError(null);
-      } catch (err) {
-         console.error("Error fetching user data:", err);
-         console.error("Error response:", err.response?.data);
-         console.error("Error status:", err.response?.status);
-       
-        if (err.response?.status === 404) {
-          try {
-            const token = await getToken();
-            setAuthToken(token);
-             console.log("Attempting to register new user...");
-            const registerResponse = await api.post("/api/auth/register");
-             console.log("Registration successful:", registerResponse.data);
-            setUserData(registerResponse.data.data);
-            setLastUpdated(new Date());
-            setError(null);
-          } catch (regErr) {
-             console.error("Registration error:", regErr);
-             console.error("Registration error response:", regErr.response?.data);
-            // If server says user already exists, just load profile
-            if (regErr.response?.status === 400 ||
-                /already exists/i.test(regErr.response?.data?.message || "")) {
-              try {
-                await loadProfile();
-                return;
-              } catch (_) {}
-            }
-            setError(`Failed to create user profile: ${regErr.response?.data?.message || regErr.message}`);
-          }
-        } else {
-           setError(`Failed to load user data: ${err.response?.data?.message || err.message}`);
-        }
-      }
-    };
     if (isSignedIn) loadProfile();
-  }, [isSignedIn, getToken]);
+  }, [isSignedIn]);
 
   // Lightweight real-time: poll for profile changes every 3 seconds while signed in
   useEffect(() => {
@@ -69,11 +84,9 @@ export default function Dashboard() {
         if (!cancelled) {
           setUserData(response.data.data);
           setLastUpdated(new Date());
-          setError(null);
         }
       } catch (e) {
         // Don't surface polling errors loudly; initial fetch handles UX
-        // Console log for debugging only
         console.debug("poll(users/me) error:", e?.response?.status || e?.message);
       }
     };
@@ -121,22 +134,39 @@ export default function Dashboard() {
         <div className="space-y-4">
           <div className="border-t pt-4">
             <h2 className="text-xl font-semibold mb-4">Profile Information</h2>
-            {error && <p className="text-red-600 mb-4">{error}</p>}
-            {userData ? (
+            
+            {/* Error display with retry option */}
+            {error && (
+              <ErrorMessage
+                error={error}
+                onRetry={loadProfile}
+                onDismiss={() => setError(null)}
+                className="mb-4"
+              />
+            )}
+
+            {isLoading && !userData ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <span className="ml-3 text-gray-600">Loading profile data...</span>
+              </div>
+            ) : userData ? (
               <div className="space-y-2">
                 <p><span className="font-medium">Name:</span> {userData.name}</p>
                 <p><span className="font-medium">Email:</span> {userData.email}</p>
-                <p><span className="font-medium">User ID:</span> {userData.auth0Id}</p>
+                {userData.bio && <p><span className="font-medium">Bio:</span> {userData.bio}</p>}
+                {userData.location && <p><span className="font-medium">Location:</span> {userData.location}</p>}
+                {userData.phone && <p><span className="font-medium">Phone:</span> {userData.phone}</p>}
+                <p className="text-xs text-gray-400 pt-2">User ID: {userData.auth0Id}</p>
                 {lastUpdated && (
                   <p className="text-sm text-gray-500">Last updated: {lastUpdated.toLocaleTimeString()}</p>
                 )}
               </div>
-            ) : (
-              <p className="text-gray-500">Loading profile data...</p>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
     </div>
   );
 }
+
