@@ -8,7 +8,8 @@ import profileRoutes from "./routes/profileRoutes.js";
 
 dotenv.config();
 
-connectDB();
+// Connect to MongoDB before starting the server
+await connectDB();
 
 const app = express();
 
