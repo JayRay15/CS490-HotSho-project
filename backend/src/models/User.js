@@ -54,9 +54,12 @@ const userSchema = new mongoose.Schema(
     password: { type: String }, // Optional - only for non-Auth0 users
     name: { type: String, required: true },
     picture: { type: String },
-    bio: { type: String },
+    headline: { type: String }, // Professional title/headline
+    bio: { type: String, maxlength: 500 }, // Brief summary (500 char limit)
     location: { type: String },
     phone: { type: String },
+    industry: { type: String, enum: ['Technology', 'Healthcare', 'Finance', 'Education', 'Construction', 'Real Estate'] },
+    experienceLevel: { type: String, enum: ['Entry', 'Mid', 'Senior', 'Executive'] },
     website: { type: String },
     linkedin: { type: String },
     github: { type: String },
