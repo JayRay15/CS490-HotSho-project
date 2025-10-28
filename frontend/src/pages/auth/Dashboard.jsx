@@ -18,39 +18,70 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        // Get Auth0 token
-        const token = await getAccessTokenSilently();
+        console.log("🔍 Fetching user data...");
+        console.log("Auth0 user object:", user);
+        
+        // Try to get Auth0 token - this might fail without API configured
+        let token;
+        try {
+          token = await getAccessTokenSilently();
+          console.log("✅ Got token:", token?.substring(0, 50) + "...");
+        } catch (tokenErr) {
+          console.warn("⚠️  Could not get access token:", tokenErr.message);
+          // For now, just show the Auth0 user info without backend call
+          setUserData({
+            name: user.name,
+            email: user.email,
+            auth0Id: user.sub,
+            picture: user.picture
+          });
+          return;
+        }
         
         // Set token in axios
         setAuthToken(token);
 
         // Call backend to get or create user profile
+        console.log("📡 Calling /api/users/me");
         const response = await api.get("/api/users/me");
+        console.log("✅ Got user data from backend:", response.data);
         setUserData(response.data.data);
       } catch (err) {
-        console.error("Error fetching user data:", err);
+        console.error("❌ Error fetching user data:", err);
+        console.error("Error response:", err.response?.data);
+        console.error("Error status:", err.response?.status);
         
         // If user doesn't exist, register them
         if (err.response?.status === 404) {
           try {
+            console.log("📝 User not found, trying to register...");
             const token = await getAccessTokenSilently();
             setAuthToken(token);
             const registerResponse = await api.post("/api/auth/register");
+            console.log("✅ Registration successful:", registerResponse.data);
             setUserData(registerResponse.data.data);
           } catch (regErr) {
-            console.error("Error registering user:", regErr);
-            setError("Failed to create user profile");
+            console.error("❌ Error registering user:", regErr);
+            console.error("Registration error response:", regErr.response?.data);
+            setError(`Failed to create user profile: ${regErr.response?.data?.message || regErr.message}`);
           }
         } else {
-          setError("Failed to load user data");
+          // Fallback: just show Auth0 user info
+          console.warn("⚠️  Using Auth0 user data as fallback");
+          setUserData({
+            name: user.name,
+            email: user.email,
+            auth0Id: user.sub,
+            picture: user.picture
+          });
         }
       }
     };
 
-    if (isAuthenticated) {
+    if (isAuthenticated && user) {
       fetchUserData();
     }
-  }, [isAuthenticated, getAccessTokenSilently]);
+  }, [isAuthenticated, user, getAccessTokenSilently]);
 
   const handleLogout = () => {
     logout({ logoutParams: { returnTo: window.location.origin } });

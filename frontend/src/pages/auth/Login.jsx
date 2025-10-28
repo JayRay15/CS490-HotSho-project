@@ -37,6 +37,12 @@ export default function Login() {
           <div className="mb-4 p-3 rounded bg-red-50 text-red-700 text-sm">
             <p className="font-medium">Login error</p>
             <p>{error.message}</p>
+            {error.message?.includes("Service not found") && (
+              <ul className="list-disc ml-5 mt-2">
+                <li>In Auth0, create an API with Identifier <code>https://jobSeekerATS-API</code> (RS256).</li>
+                <li>Then try signing in again.</li>
+              </ul>
+            )}
           </div>
         )}
 
