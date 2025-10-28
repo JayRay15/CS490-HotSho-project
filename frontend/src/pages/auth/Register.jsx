@@ -36,8 +36,7 @@ export default function Register() {
       )}
 
       <SignUp
-        routing="path"
-        path="/register"
+        routing="virtual"
         signInUrl="/login"
         afterSignUpUrl="/dashboard"
         appearance={{
