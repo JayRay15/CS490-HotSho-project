@@ -473,4 +473,51 @@ export const updateEmployment = asyncHandler(async (req, res) => {
   return sendResponse(res, response, statusCode);
 });
 
+// DELETE /api/users/employment/:employmentId - Delete an employment entry
+export const deleteEmployment = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { employmentId } = req.params;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials", 
+      401, 
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  if (!employmentId) {
+    const { response, statusCode } = errorResponse(
+      "Employment ID is required", 
+      400, 
+      ERROR_CODES.VALIDATION_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Find user and remove the employment entry
+  const user = await User.findOneAndUpdate(
+    { auth0Id: userId },
+    { 
+      $pull: { employment: { _id: employmentId } }
+    },
+    { new: true }
+  );
+
+  if (!user) {
+    const { response, statusCode } = errorResponse(
+      "User not found", 
+      404, 
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const { response, statusCode } = successResponse("Employment entry deleted successfully", {
+    employment: user.employment
+  });
+  return sendResponse(res, response, statusCode);
+});
+
 

@@ -26,12 +26,16 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
+  const [employmentSuccessMessage, setEmploymentSuccessMessage] = useState(null);
   const [bioCharCount, setBioCharCount] = useState(0);
   const [profilePicture, setProfilePicture] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showEmploymentModal, setShowEmploymentModal] = useState(false);
   const [employmentList, setEmploymentList] = useState([]);
   const [editingEmployment, setEditingEmployment] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingEmployment, setDeletingEmployment] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load user profile data
   useEffect(() => {
@@ -212,6 +216,46 @@ export default function ProfilePage() {
     setShowEmploymentModal(true);
   };
 
+  const handleDeleteClick = (job) => {
+    setDeletingEmployment(job);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteEmployment = async () => {
+    if (!deletingEmployment) return;
+
+    setIsDeleting(true);
+    setError(null);
+
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+
+      await api.delete(`/api/users/employment/${deletingEmployment._id}`);
+      
+      // Update employment list by removing the deleted entry
+      setEmploymentList(prev => prev.filter(job => job._id !== deletingEmployment._id));
+      
+      // Show success message in employment section
+      setEmploymentSuccessMessage(`Employment entry for ${deletingEmployment.jobTitle} at ${deletingEmployment.company} deleted successfully!`);
+      setTimeout(() => setEmploymentSuccessMessage(null), 5000);
+      
+      // Close modal and reset state
+      setShowDeleteModal(false);
+      setDeletingEmployment(null);
+    } catch (err) {
+      console.error("Error deleting employment:", err);
+      setError(err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setDeletingEmployment(null);
+  };
+
   if (!isLoaded) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
@@ -343,6 +387,13 @@ export default function ProfilePage() {
                     </button>
                   </div>
 
+                  {/* Employment Success Message */}
+                  {employmentSuccessMessage && (
+                    <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-green-800 font-medium">{employmentSuccessMessage}</p>
+                    </div>
+                  )}
+
                   {employmentList && employmentList.length > 0 ? (
                     <div className="space-y-4">
                       {employmentList
@@ -406,8 +457,8 @@ export default function ProfilePage() {
                                 )}
                               </div>
                               
-                              {/* Edit Button - Bottom Right */}
-                              <div className="flex justify-end mt-3">
+                              {/* Action Buttons - Bottom Right */}
+                              <div className="flex justify-end mt-3 space-x-2">
                                 <button
                                   onClick={() => handleEditEmployment(job)}
                                   className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
@@ -417,6 +468,19 @@ export default function ProfilePage() {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                   </svg>
                                 </button>
+                                
+                                {/* Hide delete button if only 1 entry */}
+                                {employmentList.length > 1 && (
+                                  <button
+                                    onClick={() => handleDeleteClick(job)}
+                                    className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                                    title="Delete employment"
+                                  >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                  </button>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -688,13 +752,102 @@ export default function ProfilePage() {
             setEmploymentList(newEmployment);
             setEditingEmployment(null);
             setShowEmploymentModal(false);
-            setSuccessMessage(message);
+            setEmploymentSuccessMessage(message);
             // Auto-dismiss success message after 5 seconds
-            setTimeout(() => setSuccessMessage(null), 5000);
+            setTimeout(() => setEmploymentSuccessMessage(null), 5000);
           }}
           getToken={getToken}
           editingJob={editingEmployment}
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && deletingEmployment && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50" 
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={(e) => {
+            if (!isDeleting) {
+              handleCancelDelete();
+            }
+          }}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 border border-gray-200" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="bg-red-50 border-b border-red-100 px-6 py-4">
+              <div className="flex items-center space-x-3">
+                <div className="flex-shrink-0">
+                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Confirm Deletion</h3>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6">
+              <p className="text-gray-700 mb-4">
+                Are you sure you want to delete this employment entry?
+              </p>
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+                <p className="font-semibold text-gray-900">{deletingEmployment.jobTitle}</p>
+                <p className="text-gray-700">{deletingEmployment.company}</p>
+              </div>
+              <p className="text-sm text-red-600 font-medium">
+                This action cannot be undone.
+              </p>
+
+              {/* Error Display */}
+              {error && (
+                <div className="mt-4">
+                  <ErrorMessage
+                    error={error}
+                    onDismiss={() => setError(null)}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 border-t">
+              <button
+                type="button"
+                onClick={handleCancelDelete}
+                disabled={isDeleting}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteEmployment}
+                disabled={isDeleting}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              >
+                {isDeleting ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    <span>Delete</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
