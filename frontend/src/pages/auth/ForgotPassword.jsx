@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSignIn } from "@clerk/clerk-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 export default function ForgotPassword() {
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -11,8 +12,32 @@ export default function ForgotPassword() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState(1); // 1: email, 2: code+password
+  const [fromLink, setFromLink] = useState(false); // Track if user came from link
   const { isLoaded, signIn, setActive } = useSignIn();
   const navigate = useNavigate();
+
+  // Check for code in URL parameters and auto-fill
+  useEffect(() => {
+    const urlCode = searchParams.get('code');
+    const urlEmail = searchParams.get('email');
+    
+    if (urlCode && urlCode.length === 6 && /^\d+$/.test(urlCode)) {
+      // Auto-fill code from URL
+      setCode(urlCode);
+      setFromLink(true);
+      
+      // If email is also provided, auto-fill it
+      if (urlEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(urlEmail)) {
+        setEmail(urlEmail);
+      }
+      
+      // Advance to step 2
+      setStep(2);
+      setSuccessMessage(
+        "✓ Code detected from your email link! Enter your email and new password below."
+      );
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -70,6 +95,13 @@ export default function ForgotPassword() {
     e.preventDefault();
     
     if (!isLoaded) return;
+
+    // Validate email (required in step 2 now)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email)) {
+      setError("Please enter a valid email address");
+      return;
+    }
 
     // Validate code
     if (!code || code.length !== 6) {
@@ -197,9 +229,31 @@ export default function ForgotPassword() {
           </form>
         ) : (
           <form onSubmit={handleResetPassword}>
+            {/* Email field - shown in step 2 for link-based resets */}
+            <div className="mb-4">
+              <label className="block text-gray-700 text-sm font-medium mb-2">
+                Email Address
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                placeholder="you@example.com"
+                required
+                disabled={isSubmitting}
+              />
+              {fromLink && (
+                <p className="text-xs text-green-600 mt-1">
+                  ✓ Verify this is the email where you received the code
+                </p>
+              )}
+            </div>
+
             <div className="mb-4">
               <label className="block text-gray-700 text-sm font-medium mb-2">
                 Verification Code
+                {fromLink && <span className="text-green-600 ml-2">✓ Auto-filled</span>}
               </label>
               <input
                 type="text"
@@ -212,7 +266,10 @@ export default function ForgotPassword() {
                 disabled={isSubmitting}
               />
               <p className="text-xs text-gray-500 mt-1">
-                Enter the 6-digit code sent to {email}
+                {fromLink 
+                  ? "Code was auto-filled from your email link"
+                  : `Enter the 6-digit code sent to ${email || 'your email'}`
+                }
               </p>
             </div>
 
@@ -290,6 +347,21 @@ export default function ForgotPassword() {
         <div className="mt-4 text-xs text-gray-500 text-center">
           <p>Verification codes expire after 10 minutes.</p>
           <p className="mt-1">For security, you can request multiple codes but only the latest will work.</p>
+          
+          {step === 1 && (
+            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-left">
+              <p className="font-medium text-blue-800 mb-1">💡 Pro Tip:</p>
+              <p className="text-blue-700">
+                After receiving your 6-digit code, you can create a clickable link:
+              </p>
+              <code className="block mt-2 p-2 bg-white rounded text-blue-600 text-xs break-all">
+                {window.location.origin}/forgot-password?code=123456&email=you@example.com
+              </code>
+              <p className="text-blue-700 mt-2">
+                Replace <strong>123456</strong> with your actual code and <strong>you@example.com</strong> with your email.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
