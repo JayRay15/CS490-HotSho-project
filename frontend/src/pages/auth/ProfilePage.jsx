@@ -31,6 +31,7 @@ export default function ProfilePage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showEmploymentModal, setShowEmploymentModal] = useState(false);
   const [employmentList, setEmploymentList] = useState([]);
+  const [editingEmployment, setEditingEmployment] = useState(null);
 
   // Load user profile data
   useEffect(() => {
@@ -206,6 +207,11 @@ export default function ProfilePage() {
     setShowEditModal(true);
   };
 
+  const handleEditEmployment = (job) => {
+    setEditingEmployment(job);
+    setShowEmploymentModal(true);
+  };
+
   if (!isLoaded) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
@@ -340,11 +346,33 @@ export default function ProfilePage() {
                   {employmentList && employmentList.length > 0 ? (
                     <div className="space-y-4">
                       {employmentList
-                        .sort((a, b) => new Date(b.startDate) - new Date(a.startDate))
+                        .sort((a, b) => {
+                          // Current positions first
+                          if (a.isCurrentPosition && !b.isCurrentPosition) return -1;
+                          if (!a.isCurrentPosition && b.isCurrentPosition) return 1;
+                          
+                          // For current positions, sort by start date (most recent first)
+                          if (a.isCurrentPosition && b.isCurrentPosition) {
+                            return new Date(b.startDate) - new Date(a.startDate);
+                          }
+                          
+                          // For past positions, sort by end date (most recent first)
+                          return new Date(b.endDate) - new Date(a.endDate);
+                        })
                         .map((job, index) => (
-                          <div key={job._id || index} className="border rounded-lg p-4 hover:shadow-md transition">
-                            <div className="flex justify-between items-start">
-                              <div className="flex-1">
+                          <div key={job._id || index} className="border rounded-lg p-4 hover:shadow-md transition relative">
+                            {/* Current Position Badge - Top Right */}
+                            {job.isCurrentPosition && (
+                              <div className="absolute top-4 right-4">
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">
+                                  Current Position
+                                </span>
+                              </div>
+                            )}
+                            
+                            <div className="flex flex-col">
+                              {/* Job Details */}
+                              <div className="flex-1 pr-32">
                                 <h3 className="text-lg font-semibold text-gray-900">{job.jobTitle}</h3>
                                 <p className="text-gray-700 font-medium">{job.company}</p>
                                 <div className="flex items-center text-sm text-gray-600 mt-1 space-x-2">
@@ -377,9 +405,23 @@ export default function ProfilePage() {
                                   <p className="mt-2 text-gray-700 whitespace-pre-wrap">{job.description}</p>
                                 )}
                               </div>
+                              
+                              {/* Edit Button - Bottom Right */}
+                              <div className="flex justify-end mt-3">
+                                <button
+                                  onClick={() => handleEditEmployment(job)}
+                                  className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                  title="Edit employment"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                  </svg>
+                                </button>
+                              </div>
                             </div>
                           </div>
                         ))}
+
                     </div>
                   ) : (
                     <p className="text-gray-500 italic">No employment history added yet.</p>
@@ -634,15 +676,24 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Add Employment Modal */}
+      {/* Add/Edit Employment Modal */}
       {showEmploymentModal && (
         <EmploymentModal
           isOpen={showEmploymentModal}
-          onClose={() => setShowEmploymentModal(false)}
-          onSuccess={(newEmployment) => {
+          onClose={() => {
+            setShowEmploymentModal(false);
+            setEditingEmployment(null);
+          }}
+          onSuccess={(newEmployment, message) => {
             setEmploymentList(newEmployment);
+            setEditingEmployment(null);
+            setShowEmploymentModal(false);
+            setSuccessMessage(message);
+            // Auto-dismiss success message after 5 seconds
+            setTimeout(() => setSuccessMessage(null), 5000);
           }}
           getToken={getToken}
+          editingJob={editingEmployment}
         />
       )}
     </div>
@@ -650,7 +701,9 @@ export default function ProfilePage() {
 }
 
 // Employment Modal Component
-function EmploymentModal({ isOpen, onClose, onSuccess, getToken }) {
+function EmploymentModal({ isOpen, onClose, onSuccess, getToken, editingJob }) {
+  const isEditMode = !!editingJob;
+  
   const [formData, setFormData] = useState({
     jobTitle: '',
     company: '',
@@ -664,6 +717,49 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken }) {
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
   const [descCharCount, setDescCharCount] = useState(0);
+
+  // Pre-populate form when editing
+  useEffect(() => {
+    if (editingJob) {
+      const startDate = new Date(editingJob.startDate);
+      const startMonth = String(startDate.getMonth() + 1).padStart(2, '0');
+      const startYear = startDate.getFullYear();
+      const formattedStartDate = `${startMonth}/${startYear}`;
+
+      let formattedEndDate = '';
+      if (editingJob.endDate && !editingJob.isCurrentPosition) {
+        const endDate = new Date(editingJob.endDate);
+        const endMonth = String(endDate.getMonth() + 1).padStart(2, '0');
+        const endYear = endDate.getFullYear();
+        formattedEndDate = `${endMonth}/${endYear}`;
+      }
+
+      setFormData({
+        jobTitle: editingJob.jobTitle || '',
+        company: editingJob.company || '',
+        location: editingJob.location || '',
+        startDate: formattedStartDate,
+        endDate: formattedEndDate,
+        isCurrentPosition: editingJob.isCurrentPosition || false,
+        description: editingJob.description || ''
+      });
+      setDescCharCount(editingJob.description?.length || 0);
+    } else {
+      // Reset form for add mode
+      setFormData({
+        jobTitle: '',
+        company: '',
+        location: '',
+        startDate: '',
+        endDate: '',
+        isCurrentPosition: false,
+        description: ''
+      });
+      setDescCharCount(0);
+    }
+    setError(null);
+    setSuccessMessage(null);
+  }, [editingJob]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -731,24 +827,28 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken }) {
     }
 
     // Date validation for end date
-    if (!formData.isCurrentPosition && formData.endDate) {
-      const datePattern = /^(0[1-9]|1[0-2])\/\d{4}$/;
-      if (!datePattern.test(formData.endDate)) {
-        errors.push({ field: 'endDate', message: 'Invalid end date format. Please use MM/YYYY (e.g., 12/2024)' });
+    if (!formData.isCurrentPosition) {
+      if (!formData.endDate) {
+        errors.push({ field: 'endDate', message: 'End date is required when this is not a current position' });
       } else {
-        const [endMonth, endYear] = formData.endDate.split('/');
-        const endDateObj = new Date(endYear, endMonth - 1, 1);
-        
-        if (isNaN(endDateObj.getTime())) {
-          errors.push({ field: 'endDate', message: 'Invalid end date' });
-        } else if (formData.startDate) {
-          const startDatePattern = /^(0[1-9]|1[0-2])\/\d{4}$/;
-          if (startDatePattern.test(formData.startDate)) {
-            const [startMonth, startYear] = formData.startDate.split('/');
-            const startDateObj = new Date(startYear, startMonth - 1, 1);
-            
-            if (!isNaN(startDateObj.getTime()) && startDateObj >= endDateObj) {
-              errors.push({ field: 'endDate', message: 'End date must be after the start date' });
+        const datePattern = /^(0[1-9]|1[0-2])\/\d{4}$/;
+        if (!datePattern.test(formData.endDate)) {
+          errors.push({ field: 'endDate', message: 'Invalid end date format. Please use MM/YYYY (e.g., 12/2024)' });
+        } else {
+          const [endMonth, endYear] = formData.endDate.split('/');
+          const endDateObj = new Date(endYear, endMonth - 1, 1);
+          
+          if (isNaN(endDateObj.getTime())) {
+            errors.push({ field: 'endDate', message: 'Invalid end date' });
+          } else if (formData.startDate) {
+            const startDatePattern = /^(0[1-9]|1[0-2])\/\d{4}$/;
+            if (startDatePattern.test(formData.startDate)) {
+              const [startMonth, startYear] = formData.startDate.split('/');
+              const startDateObj = new Date(startYear, startMonth - 1, 1);
+              
+              if (!isNaN(startDateObj.getTime()) && startDateObj >= endDateObj) {
+                errors.push({ field: 'endDate', message: 'End date must be after the start date' });
+              }
             }
           }
         }
@@ -787,31 +887,42 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken }) {
       const token = await getToken();
       setAuthToken(token);
 
-      const response = await api.post('/api/users/employment', formData);
+      let response;
+      if (isEditMode) {
+        // Edit existing employment
+        response = await api.put(`/api/users/employment/${editingJob._id}`, formData);
+      } else {
+        // Add new employment
+        response = await api.post('/api/users/employment', formData);
+      }
       
-      // Call success callback with updated employment list
-      onSuccess(response.data.data.employment);
+      const successMsg = isEditMode 
+        ? 'Employment entry updated successfully!' 
+        : 'Employment entry added successfully!';
       
-      // Show success message in modal
-      setSuccessMessage('Employment entry added successfully!');
+      // Call success callback with updated employment list and message
+      onSuccess(response.data.data.employment, successMsg);
       
-      // Clear form but keep modal open
-      setFormData({
-        jobTitle: '',
-        company: '',
-        location: '',
-        startDate: '',
-        endDate: '',
-        isCurrentPosition: false,
-        description: ''
-      });
-      setDescCharCount(0);
-      setError(null);
-      
-      // Auto-dismiss success message after 3 seconds
-      setTimeout(() => setSuccessMessage(null), 3000);
+      // For add mode only: clear form and show inline success message
+      if (!isEditMode) {
+        setFormData({
+          jobTitle: '',
+          company: '',
+          location: '',
+          startDate: '',
+          endDate: '',
+          isCurrentPosition: false,
+          description: ''
+        });
+        setDescCharCount(0);
+        setError(null);
+        setSuccessMessage(successMsg);
+        
+        // Auto-dismiss inline success message after 3 seconds
+        setTimeout(() => setSuccessMessage(null), 3000);
+      }
     } catch (err) {
-      console.error("Error adding employment:", err);
+      console.error(isEditMode ? "Error updating employment:" : "Error adding employment:", err);
       setError(err);
     } finally {
       setIsSaving(false);
@@ -848,7 +959,7 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken }) {
       >
         {/* Modal Header */}
         <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center z-10">
-          <h3 className="text-2xl font-semibold">Add Employment</h3>
+          <h3 className="text-2xl font-semibold">{isEditMode ? 'Edit Employment' : 'Add Employment'}</h3>
           <button
             onClick={handleClose}
             disabled={isSaving}
@@ -1016,7 +1127,9 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken }) {
                 disabled={isSaving}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSaving ? 'Saving...' : 'Save Entry'}
+                {isSaving 
+                  ? (isEditMode ? 'Updating...' : 'Saving...') 
+                  : (isEditMode ? 'Update Entry' : 'Save Entry')}
               </button>
             </div>
           </form>

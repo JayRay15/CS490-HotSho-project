@@ -1,5 +1,5 @@
 import express from "express";
-import { getCurrentUser, updateCurrentUser, uploadProfilePicture, deleteProfilePicture, upload, addEmployment } from "../controllers/userController.js";
+import { getCurrentUser, updateCurrentUser, uploadProfilePicture, deleteProfilePicture, upload, addEmployment, updateEmployment } from "../controllers/userController.js";
 import { checkJwt } from "../middleware/checkJwt.js";
 
 const router = express.Router();
@@ -18,5 +18,8 @@ router.delete("/profile-picture", checkJwt, deleteProfilePicture);
 
 // POST /api/users/employment - Add employment entry
 router.post("/employment", checkJwt, addEmployment);
+
+// PUT /api/users/employment/:employmentId - Update employment entry
+router.put("/employment/:employmentId", checkJwt, updateEmployment);
 
 export default router;
