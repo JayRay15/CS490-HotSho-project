@@ -3,7 +3,7 @@ import Navbar from "./components/Navbar";
 import Register from "./pages/auth/Register";
 import Login from "./pages/auth/Login";
 import Dashboard from "./pages/auth/Dashboard";
-import Profile from "./pages/auth/Profile";
+import ProfilePage from "./pages/auth/ProfilePage";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 
@@ -18,7 +18,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/profile" element={<Profile />} />
+          <Route path="/profile" element={<ProfilePage />} />
         </Routes>
       </Router>
     </ErrorBoundary>

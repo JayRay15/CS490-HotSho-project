@@ -48,6 +48,7 @@ export default function Navbar() {
                 </SignedOut>
                 <SignedIn>
                     <Link to="/dashboard" className="hover:underline">Dashboard</Link>
+                    <Link to="/profile" className="hover:underline">Profile</Link>
                     <div className="custom-user-button">
                         <UserButton 
                             afterSignOutUrl="/login"

@@ -70,15 +70,42 @@ All endpoints return a consistent JSON response format:
 - **Status Code:** 200 (Success), 400 (Validation error), 401 (Invalid token), 404 (User not found), 500 (Server error)
 - **Description:** Update current user's profile information
 - **Auth Required:** Yes
-- **Body:** User profile data (name, email, bio, location, phone, website, linkedin, github)
+- **Body:** User profile data
+  - **Basic Info**: `name` (required), `email` (required), `phone`, `location`
+  - **Professional Info**: `headline` (required, professional title), `bio` (max 500 chars), `industry` (required, enum), `experienceLevel` (required, enum)
+  - **Social Links**: `website`, `linkedin`, `github`
 - **Validation:**
+  - **Required fields**: `name`, `email`, `headline`, `industry`, `experienceLevel`
+  - **Optional fields**: `phone`, `location`, `bio`, `website`, `linkedin`, `github`
   - Email format validation
-  - Cannot update: `auth0Id`, `_id`, `createdAt`, `updatedAt`
+  - Bio limited to 500 characters
+  - Industry must be one of: `Technology`, `Healthcare`, `Finance`, `Education`, `Construction`, `Real Estate`
+  - Experience level must be one of: `Entry`, `Mid`, `Senior`, `Executive`
+  - Cannot update: `auth0Id`, `_id`, `uuid`, `createdAt`, `updatedAt`
   - Empty request body returns 400 error
 - **Error Codes:**
   - `1001` - Unauthorized (missing credentials)
   - `2001` - Validation error (invalid fields)
   - `3001` - Not found (user not found)
+- **Success Response Example:**
+```json
+{
+  "success": true,
+  "message": "User profile updated successfully",
+  "timestamp": "2025-10-28T12:00:00.000Z",
+  "data": {
+    "name": "John Doe",
+    "email": "john@example.com",
+    "headline": "Senior Software Engineer | Full Stack Developer",
+    "bio": "Experienced developer passionate about building scalable applications...",
+    "industry": "Technology",
+    "experienceLevel": "Senior",
+    "location": "New York, NY",
+    "phone": "(555) 123-4567"
+  }
+}
+```
+
 
 #### Upload Profile Picture
 - **POST** `/api/users/profile-picture`
