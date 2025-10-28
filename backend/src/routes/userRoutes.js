@@ -1,6 +1,5 @@
 import express from "express";
-import { getCurrentUser, updateCurrentUser, uploadProfilePicture, deleteProfilePicture, upload, deleteAccount } from "../controllers/userController.js";
-import { getCurrentUser, updateCurrentUser, uploadProfilePicture, deleteProfilePicture, upload, addEmployment, updateEmployment, deleteEmployment } from "../controllers/userController.js";
+import { getCurrentUser, updateCurrentUser, uploadProfilePicture, deleteProfilePicture, upload, deleteAccount, addEmployment, updateEmployment, deleteEmployment } from "../controllers/userController.js";
 import { checkJwt } from "../middleware/checkJwt.js";
 
 const router = express.Router();

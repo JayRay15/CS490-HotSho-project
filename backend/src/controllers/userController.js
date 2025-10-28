@@ -225,15 +225,6 @@ export const deleteAccount = asyncHandler(async (req, res) => {
     const { response, statusCode } = errorResponse(
       "Unauthorized: missing authentication credentials",
       401,
-// POST /api/users/employment - Add employment entry
-export const addEmployment = asyncHandler(async (req, res) => {
-  const userId = req.auth?.userId || req.auth?.payload?.sub;
-  const { jobTitle, company, location, startDate, endDate, isCurrentPosition, description } = req.body;
-
-  if (!userId) {
-    const { response, statusCode } = errorResponse(
-      "Unauthorized: missing authentication credentials", 
-      401, 
       ERROR_CODES.UNAUTHORIZED
     );
     return sendResponse(res, response, statusCode);
@@ -241,7 +232,7 @@ export const addEmployment = asyncHandler(async (req, res) => {
 
   const user = await User.findOne({ auth0Id: userId });
   if (!user) {
-    const { response, statusCode } = errorResponse("User not found", 404, ERROR_CODES.NOT_FOUND);
+    const { response, statusCode} = errorResponse("User not found", 404, ERROR_CODES.NOT_FOUND);
     return sendResponse(res, response, statusCode);
   }
 
@@ -288,6 +279,20 @@ export const addEmployment = asyncHandler(async (req, res) => {
 
   return sendResponse(res, response, statusCode);
 });
+
+// POST /api/users/employment - Add employment entry
+export const addEmployment = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { jobTitle, company, location, startDate, endDate, isCurrentPosition, description } = req.body;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials", 
+      401, 
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
 
   // Validate required fields
   const errors = [];
