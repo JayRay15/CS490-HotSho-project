@@ -26,6 +26,12 @@ export const ERROR_CODES = {
   DATABASE_ERROR: 5002,
   EXTERNAL_SERVICE_ERROR: 5003,
   
+  // File upload errors (4xxx)
+  INVALID_FILE_TYPE: 4001,
+  FILE_TOO_LARGE: 4002,
+  UPLOAD_FAILED: 4003,
+  NO_FILE_PROVIDED: 4004,
+  
   // Network errors (6xxx)
   NETWORK_ERROR: 6001,
   TIMEOUT: 6002
