@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useUser } from "@clerk/clerk-react";
+import { useUser, useAuth } from "@clerk/clerk-react";
 import Card from "../../components/Card";
 import InputField from "../../components/InputField";
 import Button from "../../components/Button";
@@ -18,6 +18,11 @@ export default function Profile() {
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(false);
     const [loading, setLoading] = useState(false);
+    // Deletion UI state
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deletePassword, setDeletePassword] = useState("");
+    const [deleting, setDeleting] = useState(false);
+    const { signOut } = useAuth();
 
     const handleChange = (e) => {
         setFormData({
@@ -54,6 +59,28 @@ export default function Profile() {
     const handleRetry = () => {
         setError(null);
         handleSubmit(new Event('submit'));
+    };
+
+    const handleDeleteAccount = async (e) => {
+        e?.preventDefault();
+        setError(null);
+        setDeleting(true);
+
+        try {
+            // Delete request with body via axios
+            await api.delete('/api/users/delete', { data: { password: deletePassword } });
+
+            // Clear sensitive state and log out via Clerk
+            sessionStorage.setItem("logoutMessage", "Your account deletion request was received. You have been logged out.");
+            signOut();
+        } catch (err) {
+            console.error('Account deletion error:', err);
+            setError(err);
+        } finally {
+            setDeleting(false);
+            setShowDeleteModal(false);
+            setDeletePassword("");
+        }
     };
 
     return (
@@ -101,6 +128,42 @@ export default function Profile() {
                             </Button>
                         </div>
                     </Card>
+
+                    <Card title="Danger Zone" className="mt-6">
+                        <div className="p-4">
+                            <p className="text-sm text-gray-700 mb-4">Deleting your account will permanently remove your personal data after a 30-day grace period. This action is irreversible after that period.</p>
+                            <div className="flex items-center justify-end">
+                                <Button variant="danger" onClick={() => setShowDeleteModal(true)}>
+                                    Delete Account
+                                </Button>
+                            </div>
+                        </div>
+                    </Card>
+
+                    {/* Modal: Confirm deletion */}
+                    {showDeleteModal && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                                <h3 className="text-lg font-semibold mb-2">Confirm Account Deletion</h3>
+                                <p className="text-sm text-gray-700 mb-4">This will schedule your account for permanent deletion in 30 days. You will be logged out immediately. To confirm, enter your password below.</p>
+
+                                <InputField
+                                    label="Password"
+                                    name="deletePassword"
+                                    type="password"
+                                    value={deletePassword}
+                                    onChange={(e) => setDeletePassword(e.target.value)}
+                                />
+
+                                <div className="mt-4 flex justify-end space-x-2">
+                                    <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>Cancel</Button>
+                                    <Button variant="danger" onClick={handleDeleteAccount} disabled={deleting}>
+                                        {deleting ? 'Deleting...' : 'Confirm Delete'}
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
                 <div className="md:col-span-2">
                     <Card title="Basic Information">

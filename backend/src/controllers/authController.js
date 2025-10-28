@@ -98,6 +98,20 @@ export const login = asyncHandler(async (req, res) => {
     return sendResponse(res, response, statusCode);
   }
 
+  // Prevent login if user has requested deletion within the 30-day grace period
+  if (user.isDeleted) {
+    const now = new Date();
+    if (user.deletionExpiresAt && user.deletionExpiresAt > now) {
+      const { response, statusCode } = errorResponse(
+        "Account scheduled for deletion. You cannot log in during the 30-day grace period.",
+        403,
+        ERROR_CODES.UNAUTHORIZED
+      );
+      return sendResponse(res, response, statusCode);
+    }
+    // If deletionExpiresAt passed, we might let other cleanup processes handle permanent removal
+  }
+
   const { response, statusCode } = successResponse("User authenticated successfully", user);
   return sendResponse(res, response, statusCode);
 });

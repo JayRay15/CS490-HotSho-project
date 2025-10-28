@@ -8,7 +8,7 @@ const INDUSTRIES = ['Technology', 'Healthcare', 'Finance', 'Education', 'Constru
 const EXPERIENCE_LEVELS = ['Entry', 'Mid', 'Senior', 'Executive'];
 
 export default function ProfilePage() {
-  const { isLoaded, isSignedIn, getToken } = useAuth();
+  const { isLoaded, isSignedIn, getToken, signOut } = useAuth();
   const { user } = useUser();
   const [userData, setUserData] = useState(null);
   const [formData, setFormData] = useState({
@@ -29,6 +29,10 @@ export default function ProfilePage() {
   const [bioCharCount, setBioCharCount] = useState(0);
   const [profilePicture, setProfilePicture] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  // Account deletion state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   // Load user profile data
   useEffect(() => {
@@ -187,6 +191,30 @@ export default function ProfilePage() {
     setShowEditModal(true);
   };
 
+  const handleDeleteAccount = async (e) => {
+    e?.preventDefault();
+    setError(null);
+    setDeleting(true);
+
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+
+      await api.delete('/api/users/delete', { data: { password: deletePassword } });
+
+      // store message and sign out
+      sessionStorage.setItem("logoutMessage", "Your account deletion request was received. You have been logged out.");
+      signOut();
+    } catch (err) {
+      console.error('Account deletion error:', err);
+      setError(err);
+    } finally {
+      setDeleting(false);
+      setShowDeleteModal(false);
+      setDeletePassword("");
+    }
+  };
+
   if (!isLoaded) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
@@ -209,6 +237,46 @@ export default function ProfilePage() {
               <h1 className="text-3xl font-semibold mb-2">My Profile</h1>
               <p className="text-gray-600">View and manage your professional profile</p>
             </div>
+          {/* Danger Zone: Account deletion */}
+          <div className="mt-12">
+            <div className="bg-white rounded-2xl shadow-md p-6 border border-red-100">
+              <h2 className="text-xl font-semibold text-red-600 mb-2">Danger Zone</h2>
+              <p className="text-sm text-gray-700 mb-4">Deleting your account will schedule permanent removal of your personal data after a 30-day grace period. You will be logged out immediately.</p>
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setShowDeleteModal(true)}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                >
+                  Delete Account
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Delete confirmation modal */}
+          {showDeleteModal && (
+            <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0,0,0,0.48)' }} onClick={() => setShowDeleteModal(false)}>
+              <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+                <h3 className="text-lg font-semibold mb-2">Confirm Account Deletion</h3>
+                <p className="text-sm text-gray-700 mb-4">This will schedule your account for permanent deletion in 30 days. To confirm, enter your password below (if your account uses a local password).</p>
+
+                <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-4"
+                />
+
+                <div className="flex justify-end space-x-2">
+                  <button onClick={() => setShowDeleteModal(false)} className="px-4 py-2 bg-gray-100 rounded-lg">Cancel</button>
+                  <button onClick={handleDeleteAccount} disabled={deleting} className="px-4 py-2 bg-red-600 text-white rounded-lg">
+                    {deleting ? 'Deleting...' : 'Confirm Delete'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
             
             {/* Profile Picture Upload */}
             <ProfilePictureUpload
