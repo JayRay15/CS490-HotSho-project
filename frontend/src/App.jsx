@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
+import Breadcrumb from "./components/Breadcrumb";
 import Register from "./pages/auth/Register";
 import Login from "./pages/auth/Login";
 import Dashboard from "./pages/auth/Dashboard";
@@ -12,6 +13,7 @@ function App() {
     <ErrorBoundary>
       <Router>
         <Navbar />
+        <Breadcrumb />
         <Routes>
           <Route path="/" element={<Register />} />
           <Route path="/register" element={<Register />} />

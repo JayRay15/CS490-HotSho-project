@@ -178,7 +178,7 @@ export default function ForgotPassword() {
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-50">
       <div className="bg-white p-8 rounded-2xl shadow-md w-96">
-        <h2 className="text-2xl font-semibold mb-2 text-center">
+        <h2 className="text-2xl font-heading font-semibold mb-2 text-center">
           {step === 1 ? "Forgot Password?" : "Reset Your Password"}
         </h2>
         <p className="text-gray-600 text-center mb-6 text-sm">

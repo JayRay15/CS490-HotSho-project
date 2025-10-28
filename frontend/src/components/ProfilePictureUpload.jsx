@@ -205,7 +205,7 @@ export default function ProfilePictureUpload({ currentPicture, onUploadSuccess, 
             </button>
 
             {/* Modal Title */}
-            <h3 className="text-xl font-semibold mb-4">Edit Profile Picture</h3>
+            <h3 className="text-xl font-heading font-semibold mb-4">Edit Profile Picture</h3>
 
             {/* Preview */}
             <div className="flex flex-col items-center mb-4">

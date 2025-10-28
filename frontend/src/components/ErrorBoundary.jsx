@@ -69,7 +69,7 @@ class ErrorBoundary extends Component {
               </svg>
             </div>
             
-            <h2 className="mt-4 text-xl font-semibold text-center text-gray-900">
+            <h2 className="mt-4 text-xl font-heading font-semibold text-center text-gray-900">
               Oops! Something went wrong
             </h2>
             
@@ -79,7 +79,7 @@ class ErrorBoundary extends Component {
 
             {process.env.NODE_ENV === 'development' && this.state.error && (
               <details className="mt-4 p-3 bg-gray-100 rounded text-xs">
-                <summary className="cursor-pointer font-medium text-gray-700">
+                <summary className="cursor-pointer font-heading font-medium text-gray-700">
                   Error Details (Development Only)
                 </summary>
                 <pre className="mt-2 whitespace-pre-wrap text-red-600">
