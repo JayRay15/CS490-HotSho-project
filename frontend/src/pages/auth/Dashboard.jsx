@@ -124,7 +124,11 @@ export default function Dashboard() {
             <p className="text-gray-600">You are successfully logged in!</p>
           </div>
           <button
-            onClick={() => signOut()}
+            onClick={() => {
+              // Store logout success message before Clerk redirects
+              sessionStorage.setItem("logoutMessage", "You have been successfully logged out");
+              signOut();
+            }}
             className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
           >
             Logout

@@ -103,9 +103,50 @@ export const login = asyncHandler(async (req, res) => {
 });
 
 // POST /api/auth/logout - End user session
-export const logout = asyncHandler(async (req, res) => {
-  // Since we're using Auth0, the actual logout is handled on the frontend
-  // This endpoint is for any server-side cleanup if needed
-  const { response, statusCode } = successResponse("User logged out successfully");
-  return sendResponse(res, response, statusCode);
-});
+export const logout = async (req, res) => {
+  try {
+    // Since we're using Auth0, the actual logout is handled on the frontend
+    // This endpoint is for any server-side cleanup if needed
+    const { response, statusCode } = successResponse("User logged out successfully");
+    return sendResponse(res, response, statusCode);
+  } catch (err) {
+    console.error("Logout error:", err);
+    const { response, statusCode } = errorResponse("Internal server error", 500);
+    return sendResponse(res, response, statusCode);
+  }
+};
+
+// POST /api/auth/forgot-password - Log password reset request (optional tracking)
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      const { response, statusCode } = errorResponse("Email is required", 400);
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Optional: Log the reset request for analytics/security monitoring
+    console.log(`🔐 Password reset requested for email: ${email}`);
+
+    // Check if user exists (optional - for logging only)
+    const user = await User.findOne({ email });
+    if (user) {
+      console.log(`✅ User found: ${user.name} (${user.email})`);
+    } else {
+      console.log(`⚠️  No user found with email: ${email}`);
+    }
+
+    // Always return generic success message for security
+    // Don't reveal whether the email exists in the system
+    const { response, statusCode } = successResponse(
+      "If an account exists with this email, a password reset link has been sent",
+      { email }
+    );
+    return sendResponse(res, response, statusCode);
+  } catch (err) {
+    console.error("Forgot password error:", err);
+    const { response, statusCode } = errorResponse("Internal server error", 500);
+    return sendResponse(res, response, statusCode);
+  }
+};
