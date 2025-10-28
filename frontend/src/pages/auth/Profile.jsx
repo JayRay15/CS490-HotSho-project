@@ -1,33 +1,175 @@
-import Card from "../components/Card";
-import InputField from "../components/InputField";
-import Button from "../components/Button";
+import { useState } from "react";
+import { useUser } from "@clerk/clerk-react";
+import Card from "../../components/Card";
+import InputField from "../../components/InputField";
+import Button from "../../components/Button";
+import ErrorMessage, { FieldError } from "../../components/ErrorMessage";
+import api, { getErrorMessage, retryRequest } from "../../api/axios";
 
 export default function Profile() {
+    const { user: clerkUser } = useUser();
+    const [formData, setFormData] = useState({
+        name: clerkUser?.fullName || "",
+        email: clerkUser?.primaryEmailAddress?.emailAddress || "",
+        bio: "",
+        location: "",
+        phone: ""
+    });
+    const [error, setError] = useState(null);
+    const [success, setSuccess] = useState(false);
+    const [loading, setLoading] = useState(false);
+
+    const handleChange = (e) => {
+        setFormData({
+            ...formData,
+            [e.target.name]: e.target.value
+        });
+        // Clear errors when user starts typing
+        setError(null);
+        setSuccess(false);
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError(null);
+        setSuccess(false);
+        setLoading(true);
+
+        try {
+            // Use retry mechanism for network resilience
+            await retryRequest(async () => {
+                return await api.put("/api/users/me", formData);
+            });
+
+            setSuccess(true);
+            setTimeout(() => setSuccess(false), 5000);
+        } catch (err) {
+            console.error("Profile update error:", err);
+            setError(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleRetry = () => {
+        setError(null);
+        handleSubmit(new Event('submit'));
+    };
+
     return (
         <div className="max-w-5xl mx-auto p-6">
             <h2 className="text-2xl font-heading mb-4">My Profile</h2>
+
+            {/* Error display */}
+            {error && (
+                <ErrorMessage
+                    error={error}
+                    onRetry={handleRetry}
+                    onDismiss={() => setError(null)}
+                    className="mb-4"
+                />
+            )}
+
+            {/* Success message */}
+            {success && (
+                <div className="mb-4 rounded-lg border border-green-300 bg-green-50 p-4">
+                    <p className="text-sm text-green-800">
+                        Profile updated successfully!
+                    </p>
+                </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="md:col-span-1">
                     <Card title="Avatar">
                         <div className="flex items-center flex-col">
-                            <div className="w-32 h-32 rounded-full bg-neutral-200 mb-4" />
-                            <Button variant="secondary">Upload Photo</Button>
+                            <div className="w-32 h-32 rounded-full bg-neutral-200 mb-4 overflow-hidden">
+                                {clerkUser?.imageUrl ? (
+                                    <img
+                                        src={clerkUser.imageUrl}
+                                        alt="Profile"
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-4xl text-gray-500">
+                                        {formData.name?.charAt(0)?.toUpperCase() || "?"}
+                                    </div>
+                                )}
+                            </div>
+                            <Button variant="secondary" disabled>
+                                Upload Photo
+                            </Button>
                         </div>
                     </Card>
                 </div>
                 <div className="md:col-span-2">
                     <Card title="Basic Information">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <InputField label="First name" />
-                            <InputField label="Last name" />
-                            <InputField label="Email" />
-                        </div>
-                        <div className="mt-4 flex justify-end">
-                            <Button>Save</Button>
-                        </div>
+                        <form onSubmit={handleSubmit}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <InputField
+                                        label="Full Name"
+                                        name="name"
+                                        value={formData.name}
+                                        onChange={handleChange}
+                                        required
+                                    />
+                                    <FieldError error={error} fieldName="name" />
+                                </div>
+                                <div>
+                                    <InputField
+                                        label="Email"
+                                        name="email"
+                                        type="email"
+                                        value={formData.email}
+                                        onChange={handleChange}
+                                        required
+                                    />
+                                    <FieldError error={error} fieldName="email" />
+                                </div>
+                                <div>
+                                    <InputField
+                                        label="Phone"
+                                        name="phone"
+                                        value={formData.phone}
+                                        onChange={handleChange}
+                                    />
+                                    <FieldError error={error} fieldName="phone" />
+                                </div>
+                                <div>
+                                    <InputField
+                                        label="Location"
+                                        name="location"
+                                        value={formData.location}
+                                        onChange={handleChange}
+                                    />
+                                    <FieldError error={error} fieldName="location" />
+                                </div>
+                            </div>
+                            <div className="mt-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Bio
+                                </label>
+                                <textarea
+                                    name="bio"
+                                    value={formData.bio}
+                                    onChange={handleChange}
+                                    rows={4}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    placeholder="Tell us about yourself..."
+                                />
+                                <FieldError error={error} fieldName="bio" />
+                            </div>
+                            <div className="mt-4 flex justify-end">
+                                <Button type="submit" disabled={loading}>
+                                    {loading ? "Saving..." : "Save"}
+                                </Button>
+                            </div>
+                        </form>
                     </Card>
                 </div>
             </div>
         </div>
     );
 }
+
