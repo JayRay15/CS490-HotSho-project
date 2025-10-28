@@ -96,7 +96,7 @@ export default function Dashboard() {
       <div className="bg-white p-8 rounded-2xl shadow-md max-w-2xl w-full">
         <div className="flex justify-between items-start mb-6">
           <div>
-            <h1 className="text-3xl font-semibold mb-2">
+            <h1 className="text-3xl font-heading font-bold mb-2">
               Welcome, {user?.fullName || user?.primaryEmailAddress?.emailAddress}
             </h1>
             <p className="text-gray-600">You are successfully logged in!</p>

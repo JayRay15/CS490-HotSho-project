@@ -348,7 +348,7 @@ export default function ProfilePage() {
           {/* Header with Profile Picture */}
           <div className="flex justify-between items-start mb-8">
             <div>
-              <h1 className="text-3xl font-semibold mb-2">My Profile</h1>
+              <h1 className="text-3xl font-heading font-bold mb-2">My Profile</h1>
               <p className="text-gray-600">View and manage your professional profile</p>
             </div>
             
@@ -383,7 +383,7 @@ export default function ProfilePage() {
                 {/* Basic Information Section */}
                 <div className="border-b pb-6">
                   <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-semibold text-gray-800">Basic Information</h2>
+                    <h2 className="text-xl font-heading font-semibold text-gray-800">Basic Information</h2>
                     <button
                       onClick={handleEditClick}
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2"
@@ -417,7 +417,7 @@ export default function ProfilePage() {
 
                 {/* Professional Information Section */}
                 <div className="border-b pb-6">
-                  <h2 className="text-xl font-semibold text-gray-800 mb-4">Professional Information</h2>
+                  <h2 className="text-xl font-heading font-semibold text-gray-800 mb-4">Professional Information</h2>
                   
                   <div className="space-y-4">
                     <div>
@@ -448,7 +448,7 @@ export default function ProfilePage() {
                 {/* Employment History Section */}
                 <div className="border-b pb-6">
                   <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-semibold text-gray-800">Employment History</h2>
+                    <h2 className="text-xl font-heading font-semibold text-gray-800">Employment History</h2>
                     <button
                       onClick={() => setShowEmploymentModal(true)}
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2"
@@ -497,7 +497,7 @@ export default function ProfilePage() {
                             <div className="flex flex-col">
                               {/* Job Details */}
                               <div className="flex-1 pr-32">
-                                <h3 className="text-lg font-semibold text-gray-900">{job.jobTitle}</h3>
+                                <h3 className="text-lg font-heading font-semibold text-gray-900">{job.jobTitle}</h3>
                                 <p className="text-gray-700 font-medium">{job.company}</p>
                                 <div className="flex items-center text-sm text-gray-600 mt-1 space-x-2">
                                   {job.location && (
@@ -568,7 +568,7 @@ export default function ProfilePage() {
                 {/* Additional Information */}
                 {(userData?.website || userData?.linkedin || userData?.github) && (
                   <div>
-                    <h2 className="text-xl font-semibold text-gray-800 mb-4">Links</h2>
+                    <h2 className="text-xl font-heading font-semibold text-gray-800 mb-4">Links</h2>
                     <div className="space-y-2">
                       {userData?.website && (
                         <div>
@@ -644,7 +644,7 @@ export default function ProfilePage() {
                 </svg>
               </div>
               <div className="ml-3 flex-1">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Confirm Account Deletion</h3>
+                <h3 className="text-lg font-heading font-semibold text-gray-900 mb-2">Confirm Account Deletion</h3>
                 <p className="text-sm text-gray-700 mb-4">
                   This will schedule your account for <strong>permanent deletion in 30 days</strong>. 
                   You will be logged out immediately and cannot log in during the grace period.
@@ -953,7 +953,7 @@ export default function ProfilePage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900">Confirm Deletion</h3>
+                <h3 className="text-lg font-heading font-semibold text-gray-900">Confirm Deletion</h3>
               </div>
             </div>
 
@@ -1281,7 +1281,7 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken, editingJob }) {
       >
         {/* Modal Header */}
         <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center z-10">
-          <h3 className="text-2xl font-semibold">{isEditMode ? 'Edit Employment' : 'Add Employment'}</h3>
+          <h3 className="text-2xl font-heading font-semibold">{isEditMode ? 'Edit Employment' : 'Add Employment'}</h3>
           <button
             onClick={handleClose}
             disabled={isSaving}

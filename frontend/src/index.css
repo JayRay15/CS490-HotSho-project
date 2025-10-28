@@ -13,10 +13,69 @@ body,
 }
 
 body {
-    @apply font-sans bg-gray-50 text-gray-900;
+    font-family: 'Inter', sans-serif;
+    background-color: #f9fafb;
+    color: #111827;
+    line-height: 1.6; /* Optimized for readability */
+}
+
+/* Typography - Heading styles with optimal line heights */
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Poppins', sans-serif;
+    line-height: 1.3; /* Tighter line height for headings */
+    font-weight: 600; /* Default semibold for headings */
+}
+
+h1 {
+    font-size: 1.875rem; /* 30px */
+    font-weight: 700; /* Bold for main headings */
+}
+
+h2 {
+    font-size: 1.5rem; /* 24px */
+    font-weight: 600;
+}
+
+h3 {
+    font-size: 1.25rem; /* 20px */
+    font-weight: 600;
+}
+
+h4 {
+    font-size: 1.125rem; /* 18px */
+    font-weight: 600;
+}
+
+h5 {
+    font-size: 1rem; /* 16px */
+    font-weight: 600;
+}
+
+h6 {
+    font-size: 0.875rem; /* 14px */
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Body text optimizations */
+p {
+    line-height: 1.6;
+}
+
+/* Small text and captions */
+.text-sm {
+    line-height: 1.5;
+}
+
+.text-xs {
+    line-height: 1.4;
 }
 
 /* small utility for cards */
 .card {
-    @apply bg-white rounded-2xl shadow-md p-6;
+    background-color: white;
+    border-radius: 1.25rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    padding: 1.5rem;
 }

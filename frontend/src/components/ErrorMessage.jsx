@@ -34,7 +34,7 @@ export default function ErrorMessage({
           </svg>
         </div>
         <div className="ml-3 flex-1">
-          <h3 className="text-sm font-medium text-red-800">
+          <h3 className="text-sm font-heading font-medium text-red-800">
             {isNetworkError ? "Network Error" : "Error"}
           </h3>
           <div className="mt-2 text-sm text-red-700">
