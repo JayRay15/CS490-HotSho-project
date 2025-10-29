@@ -760,95 +760,86 @@ export default function ProfilePage() {
                   )}
 
                   {educationList && educationList.length > 0 ? (
-                    <div className="space-y-4">
-                      {educationList
-                        .sort((a, b) => {
-                          // Current/ongoing first
-                          if (a.current && !b.current) return -1;
-                          if (!a.current && b.current) return 1;
+                    <div className="relative pl-10">
+                      {/* vertical timeline line */}
+                      <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200" />
 
-                          // Otherwise most recent endDate first
-                          const aDate = a.endDate ? new Date(a.endDate) : new Date(a.startDate);
-                          const bDate = b.endDate ? new Date(b.endDate) : new Date(b.startDate);
-                          return bDate - aDate;
+                      {educationList
+                        .slice() // copy
+                        .sort((a, b) => {
+                          // Reverse-chronological by endDate (ongoing considered most recent)
+                          const aTime = a.current ? Number.MAX_SAFE_INTEGER : (a.endDate ? new Date(a.endDate).getTime() : new Date(a.startDate).getTime());
+                          const bTime = b.current ? Number.MAX_SAFE_INTEGER : (b.endDate ? new Date(b.endDate).getTime() : new Date(b.startDate).getTime());
+                          return bTime - aTime;
                         })
                         .map((edu, index) => (
-                          <div key={edu._id || index} className="border rounded-lg p-4 hover:shadow-md transition relative">
-                            {edu.current && (
-                              <div className="absolute top-4 right-4">
-                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">
-                                  Currently Enrolled
-                                </span>
-                              </div>
-                            )}
+                          <div key={edu._id || index} className="relative mb-8 pl-6">
+                            {/* timeline dot */}
+                            <div className={`absolute left-0 top-2 w-3 h-3 rounded-full border-2 ${edu.current ? 'bg-green-500 border-green-200' : 'bg-blue-600 border-white'}`} />
 
-                            <div className="flex flex-col">
-                              <div className="flex-1 pr-32">
-                                <h3 className="text-lg font-heading font-semibold text-gray-900">{edu.institution}</h3>
-                                <p className="text-gray-700 font-medium">{edu.degree} — {edu.fieldOfStudy}</p>
-                                <div className="flex items-center text-sm text-gray-600 mt-1 space-x-2">
-                                  {edu.location && (
-                                    <>
-                                      <span>{edu.location}</span>
-                                      <span>•</span>
-                                    </>
-                                  )}
-                                  <span>
+                            <div className="bg-white border rounded-lg p-4 shadow-sm">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <h3 className="text-lg font-heading font-semibold text-gray-900">{edu.degree} — {edu.institution}</h3>
+                                  <p className="text-sm text-gray-600 mt-1">{edu.fieldOfStudy}</p>
+                                  <div className="text-sm text-gray-500 mt-2">
                                     {(() => {
                                       const startDate = new Date(edu.startDate);
                                       const startMonth = String(startDate.getMonth() + 1).padStart(2, '0');
                                       const startYear = startDate.getFullYear();
-                                      return `${startMonth}/${startYear}`;
+                                      const startStr = `${startMonth}/${startYear}`;
+                                      const endStr = edu.current ? 'Present' : (() => { const d = new Date(edu.endDate); return `${String(d.getMonth() + 1).padStart(2,'0')}/${d.getFullYear()}`; })();
+                                      return `${startStr} — ${endStr}`;
                                     })()}
-                                    {' - '}
-                                    {edu.current
-                                      ? 'Present'
-                                      : (() => {
-                                          const endDate = new Date(edu.endDate);
-                                          const endMonth = String(endDate.getMonth() + 1).padStart(2, '0');
-                                          const endYear = endDate.getFullYear();
-                                          return `${endMonth}/${endYear}`;
-                                        })()
-                                    }
-                                  </span>
+                                  </div>
+
+                                  {edu.achievements && (
+                                    <div className="mt-3 p-3 bg-gray-50 border rounded">
+                                      <strong className="text-gray-800">Honors / Achievements</strong>
+                                      <p className="mt-1 text-gray-700 whitespace-pre-wrap">{edu.achievements}</p>
+                                    </div>
+                                  )}
+
+                                  {typeof edu.gpa !== 'undefined' && edu.gpa !== null && (
+                                    <p className="mt-3 text-sm text-gray-700">GPA: {edu.gpaPrivate ? 'Private' : edu.gpa}</p>
+                                  )}
                                 </div>
 
-                                {edu.achievements && (
-                                  <p className="mt-2 text-gray-700 whitespace-pre-wrap">Honors / Achievements: {edu.achievements}</p>
-                                )}
+                                <div className="flex-shrink-0 ml-4 text-gray-600 flex items-start gap-2">
+                                  {edu.current ? (
+                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">Ongoing</span>
+                                  ) : (
+                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-800 border border-blue-100">Completed</span>
+                                  )}
 
-                                {typeof edu.gpa !== 'undefined' && edu.gpa !== null && (
-                                  <p className="mt-2 text-gray-700">GPA: {edu.gpaPrivate ? 'Private' : edu.gpa}</p>
-                                )}
-                              </div>
+                                  <div className="flex flex-col">
+                                    <button
+                                      onClick={() => handleEditEducation(edu)}
+                                      className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                      title="Edit education"
+                                    >
+                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                      </svg>
+                                    </button>
 
-                              <div className="flex justify-end mt-3 space-x-2">
-                                <button
-                                  onClick={() => handleEditEducation(edu)}
-                                  className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                                  title="Edit education"
-                                >
-                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                  </svg>
-                                </button>
-
-                                {educationList.length > 1 && (
-                                  <button
-                                    onClick={() => handleDeleteEducationClick(edu)}
-                                    className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-                                    title="Delete education"
-                                  >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                  </button>
-                                )}
+                                    {educationList.length > 1 && (
+                                      <button
+                                        onClick={() => handleDeleteEducationClick(edu)}
+                                        className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                                        title="Delete education"
+                                      >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           </div>
                         ))}
-
                     </div>
                   ) : (
                     <p className="text-gray-500 italic">No education added yet.</p>

@@ -1,7 +1,9 @@
 // frontend/src/components/Button.jsx
-import React from "react";
+import { jsxDEV } from "react/jsx-dev-runtime";
+import React from 'react';
 import clsx from "classnames";
 import LoadingSpinner from "./LoadingSpinner";
+import Icon from "./Icon";
 
 export default function Button({
     children,
@@ -10,6 +12,8 @@ export default function Button({
     isLoading = false,
     disabled = false,
     className = "",
+    icon = null, // string name or component or element
+    iconPosition = 'left',
     ...props
 }) {
     const sizes = {
@@ -40,7 +44,33 @@ export default function Button({
             disabled={disabled || isLoading}
             {...props}
         >
+            {/* Icon on the left */}
+            {!isLoading && icon && iconPosition === 'left' && (
+                <span className="inline-flex items-center mr-2">
+                    {typeof icon === 'string' ? (
+                        <Icon name={icon} size={size === 'small' ? 'sm' : size === 'large' ? 'lg' : 'md'} />
+                    ) : typeof icon === 'function' ? (
+                        <Icon as={icon} size={size === 'small' ? 'sm' : size === 'large' ? 'lg' : 'md'} />
+                    ) : (
+                        React.isValidElement(icon) ? React.cloneElement(icon, { className: `${icon.props?.className || ''}` }) : null
+                    )}
+                </span>
+            )}
+
             {children}
+
+            {/* Icon on the right */}
+            {!isLoading && icon && iconPosition === 'right' && (
+                <span className="inline-flex items-center ml-2">
+                    {typeof icon === 'string' ? (
+                        <Icon name={icon} size={size === 'small' ? 'sm' : size === 'large' ? 'lg' : 'md'} />
+                    ) : typeof icon === 'function' ? (
+                        <Icon as={icon} size={size === 'small' ? 'sm' : size === 'large' ? 'lg' : 'md'} />
+                    ) : (
+                        React.isValidElement(icon) ? React.cloneElement(icon, { className: `${icon.props?.className || ''}` }) : null
+                    )}
+                </span>
+            )}
             {isLoading && (
                 <div className="absolute inset-0 flex items-center justify-center">
                     <LoadingSpinner size={size === "small" ? "sm" : size === "large" ? "lg" : "md"} />

@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
 import Logo from './Logo';
+import Icon from './Icon';
 
 /**
  * LoadingSpinner - Branded loading indicator with Nirvana logo
@@ -9,9 +10,9 @@ import Logo from './Logo';
  * @param {boolean} fullScreen - Show as full-screen overlay
  * @param {string} variant - 'spinner' (animated circles) or 'logo' (pulsing logo)
  */
-const LoadingSpinner = ({ 
-  size = 'md', 
-  text = 'Loading...', 
+const LoadingSpinner = ({
+  size = 'md',
+  text = 'Loading...',
   fullScreen = false,
   variant = 'spinner'
 }) => {
@@ -38,14 +39,21 @@ const LoadingSpinner = ({
       <Logo variant="icon" size={logoSizeMap[size]} />
     </div>
   ) : (
-    <div className={`${sizeClasses[size]} relative`}>
-      {/* Outer ring */}
-      <div className="absolute inset-0 border-4 border-blue-200 rounded-full"></div>
-      {/* Spinning ring */}
-      <div className="absolute inset-0 border-4 border-transparent border-t-blue-600 rounded-full animate-spin"></div>
-      {/* Inner accent ring */}
-      <div className="absolute inset-2 border-2 border-transparent border-t-accent rounded-full animate-spin" 
-           style={{ animationDuration: '0.8s', animationDirection: 'reverse' }}></div>
+    // use lucide Loader icon for crisp scalable spinner, fall back to CSS rings
+    <div className={`${sizeClasses[size]} relative flex items-center justify-center`}>
+      {Icon ? (
+        <Icon name="Loader" className={`text-blue-600`} size={size === 'sm' ? 'sm' : size === 'lg' ? 'lg' : 'md'} />
+      ) : (
+        <>
+          {/* Outer ring */}
+          <div className="absolute inset-0 border-4 border-blue-200 rounded-full"></div>
+          {/* Spinning ring */}
+          <div className="absolute inset-0 border-4 border-transparent border-t-blue-600 rounded-full animate-spin"></div>
+          {/* Inner accent ring */}
+          <div className="absolute inset-2 border-2 border-transparent border-t-accent rounded-full animate-spin"
+            style={{ animationDuration: '0.8s', animationDirection: 'reverse' }}></div>
+        </>
+      )}
     </div>
   );
 

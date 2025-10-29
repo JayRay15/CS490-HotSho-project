@@ -3,6 +3,7 @@ import { useAuth } from "@clerk/clerk-react";
 import api, { setAuthToken } from "../api/axios";
 import { resizeImage, isValidImageType, isValidImageSize, formatFileSize, blobToFile } from "../utils/imageUtils";
 import ErrorMessage from "./ErrorMessage";
+import Icon from './Icon';
 
 export default function ProfilePictureUpload({ currentPicture, onUploadSuccess, onDeleteSuccess }) {
   const { getToken } = useAuth();
@@ -48,9 +49,9 @@ export default function ProfilePictureUpload({ currentPicture, onUploadSuccess, 
       setUploadProgress(30);
       const resizedBlob = await resizeImage(file, 512, 512, 0.9);
       const resizedFile = blobToFile(resizedBlob, file.name);
-      
+
       setSelectedFile(resizedFile);
-      
+
       // Create preview URL
       const previewUrl = URL.createObjectURL(resizedBlob);
       setPreview(previewUrl);
@@ -166,7 +167,7 @@ export default function ProfilePictureUpload({ currentPicture, onUploadSuccess, 
   return (
     <div className="relative">
       {/* Profile Picture with Hover Effect */}
-      <div 
+      <div
         className="relative w-32 h-32 rounded-full overflow-hidden flex items-center justify-center border-4 cursor-pointer group"
         style={{ backgroundColor: '#E4E6E0', borderColor: '#B7B89F' }}
         onMouseEnter={() => setIsHovering(true)}
@@ -177,16 +178,12 @@ export default function ProfilePictureUpload({ currentPicture, onUploadSuccess, 
         {displayPicture ? (
           <img src={displayPicture} alt="Profile" className="w-full h-full object-cover" />
         ) : (
-          <svg className="w-20 h-20" style={{ color: '#777C6D' }} fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-          </svg>
+          <Icon name="User" size="xl" className="text-[#777C6D]" />
         )}
 
         {/* Hover Overlay with Edit Icon */}
         <div className={`absolute inset-0 bg-black transition-opacity duration-200 flex items-center justify-center ${isHovering ? 'opacity-50' : 'opacity-0'}`}>
-          <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-          </svg>
+          <Icon name="Edit3" size="lg" className="text-white" />
         </div>
       </div>
 
@@ -203,9 +200,7 @@ export default function ProfilePictureUpload({ currentPicture, onUploadSuccess, 
               onMouseOut={(e) => e.currentTarget.style.color = '#9CA3AF'}
               disabled={isUploading}
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <Icon name="X" size="lg" className="text-[#9CA3AF]" />
             </button>
 
             {/* Modal Title */}
@@ -229,7 +224,7 @@ export default function ProfilePictureUpload({ currentPicture, onUploadSuccess, 
               {isUploading && uploadProgress > 0 && (
                 <div className="w-full">
                   <div className="rounded-full h-2 mb-2" style={{ backgroundColor: '#E4E6E0' }}>
-                    <div 
+                    <div
                       className="h-2 rounded-full transition-all duration-300"
                       style={{ width: `${uploadProgress}%`, backgroundColor: '#777C6D' }}
                     />

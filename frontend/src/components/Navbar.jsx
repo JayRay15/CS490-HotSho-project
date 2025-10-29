@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth, useUser } from "@clerk/clerk-react";
 import api, { setAuthToken } from "../api/axios";
 import Logo from "./Logo";
+import Icon from "./Icon";
 
 export default function Navbar() {
     const { getToken } = useAuth();
@@ -19,7 +20,7 @@ export default function Navbar() {
                 const token = await getToken();
                 setAuthToken(token);
                 const response = await api.get('/api/users/me');
-                
+
                 if (response.data.data?.picture) {
                     setProfilePicture(response.data.data.picture);
                 } else {
@@ -46,11 +47,10 @@ export default function Navbar() {
     }, [location]);
 
     // NavLink active class styling
-    const navLinkClass = ({ isActive }) => 
-        `px-3 py-2 rounded-lg transition-all duration-200 font-medium focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-primary-700 ${
-            isActive 
-                ? 'bg-primary-800 text-white shadow-md' 
-                : 'text-white hover:bg-primary-600 hover:shadow-sm active:bg-primary-900'
+    const navLinkClass = ({ isActive }) =>
+        `px-3 py-2 rounded-lg transition-all duration-200 font-medium focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-primary-700 ${isActive
+            ? 'bg-primary-800 text-white shadow-md'
+            : 'text-white hover:bg-primary-600 hover:shadow-sm active:bg-primary-900'
         }`;
 
     return (
@@ -58,8 +58,8 @@ export default function Navbar() {
             <div className="px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-16">
                     {/* Logo/Brand */}
-                    <Link 
-                        to="/" 
+                    <Link
+                        to="/"
                         className="flex items-center gap-2 hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-primary-700 rounded px-2 py-1"
                         aria-label="Nirvana Home"
                     >
@@ -84,7 +84,7 @@ export default function Navbar() {
                                 Profile
                             </NavLink>
                             <div className="ml-3 custom-user-button">
-                                <UserButton 
+                                <UserButton
                                     afterSignOutUrl="/login"
                                     appearance={{
                                         elements: {
@@ -141,51 +141,44 @@ export default function Navbar() {
                         aria-controls="mobile-menu"
                     >
                         {mobileMenuOpen ? (
-                            // Close icon
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                            // Close icon - use unified Icon component (lucide)
+                            <Icon name="X" size="lg" className="text-white" aria-hidden="true" />
                         ) : (
-                            // Hamburger icon
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                            </svg>
+                            // Hamburger/Menu icon
+                            <Icon name="Menu" size="lg" className="text-white" aria-hidden="true" />
                         )}
                     </button>
                 </div>
             </div>
 
             {/* Mobile Menu */}
-            <div 
+            <div
                 id="mobile-menu"
-                className={`md:hidden border-t transition-all duration-300 ease-in-out overflow-hidden ${
-                    mobileMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
-                }`}
+                className={`md:hidden border-t transition-all duration-300 ease-in-out overflow-hidden ${mobileMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                    }`}
                 style={{ backgroundColor: '#3A3D35', borderTopColor: '#656A5C' }}
                 aria-hidden={!mobileMenuOpen}
             >
                 <div className="px-4 py-3 space-y-2">
                     <SignedOut>
-                        <NavLink 
-                            to="/register" 
-                            className={({ isActive }) => 
-                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${
-                                    isActive 
-                                        ? 'bg-primary-900 text-white shadow-md' 
-                                        : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                        <NavLink
+                            to="/register"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
                                 }`
                             }
                             aria-label="Register"
                         >
                             Register
                         </NavLink>
-                        <NavLink 
-                            to="/login" 
-                            className={({ isActive }) => 
-                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${
-                                    isActive 
-                                        ? 'bg-primary-900 text-white shadow-md' 
-                                        : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                        <NavLink
+                            to="/login"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
                                 }`
                             }
                             aria-label="Login"
@@ -194,26 +187,24 @@ export default function Navbar() {
                         </NavLink>
                     </SignedOut>
                     <SignedIn>
-                        <NavLink 
-                            to="/dashboard" 
-                            className={({ isActive }) => 
-                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${
-                                    isActive 
-                                        ? 'bg-primary-900 text-white shadow-md' 
-                                        : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                        <NavLink
+                            to="/dashboard"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
                                 }`
                             }
                             aria-label="Dashboard"
                         >
                             Dashboard
                         </NavLink>
-                        <NavLink 
-                            to="/profile" 
-                            className={({ isActive }) => 
-                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${
-                                    isActive 
-                                        ? 'bg-primary-900 text-white shadow-md' 
-                                        : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                        <NavLink
+                            to="/profile"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
                                 }`
                             }
                             aria-label="Profile"
@@ -223,7 +214,7 @@ export default function Navbar() {
                         <div className="pt-3 pb-2 flex items-center space-x-3 px-4">
                             <span className="text-sm text-primary-50">Account</span>
                             <div className="custom-user-button">
-                                <UserButton 
+                                <UserButton
                                     afterSignOutUrl="/login"
                                     appearance={{
                                         elements: {
