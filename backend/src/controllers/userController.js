@@ -259,11 +259,21 @@ export const deleteAccount = asyncHandler(async (req, res) => {
   // CRITICAL: Delete user from Clerk/Auth0 first to prevent re-registration
   try {
     await clerkClient.users.deleteUser(userAuth0Id);
-    console.log(`🗑️  Deleted user from Clerk: ${userAuth0Id}`);
+    console.log(`✅ Successfully deleted user from Clerk: ${userAuth0Id}`);
   } catch (clerkError) {
-    console.error(`⚠️  Failed to delete user from Clerk:`, clerkError.message);
-    // Continue with database deletion even if Clerk deletion fails
-    // This prevents orphaned accounts in our database
+    console.error(`❌ FAILED to delete user from Clerk:`, clerkError);
+    console.error(`   Error message: ${clerkError.message}`);
+    console.error(`   Error status: ${clerkError.status}`);
+    
+    // If Clerk deletion fails, we should NOT continue
+    // Otherwise user can't re-register with the same email
+    const { response, statusCode } = errorResponse(
+      "Failed to fully delete account. Please try again or contact support.",
+      500,
+      ERROR_CODES.EXTERNAL_SERVICE_ERROR,
+      [{ field: 'clerk', message: 'Could not delete authentication account', value: clerkError.message }]
+    );
+    return sendResponse(res, response, statusCode);
   }
   
   // IMMEDIATE PERMANENT DELETION - Remove account completely from database

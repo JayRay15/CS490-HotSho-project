@@ -279,19 +279,22 @@ export default function ProfilePage() {
             return;
           }
           
-          // If user not found (404), account doesn't exist
-          // Could be deleted or never registered - redirect to registration
+          // If user not found (404), attempt to register them first
           if (err.response?.status === 404 || err.customError?.errorCode === 3001) {
-            console.log("User not found in database. Account may have been deleted or never registered.");
-            console.log("Redirecting to registration page...");
-            
-            sessionStorage.setItem(
-              "logoutMessage", 
-              "Your account was not found. Please register to continue."
-            );
-            
-            await signOut();
-            return;
+            console.log("User not found in database, registering...");
+            try {
+              await api.post('/api/auth/register');
+              // Retry getting user profile
+              response = await api.get('/api/users/me');
+            } catch (registerErr) {
+              console.error("Failed to register user:", registerErr);
+              sessionStorage.setItem(
+                "logoutMessage", 
+                "Your account was not found. Please register to continue."
+              );
+              await signOut();
+              return;
+            }
           } else {
             throw err;
           }

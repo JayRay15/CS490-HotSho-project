@@ -61,7 +61,7 @@ SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=your-email@gmail.com
 SMTP_PASS=your-app-password
-SMTP_FROM="HotSho <no-reply@hotshoprofile.com>"
+   SMTP_FROM="Nirvana <no-reply@nirvanaprofile.com>"
 ```
 
 ### Step 3: Get SMTP Credentials

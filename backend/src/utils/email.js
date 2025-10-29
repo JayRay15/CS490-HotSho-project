@@ -29,7 +29,7 @@ const createTransporter = () => {
  * @param {string} fullName - User's full name
  */
 export const sendDeletionEmail = async (toEmail, fullName) => {
-  const subject = '🗑️ Your HotSho Account Has Been Permanently Deleted';
+  const subject = '🗑️ Your Nirvana Account Has Been Permanently Deleted';
   
   const htmlContent = `
     <!DOCTYPE html>
@@ -55,7 +55,7 @@ export const sendDeletionEmail = async (toEmail, fullName) => {
           <div class="content">
             <p>Hello <strong>${fullName || 'there'}</strong>,</p>
             
-            <p>This email confirms that your HotSho account (<strong>${toEmail}</strong>) and all associated data have been <strong>permanently deleted</strong> from our systems as of <strong>${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</strong>.</p>
+            <p>This email confirms that your Nirvana account (<strong>${toEmail}</strong>) and all associated data have been <strong>permanently deleted</strong> from our systems as of <strong>${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</strong>.</p>
             
             <div class="alert-box">
               <strong>⚠️ Important Information:</strong>
@@ -67,7 +67,7 @@ export const sendDeletionEmail = async (toEmail, fullName) => {
             </div>
 
             <div class="info-box">
-              <strong>�️ What was deleted:</strong>
+              <strong>🗑️ What was deleted:</strong>
               <ul>
                 <li>All profile information (name, email, phone, location)</li>
                 <li>Employment history and work experience</li>
@@ -82,21 +82,21 @@ export const sendDeletionEmail = async (toEmail, fullName) => {
 
             <p><strong>This action is permanent and cannot be undone.</strong></p>
 
-            <p>If you did not request this deletion, please contact our support team <strong>immediately</strong> at <a href="mailto:support@hotshoprofile.com">support@hotshoprofile.com</a></p>
+            <p>If you did not request this deletion, please contact our support team <strong>immediately</strong> at <a href="mailto:support@nirvanaprofile.com">support@nirvanaprofile.com</a></p>
 
             <div style="text-align: center; margin: 30px 0;">
-              <a href="mailto:support@hotshoprofile.com" class="button">Contact Support</a>
+              <a href="mailto:support@nirvanaprofile.com" class="button">Contact Support</a>
             </div>
 
-            <p>If you wish to use HotSho in the future, you will need to create a new account from scratch.</p>
+            <p>If you wish to use Nirvana in the future, you will need to create a new account from scratch.</p>
 
-            <p>Thank you for using HotSho. We're sorry to see you go and wish you all the best!</p>
+            <p>Thank you for using Nirvana. We're sorry to see you go and wish you all the best!</p>
             
-            <p>Best regards,<br><strong>The HotSho Team</strong></p>
+            <p>Best regards,<br><strong>The Nirvana Team</strong></p>
           </div>
           <div class="footer">
             <p>This is an automated message. Please do not reply to this email.</p>
-            <p>&copy; ${new Date().getFullYear()} HotSho. All rights reserved.</p>
+            <p>&copy; ${new Date().getFullYear()} Nirvana. All rights reserved.</p>
           </div>
         </div>
       </body>
@@ -104,7 +104,7 @@ export const sendDeletionEmail = async (toEmail, fullName) => {
   `;
 
   const textContent = `Hello ${fullName || 'there'},\n\n` +
-    `This email confirms that your HotSho account (${toEmail}) and all associated data have been permanently deleted from our systems as of ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}.\n\n` +
+    `This email confirms that your Nirvana account (${toEmail}) and all associated data have been permanently deleted from our systems as of ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}.\n\n` +
     `⚠️ IMPORTANT INFORMATION:\n` +
     `- Your account has been immediately and permanently deleted\n` +
     `- You have been logged out and can no longer access your account\n` +
@@ -119,10 +119,10 @@ export const sendDeletionEmail = async (toEmail, fullName) => {
     `- All uploaded files and images\n` +
     `- Account credentials and settings\n\n` +
     `This action is permanent and cannot be undone.\n\n` +
-    `If you did not request this deletion, please contact support immediately at support@hotshoprofile.com\n\n` +
-    `If you wish to use HotSho in the future, you will need to create a new account.\n\n` +
-    `Thank you for using HotSho. We're sorry to see you go and wish you all the best!\n\n` +
-    `Best regards,\nThe HotSho Team\n\n` +
+    `If you did not request this deletion, please contact support immediately at support@nirvanaprofile.com\n\n` +
+    `If you wish to use Nirvana in the future, you will need to create a new account.\n\n` +
+    `Thank you for using Nirvana. We're sorry to see you go and wish you all the best!\n\n` +
+    `Best regards,\nThe Nirvana Team\n\n` +
     `This is an automated message. Please do not reply to this email.`;
 
   const transporter = createTransporter();
@@ -137,7 +137,7 @@ export const sendDeletionEmail = async (toEmail, fullName) => {
 
   try {
     const info = await transporter.sendMail({
-      from: process.env.SMTP_FROM || '"HotSho" <no-reply@hotshoprofile.com>',
+      from: process.env.SMTP_FROM || '"Nirvana" <no-reply@nirvanaprofile.com>',
       to: toEmail,
       subject,
       text: textContent,
@@ -158,7 +158,7 @@ export const sendDeletionEmail = async (toEmail, fullName) => {
  * @param {string} fullName - User's full name
  */
 export const sendFinalDeletionEmail = async (toEmail, fullName) => {
-  const subject = '🗑️ Your HotSho Account Has Been Permanently Deleted';
+  const subject = '🗑️ Your Nirvana Account Has Been Permanently Deleted';
   
   const htmlContent = `
     <!DOCTYPE html>
@@ -182,7 +182,7 @@ export const sendFinalDeletionEmail = async (toEmail, fullName) => {
           <div class="content">
             <p>Hello <strong>${fullName || 'there'}</strong>,</p>
             
-            <p>This email confirms that your HotSho account (<strong>${toEmail}</strong>) and all associated data have been <strong>permanently deleted</strong> from our systems as of <strong>${new Date().toLocaleDateString()}</strong>.</p>
+            <p>This email confirms that your Nirvana account (<strong>${toEmail}</strong>) and all associated data have been <strong>permanently deleted</strong> from our systems as of <strong>${new Date().toLocaleDateString()}</strong>.</p>
             
             <div class="info-box">
               <strong>🗑️ What was deleted:</strong>
@@ -198,15 +198,15 @@ export const sendFinalDeletionEmail = async (toEmail, fullName) => {
 
             <p><strong>This action is permanent and cannot be undone.</strong></p>
 
-            <p>If you wish to use HotSho in the future, you will need to create a new account from scratch.</p>
+            <p>If you wish to use Nirvana in the future, you will need to create a new account from scratch.</p>
 
             <p>Thank you for being part of our community. We wish you all the best in your future endeavors!</p>
             
-            <p>Best regards,<br><strong>The HotSho Team</strong></p>
+            <p>Best regards,<br><strong>The Nirvana Team</strong></p>
           </div>
           <div class="footer">
             <p>This is an automated message. Please do not reply to this email.</p>
-            <p>&copy; ${new Date().getFullYear()} HotSho. All rights reserved.</p>
+            <p>&copy; ${new Date().getFullYear()} Nirvana. All rights reserved.</p>
           </div>
         </div>
       </body>
@@ -214,7 +214,7 @@ export const sendFinalDeletionEmail = async (toEmail, fullName) => {
   `;
 
   const textContent = `Hello ${fullName || 'there'},\n\n` +
-    `This email confirms that your HotSho account (${toEmail}) and all associated data have been permanently deleted from our systems as of ${new Date().toLocaleDateString()}.\n\n` +
+    `This email confirms that your Nirvana account (${toEmail}) and all associated data have been permanently deleted from our systems as of ${new Date().toLocaleDateString()}.\n\n` +
     `WHAT WAS DELETED:\n` +
     `- All profile information\n` +
     `- Employment and education history\n` +
@@ -222,9 +222,9 @@ export const sendFinalDeletionEmail = async (toEmail, fullName) => {
     `- Uploaded documents and images\n` +
     `- Account credentials and settings\n\n` +
     `This action is permanent and cannot be undone.\n\n` +
-    `If you wish to use HotSho in the future, you will need to create a new account.\n\n` +
+    `If you wish to use Nirvana in the future, you will need to create a new account.\n\n` +
     `Thank you for being part of our community. We wish you all the best!\n\n` +
-    `Best regards,\nThe HotSho Team\n\n` +
+    `Best regards,\nThe Nirvana Team\n\n` +
     `This is an automated message. Please do not reply to this email.`;
 
   const transporter = createTransporter();
@@ -239,7 +239,7 @@ export const sendFinalDeletionEmail = async (toEmail, fullName) => {
 
   try {
     const info = await transporter.sendMail({
-      from: process.env.SMTP_FROM || '"HotSho" <no-reply@hotshoprofile.com>',
+      from: process.env.SMTP_FROM || '"Nirvana" <no-reply@nirvanaprofile.com>',
       to: toEmail,
       subject,
       text: textContent,

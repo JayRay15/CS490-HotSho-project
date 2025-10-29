@@ -47,10 +47,25 @@ export const register = asyncHandler(async (req, res) => {
     return sendResponse(res, response, statusCode);
   }
 
-  // Check for duplicate email
+  // Check for duplicate email (might be from a different Clerk account)
+  console.log(`🔍 Checking for existing email in database: ${email}`);
   const emailExists = await User.findOne({ email });
+  console.log(`🔍 Email exists result:`, emailExists ? `YES - ${emailExists._id}` : 'NO');
+  
   if (emailExists) {
-    console.log(`⚠️  Registration blocked: Email already exists: ${email}`);
+    console.log(`⚠️  Registration blocked: Email already exists in database`);
+    console.log(`   Existing user Clerk ID: ${emailExists.auth0Id}`);
+    console.log(`   New user Clerk ID: ${userId}`);
+    console.log(`   Email: ${email}`);
+    console.log(`   Database ID: ${emailExists._id}`);
+    console.log(`   Same Clerk ID?`, emailExists.auth0Id === userId);
+    
+    // If the Clerk IDs are different, this might be an old account that wasn't properly deleted
+    if (emailExists.auth0Id !== userId) {
+      console.warn(`⚠️  Different Clerk IDs! This might be an orphaned account.`);
+      console.warn(`   Consider deleting the old database record.`);
+    }
+    
     const { response, statusCode } = errorResponse(
       "An account with this email already exists",
       409,
