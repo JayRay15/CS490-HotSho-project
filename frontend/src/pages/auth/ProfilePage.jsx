@@ -248,6 +248,7 @@ export default function ProfilePage() {
   const [projectList, setProjectList] = useState([]);
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
+  const [editingCertification, setEditingCertification] = useState(null);
   const [projectSuccessMessage, setProjectSuccessMessage] = useState(null);
   const navigate = useNavigate();
 
@@ -1184,7 +1185,7 @@ export default function ProfilePage() {
                       <div className="flex justify-between items-center mb-4">
                         <h2 className="text-xl font-heading font-semibold text-gray-800">Certifications</h2>
                         <button
-                          onClick={() => setShowCertModal(true)}
+                          onClick={() => { setEditingCertification(null); setShowCertModal(true); }}
                           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1202,14 +1203,23 @@ export default function ProfilePage() {
                               if (c.doesNotExpire) return null;
                               if (!c.expirationDate) return null;
                               const d = new Date(c.expirationDate);
+                              if (isNaN(d.getTime())) return null; // Invalid date
                               const now = new Date();
                               return Math.ceil((d - now) / (1000 * 60 * 60 * 24));
                             })();
                             const expiringSoon = days !== null && days <= (c.reminderDays || 30) && days >= 0;
                             const expired = days !== null && days < 0;
+                            
+                            // Format dates for display
+                            const formatDate = (dateStr) => {
+                              if (!dateStr) return '—';
+                              const d = new Date(dateStr);
+                              if (isNaN(d.getTime())) return '—';
+                              return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+                            };
 
                             return (
-                              <div key={c.id || index} className="border rounded-lg p-4 hover:shadow-md transition relative">
+                              <div key={c._id || c.id || index} className="border rounded-lg p-4 hover:shadow-md transition relative">
                                 <div className="flex justify-between">
                                   <div>
                                     <h3 className="text-lg font-heading font-semibold text-gray-900">{c.name}</h3>
@@ -1219,7 +1229,7 @@ export default function ProfilePage() {
                                       <span>•</span>
                                       <span>{c.industry || '—'}</span>
                                     </div>
-                                    <div className="text-sm mt-2">Earned: {c.dateEarned || '—'} · {c.doesNotExpire ? 'Does not expire' : (c.expirationDate || '—')}</div>
+                                    <div className="text-sm mt-2">Earned: {formatDate(c.dateEarned)} · {c.doesNotExpire ? 'Does not expire' : formatDate(c.expirationDate)}</div>
                                     <div className="text-sm mt-1">Verification: <strong className={`ml-2 ${c.verification === 'Verified' ? 'text-green-600' : c.verification === 'Pending' ? 'text-yellow-600' : 'text-gray-600'}`}>{c.verification}</strong></div>
                                     {c.document && <div className="mt-2"><a className="text-sm text-blue-600 underline" href={c.document.data} target="_blank" rel="noreferrer">View document ({c.document.name})</a></div>}
                                     <div className="mt-2 text-sm">
@@ -1231,10 +1241,8 @@ export default function ProfilePage() {
                                   <div className="flex items-start gap-2">
                                     <button
                                       onClick={() => {
-                                        // open the full Certifications UI for editing by opening modal
-                                        // user can use its Edit flow there
+                                        setEditingCertification(c);
                                         setShowCertModal(true);
-                                        // slight delay to allow modal mount; Certifications reads localStorage itself
                                       }}
                                       className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
                                       title="Edit certification"
@@ -1254,6 +1262,7 @@ export default function ProfilePage() {
                                           setCertList(me?.data?.data?.certifications || []);
                                         } catch (e) {
                                           console.error(e);
+                                          alert('Failed to delete certification. Please try again.');
                                         }
                                       }}
                                       className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
@@ -1315,7 +1324,10 @@ export default function ProfilePage() {
                                           await api.put(`/api/profile/certifications/${c._id}`, { reminderSnoozedUntil: new Date(Date.now() + 7*24*60*60*1000).toISOString() });
                                           const me = await api.get('/api/users/me');
                                           setCertList(me?.data?.data?.certifications || []);
-                                        } catch (e) { console.error(e); }
+                                        } catch (e) { 
+                                          console.error(e);
+                                          alert('Failed to snooze reminder. Please try again.');
+                                        }
                                       }}>Snooze 7d</button>
                                       <button className="text-sm text-gray-600 hover:text-gray-800" onClick={async () => {
                                         try {
@@ -1324,7 +1336,10 @@ export default function ProfilePage() {
                                           await api.put(`/api/profile/certifications/${c._id}`, { reminderDismissed: true });
                                           const me = await api.get('/api/users/me');
                                           setCertList(me?.data?.data?.certifications || []);
-                                        } catch (e) { console.error(e); }
+                                        } catch (e) { 
+                                          console.error(e);
+                                          alert('Failed to dismiss reminder. Please try again.');
+                                        }
                                       }}>Dismiss</button>
                                     </div>
                                   </div>
@@ -1338,13 +1353,13 @@ export default function ProfilePage() {
 
                     {/* Certifications modal - renders full Certifications UI */}
                     {showCertModal && (
-                      <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={() => { setShowCertModal(false); }}>
+                      <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={() => { setShowCertModal(false); setEditingCertification(null); }}>
                         <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
                           {/* Modal Header */}
                           <div className="flex justify-between items-center p-6 border-b sticky top-0 bg-white z-10">
                             <h3 className="text-xl font-heading font-semibold text-gray-900">Certifications</h3>
                             <button 
-                              onClick={() => setShowCertModal(false)} 
+                              onClick={() => { setShowCertModal(false); setEditingCertification(null); }} 
                               className="text-gray-400 hover:text-gray-600 transition"
                             >
                               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1355,14 +1370,21 @@ export default function ProfilePage() {
                           
                           {/* Modal Content */}
                           <div className="flex-1 overflow-y-auto p-6">
-                            <Certifications getToken={getToken} onListUpdate={(updated) => setCertList(updated)} />
+                            <Certifications 
+                              getToken={getToken} 
+                              onListUpdate={(updated) => setCertList(updated)} 
+                              editingCertification={editingCertification}
+                            />
                           </div>
                           
                           {/* Modal Footer */}
                           <div className="flex justify-end space-x-4 p-6 border-t sticky bottom-0 bg-white">
                             <button
                               type="button"
-                              onClick={() => setShowCertModal(false)}
+                              onClick={() => {
+                                setShowCertModal(false);
+                                setEditingCertification(null);
+                              }}
                               className="px-6 py-2 border rounded-lg transition"
                               style={{ borderColor: '#D1D5DB', color: '#374151' }}
                               onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#F9FAFB'}
