@@ -29,7 +29,10 @@ app.use(express.json());
 // API Routes
 app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
+// Mount profile routes under /api/profile (existing) and also under /api/users
+// so frontend requests to /api/users/... (used elsewhere in the app) resolve correctly.
 app.use("/api/profile", profileRoutes);
+app.use("/api/users", profileRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {

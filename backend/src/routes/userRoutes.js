@@ -2,6 +2,7 @@ import express from "express";
 import { getCurrentUser, updateCurrentUser, uploadProfilePicture, deleteProfilePicture, upload, deleteAccount, addEmployment, updateEmployment, deleteEmployment } from "../controllers/userController.js";
 import { checkJwt } from "../middleware/checkJwt.js";
 
+
 const router = express.Router();
 
 // GET /api/users/me - Get current user profile
@@ -26,5 +27,7 @@ router.put("/employment/:employmentId", checkJwt, updateEmployment);
 
 // DELETE /api/users/employment/:employmentId - Delete employment entry
 router.delete("/employment/:employmentId", checkJwt, deleteEmployment);
+
+// Note: education endpoints are defined in profileRoutes and mounted under /api/profile and /api/users
 
 export default router;

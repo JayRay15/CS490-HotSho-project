@@ -26,6 +26,8 @@ const educationSchema = new mongoose.Schema({
   endDate: { type: Date },
   current: { type: Boolean, default: false },
   gpa: { type: Number },
+  gpaPrivate: { type: Boolean, default: true },
+  achievements: { type: String, maxlength: 1000 },
   location: { type: String }
 }, { timestamps: true });
 
