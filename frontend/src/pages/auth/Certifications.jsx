@@ -16,7 +16,7 @@ const SAMPLE_ORGS = [
 
 import api, { setAuthToken } from "../../api/axios";
 
-export default function Certifications({ getToken, onListUpdate }) {
+export default function Certifications({ getToken, onListUpdate, editingCertification }) {
   const [list, setList] = useState([]);
   const [form, setForm] = useState({
     name: "",
@@ -54,6 +54,26 @@ export default function Certifications({ getToken, onListUpdate }) {
     };
     load();
   }, [getToken]);
+
+  // Initialize form when editingCertification prop changes
+  useEffect(() => {
+    if (editingCertification) {
+      setForm({
+        name: editingCertification.name || "",
+        organization: editingCertification.organization || "",
+        dateEarned: editingCertification.dateEarned ? new Date(editingCertification.dateEarned).toISOString().slice(0,10) : "",
+        expirationDate: editingCertification.expirationDate ? new Date(editingCertification.expirationDate).toISOString().slice(0,10) : "",
+        doesNotExpire: editingCertification.doesNotExpire || false,
+        certId: editingCertification.certId || "",
+        industry: editingCertification.industry || "",
+        reminderDays: typeof editingCertification.reminderDays === 'number' ? editingCertification.reminderDays : 30,
+        verification: editingCertification.verification || "Unverified",
+        document: editingCertification.document || null,
+      });
+      setEditingId(editingCertification._id || editingCertification.id);
+      setUploadedName(editingCertification.document ? editingCertification.document.name : null);
+    }
+  }, [editingCertification]);
 
   const saveList = (newList) => {
     setList(newList);
