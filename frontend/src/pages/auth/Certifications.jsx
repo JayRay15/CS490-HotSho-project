@@ -177,6 +177,7 @@ export default function Certifications({ getToken, onListUpdate, editingCertific
       }
     } catch (e) {
       console.error('Failed to delete certification', e);
+      alert('Failed to delete certification. Please try again.');
     }
   };
 
@@ -220,6 +221,7 @@ export default function Certifications({ getToken, onListUpdate, editingCertific
       }
     } catch (e) {
       console.error('Failed to toggle verification', e);
+      alert('Failed to update verification status. Please try again.');
     }
   };
 
