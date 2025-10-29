@@ -99,14 +99,14 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-8">
-      <div className="bg-white p-8 rounded-2xl shadow-md max-w-2xl w-full">
+    <div className="flex flex-col items-center justify-center min-h-screen p-8" style={{ backgroundColor: '#E4E6E0' }}>
+      <div className="p-8 rounded-2xl shadow-md max-w-2xl w-full border" style={{ backgroundColor: '#F5F6F4', borderColor: '#B7B89F' }}>
         <div className="flex justify-between items-start mb-6">
           <div>
-            <h1 className="text-3xl font-heading font-bold mb-2">
+            <h1 className="text-3xl font-heading font-bold mb-2" style={{ color: '#4F5348' }}>
               Welcome, {user?.fullName || user?.primaryEmailAddress?.emailAddress}
             </h1>
-            <p className="text-gray-600">You are successfully logged in!</p>
+            <p style={{ color: '#656A5C' }}>You are successfully logged in!</p>
           </div>
           <button
             onClick={() => {
@@ -114,7 +114,10 @@ export default function Dashboard() {
               sessionStorage.setItem("logoutMessage", "You have been successfully logged out");
               signOut();
             }}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+            className="px-4 py-2 text-white rounded-lg transition focus:outline-none focus:ring-2 focus:ring-offset-2"
+            style={{ backgroundColor: '#EF4444' }}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#DC2626'}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#EF4444'}
           >
             Logout
           </button>

@@ -355,14 +355,14 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen py-8" style={{ backgroundColor: '#E4E6E0' }}>
       <div className="max-w-4xl mx-auto px-4">
-        <div className="bg-white rounded-2xl shadow-md p-8">
+        <div className="rounded-2xl shadow-md p-8 border" style={{ backgroundColor: '#F5F6F4', borderColor: '#B7B89F' }}>
           {/* Header with Profile Picture */}
           <div className="flex justify-between items-start mb-8">
             <div>
-              <h1 className="text-3xl font-heading font-bold mb-2">My Profile</h1>
-              <p className="text-gray-600">View and manage your professional profile</p>
+              <h1 className="text-3xl font-heading font-bold mb-2" style={{ color: '#4F5348' }}>My Profile</h1>
+              <p style={{ color: '#656A5C' }}>View and manage your professional profile</p>
             </div>
             
             {/* Profile Picture Upload */}
@@ -379,8 +379,8 @@ export default function ProfilePage() {
 
           {/* Success Message */}
           {successMessage && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-green-800 font-medium">{successMessage}</p>
+            <div className="mb-6 p-4 border rounded-lg" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }}>
+              <p className="font-medium" style={{ color: '#166534' }}>{successMessage}</p>
             </div>
           )}
 
@@ -393,12 +393,15 @@ export default function ProfilePage() {
               {/* Profile Display */}
               <div className="space-y-6">
                 {/* Basic Information Section */}
-                <div className="border-b pb-6">
+                <div className="border-b pb-6" style={{ borderColor: '#B7B89F' }}>
                   <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-heading font-semibold text-gray-800">Basic Information</h2>
+                    <h2 className="text-xl font-heading font-semibold" style={{ color: '#4F5348' }}>Basic Information</h2>
                     <button
                       onClick={handleEditClick}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2"
+                      className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                      style={{ backgroundColor: '#777C6D' }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -409,61 +412,64 @@ export default function ProfilePage() {
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <p className="text-sm font-medium text-gray-500 mb-1">Full Name</p>
-                      <p className="text-gray-900">{userData?.name || '—'}</p>
+                      <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Full Name</p>
+                      <p style={{ color: '#4F5348' }}>{userData?.name || '—'}</p>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-500 mb-1">Email</p>
-                      <p className="text-gray-900">{userData?.email || '—'}</p>
+                      <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Email</p>
+                      <p style={{ color: '#4F5348' }}>{userData?.email || '—'}</p>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-500 mb-1">Phone</p>
-                      <p className="text-gray-900">{userData?.phone || '—'}</p>
+                      <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Phone</p>
+                      <p style={{ color: '#4F5348' }}>{userData?.phone || '—'}</p>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-500 mb-1">Location</p>
-                      <p className="text-gray-900">{userData?.location || '—'}</p>
+                      <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Location</p>
+                      <p style={{ color: '#4F5348' }}>{userData?.location || '—'}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Professional Information Section */}
-                <div className="border-b pb-6">
-                  <h2 className="text-xl font-heading font-semibold text-gray-800 mb-4">Professional Information</h2>
+                <div className="border-b pb-6" style={{ borderColor: '#B7B89F' }}>
+                  <h2 className="text-xl font-heading font-semibold mb-4" style={{ color: '#4F5348' }}>Professional Information</h2>
                   
                   <div className="space-y-4">
                     <div>
-                      <p className="text-sm font-medium text-gray-500 mb-1">Professional Headline</p>
-                      <p className="text-gray-900 text-lg">{userData?.headline || '—'}</p>
+                      <p className="text-sm font-medium mb-1" style={{ color: '#4B5563' }}>Professional Headline</p>
+                      <p className="text-lg" style={{ color: '#111827' }}>{userData?.headline || '—'}</p>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <p className="text-sm font-medium text-gray-500 mb-1">Industry</p>
-                        <p className="text-gray-900">{userData?.industry || '—'}</p>
+                        <p className="text-sm font-medium mb-1" style={{ color: '#4B5563' }}>Industry</p>
+                        <p style={{ color: '#111827' }}>{userData?.industry || '—'}</p>
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-gray-500 mb-1">Experience Level</p>
-                        <p className="text-gray-900">{userData?.experienceLevel || '—'}</p>
+                        <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Experience Level</p>
+                        <p style={{ color: '#4F5348' }}>{userData?.experienceLevel || '—'}</p>
                       </div>
                     </div>
 
                     {userData?.bio && (
                       <div>
-                        <p className="text-sm font-medium text-gray-500 mb-1">Bio / Summary</p>
-                        <p className="text-gray-900 whitespace-pre-wrap">{userData.bio}</p>
+                        <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Bio / Summary</p>
+                        <p className="whitespace-pre-wrap" style={{ color: '#4F5348' }}>{userData.bio}</p>
                       </div>
                     )}
                   </div>
                 </div>
 
                 {/* Employment History Section */}
-                <div className="border-b pb-6">
+                <div className="border-b pb-6" style={{ borderColor: '#B7B89F' }}>
                   <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-heading font-semibold text-gray-800">Employment History</h2>
+                    <h2 className="text-xl font-heading font-semibold" style={{ color: '#4F5348' }}>Employment History</h2>
                     <button
                       onClick={() => setShowEmploymentModal(true)}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2"
+                      className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                      style={{ backgroundColor: '#777C6D' }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -474,8 +480,8 @@ export default function ProfilePage() {
 
                   {/* Employment Success Message */}
                   {employmentSuccessMessage && (
-                    <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                      <p className="text-green-800 font-medium">{employmentSuccessMessage}</p>
+                    <div className="mb-4 p-4 border rounded-lg" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }}>
+                      <p className="font-medium" style={{ color: '#166534' }}>{employmentSuccessMessage}</p>
                     </div>
                   )}
 
@@ -500,7 +506,7 @@ export default function ProfilePage() {
                             {/* Current Position Badge - Top Right */}
                             {job.isCurrentPosition && (
                               <div className="absolute top-4 right-4">
-                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border" style={{ backgroundColor: '#DCFCE7', color: '#166534', borderColor: '#BBF7D0' }}>
                                   Current Position
                                 </span>
                               </div>
@@ -509,9 +515,9 @@ export default function ProfilePage() {
                             <div className="flex flex-col">
                               {/* Job Details */}
                               <div className="flex-1 pr-32">
-                                <h3 className="text-lg font-heading font-semibold text-gray-900">{job.jobTitle}</h3>
-                                <p className="text-gray-700 font-medium">{job.company}</p>
-                                <div className="flex items-center text-sm text-gray-600 mt-1 space-x-2">
+                                <h3 className="text-lg font-heading font-semibold text-text-primary">{job.jobTitle}</h3>
+                                <p className="text-text-primary font-medium">{job.company}</p>
+                                <div className="flex items-center text-sm text-text-secondary mt-1 space-x-2">
                                   {job.location && (
                                     <>
                                       <span>{job.location}</span>
@@ -538,7 +544,7 @@ export default function ProfilePage() {
                                   </span>
                                 </div>
                                 {job.description && (
-                                  <p className="mt-2 text-gray-700 whitespace-pre-wrap">{job.description}</p>
+                                  <p className="mt-2 whitespace-pre-wrap" style={{ color: '#111827' }}>{job.description}</p>
                                 )}
                               </div>
                               
@@ -546,7 +552,16 @@ export default function ProfilePage() {
                               <div className="flex justify-end mt-3 space-x-2">
                                 <button
                                   onClick={() => handleEditEmployment(job)}
-                                  className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                  className="p-2 rounded-lg transition focus:outline-none focus:ring-2"
+                                  style={{ color: '#6B7280' }}
+                                  onMouseOver={(e) => {
+                                    e.currentTarget.style.color = '#777C6D';
+                                    e.currentTarget.style.backgroundColor = '#F5F6F4';
+                                  }}
+                                  onMouseOut={(e) => {
+                                    e.currentTarget.style.color = '#6B7280';
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                  }}
                                   title="Edit employment"
                                 >
                                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -558,7 +573,16 @@ export default function ProfilePage() {
                                 {employmentList.length > 1 && (
                                   <button
                                     onClick={() => handleDeleteClick(job)}
-                                    className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                                    className="p-2 rounded-lg transition focus:outline-none focus:ring-2"
+                                    style={{ color: '#6B7280' }}
+                                    onMouseOver={(e) => {
+                                      e.currentTarget.style.color = '#EF4444';
+                                      e.currentTarget.style.backgroundColor = '#FEF2F2';
+                                    }}
+                                    onMouseOut={(e) => {
+                                      e.currentTarget.style.color = '#6B7280';
+                                      e.currentTarget.style.backgroundColor = 'transparent';
+                                    }}
                                     title="Delete employment"
                                   >
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -573,35 +597,59 @@ export default function ProfilePage() {
 
                     </div>
                   ) : (
-                    <p className="text-gray-500 italic">No employment history added yet.</p>
+                    <p className="italic" style={{ color: '#9CA3AF' }}>No employment history added yet.</p>
                   )}
                 </div>
 
                 {/* Additional Information */}
                 {(userData?.website || userData?.linkedin || userData?.github) && (
                   <div>
-                    <h2 className="text-xl font-heading font-semibold text-gray-800 mb-4">Links</h2>
+                    <h2 className="text-xl font-heading font-semibold mb-4" style={{ color: '#111827' }}>Links</h2>
                     <div className="space-y-2">
                       {userData?.website && (
                         <div>
-                          <p className="text-sm font-medium text-gray-500 mb-1">Website</p>
-                          <a href={userData.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                          <p className="text-sm font-medium mb-1" style={{ color: '#4B5563' }}>Website</p>
+                          <a 
+                            href={userData.website} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="hover:underline transition-colors"
+                            style={{ color: '#777C6D' }}
+                            onMouseOver={(e) => e.currentTarget.style.color = '#656A5C'}
+                            onMouseOut={(e) => e.currentTarget.style.color = '#777C6D'}
+                          >
                             {userData.website}
                           </a>
                         </div>
                       )}
                       {userData?.linkedin && (
                         <div>
-                          <p className="text-sm font-medium text-gray-500 mb-1">LinkedIn</p>
-                          <a href={userData.linkedin} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                          <p className="text-sm font-medium mb-1" style={{ color: '#4B5563' }}>LinkedIn</p>
+                          <a 
+                            href={userData.linkedin} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="hover:underline transition-colors"
+                            style={{ color: '#777C6D' }}
+                            onMouseOver={(e) => e.currentTarget.style.color = '#656A5C'}
+                            onMouseOut={(e) => e.currentTarget.style.color = '#777C6D'}
+                          >
                             {userData.linkedin}
                           </a>
                         </div>
                       )}
                       {userData?.github && (
                         <div>
-                          <p className="text-sm font-medium text-gray-500 mb-1">GitHub</p>
-                          <a href={userData.github} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                          <p className="text-sm font-medium mb-1" style={{ color: '#4B5563' }}>GitHub</p>
+                          <a 
+                            href={userData.github} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="hover:underline transition-colors"
+                            style={{ color: '#777C6D' }}
+                            onMouseOver={(e) => e.currentTarget.style.color = '#656A5C'}
+                            onMouseOut={(e) => e.currentTarget.style.color = '#777C6D'}
+                          >
                             {userData.github}
                           </a>
                         </div>
@@ -616,16 +664,19 @@ export default function ProfilePage() {
 
         {/* Danger Zone: Account deletion - moved to bottom of page */}
         <div className="mt-8">
-          <div className="bg-white rounded-2xl shadow-md p-6 border-2 border-red-200">
-            <h2 className="text-xl font-semibold text-red-600 mb-2">Danger Zone</h2>
-            <p className="text-sm text-gray-700 mb-4">
+          <div className="rounded-2xl shadow-md p-6 border-2" style={{ backgroundColor: '#EEEEEE', borderColor: '#FCA5A5' }}>
+            <h2 className="text-xl font-semibold mb-2" style={{ color: '#DC2626' }}>Danger Zone</h2>
+            <p className="text-sm mb-4" style={{ color: '#111827' }}>
               Deleting your account will schedule permanent removal of your personal data after a 30-day grace period. 
               You will be logged out immediately and cannot access your account during this period.
             </p>
             <div className="flex justify-end">
               <button
                 onClick={() => setShowDeleteModal(true)}
-                className="px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium"
+                className="px-6 py-2.5 text-white rounded-lg transition font-medium focus:outline-none focus:ring-2 focus:ring-offset-2"
+                style={{ backgroundColor: '#EF4444' }}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#DC2626'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#EF4444'}
               >
                 Delete Account
               </button>
@@ -646,37 +697,38 @@ export default function ProfilePage() {
           }}
         >
           <div 
-            className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6 mx-4" 
+            className="rounded-lg shadow-2xl max-w-md w-full p-6 mx-4 border" 
+            style={{ backgroundColor: '#EEEEEE', borderColor: '#E5E7EB' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start mb-4">
               <div className="shrink-0">
-                <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-6 w-6" style={{ color: '#DC2626' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
               <div className="ml-3 flex-1">
-                <h3 className="text-lg font-heading font-semibold text-gray-900 mb-2">Confirm Account Deletion</h3>
-                <p className="text-sm text-gray-700 mb-4">
+                <h3 className="text-lg font-heading font-semibold mb-2" style={{ color: '#111827' }}>Confirm Account Deletion</h3>
+                <p className="text-sm mb-4" style={{ color: '#111827' }}>
                   This will schedule your account for <strong>permanent deletion in 30 days</strong>. 
                   You will be logged out immediately and cannot log in during the grace period.
                 </p>
-                <p className="text-sm text-gray-600 mb-4">
+                <p className="text-sm mb-4" style={{ color: '#4B5563' }}>
                   <strong>Please enter your password to confirm this action:</strong>
                 </p>
               </div>
             </div>
 
             {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-800">
+              <div className="mb-4 p-3 border rounded-lg" style={{ backgroundColor: '#FEF2F2', borderColor: '#FCA5A5' }}>
+                <p className="text-sm" style={{ color: '#991B1B' }}>
                   {error?.response?.data?.error?.message || error?.message || 'Failed to delete account'}
                 </p>
               </div>
             )}
 
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Password <span className="text-red-600">*</span>
+            <label className="block text-sm font-medium mb-2" style={{ color: '#111827' }}>
+              Password <span style={{ color: '#DC2626' }}>*</span>
             </label>
             <input
               type="password"
@@ -684,7 +736,8 @@ export default function ProfilePage() {
               onChange={(e) => setDeletePassword(e.target.value)}
               placeholder="Enter your password to confirm"
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              className="w-full px-3 py-2 border rounded-lg mb-4 focus:ring-2 focus:border-transparent"
+              style={{ borderColor: '#D1D5DB' }}
             />
 
             <div className="flex justify-end space-x-3 mt-6">
@@ -695,14 +748,20 @@ export default function ProfilePage() {
                   setError(null);
                 }} 
                 disabled={deleting}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition disabled:opacity-50"
+                className="px-4 py-2 rounded-lg transition disabled:opacity-50 focus:outline-none focus:ring-2"
+                style={{ backgroundColor: '#F3F4F6', color: '#111827' }}
+                onMouseOver={(e) => !deleting && (e.currentTarget.style.backgroundColor = '#E5E7EB')}
+                onMouseOut={(e) => !deleting && (e.currentTarget.style.backgroundColor = '#F3F4F6')}
               >
                 Cancel
               </button>
               <button 
                 onClick={handleDeleteAccount} 
                 disabled={deleting || !deletePassword.trim()} 
-                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                className="px-6 py-2 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed font-medium focus:outline-none focus:ring-2 focus:ring-offset-2"
+                style={{ backgroundColor: '#EF4444' }}
+                onMouseOver={(e) => !deleting && (e.currentTarget.style.backgroundColor = '#DC2626')}
+                onMouseOut={(e) => !deleting && (e.currentTarget.style.backgroundColor = '#EF4444')}
               >
                 {deleting ? 'Deleting...' : 'Yes, Delete My Account'}
               </button>
@@ -724,16 +783,20 @@ export default function ProfilePage() {
           }}
         >
           <div 
-            className="bg-white rounded-lg shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto relative border border-gray-200" 
+            className="rounded-lg shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto relative border" 
+            style={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center z-10">
-              <h3 className="text-2xl font-semibold">Edit Profile</h3>
+            <div className="sticky top-0 border-b px-6 py-4 flex justify-between items-center z-10" style={{ backgroundColor: '#FFFFFF' }}>
+              <h3 className="text-2xl font-semibold" style={{ color: '#111827' }}>Edit Profile</h3>
               <button
                 onClick={handleCancel}
                 disabled={isSaving}
-                className="text-gray-400 hover:text-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="transition disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ color: '#9CA3AF' }}
+                onMouseOver={(e) => !isSaving && (e.currentTarget.style.color = '#4B5563')}
+                onMouseOut={(e) => !isSaving && (e.currentTarget.style.color = '#9CA3AF')}
                 title={isSaving ? "Please wait while saving..." : "Close"}
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -898,19 +961,25 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex justify-end space-x-4 pt-6 border-t sticky bottom-0 bg-white">
+                <div className="flex justify-end space-x-4 pt-6 border-t sticky bottom-0" style={{ backgroundColor: '#FFFFFF' }}>
                   <button
                     type="button"
                     onClick={handleCancel}
                     disabled={isSaving}
-                    className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-6 py-2 border rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ borderColor: '#D1D5DB', color: '#374151' }}
+                    onMouseOver={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#F9FAFB')}
+                    onMouseOut={(e) => !isSaving && (e.currentTarget.style.backgroundColor = 'transparent')}
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSaving}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-6 py-2 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: '#777C6D' }}
+                    onMouseOver={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#656A5C')}
+                    onMouseOut={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#777C6D')}
                   >
                     {isSaving ? 'Saving...' : 'Save Changes'}
                   </button>
@@ -1452,14 +1521,20 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken, editingJob }) {
                 type="button"
                 onClick={handleClose}
                 disabled={isSaving}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-2 border rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ borderColor: '#D1D5DB', color: '#374151' }}
+                onMouseOver={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#F9FAFB')}
+                onMouseOut={(e) => !isSaving && (e.currentTarget.style.backgroundColor = 'transparent')}
               >
                 Close
               </button>
               <button
                 type="submit"
                 disabled={isSaving}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-2 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ backgroundColor: '#777C6D' }}
+                onMouseOver={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#656A5C')}
+                onMouseOut={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#777C6D')}
               >
                 {isSaving 
                   ? (isEditMode ? 'Updating...' : 'Saving...') 

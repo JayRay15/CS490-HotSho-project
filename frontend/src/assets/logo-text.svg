@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 60" width="260" height="60" role="img" aria-label="Nirvana ATS text logo">
   <defs>
     <linearGradient id="textGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#0C4A6E;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#0369A1;stop-opacity:1" />
+      <stop offset="0%" style="stop-color:#4F5348;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#777C6D;stop-opacity:1" />
     </linearGradient>
   </defs>
   
@@ -12,13 +12,13 @@
   </text>
   
   <!-- Vertical divider -->
-  <line x1="185" y1="18" x2="185" y2="45" stroke="#EAB308" stroke-width="2.5" opacity="0.4"/>
+  <line x1="185" y1="18" x2="185" y2="45" stroke="#B7B89F" stroke-width="2.5" opacity="0.4"/>
   
   <!-- Tagline: ATS -->
-  <text x="195" y="30" font-family="Inter, sans-serif" font-size="10" font-weight="700" fill="#0C4A6E" letter-spacing="1.5">
+  <text x="195" y="30" font-family="Inter, sans-serif" font-size="10" font-weight="700" fill="#4F5348" letter-spacing="1.5">
     APPLICANT
   </text>
-  <text x="195" y="42" font-family="Inter, sans-serif" font-size="10" font-weight="700" fill="#EAB308" letter-spacing="1.5">
+  <text x="195" y="42" font-family="Inter, sans-serif" font-size="10" font-weight="700" fill="#B7B89F" letter-spacing="1.5">
     TRACKING
   </text>
 </svg>

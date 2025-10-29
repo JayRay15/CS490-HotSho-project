@@ -1,20 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 80" width="380" height="80" role="img" aria-label="Nirvana ATS logo">
   <defs>
     <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#0C4A6E;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#0369A1;stop-opacity:1" />
+      <stop offset="0%" style="stop-color:#4F5348;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#777C6D;stop-opacity:1" />
     </linearGradient>
     <linearGradient id="flameGradient" x1="50%" y1="0%" x2="50%" y2="100%">
-      <stop offset="0%" style="stop-color:#FEFCE8;stop-opacity:1" />
-      <stop offset="25%" style="stop-color:#FEF3C7;stop-opacity:1" />
-      <stop offset="60%" style="stop-color:#FCD34D;stop-opacity:1" />
-      <stop offset="85%" style="stop-color:#EAB308;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#CA8A04;stop-opacity:1" />
+      <stop offset="0%" style="stop-color:#F5F6F4;stop-opacity:1" />
+      <stop offset="25%" style="stop-color:#E4E6E0;stop-opacity:1" />
+      <stop offset="60%" style="stop-color:#B7B89F;stop-opacity:1" />
+      <stop offset="85%" style="stop-color:#9A9B87;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#777C6D;stop-opacity:1" />
     </linearGradient>
     <radialGradient id="glowGradient">
-      <stop offset="0%" style="stop-color:#FEF3C7;stop-opacity:0.9" />
-      <stop offset="50%" style="stop-color:#FCD34D;stop-opacity:0.4" />
-      <stop offset="100%" style="stop-color:#EAB308;stop-opacity:0" />
+      <stop offset="0%" style="stop-color:#E4E6E0;stop-opacity:0.9" />
+      <stop offset="50%" style="stop-color:#B7B89F;stop-opacity:0.4" />
+      <stop offset="100%" style="stop-color:#9A9B87;stop-opacity:0" />
     </radialGradient>
     <filter id="glow">
       <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
@@ -64,30 +64,30 @@
       
       <!-- Top accent star/sparkle -->
       <g filter="url(#softGlow)">
-        <circle cx="22" cy="8" r="3.5" fill="#FEFCE8" opacity="0.95">
+        <circle cx="22" cy="8" r="3.5" fill="#F5F6F4" opacity="0.95">
           <animate attributeName="opacity" values="0.8;1;0.8" dur="2s" repeatCount="indefinite"/>
           <animate attributeName="r" values="3.5;4;3.5" dur="2s" repeatCount="indefinite"/>
         </circle>
-        <circle cx="22" cy="8" r="2" fill="#FFFBEB" opacity="0.95"/>
+        <circle cx="22" cy="8" r="2" fill="#EEEEEE" opacity="0.95"/>
       </g>
       
       <!-- Energy particles - more dynamic -->
-      <circle cx="8" cy="11" r="1.8" fill="#FCD34D" opacity="0.85">
+      <circle cx="8" cy="11" r="1.8" fill="#B7B89F" opacity="0.85">
         <animate attributeName="opacity" values="0;0.85;0" dur="3s" repeatCount="indefinite"/>
         <animate attributeName="cy" values="11;6;11" dur="3s" repeatCount="indefinite"/>
         <animate attributeName="cx" values="8;7;8" dur="3s" repeatCount="indefinite"/>
       </circle>
-      <circle cx="36" cy="34" r="1.5" fill="#FCD34D" opacity="0.75">
+      <circle cx="36" cy="34" r="1.5" fill="#B7B89F" opacity="0.75">
         <animate attributeName="opacity" values="0;0.75;0" dur="3.8s" begin="0.5s" repeatCount="indefinite"/>
         <animate attributeName="cy" values="34;30;34" dur="3.8s" begin="0.5s" repeatCount="indefinite"/>
         <animate attributeName="cx" values="36;37;36" dur="3.8s" begin="0.5s" repeatCount="indefinite"/>
       </circle>
-      <circle cx="38" cy="16" r="1.3" fill="#FEFCE8" opacity="0.7">
+      <circle cx="38" cy="16" r="1.3" fill="#F5F6F4" opacity="0.7">
         <animate attributeName="opacity" values="0;0.7;0" dur="4.2s" begin="1s" repeatCount="indefinite"/>
         <animate attributeName="cy" values="16;12;16" dur="4.2s" begin="1s" repeatCount="indefinite"/>
         <animate attributeName="r" values="1.3;1.6;1.3" dur="4.2s" begin="1s" repeatCount="indefinite"/>
       </circle>
-      <circle cx="6" cy="24" r="1.2" fill="#FEF3C7" opacity="0.65">
+      <circle cx="6" cy="24" r="1.2" fill="#E4E6E0" opacity="0.65">
         <animate attributeName="opacity" values="0;0.65;0" dur="3.6s" begin="1.5s" repeatCount="indefinite"/>
         <animate attributeName="cx" values="6;4;6" dur="3.6s" begin="1.5s" repeatCount="indefinite"/>
       </circle>
@@ -102,16 +102,16 @@
   </g>
   
   <!-- Vertical divider - more space -->
-  <line x1="285" y1="26" x2="285" y2="58" stroke="#EAB308" stroke-width="2.5" opacity="0.4">
+  <line x1="285" y1="26" x2="285" y2="58" stroke="#B7B89F" stroke-width="2.5" opacity="0.4">
     <animate attributeName="opacity" values="0.3;0.5;0.3" dur="4s" repeatCount="indefinite"/>
   </line>
   
   <!-- Tagline: ATS - moved further right with better spacing -->
   <g transform="translate(300, 0)">
-    <text x="0" y="38" font-family="Inter, sans-serif" font-size="12" font-weight="700" fill="#EAB308" letter-spacing="2.2" opacity="0.95">
+    <text x="0" y="38" font-family="Inter, sans-serif" font-size="12" font-weight="700" fill="#B7B89F" letter-spacing="2.2" opacity="0.95">
       APPLICANT
     </text>
-    <text x="0" y="52" font-family="Inter, sans-serif" font-size="12" font-weight="700" fill="#93C5FD" letter-spacing="2.2" opacity="0.95">
+    <text x="0" y="52" font-family="Inter, sans-serif" font-size="12" font-weight="700" fill="#EEEEEE" letter-spacing="2.2" opacity="0.95">
       TRACKING
     </text>
   </g>
