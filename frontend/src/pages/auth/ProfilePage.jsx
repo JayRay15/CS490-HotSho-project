@@ -3,6 +3,7 @@ import { RedirectToSignIn, useAuth, useUser } from "@clerk/clerk-react";
 import api, { setAuthToken } from "../../api/axios";
 import ErrorMessage from "../../components/ErrorMessage";
 import ProfilePictureUpload from "../../components/ProfilePictureUpload";
+import ProfileCompleteness from "../../components/ProfileCompleteness";
 import { useAccountDeletionCheck } from "../../hooks/useAccountDeletionCheck";
 import Certifications from "./Certifications";
 import Projects from "./Projects";
@@ -674,6 +675,11 @@ export default function ProfilePage() {
             </div>
           ) : (
             <>
+              {/* Profile Completeness Widget */}
+              <div className="mb-8">
+                <ProfileCompleteness userData={userData} />
+              </div>
+
               {/* Profile Display */}
               <div className="space-y-6">
                 {/* Basic Information Section */}
