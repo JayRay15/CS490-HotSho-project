@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import Card from "../../components/Card";
 import InputField from "../../components/InputField";
-import Button from "../../components/Button";
 
 const INDUSTRIES = ["Software", "Finance", "Healthcare", "Education", "Marketing", "Other"];
 
@@ -222,21 +221,22 @@ export default function Certifications() {
               <div className="mb-1 text-sm font-medium text-gray-700">Upload document</div>
               <div className="flex items-center gap-3">
                 <input ref={fileInputRef} type="file" onChange={handleFile} className="hidden" />
-                <Button type="button" variant="secondary" onClick={() => fileInputRef.current && fileInputRef.current.click()}>Choose File</Button>
+                <button 
+                  type="button" 
+                  onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                >
+                  Choose File
+                </button>
                 <div className="text-sm text-gray-700">{uploadedName || (form.document ? form.document.name : 'No file chosen')}</div>
-                <Button type="button" variant="primary" onClick={confirmUpload} className="ml-auto" disabled={!tempDoc}>Confirm</Button>
-                <Button type="button" variant="primary" onClick={() => {
-                  // Attach file and submit in one step
-                  if (!tempDoc) return alert('No file selected to attach');
-                  confirmUpload();
-                  // submit form after a tiny delay to allow state to update
-                  setTimeout(() => {
-                    const f = document.getElementById('cert-form');
-                    if (f && typeof f.requestSubmit === 'function') f.requestSubmit();
-                  }, 80);
-                }} className="ml-2">Attach & Add</Button>
-                {/* Visible submit next to file controls so Add is always accessible */}
-                {/* primary submit moved to bottom next to Reset; remove duplicate here */}
+                <button 
+                  type="button" 
+                  onClick={confirmUpload} 
+                  disabled={!tempDoc}
+                  className="ml-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Confirm Upload
+                </button>
               </div>
               {form.document && <div className="text-sm mt-2">Uploaded: {form.document.name}</div>}
             </label>
@@ -256,22 +256,7 @@ export default function Certifications() {
             </label>
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Keep a secondary submit area for layout consistency; primary submit is next to file controls */}
-            <Button type="submit" variant="primary" className="bg-blue-600 text-white hover:bg-blue-700" >{editingId ? 'Save Changes' : 'Add Certification'}</Button>
-            {editingId ? (
-              <Button type="button" variant="secondary" onClick={() => {
-                // cancel edit
-                setEditingId(null);
-                setForm({ name: "", organization: "", dateEarned: "", expirationDate: "", doesNotExpire: false, certId: "", industry: "", reminderDays: 30, verification: "Unverified", document: null });
-                setTempDoc(null);
-                setUploadedName(null);
-                if (fileInputRef.current) fileInputRef.current.value = null;
-              }}>Cancel</Button>
-            ) : (
-              <Button type="button" variant="secondary" onClick={() => { setForm({ name: "", organization: "", dateEarned: "", expirationDate: "", doesNotExpire: false, certId: "", industry: "", reminderDays: 30, verification: "Unverified", document: null }); setTempDoc(null); setUploadedName(null); if (fileInputRef.current) fileInputRef.current.value = null; }}>Reset</Button>
-            )}
-          </div>
+          {/* Buttons are now in the modal wrapper footer */}
         </form>
       </Card>
 

@@ -92,17 +92,21 @@ export default function ProfilePage() {
       setShowSkillModal(true);
     };
   
-    const handleDeleteSkillClick = (skill) => {
-      setDeletingSkill(skill);
-      setShowSkillDeleteModal(true);
-    };
-  
-    const handleCancelSkillDelete = () => {
-      setShowSkillDeleteModal(false);
-      setDeletingSkill(null);
-    };
-  
-    const handleDeleteSkill = async () => {
+  const handleDeleteSkillClick = (skill) => {
+    setDeletingSkill(skill);
+    setShowSkillDeleteModal(true);
+  };
+
+  const handleCancelSkillDelete = () => {
+    setShowSkillDeleteModal(false);
+    setDeletingSkill(null);
+  };
+
+  // Project handlers
+  const handleEditProject = (project) => {
+    setEditingProject(project);
+    setShowProjectModal(true);
+  };    const handleDeleteSkill = async () => {
       if (!deletingSkill) return;
       setIsDeleting(true);
       setError(null);
@@ -242,6 +246,9 @@ export default function ProfilePage() {
   const [showCertModal, setShowCertModal] = useState(false);
   const [certList, setCertList] = useState([]);
   const [projectList, setProjectList] = useState([]);
+  const [showProjectModal, setShowProjectModal] = useState(false);
+  const [editingProject, setEditingProject] = useState(null);
+  const [projectSuccessMessage, setProjectSuccessMessage] = useState(null);
   const navigate = useNavigate();
 
   // Load user profile data
@@ -271,51 +278,6 @@ export default function ProfilePage() {
           
           // If user not found (404), register them first
           if (err.response?.status === 404 || err.customError?.errorCode === 3001) {
-
-                {/* Projects - embedded under Employment History */}
-                <div className="border-b pb-6 mt-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-heading font-semibold text-gray-800">Projects</h2>
-                    <button
-                      onClick={() => navigate('/projects')}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                      <span>Add Project</span>
-                    </button>
-                  </div>
-
-                  {projectList && projectList.length > 0 ? (
-                    <div className="space-y-4">
-                      {projectList.map((p, idx) => (
-                        <div key={p.id || idx} className="border rounded-lg p-4 hover:shadow-md transition relative">
-                          <div className="flex justify-between">
-                            <div>
-                              <h3 className="text-lg font-heading font-semibold text-gray-900">{p.name}</h3>
-                              <p className="text-gray-700 font-medium">{p.role} · Team: {p.teamSize}</p>
-                              <div className="text-sm text-gray-600 mt-1">{p.industry || '—'} · {p.status}</div>
-                              <div className="mt-2 text-sm text-gray-700">{p.description}</div>
-                              {p.projectUrl && <div className="mt-2"><a href={p.projectUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline">Project link</a></div>}
-                            </div>
-
-                            <div className="flex items-start gap-2">
-                              <button onClick={() => navigate('/projects')} className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit project"> 
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                              </button>
-                              <button onClick={() => { if (!confirm('Delete project?')) return; try { const raw = localStorage.getItem('projects'); const arr = raw ? JSON.parse(raw) : []; const updated = arr.filter(x => x.id !== p.id); localStorage.setItem('projects', JSON.stringify(updated)); setProjectList(updated); } catch (e) { console.error(e); } }} className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete project">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-gray-500 italic">No projects added yet.</p>
-                  )}
-                </div>
             console.log("User not found in database, registering...");
             await api.post('/api/auth/register');
             // Retry getting user profile
@@ -793,10 +755,7 @@ export default function ProfilePage() {
                     <h2 className="text-xl font-heading font-semibold" style={{ color: '#4F5348' }}>Employment History</h2>
                     <button
                       onClick={() => setShowEmploymentModal(true)}
-                      className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
-                      style={{ backgroundColor: '#777C6D' }}
-                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -1058,7 +1017,7 @@ export default function ProfilePage() {
                       </button>
                       <button
                         onClick={() => { setEditingSkill(null); setShowSkillModal(true); }}
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center space-x-2"
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -1176,7 +1135,7 @@ export default function ProfilePage() {
                       <div className="flex justify-between items-center mb-4">
                         <h2 className="text-xl font-heading font-semibold text-gray-800">Projects</h2>
                         <button
-                          onClick={() => navigate('/projects')}
+                          onClick={() => setShowProjectModal(true)}
                           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1185,6 +1144,15 @@ export default function ProfilePage() {
                           <span>Add Project</span>
                         </button>
                       </div>
+
+                      {projectSuccessMessage && (
+                        <div className="mb-4 p-4 bg-green-50 border border-green-200 text-green-800 rounded-lg flex items-center">
+                          <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                          </svg>
+                          {projectSuccessMessage}
+                        </div>
+                      )}
 
                       {projectList && projectList.length > 0 ? (
                         <div className="space-y-4">
@@ -1200,7 +1168,7 @@ export default function ProfilePage() {
                                 </div>
 
                                 <div className="flex items-start gap-2">
-                                  <button onClick={() => navigate('/projects')} className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit project"> 
+                                  <button onClick={() => handleEditProject(p)} className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit project"> 
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                   </button>
                                   <button onClick={() => { if (!confirm('Delete project?')) return; try { const raw = localStorage.getItem('projects'); const arr = raw ? JSON.parse(raw) : []; const updated = arr.filter(x => x.id !== p.id); localStorage.setItem('projects', JSON.stringify(updated)); setProjectList(updated); } catch (e) { console.error(e); } }} className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete project">
@@ -1378,11 +1346,52 @@ export default function ProfilePage() {
                     {/* Certifications modal - renders full Certifications UI */}
                     {showCertModal && (
                       <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={() => { setShowCertModal(false); }}>
-                        <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full mx-4 p-6 overflow-auto" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex justify-end mb-2">
-                            <button onClick={() => setShowCertModal(false)} className="text-gray-600 hover:text-gray-800">Close</button>
+                        <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+                          {/* Modal Header */}
+                          <div className="flex justify-between items-center p-6 border-b sticky top-0 bg-white z-10">
+                            <h3 className="text-xl font-heading font-semibold text-gray-900">Certifications</h3>
+                            <button 
+                              onClick={() => setShowCertModal(false)} 
+                              className="text-gray-400 hover:text-gray-600 transition"
+                            >
+                              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
                           </div>
-                          <Certifications />
+                          
+                          {/* Modal Content */}
+                          <div className="flex-1 overflow-y-auto p-6">
+                            <Certifications />
+                          </div>
+                          
+                          {/* Modal Footer */}
+                          <div className="flex justify-end space-x-4 p-6 border-t sticky bottom-0 bg-white">
+                            <button
+                              type="button"
+                              onClick={() => setShowCertModal(false)}
+                              className="px-6 py-2 border rounded-lg transition"
+                              style={{ borderColor: '#D1D5DB', color: '#374151' }}
+                              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#F9FAFB'}
+                              onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                            >
+                              Close
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                // Trigger form submit
+                                const form = document.getElementById('cert-form');
+                                if (form) form.requestSubmit();
+                              }}
+                              className="px-6 py-2 text-white rounded-lg transition"
+                              style={{ backgroundColor: '#777C6D' }}
+                              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                            >
+                              Save Certification
+                            </button>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -1682,7 +1691,6 @@ export default function ProfilePage() {
               </button>
             </div>
 
-              const response = await api.put('/api/users/me', formData);
             <div className="p-6">
               {/* Error Display */}
               {error && (
@@ -1925,6 +1933,25 @@ export default function ProfilePage() {
           getToken={getToken}
           editingSkill={editingSkill}
           skillList={skillList}
+        />
+      )}
+
+      {/* Add/Edit Project Modal */}
+      {showProjectModal && (
+        <Projects
+          isOpen={showProjectModal}
+          onClose={() => {
+            setShowProjectModal(false);
+            setEditingProject(null);
+          }}
+          onSuccess={(updatedList, message) => {
+            setProjectList(updatedList);
+            setShowProjectModal(false);
+            setEditingProject(null);
+            setProjectSuccessMessage(message);
+            setTimeout(() => setProjectSuccessMessage(null), 5000);
+          }}
+          editingProject={editingProject}
         />
       )}
 
@@ -2452,8 +2479,27 @@ function EducationModal({ isOpen, onClose, onSuccess, getToken, editingEducation
             </div>
 
             <div className="flex justify-end space-x-4 pt-6 border-t sticky bottom-0 bg-white">
-              <button type="button" onClick={handleClose} disabled={isSaving} className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Close</button>
-              <button type="submit" disabled={isSaving} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">{isSaving ? (isEditMode ? 'Updating...' : 'Saving...') : (isEditMode ? 'Update Entry' : 'Save Entry')}</button>
+              <button 
+                type="button" 
+                onClick={handleClose} 
+                disabled={isSaving} 
+                className="px-6 py-2 border rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ borderColor: '#D1D5DB', color: '#374151' }}
+                onMouseOver={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#F9FAFB')}
+                onMouseOut={(e) => !isSaving && (e.currentTarget.style.backgroundColor = 'transparent')}
+              >
+                Close
+              </button>
+              <button 
+                type="submit" 
+                disabled={isSaving} 
+                className="px-6 py-2 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ backgroundColor: '#777C6D' }}
+                onMouseOver={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#656A5C')}
+                onMouseOut={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#777C6D')}
+              >
+                {isSaving ? (isEditMode ? 'Updating...' : 'Saving...') : (isEditMode ? 'Update Education' : 'Save Education')}
+              </button>
             </div>
           </form>
         </div>
@@ -2600,9 +2646,28 @@ function SkillModal({ isOpen, onClose, onSuccess, getToken, editingSkill, skillL
             </div>
           </div>
 
-          <div className="flex justify-end space-x-3">
-            <button type="button" onClick={handleClose} className="px-4 py-2 border rounded">Cancel</button>
-            <button type="submit" disabled={isSaving} className="px-4 py-2 bg-green-600 text-white rounded">{isSaving ? 'Saving...' : isEditMode ? 'Update Skill' : 'Add Skill'}</button>
+          <div className="flex justify-end space-x-4 pt-6 border-t sticky bottom-0 bg-white">
+            <button 
+              type="button" 
+              onClick={handleClose} 
+              disabled={isSaving}
+              className="px-6 py-2 border rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ borderColor: '#D1D5DB', color: '#374151' }}
+              onMouseOver={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#F9FAFB')}
+              onMouseOut={(e) => !isSaving && (e.currentTarget.style.backgroundColor = 'transparent')}
+            >
+              Close
+            </button>
+            <button 
+              type="submit" 
+              disabled={isSaving} 
+              className="px-6 py-2 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: '#777C6D' }}
+              onMouseOver={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#656A5C')}
+              onMouseOut={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#777C6D')}
+            >
+              {isSaving ? (isEditMode ? 'Updating...' : 'Saving...') : (isEditMode ? 'Update Skill' : 'Save Skill')}
+            </button>
           </div>
         </form>
       </div>
@@ -3045,7 +3110,7 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken, editingJob }) {
               >
                 {isSaving 
                   ? (isEditMode ? 'Updating...' : 'Saving...') 
-                  : (isEditMode ? 'Update Entry' : 'Save Entry')}
+                  : (isEditMode ? 'Update Employment' : 'Save Employment')}
               </button>
             </div>
           </form>
