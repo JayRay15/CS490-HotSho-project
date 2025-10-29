@@ -4,6 +4,10 @@ import api, { setAuthToken } from "../../api/axios";
 import ErrorMessage from "../../components/ErrorMessage";
 import ProfilePictureUpload from "../../components/ProfilePictureUpload";
 import { useAccountDeletionCheck } from "../../hooks/useAccountDeletionCheck";
+import Certifications from "./Certifications";
+import Projects from "./Projects";
+import Card from "../../components/Card";
+import { useNavigate } from "react-router-dom";
 import LoadingSpinner from "../../components/LoadingSpinner";
 
 const INDUSTRIES = ['Technology', 'Healthcare', 'Finance', 'Education', 'Construction', 'Real Estate'];
@@ -51,6 +55,10 @@ export default function ProfilePage() {
   const [showEducationDeleteModal, setShowEducationDeleteModal] = useState(false);
   const [deletingEducation, setDeletingEducation] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showCertModal, setShowCertModal] = useState(false);
+  const [certList, setCertList] = useState([]);
+  const [projectList, setProjectList] = useState([]);
+  const navigate = useNavigate();
 
   // Load user profile data
   useEffect(() => {
@@ -79,6 +87,51 @@ export default function ProfilePage() {
           
           // If user not found (404), register them first
           if (err.response?.status === 404 || err.customError?.errorCode === 3001) {
+
+                {/* Projects - embedded under Employment History */}
+                <div className="border-b pb-6 mt-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-heading font-semibold text-gray-800">Projects</h2>
+                    <button
+                      onClick={() => navigate('/projects')}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      <span>Add Project</span>
+                    </button>
+                  </div>
+
+                  {projectList && projectList.length > 0 ? (
+                    <div className="space-y-4">
+                      {projectList.map((p, idx) => (
+                        <div key={p.id || idx} className="border rounded-lg p-4 hover:shadow-md transition relative">
+                          <div className="flex justify-between">
+                            <div>
+                              <h3 className="text-lg font-heading font-semibold text-gray-900">{p.name}</h3>
+                              <p className="text-gray-700 font-medium">{p.role} · Team: {p.teamSize}</p>
+                              <div className="text-sm text-gray-600 mt-1">{p.industry || '—'} · {p.status}</div>
+                              <div className="mt-2 text-sm text-gray-700">{p.description}</div>
+                              {p.projectUrl && <div className="mt-2"><a href={p.projectUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline">Project link</a></div>}
+                            </div>
+
+                            <div className="flex items-start gap-2">
+                              <button onClick={() => navigate('/projects')} className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit project"> 
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                              </button>
+                              <button onClick={() => { if (!confirm('Delete project?')) return; try { const raw = localStorage.getItem('projects'); const arr = raw ? JSON.parse(raw) : []; const updated = arr.filter(x => x.id !== p.id); localStorage.setItem('projects', JSON.stringify(updated)); setProjectList(updated); } catch (e) { console.error(e); } }} className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete project">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 italic">No projects added yet.</p>
+                  )}
+                </div>
             console.log("User not found in database, registering...");
             await api.post('/api/auth/register');
             // Retry getting user profile
@@ -109,6 +162,21 @@ export default function ProfilePage() {
         setOriginalData(profileData);
         setBioCharCount(profileData.bio.length);
         setProfilePicture(data.picture || null);
+        setEmploymentList(data.employment || []);
+        // load certifications from localStorage for inline display
+        try {
+          const rawCerts = localStorage.getItem('certifications');
+          if (rawCerts) setCertList(JSON.parse(rawCerts));
+        } catch (e) {
+          // ignore
+        }
+        // load projects from localStorage
+        try {
+          const rawProjects = localStorage.getItem('projects');
+          if (rawProjects) setProjectList(JSON.parse(rawProjects));
+        } catch (e) {
+          // ignore
+        }
   setEmploymentList(data.employment || []);
   setEducationList(data.education || []);
       } catch (err) {
@@ -123,6 +191,21 @@ export default function ProfilePage() {
       loadProfile();
     }
   }, [isSignedIn, getToken, signOut]);
+
+  // reload certifications when modal is closed (so list reflects changes made inside the modal)
+  useEffect(() => {
+    if (!showCertModal) {
+      try {
+        const raw = localStorage.getItem('certifications');
+        setCertList(raw ? JSON.parse(raw) : []);
+      } catch (e) {
+        // ignore
+      }
+    }
+  }, [showCertModal]);
+
+  // reload projects when modal is closed so list reflects changes
+  // (projects are now managed on a dedicated /projects page; list is loaded on profile load)
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -770,7 +853,225 @@ export default function ProfilePage() {
                   ) : (
                     <p className="text-gray-500 italic">No education added yet.</p>
                   )}
-                </div>
+                    </div>
+
+                    {/* Projects - embedded under Employment History */}
+                    <div className="border-b pb-6 mt-6">
+                      <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-heading font-semibold text-gray-800">Projects</h2>
+                        <button
+                          onClick={() => navigate('/projects')}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                          <span>Add Project</span>
+                        </button>
+                      </div>
+
+                      {projectList && projectList.length > 0 ? (
+                        <div className="space-y-4">
+                          {projectList.map((p, idx) => (
+                            <div key={p.id || idx} className="border rounded-lg p-4 hover:shadow-md transition relative">
+                              <div className="flex justify-between">
+                                <div>
+                                  <h3 className="text-lg font-heading font-semibold text-gray-900">{p.name}</h3>
+                                  <p className="text-gray-700 font-medium">{p.role} · Team: {p.teamSize}</p>
+                                  <div className="text-sm text-gray-600 mt-1">{p.industry || '—'} · {p.status}</div>
+                                  <div className="mt-2 text-sm text-gray-700">{p.description}</div>
+                                  {p.projectUrl && <div className="mt-2"><a href={p.projectUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline">Project link</a></div>}
+                                </div>
+
+                                <div className="flex items-start gap-2">
+                                  <button onClick={() => navigate('/projects')} className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit project"> 
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                  </button>
+                                  <button onClick={() => { if (!confirm('Delete project?')) return; try { const raw = localStorage.getItem('projects'); const arr = raw ? JSON.parse(raw) : []; const updated = arr.filter(x => x.id !== p.id); localStorage.setItem('projects', JSON.stringify(updated)); setProjectList(updated); } catch (e) { console.error(e); } }} className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete project">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-gray-500 italic">No projects added yet.</p>
+                      )}
+
+                    </div>
+
+                    {/* Certifications - embedded under Employment History per UC-030 */}
+                    <div className="border-b pb-6 mt-6">
+                      <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-heading font-semibold text-gray-800">Certifications</h2>
+                        <button
+                          onClick={() => setShowCertModal(true)}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                          <span>Add Certification</span>
+                        </button>
+                      </div>
+
+                      {/* Compact certifications list */}
+                      {certList && certList.length > 0 ? (
+                        <div className="space-y-4">
+                          {certList.map((c, index) => {
+                            const days = (() => {
+                              if (c.doesNotExpire) return null;
+                              if (!c.expirationDate) return null;
+                              const d = new Date(c.expirationDate);
+                              const now = new Date();
+                              return Math.ceil((d - now) / (1000 * 60 * 60 * 24));
+                            })();
+                            const expiringSoon = days !== null && days <= (c.reminderDays || 30) && days >= 0;
+                            const expired = days !== null && days < 0;
+
+                            return (
+                              <div key={c.id || index} className="border rounded-lg p-4 hover:shadow-md transition relative">
+                                <div className="flex justify-between">
+                                  <div>
+                                    <h3 className="text-lg font-heading font-semibold text-gray-900">{c.name}</h3>
+                                    <p className="text-gray-700 font-medium">{c.organization}</p>
+                                    <div className="flex items-center text-sm text-gray-600 mt-1 space-x-2">
+                                      {c.certId && <span>ID: {c.certId}</span>}
+                                      <span>•</span>
+                                      <span>{c.industry || '—'}</span>
+                                    </div>
+                                    <div className="text-sm mt-2">Earned: {c.dateEarned || '—'} · {c.doesNotExpire ? 'Does not expire' : (c.expirationDate || '—')}</div>
+                                    <div className="text-sm mt-1">Verification: <strong className={`ml-2 ${c.verification === 'Verified' ? 'text-green-600' : c.verification === 'Pending' ? 'text-yellow-600' : 'text-gray-600'}`}>{c.verification}</strong></div>
+                                    {c.document && <div className="mt-2"><a className="text-sm text-blue-600 underline" href={c.document.data} target="_blank" rel="noreferrer">View document ({c.document.name})</a></div>}
+                                    <div className="mt-2 text-sm">
+                                      {expired && <span className="text-red-600">Expired</span>}
+                                      {expiringSoon && <span className="text-yellow-600">Expires in {days} day(s)</span>}
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-start gap-2">
+                                    <button
+                                      onClick={() => {
+                                        // open the full Certifications UI for editing by opening modal
+                                        // user can use its Edit flow there
+                                        setShowCertModal(true);
+                                        // slight delay to allow modal mount; Certifications reads localStorage itself
+                                      }}
+                                      className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                      title="Edit certification"
+                                    >
+                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                      </svg>
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        if (!confirm('Delete this certification?')) return;
+                                        try {
+                                          const raw = localStorage.getItem('certifications');
+                                          const arr = raw ? JSON.parse(raw) : [];
+                                          const updated = arr.filter(x => x.id !== c.id);
+                                          localStorage.setItem('certifications', JSON.stringify(updated));
+                                          setCertList(updated);
+                                        } catch (e) {
+                                          console.error(e);
+                                        }
+                                      }}
+                                      className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                                      title="Delete certification"
+                                    >
+                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-gray-500 italic">No certifications added yet.</p>
+                      )}
+
+                    </div>
+
+                    {/* Upcoming reminders (moved from Certifications page) */}
+                    <div className="mt-4">
+                      <Card>
+                        <div className="font-semibold mb-2">Upcoming reminders</div>
+                        {(() => {
+                          const now = new Date();
+                          const items = (certList || []).filter((c) => {
+                            if (c.doesNotExpire) return false;
+                            if (!c.expirationDate) return false;
+                            if (c.reminderDismissed) return false;
+                            if (c.reminderSnoozedUntil) {
+                              const snoozed = new Date(c.reminderSnoozedUntil);
+                              if (snoozed > now) return false;
+                            }
+                            const d = (() => {
+                              const dt = new Date(c.expirationDate);
+                              return Math.ceil((dt - now) / (1000 * 60 * 60 * 24));
+                            })();
+                            return d !== null && d <= (c.reminderDays || 30) && d >= 0;
+                          });
+
+                          if (!items || items.length === 0) return <div className="text-sm text-gray-600">No upcoming reminders.</div>;
+
+                          return (
+                            <div className="space-y-2">
+                              {items.map((c) => {
+                                const days = Math.ceil((new Date(c.expirationDate) - new Date()) / (1000 * 60 * 60 * 24));
+                                return (
+                                  <div key={c.id} className="flex items-center justify-between">
+                                    <div className="text-sm">
+                                      <strong>{c.name}</strong> — {c.organization} · Expires in {days} day(s)
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <button className="text-sm text-gray-600 hover:text-gray-800" onClick={() => {
+                                        // snooze 7 days
+                                        try {
+                                          const raw = localStorage.getItem('certifications');
+                                          const arr = raw ? JSON.parse(raw) : [];
+                                          const updated = arr.map(x => x.id === c.id ? { ...x, reminderSnoozedUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() } : x);
+                                          localStorage.setItem('certifications', JSON.stringify(updated));
+                                          setCertList(updated);
+                                        } catch (e) { console.error(e); }
+                                      }}>Snooze 7d</button>
+                                      <button className="text-sm text-gray-600 hover:text-gray-800" onClick={() => {
+                                        try {
+                                          const raw = localStorage.getItem('certifications');
+                                          const arr = raw ? JSON.parse(raw) : [];
+                                          const updated = arr.map(x => x.id === c.id ? { ...x, reminderDismissed: true } : x);
+                                          localStorage.setItem('certifications', JSON.stringify(updated));
+                                          setCertList(updated);
+                                        } catch (e) { console.error(e); }
+                                      }}>Dismiss</button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
+                      </Card>
+                    </div>
+
+                    {/* Certifications modal - renders full Certifications UI */}
+                    {showCertModal && (
+                      <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={() => { setShowCertModal(false); }}>
+                        <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full mx-4 p-6 overflow-auto" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex justify-end mb-2">
+                            <button onClick={() => setShowCertModal(false)} className="text-gray-600 hover:text-gray-800">Close</button>
+                          </div>
+                          <Certifications />
+                        </div>
+                      </div>
+                    )}
+
+                    
 
                 {/* Additional Information */}
                 {(userData?.website || userData?.linkedin || userData?.github) && (
@@ -1109,6 +1410,8 @@ export default function ProfilePage() {
                     />
                   </div>
                 </div>
+
+                
 
                 {/* Phone and Location Row */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

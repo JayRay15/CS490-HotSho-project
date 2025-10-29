@@ -7,6 +7,7 @@ import Dashboard from "./pages/auth/Dashboard";
 import ProfilePage from "./pages/auth/ProfilePage";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ForgotPassword from "./pages/auth/ForgotPassword";
+import Projects from "./pages/auth/Projects";
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/projects" element={<Projects />} />
         </Routes>
       </Router>
     </ErrorBoundary>
