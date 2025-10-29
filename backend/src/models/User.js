@@ -38,8 +38,41 @@ const projectSchema = new mongoose.Schema({
   startDate: { type: Date, required: true },
   endDate: { type: Date },
   current: { type: Boolean, default: false },
+  // Links
   url: { type: String },
-  githubUrl: { type: String }
+  githubUrl: { type: String },
+  projectUrl: { type: String },
+  // Extended fields to support current UI
+  role: { type: String },
+  teamSize: { type: Number },
+  collaboration: { type: String },
+  outcomes: { type: String },
+  industry: { type: String },
+  status: { type: String, enum: ['Completed', 'Ongoing', 'Planned'], default: 'Completed' },
+  screenshot: {
+    name: { type: String },
+    data: { type: String }
+  }
+}, { timestamps: true });
+
+// New: Certifications schema
+const certificationSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  organization: { type: String, required: true },
+  certId: { type: String },
+  dateEarned: { type: Date, required: true },
+  doesNotExpire: { type: Boolean, default: false },
+  expirationDate: { type: Date },
+  verification: { type: String, enum: ['Verified', 'Pending', 'Unverified'], default: 'Unverified' },
+  industry: { type: String },
+  document: {
+    name: { type: String },
+    data: { type: String } // base64 data URL if uploaded client-side
+  },
+  // Reminder fields used by frontend UI
+  reminderDays: { type: Number, default: 30 },
+  reminderDismissed: { type: Boolean, default: false },
+  reminderSnoozedUntil: { type: Date }
 }, { timestamps: true });
 
 const userSchema = new mongoose.Schema(
@@ -68,7 +101,8 @@ const userSchema = new mongoose.Schema(
     employment: [employmentSchema],
     skills: [skillSchema],
     education: [educationSchema],
-    projects: [projectSchema]
+  projects: [projectSchema],
+  certifications: [certificationSchema]
     ,
     // Soft-delete fields
     isDeleted: { type: Boolean, default: false, index: true },

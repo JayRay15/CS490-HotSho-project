@@ -39,4 +39,15 @@ router.post("/projects", checkJwt, addProject);
 router.put("/projects/:projectId", checkJwt, updateProject);
 router.delete("/projects/:projectId", checkJwt, deleteProject);
 
+// Certifications routes
+import {
+  addCertification,
+  updateCertification,
+  deleteCertification
+} from "../controllers/profileController.js";
+
+router.post("/certifications", checkJwt, addCertification);
+router.put("/certifications/:certificationId", checkJwt, updateCertification);
+router.delete("/certifications/:certificationId", checkJwt, deleteCertification);
+
 export default router;

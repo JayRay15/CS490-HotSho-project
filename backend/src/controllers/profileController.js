@@ -303,8 +303,8 @@ export const deleteEducation = asyncHandler(async (req, res) => {
 
 // Projects endpoints
 export const addProject = asyncHandler(async (req, res) => {
-  const { sub } = req.auth.payload;
-  const projectData = req.body;
+  const sub = req.auth?.payload?.sub || req.auth?.userId;
+  const projectData = { ...req.body };
 
   // Validate required fields
   const requiredFields = ['name', 'description', 'startDate'];
@@ -319,6 +319,22 @@ export const addProject = asyncHandler(async (req, res) => {
     const { response, statusCode } = validationErrorResponse("Missing required fields", errors);
     return sendResponse(res, response, statusCode);
   }
+
+  // Normalize types/fields
+  try {
+    if (typeof projectData.startDate === 'string') projectData.startDate = new Date(projectData.startDate);
+    if (projectData.endDate && typeof projectData.endDate === 'string') projectData.endDate = new Date(projectData.endDate);
+    if (typeof projectData.technologies === 'string') {
+      projectData.technologies = projectData.technologies
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+    }
+    // Accept projectUrl into url field if url not provided
+    if (!projectData.url && projectData.projectUrl) {
+      projectData.url = projectData.projectUrl;
+    }
+  } catch {}
 
   const user = await User.findOneAndUpdate(
     { auth0Id: sub },
@@ -336,9 +352,9 @@ export const addProject = asyncHandler(async (req, res) => {
 });
 
 export const updateProject = asyncHandler(async (req, res) => {
-  const { sub } = req.auth.payload;
+  const sub = req.auth?.payload?.sub || req.auth?.userId;
   const { projectId } = req.params;
-  const updateData = req.body;
+  const updateData = { ...req.body };
 
   const user = await User.findOne({ auth0Id: sub });
   if (!user) {
@@ -352,15 +368,30 @@ export const updateProject = asyncHandler(async (req, res) => {
     return sendResponse(res, response, statusCode);
   }
 
+  // Normalize before updating
+  try {
+    if (typeof updateData.startDate === 'string') updateData.startDate = new Date(updateData.startDate);
+    if (updateData.endDate && typeof updateData.endDate === 'string') updateData.endDate = new Date(updateData.endDate);
+    if (typeof updateData.technologies === 'string') {
+      updateData.technologies = updateData.technologies
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+    }
+    if (!updateData.url && updateData.projectUrl) {
+      updateData.url = updateData.projectUrl;
+    }
+  } catch {}
+
   Object.assign(project, updateData);
   await user.save();
 
-  const { response, statusCode } = successResponse("Project updated successfully", project);
+  const { response, statusCode } = successResponse("Project updated successfully", user.projects);
   return sendResponse(res, response, statusCode);
 });
 
 export const deleteProject = asyncHandler(async (req, res) => {
-  const { sub } = req.auth.payload;
+  const sub = req.auth?.payload?.sub || req.auth?.userId;
   const { projectId } = req.params;
 
   const user = await User.findOneAndUpdate(
@@ -375,5 +406,83 @@ export const deleteProject = asyncHandler(async (req, res) => {
   }
 
   const { response, statusCode } = successResponse("Project deleted successfully");
+  return sendResponse(res, response, statusCode);
+});
+
+// Certifications endpoints
+export const addCertification = asyncHandler(async (req, res) => {
+  const sub = req.auth?.payload?.sub || req.auth?.userId;
+  const certData = req.body;
+
+  // Required fields
+  const required = ['name', 'organization', 'dateEarned'];
+  const missing = required.filter(f => !certData[f]);
+  if (missing.length) {
+    const errors = missing.map(field => ({ field, message: `${field} is required`, value: null }));
+    const { response, statusCode } = validationErrorResponse('Missing required fields', errors);
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Normalize dates
+  try {
+    if (typeof certData.dateEarned === 'string') certData.dateEarned = new Date(certData.dateEarned);
+    if (certData.expirationDate && typeof certData.expirationDate === 'string') certData.expirationDate = new Date(certData.expirationDate);
+  } catch {}
+
+  const user = await User.findOneAndUpdate(
+    { auth0Id: sub },
+    { $push: { certifications: certData } },
+    { new: true, runValidators: true }
+  );
+
+  if (!user) {
+    const { response, statusCode } = errorResponse('User not found', 404, ERROR_CODES.NOT_FOUND);
+    return sendResponse(res, response, statusCode);
+  }
+
+  const { response, statusCode } = successResponse('Certification added successfully', user.certifications);
+  return sendResponse(res, response, statusCode);
+});
+
+export const updateCertification = asyncHandler(async (req, res) => {
+  const sub = req.auth?.payload?.sub || req.auth?.userId;
+  const { certificationId } = req.params;
+  const updateData = req.body;
+
+  const user = await User.findOne({ auth0Id: sub });
+  if (!user) {
+    const { response, statusCode } = errorResponse('User not found', 404, ERROR_CODES.NOT_FOUND);
+    return sendResponse(res, response, statusCode);
+  }
+
+  const cert = user.certifications.id(certificationId);
+  if (!cert) {
+    const { response, statusCode } = errorResponse('Certification not found', 404, ERROR_CODES.NOT_FOUND);
+    return sendResponse(res, response, statusCode);
+  }
+
+  Object.assign(cert, updateData);
+  await user.save();
+
+  const { response, statusCode } = successResponse('Certification updated successfully', user.certifications);
+  return sendResponse(res, response, statusCode);
+});
+
+export const deleteCertification = asyncHandler(async (req, res) => {
+  const sub = req.auth?.payload?.sub || req.auth?.userId;
+  const { certificationId } = req.params;
+
+  const user = await User.findOneAndUpdate(
+    { auth0Id: sub },
+    { $pull: { certifications: { _id: certificationId } } },
+    { new: true }
+  );
+
+  if (!user) {
+    const { response, statusCode } = errorResponse('User not found', 404, ERROR_CODES.NOT_FOUND);
+    return sendResponse(res, response, statusCode);
+  }
+
+  const { response, statusCode } = successResponse('Certification deleted successfully', user.certifications);
   return sendResponse(res, response, statusCode);
 });
