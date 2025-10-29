@@ -137,6 +137,7 @@ export default function ProjectModal({ isOpen, onClose, onSuccess, editingProjec
     } catch (err) {
       console.error("Error saving project:", err);
       setError("Failed to save project. Please try again.");
+      alert("Failed to save project. Please try again.");
     } finally {
       setIsSaving(false);
     }
