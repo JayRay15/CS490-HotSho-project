@@ -11,6 +11,8 @@ import Card from "../../components/Card";
 import Container from "../../components/Container";
 import { useNavigate } from "react-router-dom";
 import LoadingSpinner from "../../components/LoadingSpinner";
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import {
   DndContext,
   closestCenter,
@@ -173,30 +175,72 @@ export default function ProfilePage() {
 
   const exportSkillsByCategory = () => {
     const grouped = groupSkillsByCategory(skillList);
-    const exportData = {
-      exportDate: new Date().toISOString(),
-      totalSkills: skillList.length,
-      categories: Object.keys(grouped).map(category => ({
-        category,
-        count: grouped[category].length,
-        levelSummary: getSkillLevelSummary(grouped[category]),
-        skills: grouped[category].map(s => ({
-          name: s.name,
-          level: s.level,
-          category: s.category
-        }))
-      }))
-    };
+    const today = new Date();
+    const dateStr = today.toISOString().split('T')[0];
 
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `skills-export-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+
+    // Title
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.text('Skills Export', 40, 40);
+
+    // Meta
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.text(`Date: ${dateStr}`, 40, 60);
+    doc.text(`Total skills: ${skillList.length}`, 40, 75);
+
+    let currentY = 95;
+
+    const categories = Object.keys(grouped);
+    if (categories.length === 0) {
+      doc.text('No skills to export.', 40, currentY);
+    }
+
+    categories.forEach((category, idx) => {
+      if (idx > 0) {
+        currentY += 20; // spacing between categories
+      }
+
+      // Category header
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text(`${category} (${grouped[category].length})`, 40, currentY);
+
+      // Level summary line
+      const summary = getSkillLevelSummary(grouped[category]);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      currentY += 14;
+      doc.text(
+        `Beginner: ${summary.Beginner}   Intermediate: ${summary.Intermediate}   Advanced: ${summary.Advanced}   Expert: ${summary.Expert}`,
+        40,
+        currentY
+      );
+
+      // Table of skills in this category
+      const rows = grouped[category]
+        .map(s => [s.name || '', s.level || '', s.category || category]);
+
+      // Use autoTable for tabular data under this category
+      // @ts-ignore - plugin augments jsPDF instance
+      doc.autoTable({
+        startY: currentY + 8,
+        margin: { left: 40, right: 40 },
+        head: [['Name', 'Level', 'Category']],
+        body: rows,
+        styles: { font: 'helvetica', fontSize: 10 },
+        headStyles: { fillColor: [33, 150, 243], textColor: 255 },
+        alternateRowStyles: { fillColor: [245, 245, 245] },
+      });
+
+      // Update currentY to the end of the table
+      // @ts-ignore - plugin augments jsPDF instance with lastAutoTable
+      currentY = doc.lastAutoTable ? doc.lastAutoTable.finalY : currentY + 40;
+    });
+
+    doc.save(`skills-export-${dateStr}.pdf`);
   };
 
   const handleSkillDragEnd = async (event) => {
