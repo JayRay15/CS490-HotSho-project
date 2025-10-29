@@ -56,7 +56,7 @@ export const updateEmployment = asyncHandler(async (req, res) => {
   Object.assign(employment, updateData);
   await user.save();
 
-  const { response, statusCode } = successResponse("Employment updated successfully", employment);
+  const { response, statusCode } = successResponse("Employment updated successfully", user.employment);
   return sendResponse(res, response, statusCode);
 });
 
@@ -133,7 +133,7 @@ export const updateSkill = asyncHandler(async (req, res) => {
   Object.assign(skill, updateData);
   await user.save();
 
-  const { response, statusCode } = successResponse("Skill updated successfully", skill);
+  const { response, statusCode } = successResponse("Skill updated successfully", user.skills);
   return sendResponse(res, response, statusCode);
 });
 
@@ -153,6 +153,44 @@ export const deleteSkill = asyncHandler(async (req, res) => {
   }
 
   const { response, statusCode } = successResponse("Skill deleted successfully");
+  return sendResponse(res, response, statusCode);
+});
+
+export const reorderSkills = asyncHandler(async (req, res) => {
+  const sub = req.auth?.payload?.sub || req.auth?.userId;
+  const { skills } = req.body; // Array of skill IDs in new order
+
+  if (!Array.isArray(skills)) {
+    const { response, statusCode } = errorResponse("Skills must be an array", 400, ERROR_CODES.VALIDATION_ERROR);
+    return sendResponse(res, response, statusCode);
+  }
+
+  const user = await User.findOne({ auth0Id: sub });
+  if (!user) {
+    const { response, statusCode } = errorResponse("User not found", 404, ERROR_CODES.NOT_FOUND);
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Reorder skills array based on provided IDs
+  const reorderedSkills = [];
+  skills.forEach(skillId => {
+    const skill = user.skills.id(skillId);
+    if (skill) {
+      reorderedSkills.push(skill);
+    }
+  });
+
+  // Add any skills that weren't in the reorder list (shouldn't happen, but safe fallback)
+  user.skills.forEach(skill => {
+    if (!skills.includes(skill._id.toString())) {
+      reorderedSkills.push(skill);
+    }
+  });
+
+  user.skills = reorderedSkills;
+  await user.save();
+
+  const { response, statusCode } = successResponse("Skills reordered successfully", user.skills);
   return sendResponse(res, response, statusCode);
 });
 
@@ -218,7 +256,7 @@ export const updateEducation = asyncHandler(async (req, res) => {
   Object.assign(education, updateData);
   await user.save();
 
-  const { response, statusCode } = successResponse("Education updated successfully", education);
+  const { response, statusCode } = successResponse("Education updated successfully", user.education);
   return sendResponse(res, response, statusCode);
 });
 

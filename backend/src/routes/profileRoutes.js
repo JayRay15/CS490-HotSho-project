@@ -7,6 +7,7 @@ import {
   addSkill,
   updateSkill,
   deleteSkill,
+  reorderSkills,
   addEducation,
   updateEducation,
   deleteEducation,
@@ -24,6 +25,7 @@ router.delete("/employment/:employmentId", checkJwt, deleteEmployment);
 
 // Skills routes
 router.post("/skills", checkJwt, addSkill);
+router.put("/skills/reorder", checkJwt, reorderSkills);
 router.put("/skills/:skillId", checkJwt, updateSkill);
 router.delete("/skills/:skillId", checkJwt, deleteSkill);
 

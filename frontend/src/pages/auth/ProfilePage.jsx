@@ -9,6 +9,22 @@ import Projects from "./Projects";
 import Card from "../../components/Card";
 import { useNavigate } from "react-router-dom";
 import LoadingSpinner from "../../components/LoadingSpinner";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const INDUSTRIES = ['Technology', 'Healthcare', 'Finance', 'Education', 'Construction', 'Real Estate'];
 const EXPERIENCE_LEVELS = ['Entry', 'Mid', 'Senior', 'Executive'];
@@ -55,6 +71,174 @@ export default function ProfilePage() {
   const [showEducationDeleteModal, setShowEducationDeleteModal] = useState(false);
   const [deletingEducation, setDeletingEducation] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  // Skill state (mirrors education/employment implementation)
+  const [skillList, setSkillList] = useState([]);
+  const [showSkillModal, setShowSkillModal] = useState(false);
+  const [editingSkill, setEditingSkill] = useState(null);
+  const [showSkillDeleteModal, setShowSkillDeleteModal] = useState(false);
+  const [deletingSkill, setDeletingSkill] = useState(null);
+  const [skillSuccessMessage, setSkillSuccessMessage] = useState(null);
+  const [skillSearchQuery, setSkillSearchQuery] = useState('');
+  const [expandedCategories, setExpandedCategories] = useState({
+    'Technical': true,
+    'Soft Skills': true,
+    'Languages': true,
+    'Industry-Specific': true
+  });
+  
+    // Skill handlers
+    const handleEditSkill = (skill) => {
+      setEditingSkill(skill);
+      setShowSkillModal(true);
+    };
+  
+    const handleDeleteSkillClick = (skill) => {
+      setDeletingSkill(skill);
+      setShowSkillDeleteModal(true);
+    };
+  
+    const handleCancelSkillDelete = () => {
+      setShowSkillDeleteModal(false);
+      setDeletingSkill(null);
+    };
+  
+    const handleDeleteSkill = async () => {
+      if (!deletingSkill) return;
+      setIsDeleting(true);
+      setError(null);
+      try {
+        const token = await getToken();
+        setAuthToken(token);
+        // attempt backend delete; if backend doesn't have endpoint this will throw and be caught
+        await api.delete(`/api/profile/skills/${deletingSkill._id}`);
+        // update local list
+        setSkillList(prev => prev.filter(s => s._id !== deletingSkill._id && s.name !== deletingSkill.name));
+        setSkillSuccessMessage('Skill deleted successfully.');
+        setTimeout(() => setSkillSuccessMessage(null), 4000);
+        setShowSkillDeleteModal(false);
+        setDeletingSkill(null);
+      } catch (err) {
+        // Fallback: remove locally if API fails
+        setSkillList(prev => prev.filter(s => s.name.toLowerCase() !== deletingSkill.name.toLowerCase()));
+        setSkillSuccessMessage('Skill removed locally.');
+        setTimeout(() => setSkillSuccessMessage(null), 4000);
+      } finally {
+        setIsDeleting(false);
+      }
+    };
+
+  // Skills organization helpers
+  const groupSkillsByCategory = (skills) => {
+    const grouped = {};
+    skills.forEach(skill => {
+      const cat = skill.category || 'Other';
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push(skill);
+    });
+    return grouped;
+  };
+
+  const getSkillLevelSummary = (skills) => {
+    const summary = { Beginner: 0, Intermediate: 0, Advanced: 0, Expert: 0 };
+    skills.forEach(skill => {
+      if (summary.hasOwnProperty(skill.level)) {
+        summary[skill.level]++;
+      }
+    });
+    return summary;
+  };
+
+  const filteredSkills = skillList.filter(skill => {
+    if (!skillSearchQuery.trim()) return true;
+    const query = skillSearchQuery.toLowerCase();
+    return (
+      skill.name.toLowerCase().includes(query) ||
+      skill.category.toLowerCase().includes(query) ||
+      skill.level.toLowerCase().includes(query)
+    );
+  });
+
+  const toggleCategory = (category) => {
+    setExpandedCategories(prev => ({
+      ...prev,
+      [category]: !prev[category]
+    }));
+  };
+
+  const exportSkillsByCategory = () => {
+    const grouped = groupSkillsByCategory(skillList);
+    const exportData = {
+      exportDate: new Date().toISOString(),
+      totalSkills: skillList.length,
+      categories: Object.keys(grouped).map(category => ({
+        category,
+        count: grouped[category].length,
+        levelSummary: getSkillLevelSummary(grouped[category]),
+        skills: grouped[category].map(s => ({
+          name: s.name,
+          level: s.level,
+          category: s.category
+        }))
+      }))
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `skills-export-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleSkillDragEnd = async (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = skillList.findIndex(s => s._id === active.id);
+    const newIndex = skillList.findIndex(s => s._id === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const newSkillList = arrayMove(skillList, oldIndex, newIndex);
+    setSkillList(newSkillList);
+
+    // Optionally persist the new order to backend
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      await api.put('/api/profile/skills/reorder', { skills: newSkillList.map(s => s._id) });
+    } catch (err) {
+      console.error('Failed to persist skill order:', err);
+    }
+  };
+
+  const moveSkillToCategory = async (skill, newCategory) => {
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      await api.put(`/api/profile/skills/${skill._id}`, { ...skill, category: newCategory });
+      
+      setSkillList(prev => prev.map(s => 
+        s._id === skill._id ? { ...s, category: newCategory } : s
+      ));
+      setSkillSuccessMessage(`Skill moved to ${newCategory}`);
+      setTimeout(() => setSkillSuccessMessage(null), 3000);
+    } catch (err) {
+      console.error('Failed to move skill:', err);
+      setError(err);
+    }
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   const [showCertModal, setShowCertModal] = useState(false);
   const [certList, setCertList] = useState([]);
   const [projectList, setProjectList] = useState([]);
@@ -179,6 +363,13 @@ export default function ProfilePage() {
         }
   setEmploymentList(data.employment || []);
   setEducationList(data.education || []);
+  // Populate skills if present on the profile response. Support either top-level `skills` or nested `profile.skills` shapes.
+  try {
+    const serverSkills = data.skills || (data.profile && data.profile.skills) || [];
+    setSkillList(Array.isArray(serverSkills) ? serverSkills : []);
+  } catch (e) {
+    setSkillList([]);
+  }
       } catch (err) {
         console.error("Error loading profile:", err);
         setError(err);
@@ -845,6 +1036,140 @@ export default function ProfilePage() {
                     <p className="text-gray-500 italic">No education added yet.</p>
                   )}
                     </div>
+
+                {/* Skills Section - Enhanced with Categories */}
+                <div className="border-b pb-6 mt-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <div>
+                      <h2 className="text-xl font-heading font-semibold text-gray-800">Skills</h2>
+                      <p className="text-sm text-gray-600 mt-1">{skillList.length} total skills across {Object.keys(groupSkillsByCategory(skillList)).length} categories</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={exportSkillsByCategory}
+                        disabled={skillList.length === 0}
+                        className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Export skills by category"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        <span>Export</span>
+                      </button>
+                      <button
+                        onClick={() => { setEditingSkill(null); setShowSkillModal(true); }}
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center space-x-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        <span>Add Skill</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {skillSuccessMessage && (
+                    <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-green-800 font-medium">{skillSuccessMessage}</p>
+                    </div>
+                  )}
+
+                  {/* Search Bar */}
+                  {skillList.length > 0 && (
+                    <div className="mb-4">
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={skillSearchQuery}
+                          onChange={(e) => setSkillSearchQuery(e.target.value)}
+                          placeholder="Search skills by name, category, or proficiency..."
+                          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        />
+                        <svg className="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        {skillSearchQuery && (
+                          <button
+                            onClick={() => setSkillSearchQuery('')}
+                            className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {skillList.length > 0 ? (
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleSkillDragEnd}>
+                      {Object.entries(groupSkillsByCategory(filteredSkills)).map(([category, skills]) => (
+                        <div key={category} className="mb-6 last:mb-0">
+                          {/* Category Header */}
+                          <div 
+                            className="flex items-center justify-between p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg mb-3 cursor-pointer hover:from-gray-100 hover:to-gray-150 transition"
+                            onClick={() => toggleCategory(category)}
+                          >
+                            <div className="flex items-center space-x-3">
+                              <button className="text-gray-600">
+                                <svg className={`w-5 h-5 transition-transform ${expandedCategories[category] ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                </svg>
+                              </button>
+                              <div>
+                                <h3 className="text-lg font-semibold text-gray-800">{category}</h3>
+                                <div className="flex items-center space-x-4 mt-1">
+                                  <span className="text-sm text-gray-600">{skills.length} skill{skills.length !== 1 ? 's' : ''}</span>
+                                  {/* Level Summary */}
+                                  <div className="flex items-center space-x-2 text-xs">
+                                    {Object.entries(getSkillLevelSummary(skills)).map(([level, count]) => (
+                                      count > 0 && (
+                                        <span key={level} className={`px-2 py-0.5 rounded ${
+                                          level === 'Beginner' ? 'bg-gray-200 text-gray-800' :
+                                          level === 'Intermediate' ? 'bg-yellow-100 text-yellow-800' :
+                                          level === 'Advanced' ? 'bg-indigo-100 text-indigo-800' :
+                                          'bg-green-100 text-green-800'
+                                        }`}>
+                                          {count} {level}
+                                        </span>
+                                      )
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Skills in Category */}
+                          {expandedCategories[category] && (
+                            <SortableContext items={skills.map(s => s._id)} strategy={verticalListSortingStrategy}>
+                              <div className="space-y-2 pl-8">
+                                {skills.map((skill) => (
+                                  <SortableSkillItem
+                                    key={skill._id}
+                                    skill={skill}
+                                    onEdit={handleEditSkill}
+                                    onDelete={handleDeleteSkillClick}
+                                    onMoveCategory={moveSkillToCategory}
+                                    categories={['Technical', 'Soft Skills', 'Languages', 'Industry-Specific']}
+                                  />
+                                ))}
+                              </div>
+                            </SortableContext>
+                          )}
+                        </div>
+                      ))}
+                    </DndContext>
+                  ) : (
+                    <div className="text-center py-12">
+                      <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                      </svg>
+                      <p className="text-gray-500 italic">No skills added yet. Click "Add Skill" to get started!</p>
+                    </div>
+                  )}
+                </div>
 
                     {/* Projects - embedded under Employment History */}
                     <div className="border-b pb-6 mt-6">
@@ -1585,6 +1910,24 @@ export default function ProfilePage() {
         />
       )}
 
+      {/* Add/Edit Skill Modal */}
+      {showSkillModal && (
+        <SkillModal
+          isOpen={showSkillModal}
+          onClose={() => { setShowSkillModal(false); setEditingSkill(null); }}
+          onSuccess={(newSkills, message) => {
+            setSkillList(newSkills);
+            setEditingSkill(null);
+            setShowSkillModal(false);
+            setSkillSuccessMessage(message);
+            setTimeout(() => setSkillSuccessMessage(null), 5000);
+          }}
+          getToken={getToken}
+          editingSkill={editingSkill}
+          skillList={skillList}
+        />
+      )}
+
       {/* Delete Confirmation Modal */}
       {showEmploymentDeleteModal && deletingEmployment && (
         <div 
@@ -1673,6 +2016,123 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// Sortable Skill Item Component
+function SortableSkillItem({ skill, onEdit, onDelete, onMoveCategory, categories }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: skill._id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const [showCategoryMenu, setShowCategoryMenu] = useState(false);
+
+  const getLevelColor = (level) => {
+    switch (level) {
+      case 'Beginner': return 'bg-gray-200 text-gray-800';
+      case 'Intermediate': return 'bg-yellow-100 text-yellow-800';
+      case 'Advanced': return 'bg-indigo-100 text-indigo-800';
+      case 'Expert': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-700';
+    }
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="group flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:shadow-md transition"
+    >
+      <div className="flex items-center space-x-3 flex-1">
+        {/* Drag Handle */}
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 p-1"
+          title="Drag to reorder"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+          </svg>
+        </button>
+
+        {/* Skill Name */}
+        <span className="text-sm font-medium text-gray-800 flex-1">{skill.name}</span>
+
+        {/* Proficiency Badge */}
+        <span className={`text-xs px-2 py-1 rounded font-medium ${getLevelColor(skill.level)}`}>
+          {skill.level}
+        </span>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex items-center space-x-1 ml-3 opacity-0 group-hover:opacity-100 transition">
+        {/* Move to Category Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setShowCategoryMenu(!showCategoryMenu)}
+            className="p-1.5 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded transition"
+            title="Move to category"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12M8 12h12m-12 5h12M3 7h.01M3 12h.01M3 17h.01" />
+            </svg>
+          </button>
+          {showCategoryMenu && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setShowCategoryMenu(false)} />
+              <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
+                {categories.filter(cat => cat !== skill.category).map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => {
+                      onMoveCategory(skill, cat);
+                      setShowCategoryMenu(false);
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
+                  >
+                    Move to {cat}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Edit Button */}
+        <button
+          onClick={() => onEdit(skill)}
+          className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition"
+          title="Edit skill"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+          </svg>
+        </button>
+
+        {/* Delete Button */}
+        <button
+          onClick={() => onDelete(skill)}
+          className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition"
+          title="Delete skill"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M4 7h16" />
+          </svg>
+        </button>
+      </div>
     </div>
   );
 }
@@ -1997,6 +2457,154 @@ function EducationModal({ isOpen, onClose, onSuccess, getToken, editingEducation
             </div>
           </form>
         </div>
+      </div>
+    </div>
+  );
+}
+ 
+// Skill Modal Component
+function SkillModal({ isOpen, onClose, onSuccess, getToken, editingSkill, skillList = [] }) {
+  const isEditMode = !!editingSkill;
+  const [formData, setFormData] = useState({ name: '', category: 'Technical', level: 'Beginner' });
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
+
+  const SUGGESTIONS = ['JavaScript','Python','React','Node.js','TypeScript','Communication','Leadership','Project Management','Spanish','French'];
+  const CATEGORIES = ['Technical','Soft Skills','Languages','Industry-Specific'];
+  const LEVELS = ['Beginner','Intermediate','Advanced','Expert'];
+
+  useEffect(() => {
+    if (editingSkill) {
+      setFormData({
+        name: editingSkill.name || '',
+        category: editingSkill.category || 'Technical',
+        level: editingSkill.level || 'Beginner'
+      });
+    } else {
+      setFormData({ name: '', category: 'Technical', level: 'Beginner' });
+    }
+    setError(null);
+    setSuccessMessage(null);
+  }, [editingSkill]);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const validateForm = () => {
+    const errs = [];
+    if (!formData.name.trim()) errs.push({ field: 'name', message: 'Skill name is required' });
+    if (!formData.category) errs.push({ field: 'category', message: 'Category is required' });
+    if (!formData.level) errs.push({ field: 'level', message: 'Proficiency level is required' });
+
+    // Duplicate prevention (case-insensitive) when adding new
+    if (!isEditMode && skillList.some(s => s.name.toLowerCase() === formData.name.trim().toLowerCase())) {
+      errs.push({ field: 'name', message: 'This skill already exists' });
+    }
+
+    return errs;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessMessage(null);
+    const validation = validateForm();
+    if (validation.length > 0) {
+      setError({ customError: { errorCode: 2001, message: 'Please fix the following errors', errors: validation } });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+
+      let response;
+      const payload = { name: formData.name.trim(), category: formData.category, level: formData.level };
+      if (isEditMode) {
+        response = await api.put(`/api/profile/skills/${editingSkill._id}`, payload);
+      } else {
+        response = await api.post('/api/profile/skills', payload);
+      }
+
+      const successMsg = isEditMode ? 'Skill updated successfully!' : 'Skill added successfully!';
+      // onSuccess expects (newSkills, message)
+      const updated = response?.data?.data?.skills || response?.data?.data || null;
+      if (updated) {
+        onSuccess(updated, successMsg);
+      } else {
+        // Fallback: call onSuccess with merged list
+        const merged = isEditMode ? skillList.map(s => s._id === editingSkill._id ? { ...s, ...payload } : s) : [{ ...payload, _id: Date.now().toString() }, ...skillList];
+        onSuccess(merged, successMsg);
+      }
+
+      if (!isEditMode) {
+        setFormData({ name: '', category: 'Technical', level: 'Beginner' });
+        setSuccessMessage(successMsg);
+        setTimeout(() => setSuccessMessage(null), 2500);
+      }
+    } catch (err) {
+      console.error('Error saving skill:', err);
+      setError(err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleClose = () => {
+    setFormData({ name: '', category: 'Technical', level: 'Beginner' });
+    setError(null);
+    setSuccessMessage(null);
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0,0,0,0.48)' }} onClick={handleClose}>
+      <div className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 p-6 border border-gray-200" onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-xl font-semibold">{isEditMode ? 'Edit Skill' : 'Add Skill'}</h3>
+          <button onClick={handleClose} className="text-gray-400 hover:text-gray-600">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+
+        {successMessage && <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded text-green-800">{successMessage}</div>}
+        {error && <ErrorMessage error={error} onDismiss={() => setError(null)} />}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Skill name <span className="text-red-500">*</span></label>
+            <input list="skill-suggestions" name="name" value={formData.name} onChange={handleInputChange} className="w-full px-3 py-2 border rounded" placeholder="e.g. JavaScript" />
+            <datalist id="skill-suggestions">
+              {SUGGESTIONS.map(s => <option key={s} value={s} />)}
+            </datalist>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+              <select name="category" value={formData.category} onChange={handleInputChange} className="w-full px-3 py-2 border rounded">
+                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Proficiency</label>
+              <select name="level" value={formData.level} onChange={handleInputChange} className="w-full px-3 py-2 border rounded">
+                {LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-3">
+            <button type="button" onClick={handleClose} className="px-4 py-2 border rounded">Cancel</button>
+            <button type="submit" disabled={isSaving} className="px-4 py-2 bg-green-600 text-white rounded">{isSaving ? 'Saving...' : isEditMode ? 'Update Skill' : 'Add Skill'}</button>
+          </div>
+        </form>
       </div>
     </div>
   );
