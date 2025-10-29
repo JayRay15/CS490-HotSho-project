@@ -93,46 +93,29 @@ export default function Navbar() {
                                         }
                                     }}
                                 />
-                                <style>{`
-                                /* Override Clerk's default purple background with sage green */
+                                {profilePicture && (
+                                    <style>{`
                                 .custom-user-button [class*="avatarBox"],
                                 .custom-user-button [class*="Avatar"] {
-                                    ${profilePicture ? `
-                                        background-image: url('${profilePicture}') !important;
-                                        background-size: cover !important;
-                                        background-position: center !important;
-                                    ` : `
-                                        background-color: #E4E6E0 !important;
-                                        background-image: none !important;
-                                    `}
+                                    background-image: url('${profilePicture}') !important;
+                                    background-size: cover !important;
+                                    background-position: center !important;
                                     border-radius: 9999px !important;
                                     overflow: hidden !important;
                                     display: block !important;
                                 }
                                 .custom-user-button [class*="avatarBox"] img,
                                 .custom-user-button [class*="Avatar"] img {
-                                    ${profilePicture ? 'opacity: 0 !important;' : ''}
-                                }
-                                /* Default avatar text/icon color */
-                                .custom-user-button [class*="avatarBox"] svg,
-                                .custom-user-button [class*="Avatar"] svg,
-                                .custom-user-button [class*="avatarBox"] [class*="userButtonTrigger"],
-                                .custom-user-button [class*="Avatar"] [class*="userButtonTrigger"] {
-                                    color: #777C6D !important;
+                                    opacity: 0 !important;
                                 }
                                 /* Also apply to menu dropdown */
                                 [class*="userButton"][class*="popover"] [class*="avatarBox"],
                                 [class*="userButton"][class*="popover"] [class*="Avatar"],
                                 [class*="userProfile"] [class*="avatarBox"],
                                 [class*="userProfile"] [class*="Avatar"] {
-                                    ${profilePicture ? `
-                                        background-image: url('${profilePicture}') !important;
-                                        background-size: cover !important;
-                                        background-position: center !important;
-                                    ` : `
-                                        background-color: #E4E6E0 !important;
-                                        background-image: none !important;
-                                    `}
+                                    background-image: url('${profilePicture}') !important;
+                                    background-size: cover !important;
+                                    background-position: center !important;
                                     border-radius: 9999px !important;
                                     overflow: hidden !important;
                                     display: block !important;
@@ -141,15 +124,10 @@ export default function Navbar() {
                                 [class*="userButton"][class*="popover"] [class*="Avatar"] img,
                                 [class*="userProfile"] [class*="avatarBox"] img,
                                 [class*="userProfile"] [class*="Avatar"] img {
-                                    ${profilePicture ? 'opacity: 0 !important;' : ''}
-                                }
-                                [class*="userButton"][class*="popover"] [class*="avatarBox"] svg,
-                                [class*="userButton"][class*="popover"] [class*="Avatar"] svg,
-                                [class*="userProfile"] [class*="avatarBox"] svg,
-                                [class*="userProfile"] [class*="Avatar"] svg {
-                                    color: #777C6D !important;
+                                    opacity: 0 !important;
                                 }
                             `}</style>
+                                )}
                             </div>
                         </SignedIn>
                     </div>
