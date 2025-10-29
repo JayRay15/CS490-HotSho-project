@@ -4,6 +4,7 @@ import api, { setAuthToken } from "../../api/axios";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import Card from "../../components/Card";
 import Container from "../../components/Container";
+import { calculateProfileCompleteness } from "../../utils/profileCompleteness";
 
 export default function Dashboard() {
   const { isLoaded, isSignedIn, signOut, getToken } = useAuth();
@@ -12,6 +13,8 @@ export default function Dashboard() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [isCheckingAccount, setIsCheckingAccount] = useState(true);
   const [accountStatus, setAccountStatus] = useState(null); // 'active', 'deleted', or null
+  const [userData, setUserData] = useState(null);
+  const [profileCompleteness, setProfileCompleteness] = useState(0);
 
   // Check account status first before showing dashboard
   useEffect(() => {
@@ -32,6 +35,14 @@ export default function Dashboard() {
         try {
           const response = await api.get('/api/users/me');
           setAccountStatus('active');
+          
+          // Set user data and calculate profile completeness
+          const data = response.data.data;
+          setUserData(data);
+          
+          // Calculate profile completeness
+          const completeness = calculateProfileCompleteness(data);
+          setProfileCompleteness(completeness.overallScore);
         } catch (err) {
           // Check if account is deleted/restricted (403 error)
           if (err?.response?.status === 403) {
@@ -50,6 +61,12 @@ export default function Dashboard() {
           if (err.response?.status === 404 || err.customError?.errorCode === 3001) {
             console.log("User not found in database, registering...");
             await api.post('/api/auth/register');
+            // After registration, fetch user data again
+            const response = await api.get('/api/users/me');
+            const data = response.data.data;
+            setUserData(data);
+            const completeness = calculateProfileCompleteness(data);
+            setProfileCompleteness(completeness.overallScore);
             setAccountStatus('active');
           } else {
             // Other errors - treat as active but log error
@@ -107,7 +124,7 @@ export default function Dashboard() {
           <Card variant="primary" className="mb-6">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
               <div className="flex-1 min-w-0">
-                <h1 className="text-3xl font-heading font-bold mb-2 break-words" style={{ color: '#4F5348' }}>
+                <h1 className="text-3xl font-heading font-bold mb-2 wrap-break-word" style={{ color: '#4F5348' }}>
                   Welcome, {user?.fullName || user?.primaryEmailAddress?.emailAddress}
                 </h1>
                 <p className="text-sm" style={{ color: '#656A5C' }}>
@@ -119,7 +136,7 @@ export default function Dashboard() {
                   sessionStorage.setItem("logoutMessage", "You have been successfully logged out");
                   signOut();
                 }}
-                className="px-6 py-2 text-white rounded-lg transition focus:outline-none focus:ring-2 focus:ring-offset-2 whitespace-nowrap self-start sm:self-auto flex-shrink-0"
+                className="px-6 py-2 text-white rounded-lg transition focus:outline-none focus:ring-2 focus:ring-offset-2 whitespace-nowrap self-start sm:self-auto shrink-0"
                 style={{ backgroundColor: '#EF4444' }}
                 onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#DC2626'}
                 onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#EF4444'}
@@ -134,12 +151,12 @@ export default function Dashboard() {
             <Card title="Profile Completion" variant="elevated">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-gray-600">Complete your profile to stand out</p>
-                <span className="text-2xl font-bold" style={{ color: '#777C6D' }}>75%</span>
+                <span className="text-2xl font-bold" style={{ color: '#777C6D' }}>{profileCompleteness}%</span>
               </div>
               <div className="mt-3 w-full bg-gray-200 rounded-full h-2">
                 <div 
                   className="h-2 rounded-full transition-all" 
-                  style={{ width: '75%', backgroundColor: '#777C6D' }}
+                  style={{ width: `${profileCompleteness}%`, backgroundColor: '#777C6D' }}
                 />
               </div>
             </Card>
