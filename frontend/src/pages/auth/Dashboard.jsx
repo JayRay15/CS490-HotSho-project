@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { RedirectToSignIn, useAuth, useUser } from "@clerk/clerk-react";
 import api, { setAuthToken, retryRequest } from "../../api/axios";
 import ErrorMessage from "../../components/ErrorMessage";
+import LoadingSpinner from "../../components/LoadingSpinner";
 
 export default function Dashboard() {
   const { isLoaded, isSignedIn, signOut, getToken } = useAuth();
@@ -72,18 +73,24 @@ export default function Dashboard() {
   // Show loading while checking account or Clerk is loading
   if (!isLoaded || isCheckingAccount || isRegistering) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-xl">Loading...</div>
-      </div>
+      <LoadingSpinner 
+        fullScreen={true} 
+        size="lg"
+        text="Loading your dashboard..." 
+        variant="logo" 
+      />
     );
   }
 
   // Don't render dashboard if account is deleted
   if (accountStatus === 'deleted') {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-xl">Redirecting...</div>
-      </div>
+      <LoadingSpinner 
+        fullScreen={true} 
+        size="md"
+        text="Redirecting..." 
+        variant="spinner" 
+      />
     );
   }
 

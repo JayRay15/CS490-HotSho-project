@@ -4,6 +4,7 @@ import api, { setAuthToken } from "../../api/axios";
 import ErrorMessage from "../../components/ErrorMessage";
 import ProfilePictureUpload from "../../components/ProfilePictureUpload";
 import { useAccountDeletionCheck } from "../../hooks/useAccountDeletionCheck";
+import LoadingSpinner from "../../components/LoadingSpinner";
 
 const INDUSTRIES = ['Technology', 'Healthcare', 'Finance', 'Education', 'Construction', 'Real Estate'];
 const EXPERIENCE_LEVELS = ['Entry', 'Mid', 'Senior', 'Executive'];
@@ -304,9 +305,12 @@ export default function ProfilePage() {
 
   if (!isLoaded) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-xl">Loading...</div>
-      </div>
+      <LoadingSpinner 
+        fullScreen={true} 
+        size="lg"
+        text="Loading..." 
+        variant="logo" 
+      />
     );
   }
 
@@ -317,27 +321,36 @@ export default function ProfilePage() {
   // Show loading while checking account status
   if (isLoading && accountStatus === null) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-xl">Loading...</div>
-      </div>
+      <LoadingSpinner 
+        fullScreen={true} 
+        size="lg"
+        text="Loading your profile..." 
+        variant="logo" 
+      />
     );
   }
 
   // Show redirecting message if account is deleted
   if (accountStatus === 'deleted') {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-xl">Redirecting...</div>
-      </div>
+      <LoadingSpinner 
+        fullScreen={true} 
+        size="md"
+        text="Redirecting..." 
+        variant="spinner" 
+      />
     );
   }
 
   // Only render profile if account is active
   if (accountStatus !== 'active') {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-xl">Loading...</div>
-      </div>
+      <LoadingSpinner 
+        fullScreen={true} 
+        size="lg"
+        text="Loading..." 
+        variant="logo" 
+      />
     );
   }
 
@@ -373,8 +386,7 @@ export default function ProfilePage() {
 
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="ml-3 text-gray-600">Loading profile...</span>
+              <LoadingSpinner size="lg" text="Loading profile..." variant="spinner" />
             </div>
           ) : (
             <>
