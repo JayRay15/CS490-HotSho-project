@@ -4,7 +4,9 @@ import api, { setAuthToken } from '../api/axios';
 
 /**
  * Custom hook to check if the current user's account has been deleted
- * If deleted, automatically logs the user out
+ * With immediate deletion policy (UC-009), deleted accounts are permanently removed
+ * from the database immediately. This hook catches race conditions where a user
+ * might still have a valid token but their account was just deleted.
  * 
  * Usage: Add this hook to any protected component
  * useAccountDeletionCheck();
@@ -20,17 +22,17 @@ export const useAccountDeletionCheck = () => {
         const token = await getToken();
         setAuthToken(token);
         
-        // Try to fetch user data to verify account is not deleted
+        // Try to fetch user data to verify account exists
         await api.get('/api/users/me');
         
         // If successful, account is active - do nothing
       } catch (err) {
-        // If account is deleted (403 error), force logout
-        if (err?.response?.status === 403 || err?.customError?.isAccountDeleted) {
-          console.log("Account is deleted or restricted - forcing logout");
+        // If account is deleted or not found (403/404 error), force logout
+        if (err?.response?.status === 403 || err?.response?.status === 404 || err?.customError?.isAccountDeleted) {
+          console.log("Account has been deleted or does not exist - forcing logout");
           sessionStorage.setItem(
             "logoutMessage", 
-            err?.response?.data?.message || "Your account access has been restricted."
+            err?.response?.data?.message || "Your account has been deleted."
           );
           signOut();
         }

@@ -1,6 +1,7 @@
 import { User } from "../models/User.js";
 import { successResponse, errorResponse, sendResponse, ERROR_CODES, validationErrorResponse } from "../utils/responseFormat.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
+import { clerkClient } from "@clerk/express";
 import multer from "multer";
 
 // Configure multer for memory storage (we'll convert to Base64)
@@ -48,19 +49,6 @@ export const getCurrentUser = asyncHandler(async (req, res) => {
       ERROR_CODES.NOT_FOUND
     );
     return sendResponse(res, response, statusCode);
-  }
-
-  // Block access for accounts scheduled for deletion during the grace period
-  if (user.isDeleted) {
-    const now = new Date();
-    if (user.deletionExpiresAt && user.deletionExpiresAt > now) {
-      const { response, statusCode } = errorResponse(
-        "Account scheduled for deletion. Access is restricted during the 30-day grace period.",
-        403,
-        ERROR_CODES.UNAUTHORIZED
-      );
-      return sendResponse(res, response, statusCode);
-    }
   }
 
   const { response, statusCode } = successResponse("User profile retrieved successfully", user);
@@ -216,12 +204,19 @@ export const deleteProfilePicture = asyncHandler(async (req, res) => {
   return sendResponse(res, response, statusCode);
 });
 
-// DELETE /api/users/delete - Soft-delete current user account (requires password confirmation)
+// DELETE /api/users/delete - Permanently delete current user account (requires password confirmation)
 export const deleteAccount = asyncHandler(async (req, res) => {
+  console.log("🚨 DELETE ACCOUNT ENDPOINT CALLED");
+  console.log("Request body:", req.body);
+  
   const userId = req.auth?.userId || req.auth?.payload?.sub;
   const { password } = req.body || {};
 
+  console.log("User ID from auth:", userId);
+  console.log("Password provided:", password ? "YES" : "NO");
+
   if (!userId) {
+    console.log("❌ No userId found in auth");
     const { response, statusCode } = errorResponse(
       "Unauthorized: missing authentication credentials",
       401,
@@ -253,28 +248,70 @@ export const deleteAccount = asyncHandler(async (req, res) => {
     }
   }
 
-  // Soft-delete: mark account as deleted and set deletion expiry (30 days)
-  const now = new Date();
-  const expires = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days
+  // Store user data for email before deletion
+  const userEmail = user.email;
+  const userName = user.name;
+  const userIdForLog = user._id;
+  const userAuth0Id = user.auth0Id;
 
-  user.isDeleted = true;
-  user.deletedAt = now;
-  user.deletionExpiresAt = expires;
-  await user.save();
+  console.log(`🗑️  Permanently deleting account: ${userEmail} (ID: ${userIdForLog}, Auth0: ${userAuth0Id})`);
+  
+  // CRITICAL: Delete user from Clerk/Auth0 first to prevent re-registration
+  try {
+    await clerkClient.users.deleteUser(userAuth0Id);
+    console.log(`🗑️  Deleted user from Clerk: ${userAuth0Id}`);
+  } catch (clerkError) {
+    console.error(`⚠️  Failed to delete user from Clerk:`, clerkError.message);
+    // Continue with database deletion even if Clerk deletion fails
+    // This prevents orphaned accounts in our database
+  }
+  
+  // IMMEDIATE PERMANENT DELETION - Remove account completely from database
+  const deleteResult = await User.deleteOne({ _id: user._id });
+  
+  console.log(`🗑️  Delete result:`, deleteResult);
+  console.log(`   - deletedCount: ${deleteResult.deletedCount}`);
+  console.log(`   - acknowledged: ${deleteResult.acknowledged}`);
+  
+  if (deleteResult.deletedCount === 0) {
+    console.error(`❌ Failed to delete account - no documents were deleted`);
+    const { response, statusCode } = errorResponse(
+      "Failed to delete account from database",
+      500,
+      ERROR_CODES.DATABASE_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+  
+  // Verify deletion by trying to find the user
+  const verifyDeleted = await User.findOne({ _id: userIdForLog });
+  if (verifyDeleted) {
+    console.error(`❌ CRITICAL: Account still exists after deletion attempt!`);
+    const { response, statusCode } = errorResponse(
+      "Account deletion failed - please try again",
+      500,
+      ERROR_CODES.DATABASE_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+  
+  console.log(`✅ Successfully deleted account from database: ${userEmail} (ID: ${userIdForLog})`);
+  console.log(`✅ Verified account no longer exists in database`);
 
   // Send confirmation email (best-effort) using utils/email if available
   try {
     const { sendDeletionEmail } = await import("../utils/email.js");
-    await sendDeletionEmail(user.email, user.name, expires);
+    await sendDeletionEmail(userEmail, userName);
+    console.log(`📧 Deletion email sent to: ${userEmail}`);
   } catch (err) {
     // If email helper not configured, log and continue
-    console.warn("Deletion email not sent:", err?.message || err);
+    console.warn("⚠️  Deletion email not sent:", err?.message || err);
   }
 
   // Return success; frontend should clear client session and redirect
   const { response, statusCode } = successResponse(
-    "Account scheduled for permanent deletion in 30 days. You have been logged out.",
-    { deletionExpiresAt: expires }
+    "Your account has been permanently deleted. You have been logged out.",
+    { deletedAt: new Date() }
   );
 
   return sendResponse(res, response, statusCode);

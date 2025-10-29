@@ -24,13 +24,12 @@ const createTransporter = () => {
 };
 
 /**
- * sendDeletionEmail - Sends account deletion confirmation email (30-day grace period notice)
+ * sendDeletionEmail - Sends account deletion confirmation email (immediate permanent deletion)
  * @param {string} toEmail - User's email address
  * @param {string} fullName - User's full name
- * @param {Date} deletionDate - Date when account will be permanently deleted
  */
-export const sendDeletionEmail = async (toEmail, fullName, deletionDate) => {
-  const subject = '⚠️ Account Deletion Scheduled - HotSho';
+export const sendDeletionEmail = async (toEmail, fullName) => {
+  const subject = '🗑️ Your HotSho Account Has Been Permanently Deleted';
   
   const htmlContent = `
     <!DOCTYPE html>
@@ -39,9 +38,9 @@ export const sendDeletionEmail = async (toEmail, fullName, deletionDate) => {
         <style>
           body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background-color: #777C6D; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .header { background-color: #EF4444; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
           .content { background-color: #f9f9f9; padding: 30px; border: 1px solid #ddd; border-radius: 0 0 8px 8px; }
-          .alert-box { background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; }
+          .alert-box { background-color: #fee; border-left: 4px solid #EF4444; padding: 15px; margin: 20px 0; }
           .info-box { background-color: #d1ecf1; border-left: 4px solid #0c5460; padding: 15px; margin: 20px 0; }
           .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #777; }
           .button { display: inline-block; padding: 12px 24px; background-color: #777C6D; color: white; text-decoration: none; border-radius: 4px; margin: 10px 0; }
@@ -51,48 +50,47 @@ export const sendDeletionEmail = async (toEmail, fullName, deletionDate) => {
       <body>
         <div class="container">
           <div class="header">
-            <h1>⚠️ Account Deletion Scheduled</h1>
+            <h1>🗑️ Account Permanently Deleted</h1>
           </div>
           <div class="content">
             <p>Hello <strong>${fullName || 'there'}</strong>,</p>
             
-            <p>This email confirms that your HotSho account (<strong>${toEmail}</strong>) has been successfully scheduled for deletion as requested on <strong>${new Date().toLocaleDateString()}</strong>.</p>
+            <p>This email confirms that your HotSho account (<strong>${toEmail}</strong>) and all associated data have been <strong>permanently deleted</strong> from our systems as of <strong>${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</strong>.</p>
             
             <div class="alert-box">
               <strong>⚠️ Important Information:</strong>
               <ul>
-                <li>Your account is now in a <strong>30-day grace period</strong></li>
-                <li>You can no longer log in or access your account</li>
-                <li>All your data will be permanently deleted on <strong>${deletionDate.toLocaleDateString()} at ${deletionDate.toLocaleTimeString()}</strong></li>
+                <li>Your account has been <strong>immediately and permanently deleted</strong></li>
+                <li>You have been logged out and can no longer access your account</li>
+                <li>All associated data has been removed from our systems</li>
               </ul>
             </div>
 
             <div class="info-box">
-              <strong>📋 What happens next:</strong>
+              <strong>�️ What was deleted:</strong>
               <ul>
-                <li><strong>Days 1-30:</strong> Your account is deactivated but data is retained in our systems</li>
-                <li><strong>Day 30 (${deletionDate.toLocaleDateString()}):</strong> All your data will be permanently and irreversibly deleted, including:
-                  <ul>
-                    <li>Profile information (name, email, phone, location)</li>
-                    <li>Employment history and work experience</li>
-                    <li>Education records and achievements</li>
-                    <li>Skills and proficiency levels</li>
-                    <li>Certifications and documents</li>
-                    <li>Projects and portfolio items</li>
-                    <li>All uploaded files and images</li>
-                  </ul>
-                </li>
+                <li>All profile information (name, email, phone, location)</li>
+                <li>Employment history and work experience</li>
+                <li>Education records and achievements</li>
+                <li>Skills and proficiency levels</li>
+                <li>Certifications and documents</li>
+                <li>Projects and portfolio items</li>
+                <li>All uploaded files and images</li>
+                <li>Account credentials and settings</li>
               </ul>
             </div>
 
-            <p><strong>Changed your mind?</strong></p>
-            <p>If you did not request this deletion or want to reactivate your account within the 30-day grace period, please contact our support team <strong>immediately</strong> at <a href="mailto:support@hotshoprofile.com">support@hotshoprofile.com</a></p>
+            <p><strong>This action is permanent and cannot be undone.</strong></p>
+
+            <p>If you did not request this deletion, please contact our support team <strong>immediately</strong> at <a href="mailto:support@hotshoprofile.com">support@hotshoprofile.com</a></p>
 
             <div style="text-align: center; margin: 30px 0;">
               <a href="mailto:support@hotshoprofile.com" class="button">Contact Support</a>
             </div>
 
-            <p>Thank you for using HotSho. We're sorry to see you go!</p>
+            <p>If you wish to use HotSho in the future, you will need to create a new account from scratch.</p>
+
+            <p>Thank you for using HotSho. We're sorry to see you go and wish you all the best!</p>
             
             <p>Best regards,<br><strong>The HotSho Team</strong></p>
           </div>
@@ -106,27 +104,33 @@ export const sendDeletionEmail = async (toEmail, fullName, deletionDate) => {
   `;
 
   const textContent = `Hello ${fullName || 'there'},\n\n` +
-    `This email confirms that your HotSho account (${toEmail}) has been scheduled for deletion as requested on ${new Date().toLocaleDateString()}.\n\n` +
+    `This email confirms that your HotSho account (${toEmail}) and all associated data have been permanently deleted from our systems as of ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}.\n\n` +
     `⚠️ IMPORTANT INFORMATION:\n` +
-    `- Your account is now in a 30-day grace period\n` +
-    `- You can no longer log in or access your account\n` +
-    `- All your data will be permanently deleted on ${deletionDate.toUTCString()}\n\n` +
-    `WHAT HAPPENS NEXT:\n` +
-    `Days 1-30: Your account is deactivated but data is retained\n` +
-    `Day 30: All your data will be permanently deleted including profile, employment history, education, skills, certifications, projects, and all uploaded files.\n\n` +
-    `CHANGED YOUR MIND?\n` +
-    `If you did not request this deletion or want to reactivate your account, please contact support immediately at support@hotshoprofile.com\n\n` +
-    `Thank you for using HotSho. We're sorry to see you go!\n\n` +
+    `- Your account has been immediately and permanently deleted\n` +
+    `- You have been logged out and can no longer access your account\n` +
+    `- All associated data has been removed from our systems\n\n` +
+    `WHAT WAS DELETED:\n` +
+    `- All profile information (name, email, phone, location)\n` +
+    `- Employment history and work experience\n` +
+    `- Education records and achievements\n` +
+    `- Skills and proficiency levels\n` +
+    `- Certifications and documents\n` +
+    `- Projects and portfolio items\n` +
+    `- All uploaded files and images\n` +
+    `- Account credentials and settings\n\n` +
+    `This action is permanent and cannot be undone.\n\n` +
+    `If you did not request this deletion, please contact support immediately at support@hotshoprofile.com\n\n` +
+    `If you wish to use HotSho in the future, you will need to create a new account.\n\n` +
+    `Thank you for using HotSho. We're sorry to see you go and wish you all the best!\n\n` +
     `Best regards,\nThe HotSho Team\n\n` +
     `This is an automated message. Please do not reply to this email.`;
 
   const transporter = createTransporter();
 
   if (!transporter) {
-    console.log('📧 [MOCK EMAIL] Account Deletion Scheduled:');
+    console.log('📧 [MOCK EMAIL] Account Permanently Deleted:');
     console.log(`   To: ${toEmail}`);
     console.log(`   Subject: ${subject}`);
-    console.log(`   Deletion Date: ${deletionDate.toUTCString()}`);
     console.log(`   Text Content:\n${textContent}\n`);
     return;
   }

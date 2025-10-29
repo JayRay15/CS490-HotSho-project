@@ -57,17 +57,22 @@ export default function Dashboard() {
             return;
           }
           
-          // If user not found (404), register them
+          // If user not found (404), this could be:
+          // 1. First time user (needs registration)
+          // 2. Deleted account trying to log back in (should be redirected to register)
           if (err.response?.status === 404 || err.customError?.errorCode === 3001) {
-            console.log("User not found in database, registering...");
-            await api.post('/api/auth/register');
-            // After registration, fetch user data again
-            const response = await api.get('/api/users/me');
-            const data = response.data.data;
-            setUserData(data);
-            const completeness = calculateProfileCompleteness(data);
-            setProfileCompleteness(completeness.overallScore);
-            setAccountStatus('active');
+            console.log("User not found in database. Account may have been deleted or never registered.");
+            console.log("Logging out and redirecting to registration...");
+            
+            // Store message for user
+            sessionStorage.setItem(
+              "logoutMessage", 
+              "Your account was not found. If you previously deleted your account, you'll need to create a new one."
+            );
+            
+            // Log them out - they need to go through proper registration
+            await signOut();
+            return;
           } else {
             // Other errors - treat as active but log error
             console.error("Error checking user status:", err);
