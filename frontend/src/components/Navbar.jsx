@@ -3,6 +3,7 @@ import { SignedIn, SignedOut, UserButton } from "@clerk/clerk-react";
 import { useEffect, useState } from "react";
 import { useAuth, useUser } from "@clerk/clerk-react";
 import api, { setAuthToken } from "../api/axios";
+import Logo from "./Logo";
 
 export default function Navbar() {
     const { getToken } = useAuth();
@@ -59,10 +60,10 @@ export default function Navbar() {
                     {/* Logo/Brand */}
                     <Link 
                         to="/" 
-                        className="text-xl font-heading font-bold hover:text-blue-100 transition-colors focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-600 rounded px-2 py-1"
-                        aria-label="HotSho Home"
+                        className="flex items-center gap-2 hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-600 rounded px-2 py-1"
+                        aria-label="Nirvana Home"
                     >
-                        HotSho
+                        <Logo variant="white" size="md" />
                     </Link>
 
                     {/* Desktop Navigation */}

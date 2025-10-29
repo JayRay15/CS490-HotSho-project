@@ -1,6 +1,7 @@
 import { SignIn } from "@clerk/clerk-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import LoadingSpinner from "../../components/LoadingSpinner";
 
 export default function Login() {
   const navigate = useNavigate();

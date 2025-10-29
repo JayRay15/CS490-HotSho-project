@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16">
+  <defs>
+    <linearGradient id="favicon16Gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0C4A6E;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0369A1;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="favicon16FlameGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FEFCE8;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#FCD34D;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#EAB308;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="16" height="16" rx="3" fill="url(#favicon16Gradient)"/>
+  
+  <!-- Enhanced simplified "N" for tiny size -->
+  <g transform="translate(4,4)">
+    <!-- Left bar with rounded top -->
+    <rect x="1" y="1" width="1.5" height="6" fill="url(#favicon16FlameGradient)"/>
+    <rect x="1" y="1" width="1.5" height="0.8" rx="0.75" fill="url(#favicon16FlameGradient)"/>
+    
+    <!-- Diagonal (slightly thicker) -->
+    <path d="M 2.5 1 L 6.5 7 L 8 7 L 4 1 Z" fill="url(#favicon16FlameGradient)"/>
+    
+    <!-- Right bar with rounded top -->
+    <rect x="6.5" y="1" width="1.5" height="6" fill="url(#favicon16FlameGradient)"/>
+    <rect x="6.5" y="1" width="1.5" height="0.8" rx="0.75" fill="url(#favicon16FlameGradient)"/>
+    
+    <!-- Enhanced top accent -->
+    <circle cx="4" cy="0.3" r="1" fill="#FEFCE8"/>
+    <circle cx="4" cy="0.3" r="0.5" fill="#FFFBEB"/>
+  </g>
+</svg>
+
