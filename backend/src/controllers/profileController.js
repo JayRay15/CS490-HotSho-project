@@ -199,11 +199,19 @@ export const addEducation = asyncHandler(async (req, res) => {
   const sub = req.auth?.payload?.sub || req.auth?.userId;
   const educationData = req.body;
 
+  // Debug logging to diagnose 500s in production-like dev
+  try {
+    console.log('🎓 addEducation invoked');
+    console.log('🔑 auth user id (sub):', sub);
+    console.log('📦 payload:', JSON.stringify(educationData));
+  } catch {}
+
   // Validate required fields
   const requiredFields = ['institution', 'degree', 'fieldOfStudy', 'startDate'];
   const missingFields = requiredFields.filter(field => !educationData[field]);
 
   if (missingFields.length > 0) {
+    try { console.warn('❌ Missing fields:', missingFields); } catch {}
     const errors = missingFields.map(field => ({
       field,
       message: `${field} is required`,
@@ -213,7 +221,14 @@ export const addEducation = asyncHandler(async (req, res) => {
     return sendResponse(res, response, statusCode);
   }
 
+  // Defensive: coerce date strings to Date instances when possible
   try {
+    if (typeof educationData.startDate === 'string') educationData.startDate = new Date(educationData.startDate);
+    if (educationData.endDate && typeof educationData.endDate === 'string') educationData.endDate = new Date(educationData.endDate);
+  } catch {}
+
+  try {
+    console.log('🔍 Pushing education for auth0Id:', sub);
     const user = await User.findOneAndUpdate(
       { auth0Id: sub },
       { $push: { education: educationData } },
@@ -221,15 +236,22 @@ export const addEducation = asyncHandler(async (req, res) => {
     );
 
     if (!user) {
+      console.warn('❌ No user found for auth0Id:', sub);
       const { response, statusCode } = errorResponse("User not found", 404, ERROR_CODES.NOT_FOUND);
       return sendResponse(res, response, statusCode);
     }
 
+    try { console.log('✅ Education added. Count:', user.education?.length); } catch {}
     const { response, statusCode } = successResponse("Education added successfully", user.education);
     return sendResponse(res, response, statusCode);
   } catch (err) {
-    console.error('Error in addEducation:', err);
-    const message = err.name === 'ValidationError' ? 'Invalid education data provided' : 'Error adding education entry';
+    console.error('❌ Error in addEducation');
+    console.error('   name:', err?.name);
+    console.error('   message:', err?.message);
+    if (err?.errors) {
+      try { console.error('   validation:', JSON.stringify(err.errors, null, 2)); } catch {}
+    }
+    const message = err?.name === 'ValidationError' ? 'Invalid education data provided' : 'Error adding education entry';
     const { response, statusCode } = errorResponse(message, 500, ERROR_CODES.INTERNAL_ERROR);
     return sendResponse(res, response, statusCode);
   }
