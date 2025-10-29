@@ -99,14 +99,14 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-8" style={{ backgroundColor: '#F9FAFB' }}>
-      <div className="p-8 rounded-2xl shadow-md max-w-2xl w-full border" style={{ backgroundColor: '#FFFFFF', borderColor: '#EEEEEE' }}>
+    <div className="flex flex-col items-center justify-center min-h-screen p-8" style={{ backgroundColor: '#E4E6E0' }}>
+      <div className="p-8 rounded-2xl shadow-md max-w-2xl w-full border" style={{ backgroundColor: '#F5F6F4', borderColor: '#B7B89F' }}>
         <div className="flex justify-between items-start mb-6">
           <div>
-            <h1 className="text-3xl font-heading font-bold mb-2" style={{ color: '#111827' }}>
+            <h1 className="text-3xl font-heading font-bold mb-2" style={{ color: '#4F5348' }}>
               Welcome, {user?.fullName || user?.primaryEmailAddress?.emailAddress}
             </h1>
-            <p style={{ color: '#4B5563' }}>You are successfully logged in!</p>
+            <p style={{ color: '#656A5C' }}>You are successfully logged in!</p>
           </div>
           <button
             onClick={() => {

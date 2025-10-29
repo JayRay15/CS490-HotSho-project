@@ -355,14 +355,14 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen py-8" style={{ backgroundColor: '#F9FAFB' }}>
+    <div className="min-h-screen py-8" style={{ backgroundColor: '#E4E6E0' }}>
       <div className="max-w-4xl mx-auto px-4">
-        <div className="rounded-2xl shadow-md p-8 border" style={{ backgroundColor: '#FFFFFF', borderColor: '#EEEEEE' }}>
+        <div className="rounded-2xl shadow-md p-8 border" style={{ backgroundColor: '#F5F6F4', borderColor: '#B7B89F' }}>
           {/* Header with Profile Picture */}
           <div className="flex justify-between items-start mb-8">
             <div>
-              <h1 className="text-3xl font-heading font-bold mb-2" style={{ color: '#111827' }}>My Profile</h1>
-              <p style={{ color: '#4B5563' }}>View and manage your professional profile</p>
+              <h1 className="text-3xl font-heading font-bold mb-2" style={{ color: '#4F5348' }}>My Profile</h1>
+              <p style={{ color: '#656A5C' }}>View and manage your professional profile</p>
             </div>
             
             {/* Profile Picture Upload */}
@@ -393,9 +393,9 @@ export default function ProfilePage() {
               {/* Profile Display */}
               <div className="space-y-6">
                 {/* Basic Information Section */}
-                <div className="border-b pb-6" style={{ borderColor: '#EEEEEE' }}>
+                <div className="border-b pb-6" style={{ borderColor: '#B7B89F' }}>
                   <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-heading font-semibold" style={{ color: '#111827' }}>Basic Information</h2>
+                    <h2 className="text-xl font-heading font-semibold" style={{ color: '#4F5348' }}>Basic Information</h2>
                     <button
                       onClick={handleEditClick}
                       className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
@@ -412,27 +412,27 @@ export default function ProfilePage() {
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <p className="text-sm font-medium mb-1" style={{ color: '#4B5563' }}>Full Name</p>
-                      <p style={{ color: '#111827' }}>{userData?.name || '—'}</p>
+                      <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Full Name</p>
+                      <p style={{ color: '#4F5348' }}>{userData?.name || '—'}</p>
                     </div>
                     <div>
-                      <p className="text-sm font-medium mb-1" style={{ color: '#4B5563' }}>Email</p>
-                      <p style={{ color: '#111827' }}>{userData?.email || '—'}</p>
+                      <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Email</p>
+                      <p style={{ color: '#4F5348' }}>{userData?.email || '—'}</p>
                     </div>
                     <div>
-                      <p className="text-sm font-medium mb-1" style={{ color: '#4B5563' }}>Phone</p>
-                      <p style={{ color: '#111827' }}>{userData?.phone || '—'}</p>
+                      <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Phone</p>
+                      <p style={{ color: '#4F5348' }}>{userData?.phone || '—'}</p>
                     </div>
                     <div>
-                      <p className="text-sm font-medium mb-1" style={{ color: '#4B5563' }}>Location</p>
-                      <p style={{ color: '#111827' }}>{userData?.location || '—'}</p>
+                      <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Location</p>
+                      <p style={{ color: '#4F5348' }}>{userData?.location || '—'}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Professional Information Section */}
-                <div className="border-b pb-6" style={{ borderColor: '#EEEEEE' }}>
-                  <h2 className="text-xl font-heading font-semibold mb-4" style={{ color: '#111827' }}>Professional Information</h2>
+                <div className="border-b pb-6" style={{ borderColor: '#B7B89F' }}>
+                  <h2 className="text-xl font-heading font-semibold mb-4" style={{ color: '#4F5348' }}>Professional Information</h2>
                   
                   <div className="space-y-4">
                     <div>
@@ -446,24 +446,24 @@ export default function ProfilePage() {
                         <p style={{ color: '#111827' }}>{userData?.industry || '—'}</p>
                       </div>
                       <div>
-                        <p className="text-sm font-medium mb-1" style={{ color: '#4B5563' }}>Experience Level</p>
-                        <p style={{ color: '#111827' }}>{userData?.experienceLevel || '—'}</p>
+                        <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Experience Level</p>
+                        <p style={{ color: '#4F5348' }}>{userData?.experienceLevel || '—'}</p>
                       </div>
                     </div>
 
                     {userData?.bio && (
                       <div>
-                        <p className="text-sm font-medium mb-1" style={{ color: '#4B5563' }}>Bio / Summary</p>
-                        <p className="whitespace-pre-wrap" style={{ color: '#111827' }}>{userData.bio}</p>
+                        <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Bio / Summary</p>
+                        <p className="whitespace-pre-wrap" style={{ color: '#4F5348' }}>{userData.bio}</p>
                       </div>
                     )}
                   </div>
                 </div>
 
                 {/* Employment History Section */}
-                <div className="border-b pb-6" style={{ borderColor: '#EEEEEE' }}>
+                <div className="border-b pb-6" style={{ borderColor: '#B7B89F' }}>
                   <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-heading font-semibold" style={{ color: '#111827' }}>Employment History</h2>
+                    <h2 className="text-xl font-heading font-semibold" style={{ color: '#4F5348' }}>Employment History</h2>
                     <button
                       onClick={() => setShowEmploymentModal(true)}
                       className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
