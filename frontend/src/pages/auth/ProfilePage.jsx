@@ -5,7 +5,9 @@ import ErrorMessage from "../../components/ErrorMessage";
 import ProfilePictureUpload from "../../components/ProfilePictureUpload";
 import { useAccountDeletionCheck } from "../../hooks/useAccountDeletionCheck";
 import Certifications from "./Certifications";
+import Projects from "./Projects";
 import Card from "../../components/Card";
+import { useNavigate } from "react-router-dom";
 
 const INDUSTRIES = ['Technology', 'Healthcare', 'Finance', 'Education', 'Construction', 'Real Estate'];
 const EXPERIENCE_LEVELS = ['Entry', 'Mid', 'Senior', 'Executive'];
@@ -47,6 +49,8 @@ export default function ProfilePage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showCertModal, setShowCertModal] = useState(false);
   const [certList, setCertList] = useState([]);
+  const [projectList, setProjectList] = useState([]);
+  const navigate = useNavigate();
 
   // Load user profile data
   useEffect(() => {
@@ -75,6 +79,51 @@ export default function ProfilePage() {
           
           // If user not found (404), register them first
           if (err.response?.status === 404 || err.customError?.errorCode === 3001) {
+
+                {/* Projects - embedded under Employment History */}
+                <div className="border-b pb-6 mt-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-heading font-semibold text-gray-800">Projects</h2>
+                    <button
+                      onClick={() => navigate('/projects')}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      <span>Add Project</span>
+                    </button>
+                  </div>
+
+                  {projectList && projectList.length > 0 ? (
+                    <div className="space-y-4">
+                      {projectList.map((p, idx) => (
+                        <div key={p.id || idx} className="border rounded-lg p-4 hover:shadow-md transition relative">
+                          <div className="flex justify-between">
+                            <div>
+                              <h3 className="text-lg font-heading font-semibold text-gray-900">{p.name}</h3>
+                              <p className="text-gray-700 font-medium">{p.role} · Team: {p.teamSize}</p>
+                              <div className="text-sm text-gray-600 mt-1">{p.industry || '—'} · {p.status}</div>
+                              <div className="mt-2 text-sm text-gray-700">{p.description}</div>
+                              {p.projectUrl && <div className="mt-2"><a href={p.projectUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline">Project link</a></div>}
+                            </div>
+
+                            <div className="flex items-start gap-2">
+                              <button onClick={() => navigate('/projects')} className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit project"> 
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                              </button>
+                              <button onClick={() => { if (!confirm('Delete project?')) return; try { const raw = localStorage.getItem('projects'); const arr = raw ? JSON.parse(raw) : []; const updated = arr.filter(x => x.id !== p.id); localStorage.setItem('projects', JSON.stringify(updated)); setProjectList(updated); } catch (e) { console.error(e); } }} className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete project">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 italic">No projects added yet.</p>
+                  )}
+                </div>
             console.log("User not found in database, registering...");
             await api.post('/api/auth/register');
             // Retry getting user profile
@@ -113,6 +162,13 @@ export default function ProfilePage() {
         } catch (e) {
           // ignore
         }
+        // load projects from localStorage
+        try {
+          const rawProjects = localStorage.getItem('projects');
+          if (rawProjects) setProjectList(JSON.parse(rawProjects));
+        } catch (e) {
+          // ignore
+        }
       } catch (err) {
         console.error("Error loading profile:", err);
         setError(err);
@@ -137,6 +193,9 @@ export default function ProfilePage() {
       }
     }
   }, [showCertModal]);
+
+  // reload projects when modal is closed so list reflects changes
+  // (projects are now managed on a dedicated /projects page; list is loaded on profile load)
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -588,6 +647,52 @@ export default function ProfilePage() {
                   )}
                     </div>
 
+                    {/* Projects - embedded under Employment History */}
+                    <div className="border-b pb-6 mt-6">
+                      <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-heading font-semibold text-gray-800">Projects</h2>
+                        <button
+                          onClick={() => navigate('/projects')}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                          <span>Add Project</span>
+                        </button>
+                      </div>
+
+                      {projectList && projectList.length > 0 ? (
+                        <div className="space-y-4">
+                          {projectList.map((p, idx) => (
+                            <div key={p.id || idx} className="border rounded-lg p-4 hover:shadow-md transition relative">
+                              <div className="flex justify-between">
+                                <div>
+                                  <h3 className="text-lg font-heading font-semibold text-gray-900">{p.name}</h3>
+                                  <p className="text-gray-700 font-medium">{p.role} · Team: {p.teamSize}</p>
+                                  <div className="text-sm text-gray-600 mt-1">{p.industry || '—'} · {p.status}</div>
+                                  <div className="mt-2 text-sm text-gray-700">{p.description}</div>
+                                  {p.projectUrl && <div className="mt-2"><a href={p.projectUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline">Project link</a></div>}
+                                </div>
+
+                                <div className="flex items-start gap-2">
+                                  <button onClick={() => navigate('/projects')} className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit project"> 
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                  </button>
+                                  <button onClick={() => { if (!confirm('Delete project?')) return; try { const raw = localStorage.getItem('projects'); const arr = raw ? JSON.parse(raw) : []; const updated = arr.filter(x => x.id !== p.id); localStorage.setItem('projects', JSON.stringify(updated)); setProjectList(updated); } catch (e) { console.error(e); } }} className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete project">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-gray-500 italic">No projects added yet.</p>
+                      )}
+
+                    </div>
+
                     {/* Certifications - embedded under Employment History per UC-030 */}
                     <div className="border-b pb-6 mt-6">
                       <div className="flex justify-between items-center mb-4">
@@ -757,6 +862,8 @@ export default function ProfilePage() {
                         </div>
                       </div>
                     )}
+
+                    
 
                 {/* Additional Information */}
                 {(userData?.website || userData?.linkedin || userData?.github) && (
@@ -967,6 +1074,8 @@ export default function ProfilePage() {
                     />
                   </div>
                 </div>
+
+                
 
                 {/* Phone and Location Row */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
