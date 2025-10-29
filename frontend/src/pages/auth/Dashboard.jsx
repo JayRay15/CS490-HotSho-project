@@ -114,7 +114,7 @@ export default function Dashboard() {
               sessionStorage.setItem("logoutMessage", "You have been successfully logged out");
               signOut();
             }}
-            className="px-4 py-2 text-white rounded-lg transition focus:outline-none focus:ring-2 focus:ring-offset-2"
+            className="px-6 py-2 text-white rounded-lg transition focus:outline-none focus:ring-2 focus:ring-offset-2 whitespace-nowrap"
             style={{ backgroundColor: '#EF4444' }}
             onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#DC2626'}
             onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#EF4444'}
