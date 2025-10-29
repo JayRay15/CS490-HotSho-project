@@ -1,4 +1,5 @@
 import { User } from "../models/User.js";
+import { sendFinalDeletionEmail } from "./email.js";
 
 /**
  * Cleanup job that permanently deletes user accounts
@@ -26,6 +27,17 @@ export const cleanupExpiredAccounts = async () => {
 
     for (const user of expiredUsers) {
       try {
+        // Send final deletion email BEFORE deleting the account
+        // (so we still have access to user data)
+        try {
+          await sendFinalDeletionEmail(user.email, user.name);
+          console.log(`📧 Final deletion email sent to: ${user.email}`);
+        } catch (emailErr) {
+          console.error(`⚠️  Failed to send final deletion email to ${user.email}:`, emailErr.message);
+          // Continue with deletion even if email fails (user already can't access account)
+        }
+
+        // Permanently delete the user from the database
         await User.deleteOne({ _id: user._id });
         deletedIds.push(user._id);
         console.log(`✅ Permanently deleted user: ${user.email} (ID: ${user._id})`);
