@@ -21,14 +21,14 @@ export default function Register() {
   }, []);
 
   return (
-    <div className="flex flex-col justify-center items-center min-h-screen bg-gray-50 py-8">
+    <div className="flex flex-col justify-center items-center min-h-screen bg-background py-8">
       {/* Logout confirmation message */}
       {logoutMessage && (
-        <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-lg flex items-center justify-between max-w-md w-full mx-auto">
+        <div className="mb-4 p-3 bg-success-100 border border-success-400 text-success-700 rounded-lg flex items-center justify-between max-w-md w-full mx-auto">
           <span>{logoutMessage}</span>
           <button
             onClick={() => setLogoutMessage(null)}
-            className="ml-2 text-green-700 hover:text-green-900 font-bold"
+            className="ml-2 text-success-700 hover:text-success-900 font-bold"
           >
             ×
           </button>
