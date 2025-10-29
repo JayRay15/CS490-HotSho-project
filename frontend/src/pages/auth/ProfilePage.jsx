@@ -1691,7 +1691,6 @@ export default function ProfilePage() {
               </button>
             </div>
 
-              const response = await api.put('/api/users/me', formData);
             <div className="p-6">
               {/* Error Display */}
               {error && (
