@@ -1,14 +1,15 @@
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
+import api, { setAuthToken } from "../../api/axios";
 import InputField from "../../components/InputField";
 
 const STATUS = ["Completed", "Ongoing", "Planned"];
 const SAMPLE_TECHS = ["React", "Node.js", "Python", "AWS", "Docker", "Postgres"];
 const INDUSTRIES = ["Software", "Healthcare", "Finance", "Education", "Marketing", "Other"];
 
-export default function ProjectModal({ isOpen, onClose, onSuccess, editingProject }) {
+export default function ProjectModal({ isOpen, onClose, onSuccess, editingProject, getToken }) {
   const isEditMode = !!editingProject;
-  
-  const [form, setForm] = useState(editingProject || {
+
+  const [form, setForm] = useState({
     name: "",
     description: "",
     role: "",
@@ -26,6 +27,44 @@ export default function ProjectModal({ isOpen, onClose, onSuccess, editingProjec
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
   const fileRef = useRef(null);
+
+  // Initialize form when editing
+  useEffect(() => {
+    if (isEditMode && editingProject) {
+      setForm({
+        name: editingProject.name || "",
+        description: editingProject.description || "",
+        role: editingProject.role || "",
+        startDate: editingProject.startDate ? new Date(editingProject.startDate).toISOString().slice(0,10) : "",
+        endDate: editingProject.endDate ? new Date(editingProject.endDate).toISOString().slice(0,10) : "",
+        technologies: Array.isArray(editingProject.technologies) ? editingProject.technologies.join(", ") : (editingProject.technologies || ""),
+        projectUrl: editingProject.projectUrl || editingProject.url || "",
+        teamSize: editingProject.teamSize || 1,
+        collaboration: editingProject.collaboration || "",
+        outcomes: editingProject.outcomes || "",
+        industry: editingProject.industry || "",
+        status: editingProject.status || "Completed",
+        screenshot: editingProject.screenshot || null,
+      });
+    } else if (!isEditMode) {
+      setForm({
+        name: "",
+        description: "",
+        role: "",
+        startDate: "",
+        endDate: "",
+        technologies: "",
+        projectUrl: "",
+        teamSize: 1,
+        collaboration: "",
+        outcomes: "",
+        industry: "",
+        status: "Completed",
+        screenshot: null,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditMode, editingProject, isOpen]);
 
   const handleChange = (key) => (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
@@ -74,28 +113,26 @@ export default function ProjectModal({ isOpen, onClose, onSuccess, editingProjec
     setIsSaving(true);
 
     try {
-      // Get existing projects from localStorage
-      const raw = localStorage.getItem('projects');
-      const list = raw ? JSON.parse(raw) : [];
-      
-      let updatedList;
-      let successMessage;
-      
-      if (isEditMode) {
-        // Update existing project
-        updatedList = list.map((p) => (p.id === editingProject.id ? { ...form, id: editingProject.id } : p));
-        successMessage = `Project "${form.name}" updated successfully!`;
+      // auth
+      const token = await getToken?.();
+      if (token) setAuthToken(token);
+
+      const payload = { ...form };
+      // Submit to backend
+      if (isEditMode && editingProject?._id) {
+        await api.put(`/api/profile/projects/${editingProject._id}`, payload);
       } else {
-        // Add new project
-        const newProject = { ...form, id: Date.now() };
-        updatedList = [newProject, ...list];
-        successMessage = `Project "${form.name}" added successfully!`;
+        await api.post(`/api/profile/projects`, payload);
       }
-      
-      // Save to localStorage
-      localStorage.setItem('projects', JSON.stringify(updatedList));
-      
-      // Call success callback with updated list
+
+      // Fetch updated projects from server
+      const me = await api.get('/api/users/me');
+      const updatedList = me?.data?.data?.projects || [];
+
+      const successMessage = isEditMode
+        ? `Project "${form.name}" updated successfully!`
+        : `Project "${form.name}" added successfully!`;
+
       onSuccess(updatedList, successMessage);
     } catch (err) {
       console.error("Error saving project:", err);

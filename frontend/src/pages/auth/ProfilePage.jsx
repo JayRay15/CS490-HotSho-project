@@ -309,20 +309,9 @@ export default function ProfilePage() {
         setBioCharCount(profileData.bio.length);
         setProfilePicture(data.picture || null);
         setEmploymentList(data.employment || []);
-        // load certifications from localStorage for inline display
-        try {
-          const rawCerts = localStorage.getItem('certifications');
-          if (rawCerts) setCertList(JSON.parse(rawCerts));
-        } catch (e) {
-          // ignore
-        }
-        // load projects from localStorage
-        try {
-          const rawProjects = localStorage.getItem('projects');
-          if (rawProjects) setProjectList(JSON.parse(rawProjects));
-        } catch (e) {
-          // ignore
-        }
+        // Load server-backed lists
+        setCertList(Array.isArray(data.certifications) ? data.certifications : []);
+        setProjectList(Array.isArray(data.projects) ? data.projects : []);
   setEmploymentList(data.employment || []);
   setEducationList(data.education || []);
   // Populate skills if present on the profile response. Support either top-level `skills` or nested `profile.skills` shapes.
@@ -345,17 +334,22 @@ export default function ProfilePage() {
     }
   }, [isSignedIn, getToken, signOut]);
 
-  // reload certifications when modal is closed (so list reflects changes made inside the modal)
+  // Refresh certifications from server when modal closes
   useEffect(() => {
-    if (!showCertModal) {
-      try {
-        const raw = localStorage.getItem('certifications');
-        setCertList(raw ? JSON.parse(raw) : []);
-      } catch (e) {
-        // ignore
+    const refresh = async () => {
+      if (!showCertModal) {
+        try {
+          const token = await getToken();
+          setAuthToken(token);
+          const me = await api.get('/api/users/me');
+          setCertList(me?.data?.data?.certifications || []);
+        } catch (e) {
+          // ignore
+        }
       }
-    }
-  }, [showCertModal]);
+    };
+    refresh();
+  }, [showCertModal, getToken]);
 
   // reload projects when modal is closed so list reflects changes
   // (projects are now managed on a dedicated /projects page; list is loaded on profile load)
@@ -1157,7 +1151,7 @@ export default function ProfilePage() {
                       {projectList && projectList.length > 0 ? (
                         <div className="space-y-4">
                           {projectList.map((p, idx) => (
-                            <div key={p.id || idx} className="border rounded-lg p-4 hover:shadow-md transition relative">
+                            <div key={p._id || p.id || idx} className="border rounded-lg p-4 hover:shadow-md transition relative">
                               <div className="flex justify-between">
                                 <div>
                                   <h3 className="text-lg font-heading font-semibold text-gray-900">{p.name}</h3>
@@ -1171,7 +1165,7 @@ export default function ProfilePage() {
                                   <button onClick={() => handleEditProject(p)} className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit project"> 
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                                   </button>
-                                  <button onClick={() => { if (!confirm('Delete project?')) return; try { const raw = localStorage.getItem('projects'); const arr = raw ? JSON.parse(raw) : []; const updated = arr.filter(x => x.id !== p.id); localStorage.setItem('projects', JSON.stringify(updated)); setProjectList(updated); } catch (e) { console.error(e); } }} className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete project">
+                                  <button onClick={async () => { if (!confirm('Delete project?')) return; try { const token = await getToken(); setAuthToken(token); await api.delete(`/api/profile/projects/${p._id}`); const me = await api.get('/api/users/me'); setProjectList(me?.data?.data?.projects || []); } catch (e) { console.error(e); } }} className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete project">
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                   </button>
                                 </div>
@@ -1250,14 +1244,14 @@ export default function ProfilePage() {
                                       </svg>
                                     </button>
                                     <button
-                                      onClick={() => {
+                                      onClick={async () => {
                                         if (!confirm('Delete this certification?')) return;
                                         try {
-                                          const raw = localStorage.getItem('certifications');
-                                          const arr = raw ? JSON.parse(raw) : [];
-                                          const updated = arr.filter(x => x.id !== c.id);
-                                          localStorage.setItem('certifications', JSON.stringify(updated));
-                                          setCertList(updated);
+                                          const token = await getToken();
+                                          setAuthToken(token);
+                                          await api.delete(`/api/profile/certifications/${c._id}`);
+                                          const me = await api.get('/api/users/me');
+                                          setCertList(me?.data?.data?.certifications || []);
                                         } catch (e) {
                                           console.error(e);
                                         }
@@ -1309,28 +1303,27 @@ export default function ProfilePage() {
                               {items.map((c) => {
                                 const days = Math.ceil((new Date(c.expirationDate) - new Date()) / (1000 * 60 * 60 * 24));
                                 return (
-                                  <div key={c.id} className="flex items-center justify-between">
+                                  <div key={c._id || c.id} className="flex items-center justify-between">
                                     <div className="text-sm">
                                       <strong>{c.name}</strong> — {c.organization} · Expires in {days} day(s)
                                     </div>
                                     <div className="flex items-center gap-2">
-                                      <button className="text-sm text-gray-600 hover:text-gray-800" onClick={() => {
-                                        // snooze 7 days
+                                      <button className="text-sm text-gray-600 hover:text-gray-800" onClick={async () => {
                                         try {
-                                          const raw = localStorage.getItem('certifications');
-                                          const arr = raw ? JSON.parse(raw) : [];
-                                          const updated = arr.map(x => x.id === c.id ? { ...x, reminderSnoozedUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() } : x);
-                                          localStorage.setItem('certifications', JSON.stringify(updated));
-                                          setCertList(updated);
+                                          const token = await getToken();
+                                          setAuthToken(token);
+                                          await api.put(`/api/profile/certifications/${c._id}`, { reminderSnoozedUntil: new Date(Date.now() + 7*24*60*60*1000).toISOString() });
+                                          const me = await api.get('/api/users/me');
+                                          setCertList(me?.data?.data?.certifications || []);
                                         } catch (e) { console.error(e); }
                                       }}>Snooze 7d</button>
-                                      <button className="text-sm text-gray-600 hover:text-gray-800" onClick={() => {
+                                      <button className="text-sm text-gray-600 hover:text-gray-800" onClick={async () => {
                                         try {
-                                          const raw = localStorage.getItem('certifications');
-                                          const arr = raw ? JSON.parse(raw) : [];
-                                          const updated = arr.map(x => x.id === c.id ? { ...x, reminderDismissed: true } : x);
-                                          localStorage.setItem('certifications', JSON.stringify(updated));
-                                          setCertList(updated);
+                                          const token = await getToken();
+                                          setAuthToken(token);
+                                          await api.put(`/api/profile/certifications/${c._id}`, { reminderDismissed: true });
+                                          const me = await api.get('/api/users/me');
+                                          setCertList(me?.data?.data?.certifications || []);
                                         } catch (e) { console.error(e); }
                                       }}>Dismiss</button>
                                     </div>
@@ -1362,7 +1355,7 @@ export default function ProfilePage() {
                           
                           {/* Modal Content */}
                           <div className="flex-1 overflow-y-auto p-6">
-                            <Certifications />
+                            <Certifications getToken={getToken} onListUpdate={(updated) => setCertList(updated)} />
                           </div>
                           
                           {/* Modal Footer */}
@@ -1952,6 +1945,7 @@ export default function ProfilePage() {
             setTimeout(() => setProjectSuccessMessage(null), 5000);
           }}
           editingProject={editingProject}
+          getToken={getToken}
         />
       )}
 

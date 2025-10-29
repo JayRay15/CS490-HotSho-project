@@ -14,7 +14,9 @@ const SAMPLE_ORGS = [
   "PMI",
 ];
 
-export default function Certifications() {
+import api, { setAuthToken } from "../../api/axios";
+
+export default function Certifications({ getToken, onListUpdate }) {
   const [list, setList] = useState([]);
   const [form, setForm] = useState({
     name: "",
@@ -35,15 +37,28 @@ export default function Certifications() {
   const [editingId, setEditingId] = useState(null);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("certifications");
-      if (raw) setList(JSON.parse(raw));
-    } catch (e) {}
-  }, []);
+    const load = async () => {
+      if (getToken) {
+        try {
+          const token = await getToken();
+          setAuthToken(token);
+          const me = await api.get('/api/users/me');
+          setList(me?.data?.data?.certifications || []);
+        } catch (e) {}
+      } else {
+        try {
+          const raw = localStorage.getItem("certifications");
+          if (raw) setList(JSON.parse(raw));
+        } catch (e) {}
+      }
+    };
+    load();
+  }, [getToken]);
 
   const saveList = (newList) => {
     setList(newList);
-    localStorage.setItem("certifications", JSON.stringify(newList));
+    onListUpdate?.(newList);
+    try { localStorage.setItem("certifications", JSON.stringify(newList)); } catch {}
   };
 
   const handleChange = (key) => (e) => {
@@ -77,14 +92,38 @@ export default function Certifications() {
     return null;
   };
 
-  const addCertification = (e) => {
+  const addCertification = async (e) => {
     e.preventDefault();
     const err = validate();
     if (err) return alert(err);
-    if (editingId) {
-      // update existing certification
-      const updated = list.map((c) => (c.id === editingId ? { ...form, id: editingId } : c));
-      saveList(updated);
+
+    try {
+      if (getToken) {
+        const token = await getToken();
+        setAuthToken(token);
+        if (editingId) {
+          await api.put(`/api/profile/certifications/${editingId}`, form);
+        } else {
+          await api.post('/api/profile/certifications', form);
+        }
+        const me = await api.get('/api/users/me');
+        const updated = me?.data?.data?.certifications || [];
+        saveList(updated);
+      } else {
+        // Fallback to localStorage
+        if (editingId) {
+          const updated = list.map((c) => (c.id === editingId ? { ...form, id: editingId } : c));
+          saveList(updated);
+        } else {
+          const item = { ...form, id: Date.now() };
+          const newList = [item, ...list];
+          saveList(newList);
+        }
+      }
+    } catch (e2) {
+      console.error('Failed to save certification', e2);
+      alert('Failed to save certification');
+    } finally {
       setEditingId(null);
       setForm({
         name: "",
@@ -101,59 +140,67 @@ export default function Certifications() {
       if (fileInputRef.current) fileInputRef.current.value = null;
       setUploadedName(null);
       setTempDoc(null);
-      return;
     }
-
-    const item = { ...form, id: Date.now() };
-    const newList = [item, ...list];
-    saveList(newList);
-    setForm({
-      name: "",
-      organization: "",
-      dateEarned: "",
-      expirationDate: "",
-      doesNotExpire: false,
-      certId: "",
-      industry: "",
-      reminderDays: 30,
-      verification: "Unverified",
-      document: null,
-    });
-    if (fileInputRef.current) fileInputRef.current.value = null;
-    setUploadedName(null);
   };
 
-  const remove = (id) => {
+  const remove = async (id) => {
     if (!confirm("Delete this certification?")) return;
-    saveList(list.filter((c) => c.id !== id));
+    try {
+      if (getToken) {
+        const token = await getToken();
+        setAuthToken(token);
+        await api.delete(`/api/profile/certifications/${id}`);
+        const me = await api.get('/api/users/me');
+        saveList(me?.data?.data?.certifications || []);
+      } else {
+        saveList(list.filter((c) => c.id !== id));
+      }
+    } catch (e) {
+      console.error('Failed to delete certification', e);
+    }
   };
 
   const editCertification = (id) => {
-    const found = list.find((c) => c.id === id);
+    const found = list.find((c) => (c._id || c.id) === id);
     if (!found) return;
     setForm({
       name: found.name || "",
       organization: found.organization || "",
-      dateEarned: found.dateEarned || "",
-      expirationDate: found.expirationDate || "",
+      dateEarned: found.dateEarned ? new Date(found.dateEarned).toISOString().slice(0,10) : "",
+      expirationDate: found.expirationDate ? new Date(found.expirationDate).toISOString().slice(0,10) : "",
       doesNotExpire: found.doesNotExpire || false,
       certId: found.certId || "",
       industry: found.industry || "",
-      reminderDays: found.reminderDays || 30,
+      reminderDays: typeof found.reminderDays === 'number' ? found.reminderDays : 30,
       verification: found.verification || "Unverified",
       document: found.document || null,
     });
-    setEditingId(id);
+    setEditingId(found._id || id);
     setUploadedName(found.document ? found.document.name : null);
   };
 
-  const toggleVerification = (id) => {
-    const newList = list.map((c) => {
-      if (c.id !== id) return c;
-      const next = c.verification === "Unverified" ? "Pending" : c.verification === "Pending" ? "Verified" : "Unverified";
-      return { ...c, verification: next };
-    });
-    saveList(newList);
+  const toggleVerification = async (id) => {
+    try {
+      if (getToken) {
+        const token = await getToken();
+        setAuthToken(token);
+        const target = list.find(c => (c._id || c.id) === id);
+        if (!target) return;
+        const next = target.verification === "Unverified" ? "Pending" : target.verification === "Pending" ? "Verified" : "Unverified";
+        await api.put(`/api/profile/certifications/${target._id || id}`, { verification: next });
+        const me = await api.get('/api/users/me');
+        saveList(me?.data?.data?.certifications || []);
+      } else {
+        const newList = list.map((c) => {
+          if ((c._id || c.id) !== id) return c;
+          const next = c.verification === "Unverified" ? "Pending" : c.verification === "Pending" ? "Verified" : "Unverified";
+          return { ...c, verification: next };
+        });
+        saveList(newList);
+      }
+    } catch (e) {
+      console.error('Failed to toggle verification', e);
+    }
   };
 
   const daysUntil = (date) => {
