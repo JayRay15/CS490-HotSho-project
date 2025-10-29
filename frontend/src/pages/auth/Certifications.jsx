@@ -39,7 +39,9 @@ export default function Certifications() {
     try {
       const raw = localStorage.getItem("certifications");
       if (raw) setList(JSON.parse(raw));
-    } catch (e) {}
+    } catch {
+      // ignore localStorage parse errors
+    }
   }, []);
 
   const saveList = (newList) => {
@@ -124,12 +126,12 @@ export default function Certifications() {
     setUploadedName(null);
   };
 
-  const remove = (id) => {
+  const _remove = (id) => {
     if (!confirm("Delete this certification?")) return;
     saveList(list.filter((c) => c.id !== id));
   };
 
-  const editCertification = (id) => {
+  const _editCertification = (id) => {
     const found = list.find((c) => c.id === id);
     if (!found) return;
     setForm({
@@ -148,7 +150,7 @@ export default function Certifications() {
     setUploadedName(found.document ? found.document.name : null);
   };
 
-  const toggleVerification = (id) => {
+  const _toggleVerification = (id) => {
     const newList = list.map((c) => {
       if (c.id !== id) return c;
       const next = c.verification === "Unverified" ? "Pending" : c.verification === "Pending" ? "Verified" : "Unverified";
@@ -157,7 +159,7 @@ export default function Certifications() {
     saveList(newList);
   };
 
-  const daysUntil = (date) => {
+  const _daysUntil = (date) => {
     if (!date) return null;
     const d = new Date(date);
     const now = new Date();

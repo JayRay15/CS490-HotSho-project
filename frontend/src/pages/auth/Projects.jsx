@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Card from "../../components/Card";
+import Container from "../../components/Container";
 import InputField from "../../components/InputField";
 import Button from "../../components/Button";
 
@@ -33,7 +34,9 @@ export default function Projects({ onClose }) {
     try {
       const raw = localStorage.getItem('projects');
       if (raw) setList(JSON.parse(raw));
-    } catch (e) {}
+    } catch {
+      // ignore localStorage read errors
+    }
   }, []);
 
   const saveList = (newList) => {
@@ -86,7 +89,7 @@ export default function Projects({ onClose }) {
     if (fileRef.current) fileRef.current.value = null;
   };
 
-  const edit = (id) => {
+  const _edit = (id) => {
     const found = list.find((p) => p.id === id);
     if (!found) return;
     setForm({ ...found });
@@ -94,13 +97,13 @@ export default function Projects({ onClose }) {
     if (fileRef.current) fileRef.current.value = null;
   };
 
-  const remove = (id) => {
+  const _remove = (id) => {
     if (!confirm('Delete this project?')) return;
     saveList(list.filter((p) => p.id !== id));
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <Container level={2} className="max-w-4xl mx-auto p-6">
       <h2 className="text-2xl font-heading mb-4">Projects</h2>
       <Card>
         <form id="project-form" onSubmit={addProject} className="space-y-4">
@@ -179,7 +182,7 @@ export default function Projects({ onClose }) {
           </div>
         </form>
       </Card>
-      
-    </div>
+
+    </Container>
   );
 }

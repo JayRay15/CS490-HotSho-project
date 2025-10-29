@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useUser, useAuth } from "@clerk/clerk-react";
 import Card from "../../components/Card";
+import Container from "../../components/Container";
 import InputField from "../../components/InputField";
 import Button from "../../components/Button";
 import ErrorMessage, { FieldError } from "../../components/ErrorMessage";
-import api, { getErrorMessage, retryRequest } from "../../api/axios";
+import api from "../../api/axios";
 
 export default function Profile() {
     const { user: clerkUser } = useUser();
@@ -41,10 +42,8 @@ export default function Profile() {
         setLoading(true);
 
         try {
-            // Use retry mechanism for network resilience
-            await retryRequest(async () => {
-                return await api.put("/api/users/me", formData);
-            });
+            // Use direct API call for profile update
+            await api.put("/api/users/me", formData);
 
             setSuccess(true);
             setTimeout(() => setSuccess(false), 5000);
@@ -84,7 +83,7 @@ export default function Profile() {
     };
 
     return (
-        <div className="max-w-5xl mx-auto p-6">
+        <Container level={2} className="max-w-5xl mx-auto p-6">
             <h2 className="text-2xl font-heading mb-4">My Profile</h2>
 
             {/* Error display */}
@@ -232,7 +231,7 @@ export default function Profile() {
                     </Card>
                 </div>
             </div>
-        </div>
+        </Container>
     );
 }
 

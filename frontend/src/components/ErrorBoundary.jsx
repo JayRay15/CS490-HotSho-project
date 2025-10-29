@@ -1,3 +1,4 @@
+/* global process */
 import { Component } from 'react';
 import PropTypes from 'prop-types';
 
@@ -16,7 +17,7 @@ class ErrorBoundary extends Component {
     };
   }
 
-  static getDerivedStateFromError(error) {
+  static getDerivedStateFromError() {
     // Update state so the next render will show the fallback UI
     return { hasError: true };
   }
@@ -24,7 +25,7 @@ class ErrorBoundary extends Component {
   componentDidCatch(error, errorInfo) {
     // Log error details for debugging
     console.error('ErrorBoundary caught an error:', error, errorInfo);
-    
+
     this.setState({
       error,
       errorInfo
@@ -68,16 +69,16 @@ class ErrorBoundary extends Component {
                 />
               </svg>
             </div>
-            
+
             <h2 className="mt-4 text-xl font-heading font-semibold text-center text-gray-900">
               Oops! Something went wrong
             </h2>
-            
+
             <p className="mt-2 text-sm text-center text-gray-600">
               We're sorry for the inconvenience. An unexpected error occurred.
             </p>
 
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            {typeof process !== 'undefined' && process.env?.NODE_ENV === 'development' && this.state.error && (
               <details className="mt-4 p-3 bg-gray-100 rounded text-xs">
                 <summary className="cursor-pointer font-heading font-medium text-gray-700">
                   Error Details (Development Only)
