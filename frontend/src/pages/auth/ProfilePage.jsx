@@ -7,9 +7,13 @@ import ProfileCompleteness from "../../components/ProfileCompleteness";
 import { useAccountDeletionCheck } from "../../hooks/useAccountDeletionCheck";
 import Certifications from "./Certifications";
 import Projects from "./Projects";
+import ProjectGrid from "../../components/projects/ProjectGrid";
+import ProjectDetail from "../../components/projects/ProjectDetail";
+import ProjectFilters from "../../components/projects/ProjectFilters";
+import { useParams } from 'react-router-dom';
 import Card from "../../components/Card";
 import Container from "../../components/Container";
-import { useNavigate } from "react-router-dom";
+// import { useNavigate } from "react-router-dom";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -110,7 +114,24 @@ export default function ProfilePage() {
   const handleEditProject = (project) => {
     setEditingProject(project);
     setShowProjectModal(true);
-  };    const handleDeleteSkill = async () => {
+  };
+
+  const handleDeleteProject = async (p) => {
+    if (!p) return;
+    if (!confirm('Delete project?')) return;
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      await api.delete(`/api/profile/projects/${p._id}`);
+      const me = await api.get('/api/users/me');
+      setProjectList(me?.data?.data?.projects || []);
+    } catch (e) {
+      console.error(e);
+      alert('Failed to delete project. Please try again.');
+    }
+  };
+
+  const handleDeleteSkill = async () => {
       if (!deletingSkill) return;
       setIsDeleting(true);
       setError(null);
@@ -296,7 +317,17 @@ export default function ProfilePage() {
   const [editingProject, setEditingProject] = useState(null);
   const [editingCertification, setEditingCertification] = useState(null);
   const [projectSuccessMessage, setProjectSuccessMessage] = useState(null);
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
+  // Using portfolio inline on profile; navigation not required here
+  // (keep useNavigate import removal later if unused)
+
+  const [selectedProject, setSelectedProject] = useState(null);
+  const params = useParams();
+
+  const [projectFilters, setProjectFilters] = useState({ techs: [], industries: [], query: '', sort: 'dateDesc' });
+
+  const techOptions = projectList && Array.isArray(projectList) ? Array.from(new Set(projectList.flatMap(p => Array.isArray(p.technologies) ? p.technologies : (p.technologies || '').split?.(',') || []).map(t => t && t.trim()).filter(Boolean))).sort() : [];
+  const industryOptions = projectList && Array.isArray(projectList) ? Array.from(new Set(projectList.map(p => p.industry).filter(Boolean))).sort() : [];
 
   // Load user profile data
   useEffect(() => {
@@ -359,6 +390,23 @@ export default function ProfilePage() {
         // Load server-backed lists
         setCertList(Array.isArray(data.certifications) ? data.certifications : []);
         setProjectList(Array.isArray(data.projects) ? data.projects : []);
+        // If URL contains a project id, open its detail once projects are loaded
+        if (params?.id) {
+          const list = Array.isArray(data.projects) ? data.projects : [];
+          const found = list.find(p => p._id === params.id || p.id === params.id);
+          if (found) {
+            setSelectedProject(found);
+          } else {
+            // fallback: try fetching a public project by id (if backend supports it)
+            try {
+              const resp = await api.get(`/api/projects/${params.id}`);
+              const proj = resp?.data?.data || resp?.data || null;
+              if (proj) setSelectedProject(proj);
+            } catch (e) {
+              // ignore - project may not be public
+            }
+          }
+        }
   setEmploymentList(data.employment || []);
   setEducationList(data.education || []);
   // Populate skills if present on the profile response. Support either top-level `skills` or nested `profile.skills` shapes.
@@ -1175,7 +1223,7 @@ export default function ProfilePage() {
 
                 {/* Projects Section */}
                 <Card variant="default" title="Projects">
-                  <div className="flex justify-between items-center mb-4">
+                  <div className="flex justify-end items-center mb-4">
                     <button
                       onClick={() => setShowProjectModal(true)}
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2 ml-auto"
@@ -1197,44 +1245,29 @@ export default function ProfilePage() {
                       )}
 
                       {projectList && projectList.length > 0 ? (
-                        <div className="space-y-4">
-                          {projectList.map((p, idx) => (
-                            <div key={p._id || p.id || idx} className="border rounded-lg p-4 hover:shadow-md transition relative">
-                              <div className="flex justify-between">
-                                <div>
-                                  <h3 className="text-lg font-heading font-semibold text-gray-900">{p.name}</h3>
-                                  <p className="text-gray-700 font-medium">{p.role} · Team: {p.teamSize}</p>
-                                  <div className="text-sm text-gray-600 mt-1">{p.industry || '—'} · {p.status}</div>
-                                  <div className="mt-2 text-sm text-gray-700">{p.description}</div>
-                                  {p.projectUrl && <div className="mt-2"><a href={p.projectUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline">Project link</a></div>}
-                                </div>
+                        <>
+                          <div className="mb-4">
+                            <ProjectFilters
+                              techOptions={techOptions}
+                              industryOptions={industryOptions}
+                              filters={projectFilters}
+                              onChange={setProjectFilters}
+                            />
+                          </div>
 
-                                <div className="flex items-start gap-2">
-                                  <button onClick={() => handleEditProject(p)} className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit project"> 
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                  </button>
-                                  <button onClick={async () => { 
-                                    if (!confirm('Delete project?')) return; 
-                                    try { 
-                                      const token = await getToken(); 
-                                      setAuthToken(token); 
-                                      await api.delete(`/api/profile/projects/${p._id}`); 
-                                      const me = await api.get('/api/users/me'); 
-                                      setProjectList(me?.data?.data?.projects || []); 
-                                    } catch (e) { 
-                                      console.error(e); 
-                                      alert('Failed to delete project. Please try again.');
-                                    } 
-                                  }} className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete project">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                          <ProjectGrid
+                            projects={projectList}
+                            filters={projectFilters}
+                            onOpenDetail={(p) => setSelectedProject(p)}
+                            onEdit={(p) => handleEditProject(p)}
+                            onDelete={(p) => handleDeleteProject(p)}
+                          />
+                        </>
                       ) : (
                         <p className="text-gray-500 italic">No projects added yet.</p>
+                      )}
+                      {selectedProject && (
+                        <ProjectDetail project={selectedProject} onClose={() => setSelectedProject(null)} />
                       )}
                 </Card>
 

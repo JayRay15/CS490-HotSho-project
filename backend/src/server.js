@@ -5,6 +5,7 @@ import { connectDB } from "./utils/db.js";
 import userRoutes from "./routes/userRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
+import { getPublicProject } from "./controllers/profileController.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 import { startCleanupSchedule } from "./utils/cleanupDeletedUsers.js";
 
@@ -41,6 +42,9 @@ app.get("/api/health", (req, res) => {
     message: "Server is running",
     timestamp: new Date().toISOString()
   });
+
+// Public project page (shareable link)
+app.get('/api/projects/:projectId', getPublicProject);
 });
 
 // 404 handler - must come after all routes
