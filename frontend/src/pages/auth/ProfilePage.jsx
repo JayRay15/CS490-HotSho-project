@@ -8,6 +8,7 @@ import { useAccountDeletionCheck } from "../../hooks/useAccountDeletionCheck";
 import Certifications from "./Certifications";
 import Projects from "./Projects";
 import Card from "../../components/Card";
+import Container from "../../components/Container";
 import { useNavigate } from "react-router-dom";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import {
@@ -641,26 +642,28 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen py-8" style={{ backgroundColor: '#E4E6E0' }}>
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="rounded-2xl shadow-md p-8 border" style={{ backgroundColor: '#F5F6F4', borderColor: '#B7B89F' }}>
-          {/* Header with Profile Picture */}
-          <div className="flex justify-between items-start mb-8">
-            <div>
-              <h1 className="text-3xl font-heading font-bold mb-2" style={{ color: '#4F5348' }}>My Profile</h1>
-              <p style={{ color: '#656A5C' }}>View and manage your professional profile</p>
+      <Container level={1}>
+        <div className="max-w-4xl mx-auto">
+          {/* Header Card */}
+          <Card variant="primary" className="mb-6">
+            <div className="flex justify-between items-start">
+              <div>
+                <h1 className="text-3xl font-heading font-bold mb-2" style={{ color: '#4F5348' }}>My Profile</h1>
+                <p style={{ color: '#656A5C' }}>View and manage your professional profile</p>
+              </div>
+              
+              {/* Profile Picture Upload */}
+              <ProfilePictureUpload
+                currentPicture={profilePicture}
+                onUploadSuccess={(newPicture) => {
+                  setProfilePicture(newPicture);
+                }}
+                onDeleteSuccess={() => {
+                  setProfilePicture(null);
+                }}
+              />
             </div>
-            
-            {/* Profile Picture Upload */}
-            <ProfilePictureUpload
-              currentPicture={profilePicture}
-              onUploadSuccess={(newPicture) => {
-                setProfilePicture(newPicture);
-              }}
-              onDeleteSuccess={() => {
-                setProfilePicture(null);
-              }}
-            />
-          </div>
+          </Card>
 
           {/* Success Message */}
           {successMessage && (
@@ -676,19 +679,18 @@ export default function ProfilePage() {
           ) : (
             <>
               {/* Profile Completeness Widget */}
-              <div className="mb-8">
+              <div className="mb-6">
                 <ProfileCompleteness userData={userData} />
               </div>
 
               {/* Profile Display */}
               <div className="space-y-6">
                 {/* Basic Information Section */}
-                <div className="border-b pb-6" style={{ borderColor: '#B7B89F' }}>
+                <Card variant="default" title="Basic Information">
                   <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-heading font-semibold" style={{ color: '#4F5348' }}>Basic Information</h2>
                     <button
                       onClick={handleEditClick}
-                      className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                      className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2 ml-auto"
                       style={{ backgroundColor: '#777C6D' }}
                       onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
                       onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
@@ -718,11 +720,10 @@ export default function ProfilePage() {
                       <p style={{ color: '#4F5348' }}>{userData?.location || '—'}</p>
                     </div>
                   </div>
-                </div>
+                </Card>
 
                 {/* Professional Information Section */}
-                <div className="border-b pb-6" style={{ borderColor: '#B7B89F' }}>
-                  <h2 className="text-xl font-heading font-semibold mb-4" style={{ color: '#4F5348' }}>Professional Information</h2>
+                <Card variant="default" title="Professional Information">
                   
                   <div className="space-y-4">
                     <div>
@@ -748,15 +749,14 @@ export default function ProfilePage() {
                       </div>
                     )}
                   </div>
-                </div>
+                </Card>
 
                 {/* Employment History Section */}
-                <div className="border-b pb-6" style={{ borderColor: '#B7B89F' }}>
+                <Card variant="default" title="Employment History">
                   <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-heading font-semibold" style={{ color: '#4F5348' }}>Employment History</h2>
                     <button
                       onClick={() => setShowEmploymentModal(true)}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2"
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2 ml-auto"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -789,7 +789,7 @@ export default function ProfilePage() {
                           return new Date(b.endDate) - new Date(a.endDate);
                         })
                         .map((job, index) => (
-                          <div key={job._id || index} className="border rounded-lg p-4 hover:shadow-md transition relative">
+                          <Card key={job._id || index} variant="outlined" interactive className="relative">
                             {/* Current Position Badge - Top Right */}
                             {job.isCurrentPosition && (
                               <div className="absolute top-4 right-4">
@@ -879,22 +879,21 @@ export default function ProfilePage() {
                                 )}
                               </div>
                             </div>
-                          </div>
+                          </Card>
                         ))}
 
                     </div>
                   ) : (
                     <p className="italic" style={{ color: '#9CA3AF' }}>No employment history added yet.</p>
                   )}
-                </div>
+                </Card>
 
                 {/* Education History Section */}
-                <div className="border-b pb-6">
+                <Card variant="default" title="Education">
                   <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-heading font-semibold text-gray-800">Education</h2>
                     <button
                       onClick={() => setShowEducationModal(true)}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2"
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2 ml-auto"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -995,13 +994,12 @@ export default function ProfilePage() {
                   ) : (
                     <p className="text-gray-500 italic">No education added yet.</p>
                   )}
-                    </div>
+                </Card>
 
                 {/* Skills Section - Enhanced with Categories */}
-                <div className="border-b pb-6 mt-6">
+                <Card variant="default" title="Skills">
                   <div className="flex justify-between items-center mb-4">
                     <div>
-                      <h2 className="text-xl font-heading font-semibold text-gray-800">Skills</h2>
                       <p className="text-sm text-gray-600 mt-1">{skillList.length} total skills across {Object.keys(groupSkillsByCategory(skillList)).length} categories</p>
                     </div>
                     <div className="flex gap-2">
@@ -1129,22 +1127,21 @@ export default function ProfilePage() {
                       <p className="text-gray-500 italic">No skills added yet. Click "Add Skill" to get started!</p>
                     </div>
                   )}
-                </div>
+                </Card>
 
-                    {/* Projects - embedded under Employment History */}
-                    <div className="border-b pb-6 mt-6">
-                      <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-heading font-semibold text-gray-800">Projects</h2>
-                        <button
-                          onClick={() => setShowProjectModal(true)}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                          </svg>
-                          <span>Add Project</span>
-                        </button>
-                      </div>
+                {/* Projects Section */}
+                <Card variant="default" title="Projects">
+                  <div className="flex justify-between items-center mb-4">
+                    <button
+                      onClick={() => setShowProjectModal(true)}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2 ml-auto"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      <span>Add Project</span>
+                    </button>
+                  </div>
 
                       {projectSuccessMessage && (
                         <div className="mb-4 p-4 bg-green-50 border border-green-200 text-green-800 rounded-lg flex items-center">
@@ -1195,17 +1192,15 @@ export default function ProfilePage() {
                       ) : (
                         <p className="text-gray-500 italic">No projects added yet.</p>
                       )}
+                </Card>
 
-                    </div>
-
-                    {/* Certifications - embedded under Employment History per UC-030 */}
-                    <div className="border-b pb-6 mt-6">
-                      <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-heading font-semibold text-gray-800">Certifications</h2>
-                        <button
-                          onClick={() => { setEditingCertification(null); setShowCertModal(true); }}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2"
-                        >
+                {/* Certifications Section */}
+                <Card variant="default" title="Certifications">
+                  <div className="flex justify-between items-center mb-4">
+                    <button
+                      onClick={() => { setEditingCertification(null); setShowCertModal(true); }}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2 ml-auto"
+                    >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                           </svg>
@@ -1299,14 +1294,11 @@ export default function ProfilePage() {
                       ) : (
                         <p className="text-gray-500 italic">No certifications added yet.</p>
                       )}
+                </Card>
 
-                    </div>
-
-                    {/* Upcoming reminders (moved from Certifications page) */}
-                    <div className="mt-4">
-                      <Card>
-                        <div className="font-semibold mb-2">Upcoming reminders</div>
-                        {(() => {
+                {/* Upcoming Reminders Section */}
+                <Card variant="info" title="Upcoming Reminders">
+                  {(() => {
                           const now = new Date();
                           const items = (certList || []).filter((c) => {
                             if (c.doesNotExpire) return false;
@@ -1366,8 +1358,7 @@ export default function ProfilePage() {
                             </div>
                           );
                         })()}
-                      </Card>
-                    </div>
+                </Card>
 
                     {/* Certifications modal - renders full Certifications UI */}
                     {showCertModal && (
@@ -1490,11 +1481,9 @@ export default function ProfilePage() {
               </div>
             </>
           )}
-        </div>
 
-        {/* Danger Zone: Account deletion - moved to bottom of page */}
-        <div className="mt-8">
-          <div className="rounded-2xl shadow-md p-6 border-2" style={{ backgroundColor: '#EEEEEE', borderColor: '#FCA5A5' }}>
+          {/* Danger Zone: Account deletion */}
+          <Card variant="outlined" className="mt-6 border-2" style={{ borderColor: '#FCA5A5', backgroundColor: '#FEF2F2' }}>
             <h2 className="text-xl font-semibold mb-2" style={{ color: '#DC2626' }}>Danger Zone</h2>
             <p className="text-sm mb-4" style={{ color: '#111827' }}>
               Deleting your account will schedule permanent removal of your personal data after a 30-day grace period. 
@@ -1511,9 +1500,9 @@ export default function ProfilePage() {
                 Delete Account
               </button>
             </div>
-          </div>
+          </Card>
         </div>
-      </div>
+      </Container>
 
       {/* Delete confirmation modal */}
       {showDeleteModal && (

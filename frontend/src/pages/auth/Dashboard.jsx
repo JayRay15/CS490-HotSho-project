@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { RedirectToSignIn, useAuth, useUser } from "@clerk/clerk-react";
-import api, { setAuthToken, retryRequest } from "../../api/axios";
-import ErrorMessage from "../../components/ErrorMessage";
+import api, { setAuthToken } from "../../api/axios";
 import LoadingSpinner from "../../components/LoadingSpinner";
+import Card from "../../components/Card";
+import Container from "../../components/Container";
 
 export default function Dashboard() {
   const { isLoaded, isSignedIn, signOut, getToken } = useAuth();
@@ -99,30 +100,67 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-8" style={{ backgroundColor: '#E4E6E0' }}>
-      <div className="p-8 rounded-2xl shadow-md max-w-2xl w-full border" style={{ backgroundColor: '#F5F6F4', borderColor: '#B7B89F' }}>
-        <div className="flex justify-between items-start mb-6">
-          <div>
-            <h1 className="text-3xl font-heading font-bold mb-2" style={{ color: '#4F5348' }}>
-              Welcome, {user?.fullName || user?.primaryEmailAddress?.emailAddress}
-            </h1>
-            <p style={{ color: '#656A5C' }}>You are successfully logged in!</p>
+    <div className="min-h-screen" style={{ backgroundColor: '#E4E6E0' }}>
+      <Container level={1} className="pt-12 pb-12">
+        <div className="max-w-2xl mx-auto">
+          {/* Welcome Card */}
+          <Card variant="primary" className="mb-6">
+            <div className="flex justify-between items-start">
+              <div>
+                <h1 className="text-3xl font-heading font-bold mb-2" style={{ color: '#4F5348' }}>
+                  Welcome, {user?.fullName || user?.primaryEmailAddress?.emailAddress}
+                </h1>
+                <p className="text-sm" style={{ color: '#656A5C' }}>
+                  You are successfully logged in!
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  sessionStorage.setItem("logoutMessage", "You have been successfully logged out");
+                  signOut();
+                }}
+                className="px-6 py-2 text-white rounded-lg transition focus:outline-none focus:ring-2 focus:ring-offset-2 whitespace-nowrap"
+                style={{ backgroundColor: '#EF4444' }}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#DC2626'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#EF4444'}
+              >
+                Logout
+              </button>
+            </div>
+          </Card>
+
+          {/* Quick Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <Card title="Profile Completion" variant="elevated">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-600">Complete your profile to stand out</p>
+                <span className="text-2xl font-bold" style={{ color: '#777C6D' }}>75%</span>
+              </div>
+              <div className="mt-3 w-full bg-gray-200 rounded-full h-2">
+                <div 
+                  className="h-2 rounded-full transition-all" 
+                  style={{ width: '75%', backgroundColor: '#777C6D' }}
+                />
+              </div>
+            </Card>
+
+            <Card title="Activity Summary" variant="elevated">
+              <p className="text-sm text-gray-600 mb-2">Recent updates and activity</p>
+              <ul className="space-y-1 text-sm text-gray-700">
+                <li>• Profile viewed 12 times</li>
+                <li>• 3 new connections</li>
+              </ul>
+            </Card>
           </div>
-          <button
-            onClick={() => {
-              // Store logout success message before Clerk redirects
-              sessionStorage.setItem("logoutMessage", "You have been successfully logged out");
-              signOut();
-            }}
-            className="px-6 py-2 text-white rounded-lg transition focus:outline-none focus:ring-2 focus:ring-offset-2 whitespace-nowrap"
-            style={{ backgroundColor: '#EF4444' }}
-            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#DC2626'}
-            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#EF4444'}
-          >
-            Logout
-          </button>
+
+          {/* Notifications Card */}
+          <Card title="Notifications" variant="info" interactive>
+            <p className="text-sm text-gray-700">
+              No new notifications at this time.
+            </p>
+          </Card>
         </div>
-      </div>
+      </Container>
     </div>
   );
 }
