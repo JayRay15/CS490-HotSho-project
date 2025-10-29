@@ -4,7 +4,7 @@ import { asyncHandler } from "../middleware/errorHandler.js";
 
 // Employment endpoints
 export const addEmployment = asyncHandler(async (req, res) => {
-  const { sub } = req.auth.payload;
+  const sub = req.auth?.payload?.sub || req.auth?.userId;
   const employmentData = req.body;
 
   // Validate required fields
@@ -37,7 +37,7 @@ export const addEmployment = asyncHandler(async (req, res) => {
 });
 
 export const updateEmployment = asyncHandler(async (req, res) => {
-  const { sub } = req.auth.payload;
+  const sub = req.auth?.payload?.sub || req.auth?.userId;
   const { employmentId } = req.params;
   const updateData = req.body;
 
@@ -61,7 +61,7 @@ export const updateEmployment = asyncHandler(async (req, res) => {
 });
 
 export const deleteEmployment = asyncHandler(async (req, res) => {
-  const { sub } = req.auth.payload;
+  const sub = req.auth?.payload?.sub || req.auth?.userId;
   const { employmentId } = req.params;
 
   const user = await User.findOneAndUpdate(
@@ -81,7 +81,7 @@ export const deleteEmployment = asyncHandler(async (req, res) => {
 
 // Skills endpoints
 export const addSkill = asyncHandler(async (req, res) => {
-  const { sub } = req.auth.payload;
+  const sub = req.auth?.payload?.sub || req.auth?.userId;
   const skillData = req.body;
 
   // Validate required fields
@@ -114,7 +114,7 @@ export const addSkill = asyncHandler(async (req, res) => {
 });
 
 export const updateSkill = asyncHandler(async (req, res) => {
-  const { sub } = req.auth.payload;
+  const sub = req.auth?.payload?.sub || req.auth?.userId;
   const { skillId } = req.params;
   const updateData = req.body;
 
@@ -138,7 +138,7 @@ export const updateSkill = asyncHandler(async (req, res) => {
 });
 
 export const deleteSkill = asyncHandler(async (req, res) => {
-  const { sub } = req.auth.payload;
+  const sub = req.auth?.payload?.sub || req.auth?.userId;
   const { skillId } = req.params;
 
   const user = await User.findOneAndUpdate(
@@ -158,13 +158,13 @@ export const deleteSkill = asyncHandler(async (req, res) => {
 
 // Education endpoints
 export const addEducation = asyncHandler(async (req, res) => {
-  const { sub } = req.auth.payload;
+  const sub = req.auth?.payload?.sub || req.auth?.userId;
   const educationData = req.body;
 
   // Validate required fields
   const requiredFields = ['institution', 'degree', 'fieldOfStudy', 'startDate'];
   const missingFields = requiredFields.filter(field => !educationData[field]);
-  
+
   if (missingFields.length > 0) {
     const errors = missingFields.map(field => ({
       field,
@@ -175,23 +175,31 @@ export const addEducation = asyncHandler(async (req, res) => {
     return sendResponse(res, response, statusCode);
   }
 
-  const user = await User.findOneAndUpdate(
-    { auth0Id: sub },
-    { $push: { education: educationData } },
-    { new: true, runValidators: true }
-  );
+  try {
+    const user = await User.findOneAndUpdate(
+      { auth0Id: sub },
+      { $push: { education: educationData } },
+      { new: true, runValidators: true }
+    );
 
-  if (!user) {
-    const { response, statusCode } = errorResponse("User not found", 404, ERROR_CODES.NOT_FOUND);
+    if (!user) {
+      const { response, statusCode } = errorResponse("User not found", 404, ERROR_CODES.NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    const { response, statusCode } = successResponse("Education added successfully", user.education);
+    return sendResponse(res, response, statusCode);
+  } catch (err) {
+    console.error('Error in addEducation:', err);
+    const message = err.name === 'ValidationError' ? 'Invalid education data provided' : 'Error adding education entry';
+    const { response, statusCode } = errorResponse(message, 500, ERROR_CODES.INTERNAL_ERROR);
     return sendResponse(res, response, statusCode);
   }
-
-  const { response, statusCode } = successResponse("Education added successfully", user.education);
-  return sendResponse(res, response, statusCode);
 });
 
+
 export const updateEducation = asyncHandler(async (req, res) => {
-  const { sub } = req.auth.payload;
+  const sub = req.auth?.payload?.sub || req.auth?.userId;
   const { educationId } = req.params;
   const updateData = req.body;
 
@@ -215,7 +223,7 @@ export const updateEducation = asyncHandler(async (req, res) => {
 });
 
 export const deleteEducation = asyncHandler(async (req, res) => {
-  const { sub } = req.auth.payload;
+  const sub = req.auth?.payload?.sub || req.auth?.userId;
   const { educationId } = req.params;
 
   const user = await User.findOneAndUpdate(

@@ -167,7 +167,8 @@ export default function ProfilePictureUpload({ currentPicture, onUploadSuccess, 
     <div className="relative">
       {/* Profile Picture with Hover Effect */}
       <div 
-        className="relative w-32 h-32 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center border-4 border-gray-300 cursor-pointer group"
+        className="relative w-32 h-32 rounded-full overflow-hidden flex items-center justify-center border-4 cursor-pointer group"
+        style={{ backgroundColor: '#E4E6E0', borderColor: '#B7B89F' }}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
         onClick={() => setShowModal(true)}
@@ -176,7 +177,7 @@ export default function ProfilePictureUpload({ currentPicture, onUploadSuccess, 
         {displayPicture ? (
           <img src={displayPicture} alt="Profile" className="w-full h-full object-cover" />
         ) : (
-          <svg className="w-20 h-20 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+          <svg className="w-20 h-20" style={{ color: '#777C6D' }} fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
           </svg>
         )}
@@ -192,11 +193,14 @@ export default function ProfilePictureUpload({ currentPicture, onUploadSuccess, 
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }} onClick={handleCancel}>
-          <div className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 p-6 relative border border-gray-200" onClick={(e) => e.stopPropagation()}>
+          <div className="rounded-lg shadow-2xl max-w-md w-full mx-4 p-6 relative border" style={{ backgroundColor: '#F5F6F4', borderColor: '#B7B89F' }} onClick={(e) => e.stopPropagation()}>
             {/* Close Button */}
             <button
               onClick={handleCancel}
-              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition"
+              className="absolute top-3 right-3 transition"
+              style={{ color: '#9CA3AF' }}
+              onMouseOver={(e) => e.currentTarget.style.color = '#4B5563'}
+              onMouseOut={(e) => e.currentTarget.style.color = '#9CA3AF'}
               disabled={isUploading}
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -205,17 +209,17 @@ export default function ProfilePictureUpload({ currentPicture, onUploadSuccess, 
             </button>
 
             {/* Modal Title */}
-            <h3 className="text-xl font-heading font-semibold mb-4">Edit Profile Picture</h3>
+            <h3 className="text-xl font-heading font-semibold mb-4" style={{ color: '#4F5348' }}>Edit Profile Picture</h3>
 
             {/* Preview */}
             <div className="flex flex-col items-center mb-4">
-              <div className="w-40 h-40 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center border-4 border-gray-300 mb-3">
+              <div className="w-40 h-40 rounded-full overflow-hidden flex items-center justify-center border-4 mb-3" style={{ backgroundColor: '#E4E6E0', borderColor: '#B7B89F' }}>
                 {preview ? (
                   <img src={preview} alt="Preview" className="w-full h-full object-cover" />
                 ) : currentPicture ? (
                   <img src={currentPicture} alt="Current" className="w-full h-full object-cover" />
                 ) : (
-                  <svg className="w-24 h-24 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-24 h-24" style={{ color: '#777C6D' }} fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                   </svg>
                 )}
@@ -224,13 +228,13 @@ export default function ProfilePictureUpload({ currentPicture, onUploadSuccess, 
               {/* Upload Progress */}
               {isUploading && uploadProgress > 0 && (
                 <div className="w-full">
-                  <div className="bg-gray-200 rounded-full h-2 mb-2">
+                  <div className="rounded-full h-2 mb-2" style={{ backgroundColor: '#E4E6E0' }}>
                     <div 
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${uploadProgress}%` }}
+                      className="h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${uploadProgress}%`, backgroundColor: '#777C6D' }}
                     />
                   </div>
-                  <p className="text-sm text-gray-600 text-center">{uploadProgress}% uploading...</p>
+                  <p className="text-sm text-center" style={{ color: '#656A5C' }}>{uploadProgress}% uploading...</p>
                 </div>
               )}
             </div>
@@ -259,17 +263,23 @@ export default function ProfilePictureUpload({ currentPicture, onUploadSuccess, 
             <div className="space-y-2">
               <label
                 htmlFor="profile-picture-input-modal"
-                className={`block w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition cursor-pointer text-center ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`block w-full px-4 py-2 text-white rounded-lg transition cursor-pointer text-center ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                style={{ backgroundColor: '#777C6D' }}
+                onMouseOver={(e) => !isUploading && (e.currentTarget.style.backgroundColor = '#656A5C')}
+                onMouseOut={(e) => !isUploading && (e.currentTarget.style.backgroundColor = '#777C6D')}
               >
                 Choose New Picture
               </label>
-              <p className="text-xs text-gray-500 text-center">JPG, PNG, or GIF • Max 5MB</p>
+              <p className="text-xs text-center" style={{ color: '#9CA3AF' }}>JPG, PNG, or GIF • Max 5MB</p>
 
               {currentPicture && (
                 <button
                   onClick={handleDelete}
                   disabled={isUploading}
-                  className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-2 text-white rounded-lg transition disabled:cursor-not-allowed"
+                  style={{ backgroundColor: isUploading ? '#9CA3AF' : '#EF4444' }}
+                  onMouseOver={(e) => !isUploading && (e.currentTarget.style.backgroundColor = '#DC2626')}
+                  onMouseOut={(e) => !isUploading && (e.currentTarget.style.backgroundColor = '#EF4444')}
                 >
                   {isUploading ? "Removing..." : "Delete Picture"}
                 </button>
@@ -278,7 +288,10 @@ export default function ProfilePictureUpload({ currentPicture, onUploadSuccess, 
               <button
                 onClick={handleSave}
                 disabled={isUploading || !selectedFile}
-                className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+                className="w-full px-4 py-2 text-white rounded-lg transition disabled:cursor-not-allowed"
+                style={{ backgroundColor: (isUploading || !selectedFile) ? '#9CA3AF' : '#22C55E' }}
+                onMouseOver={(e) => !(isUploading || !selectedFile) && (e.currentTarget.style.backgroundColor = '#16A34A')}
+                onMouseOut={(e) => !(isUploading || !selectedFile) && (e.currentTarget.style.backgroundColor = '#22C55E')}
               >
                 {isUploading ? "Saving..." : "Save Changes"}
               </button>

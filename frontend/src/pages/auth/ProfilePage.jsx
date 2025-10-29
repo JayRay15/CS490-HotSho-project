@@ -8,6 +8,7 @@ import Certifications from "./Certifications";
 import Projects from "./Projects";
 import Card from "../../components/Card";
 import { useNavigate } from "react-router-dom";
+import LoadingSpinner from "../../components/LoadingSpinner";
 
 const INDUSTRIES = ['Technology', 'Healthcare', 'Finance', 'Education', 'Construction', 'Real Estate'];
 const EXPERIENCE_LEVELS = ['Entry', 'Mid', 'Senior', 'Executive'];
@@ -46,6 +47,13 @@ export default function ProfilePage() {
   const [editingEmployment, setEditingEmployment] = useState(null);
   const [showEmploymentDeleteModal, setShowEmploymentDeleteModal] = useState(false);
   const [deletingEmployment, setDeletingEmployment] = useState(null);
+  // Education state (mirrors employment implementation)
+  const [educationSuccessMessage, setEducationSuccessMessage] = useState(null);
+  const [showEducationModal, setShowEducationModal] = useState(false);
+  const [educationList, setEducationList] = useState([]);
+  const [editingEducation, setEditingEducation] = useState(null);
+  const [showEducationDeleteModal, setShowEducationDeleteModal] = useState(false);
+  const [deletingEducation, setDeletingEducation] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showCertModal, setShowCertModal] = useState(false);
   const [certList, setCertList] = useState([]);
@@ -169,6 +177,8 @@ export default function ProfilePage() {
         } catch (e) {
           // ignore
         }
+  setEmploymentList(data.employment || []);
+  setEducationList(data.education || []);
       } catch (err) {
         console.error("Error loading profile:", err);
         setError(err);
@@ -344,9 +354,19 @@ export default function ProfilePage() {
     setShowEmploymentModal(true);
   };
 
+  const handleEditEducation = (edu) => {
+    setEditingEducation(edu);
+    setShowEducationModal(true);
+  };
+
   const handleDeleteClick = (job) => {
     setDeletingEmployment(job);
     setShowEmploymentDeleteModal(true);
+  };
+
+  const handleDeleteEducationClick = (edu) => {
+    setDeletingEducation(edu);
+    setShowEducationDeleteModal(true);
   };
 
   const handleDeleteEmployment = async () => {
@@ -384,11 +404,49 @@ export default function ProfilePage() {
     setDeletingEmployment(null);
   };
 
+  const handleDeleteEducation = async () => {
+    if (!deletingEducation) return;
+
+    setIsDeleting(true);
+    setError(null);
+
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+
+        await api.delete(`/api/profile/education/${deletingEducation._id}`);
+
+      // Update education list by removing the deleted entry
+      setEducationList(prev => prev.filter(e => e._id !== deletingEducation._id));
+
+      // Show success message in education section
+      setEducationSuccessMessage(`Education entry for ${deletingEducation.institution} deleted successfully!`);
+      setTimeout(() => setEducationSuccessMessage(null), 5000);
+
+      // Close modal and reset state
+      setShowEducationDeleteModal(false);
+      setDeletingEducation(null);
+    } catch (err) {
+      console.error("Error deleting education:", err);
+      setError(err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleCancelEducationDelete = () => {
+    setShowEducationDeleteModal(false);
+    setDeletingEducation(null);
+  };
+
   if (!isLoaded) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-xl">Loading...</div>
-      </div>
+      <LoadingSpinner 
+        fullScreen={true} 
+        size="lg"
+        text="Loading..." 
+        variant="logo" 
+      />
     );
   }
 
@@ -399,39 +457,48 @@ export default function ProfilePage() {
   // Show loading while checking account status
   if (isLoading && accountStatus === null) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-xl">Loading...</div>
-      </div>
+      <LoadingSpinner 
+        fullScreen={true} 
+        size="lg"
+        text="Loading your profile..." 
+        variant="logo" 
+      />
     );
   }
 
   // Show redirecting message if account is deleted
   if (accountStatus === 'deleted') {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-xl">Redirecting...</div>
-      </div>
+      <LoadingSpinner 
+        fullScreen={true} 
+        size="md"
+        text="Redirecting..." 
+        variant="spinner" 
+      />
     );
   }
 
   // Only render profile if account is active
   if (accountStatus !== 'active') {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="text-xl">Loading...</div>
-      </div>
+      <LoadingSpinner 
+        fullScreen={true} 
+        size="lg"
+        text="Loading..." 
+        variant="logo" 
+      />
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen py-8" style={{ backgroundColor: '#E4E6E0' }}>
       <div className="max-w-4xl mx-auto px-4">
-        <div className="bg-white rounded-2xl shadow-md p-8">
+        <div className="rounded-2xl shadow-md p-8 border" style={{ backgroundColor: '#F5F6F4', borderColor: '#B7B89F' }}>
           {/* Header with Profile Picture */}
           <div className="flex justify-between items-start mb-8">
             <div>
-              <h1 className="text-3xl font-heading font-bold mb-2">My Profile</h1>
-              <p className="text-gray-600">View and manage your professional profile</p>
+              <h1 className="text-3xl font-heading font-bold mb-2" style={{ color: '#4F5348' }}>My Profile</h1>
+              <p style={{ color: '#656A5C' }}>View and manage your professional profile</p>
             </div>
             
             {/* Profile Picture Upload */}
@@ -448,27 +515,29 @@ export default function ProfilePage() {
 
           {/* Success Message */}
           {successMessage && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-green-800 font-medium">{successMessage}</p>
+            <div className="mb-6 p-4 border rounded-lg" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }}>
+              <p className="font-medium" style={{ color: '#166534' }}>{successMessage}</p>
             </div>
           )}
 
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="ml-3 text-gray-600">Loading profile...</span>
+              <LoadingSpinner size="lg" text="Loading profile..." variant="spinner" />
             </div>
           ) : (
             <>
               {/* Profile Display */}
               <div className="space-y-6">
                 {/* Basic Information Section */}
-                <div className="border-b pb-6">
+                <div className="border-b pb-6" style={{ borderColor: '#B7B89F' }}>
                   <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-heading font-semibold text-gray-800">Basic Information</h2>
+                    <h2 className="text-xl font-heading font-semibold" style={{ color: '#4F5348' }}>Basic Information</h2>
                     <button
                       onClick={handleEditClick}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2"
+                      className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                      style={{ backgroundColor: '#777C6D' }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -479,61 +548,64 @@ export default function ProfilePage() {
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <p className="text-sm font-medium text-gray-500 mb-1">Full Name</p>
-                      <p className="text-gray-900">{userData?.name || '—'}</p>
+                      <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Full Name</p>
+                      <p style={{ color: '#4F5348' }}>{userData?.name || '—'}</p>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-500 mb-1">Email</p>
-                      <p className="text-gray-900">{userData?.email || '—'}</p>
+                      <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Email</p>
+                      <p style={{ color: '#4F5348' }}>{userData?.email || '—'}</p>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-500 mb-1">Phone</p>
-                      <p className="text-gray-900">{userData?.phone || '—'}</p>
+                      <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Phone</p>
+                      <p style={{ color: '#4F5348' }}>{userData?.phone || '—'}</p>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-500 mb-1">Location</p>
-                      <p className="text-gray-900">{userData?.location || '—'}</p>
+                      <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Location</p>
+                      <p style={{ color: '#4F5348' }}>{userData?.location || '—'}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Professional Information Section */}
-                <div className="border-b pb-6">
-                  <h2 className="text-xl font-heading font-semibold text-gray-800 mb-4">Professional Information</h2>
+                <div className="border-b pb-6" style={{ borderColor: '#B7B89F' }}>
+                  <h2 className="text-xl font-heading font-semibold mb-4" style={{ color: '#4F5348' }}>Professional Information</h2>
                   
                   <div className="space-y-4">
                     <div>
-                      <p className="text-sm font-medium text-gray-500 mb-1">Professional Headline</p>
-                      <p className="text-gray-900 text-lg">{userData?.headline || '—'}</p>
+                      <p className="text-sm font-medium mb-1" style={{ color: '#4B5563' }}>Professional Headline</p>
+                      <p className="text-lg" style={{ color: '#111827' }}>{userData?.headline || '—'}</p>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <p className="text-sm font-medium text-gray-500 mb-1">Industry</p>
-                        <p className="text-gray-900">{userData?.industry || '—'}</p>
+                        <p className="text-sm font-medium mb-1" style={{ color: '#4B5563' }}>Industry</p>
+                        <p style={{ color: '#111827' }}>{userData?.industry || '—'}</p>
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-gray-500 mb-1">Experience Level</p>
-                        <p className="text-gray-900">{userData?.experienceLevel || '—'}</p>
+                        <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Experience Level</p>
+                        <p style={{ color: '#4F5348' }}>{userData?.experienceLevel || '—'}</p>
                       </div>
                     </div>
 
                     {userData?.bio && (
                       <div>
-                        <p className="text-sm font-medium text-gray-500 mb-1">Bio / Summary</p>
-                        <p className="text-gray-900 whitespace-pre-wrap">{userData.bio}</p>
+                        <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Bio / Summary</p>
+                        <p className="whitespace-pre-wrap" style={{ color: '#4F5348' }}>{userData.bio}</p>
                       </div>
                     )}
                   </div>
                 </div>
 
                 {/* Employment History Section */}
-                <div className="border-b pb-6">
+                <div className="border-b pb-6" style={{ borderColor: '#B7B89F' }}>
                   <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-heading font-semibold text-gray-800">Employment History</h2>
+                    <h2 className="text-xl font-heading font-semibold" style={{ color: '#4F5348' }}>Employment History</h2>
                     <button
                       onClick={() => setShowEmploymentModal(true)}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2"
+                      className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                      style={{ backgroundColor: '#777C6D' }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -544,8 +616,8 @@ export default function ProfilePage() {
 
                   {/* Employment Success Message */}
                   {employmentSuccessMessage && (
-                    <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                      <p className="text-green-800 font-medium">{employmentSuccessMessage}</p>
+                    <div className="mb-4 p-4 border rounded-lg" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }}>
+                      <p className="font-medium" style={{ color: '#166534' }}>{employmentSuccessMessage}</p>
                     </div>
                   )}
 
@@ -570,7 +642,7 @@ export default function ProfilePage() {
                             {/* Current Position Badge - Top Right */}
                             {job.isCurrentPosition && (
                               <div className="absolute top-4 right-4">
-                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border" style={{ backgroundColor: '#DCFCE7', color: '#166534', borderColor: '#BBF7D0' }}>
                                   Current Position
                                 </span>
                               </div>
@@ -579,9 +651,9 @@ export default function ProfilePage() {
                             <div className="flex flex-col">
                               {/* Job Details */}
                               <div className="flex-1 pr-32">
-                                <h3 className="text-lg font-heading font-semibold text-gray-900">{job.jobTitle}</h3>
-                                <p className="text-gray-700 font-medium">{job.company}</p>
-                                <div className="flex items-center text-sm text-gray-600 mt-1 space-x-2">
+                                <h3 className="text-lg font-heading font-semibold text-text-primary">{job.jobTitle}</h3>
+                                <p className="text-text-primary font-medium">{job.company}</p>
+                                <div className="flex items-center text-sm text-text-secondary mt-1 space-x-2">
                                   {job.location && (
                                     <>
                                       <span>{job.location}</span>
@@ -608,7 +680,7 @@ export default function ProfilePage() {
                                   </span>
                                 </div>
                                 {job.description && (
-                                  <p className="mt-2 text-gray-700 whitespace-pre-wrap">{job.description}</p>
+                                  <p className="mt-2 whitespace-pre-wrap" style={{ color: '#111827' }}>{job.description}</p>
                                 )}
                               </div>
                               
@@ -616,7 +688,16 @@ export default function ProfilePage() {
                               <div className="flex justify-end mt-3 space-x-2">
                                 <button
                                   onClick={() => handleEditEmployment(job)}
-                                  className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                  className="p-2 rounded-lg transition focus:outline-none focus:ring-2"
+                                  style={{ color: '#6B7280' }}
+                                  onMouseOver={(e) => {
+                                    e.currentTarget.style.color = '#777C6D';
+                                    e.currentTarget.style.backgroundColor = '#F5F6F4';
+                                  }}
+                                  onMouseOut={(e) => {
+                                    e.currentTarget.style.color = '#6B7280';
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                  }}
                                   title="Edit employment"
                                 >
                                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -628,7 +709,16 @@ export default function ProfilePage() {
                                 {employmentList.length > 1 && (
                                   <button
                                     onClick={() => handleDeleteClick(job)}
-                                    className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                                    className="p-2 rounded-lg transition focus:outline-none focus:ring-2"
+                                    style={{ color: '#6B7280' }}
+                                    onMouseOver={(e) => {
+                                      e.currentTarget.style.color = '#EF4444';
+                                      e.currentTarget.style.backgroundColor = '#FEF2F2';
+                                    }}
+                                    onMouseOut={(e) => {
+                                      e.currentTarget.style.color = '#6B7280';
+                                      e.currentTarget.style.backgroundColor = 'transparent';
+                                    }}
                                     title="Delete employment"
                                   >
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -643,7 +733,125 @@ export default function ProfilePage() {
 
                     </div>
                   ) : (
-                    <p className="text-gray-500 italic">No employment history added yet.</p>
+                    <p className="italic" style={{ color: '#9CA3AF' }}>No employment history added yet.</p>
+                  )}
+                </div>
+
+                {/* Education History Section */}
+                <div className="border-b pb-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-heading font-semibold text-gray-800">Education</h2>
+                    <button
+                      onClick={() => setShowEducationModal(true)}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      <span>Add Education</span>
+                    </button>
+                  </div>
+
+                  {/* Education Success Message */}
+                  {educationSuccessMessage && (
+                    <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-green-800 font-medium">{educationSuccessMessage}</p>
+                    </div>
+                  )}
+
+                  {educationList && educationList.length > 0 ? (
+                    <div className="space-y-4">
+                      {educationList
+                        .sort((a, b) => {
+                          // Current/ongoing first
+                          if (a.current && !b.current) return -1;
+                          if (!a.current && b.current) return 1;
+
+                          // Otherwise most recent endDate first
+                          const aDate = a.endDate ? new Date(a.endDate) : new Date(a.startDate);
+                          const bDate = b.endDate ? new Date(b.endDate) : new Date(b.startDate);
+                          return bDate - aDate;
+                        })
+                        .map((edu, index) => (
+                          <div key={edu._id || index} className="border rounded-lg p-4 hover:shadow-md transition relative">
+                            {edu.current && (
+                              <div className="absolute top-4 right-4">
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">
+                                  Currently Enrolled
+                                </span>
+                              </div>
+                            )}
+
+                            <div className="flex flex-col">
+                              <div className="flex-1 pr-32">
+                                <h3 className="text-lg font-heading font-semibold text-gray-900">{edu.institution}</h3>
+                                <p className="text-gray-700 font-medium">{edu.degree} — {edu.fieldOfStudy}</p>
+                                <div className="flex items-center text-sm text-gray-600 mt-1 space-x-2">
+                                  {edu.location && (
+                                    <>
+                                      <span>{edu.location}</span>
+                                      <span>•</span>
+                                    </>
+                                  )}
+                                  <span>
+                                    {(() => {
+                                      const startDate = new Date(edu.startDate);
+                                      const startMonth = String(startDate.getMonth() + 1).padStart(2, '0');
+                                      const startYear = startDate.getFullYear();
+                                      return `${startMonth}/${startYear}`;
+                                    })()}
+                                    {' - '}
+                                    {edu.current
+                                      ? 'Present'
+                                      : (() => {
+                                          const endDate = new Date(edu.endDate);
+                                          const endMonth = String(endDate.getMonth() + 1).padStart(2, '0');
+                                          const endYear = endDate.getFullYear();
+                                          return `${endMonth}/${endYear}`;
+                                        })()
+                                    }
+                                  </span>
+                                </div>
+
+                                {edu.achievements && (
+                                  <p className="mt-2 text-gray-700 whitespace-pre-wrap">Honors / Achievements: {edu.achievements}</p>
+                                )}
+
+                                {typeof edu.gpa !== 'undefined' && edu.gpa !== null && (
+                                  <p className="mt-2 text-gray-700">GPA: {edu.gpaPrivate ? 'Private' : edu.gpa}</p>
+                                )}
+                              </div>
+
+                              <div className="flex justify-end mt-3 space-x-2">
+                                <button
+                                  onClick={() => handleEditEducation(edu)}
+                                  className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                  title="Edit education"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                  </svg>
+                                </button>
+
+                                {educationList.length > 1 && (
+                                  <button
+                                    onClick={() => handleDeleteEducationClick(edu)}
+                                    className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                                    title="Delete education"
+                                  >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 italic">No education added yet.</p>
                   )}
                     </div>
 
@@ -868,28 +1076,52 @@ export default function ProfilePage() {
                 {/* Additional Information */}
                 {(userData?.website || userData?.linkedin || userData?.github) && (
                   <div>
-                    <h2 className="text-xl font-heading font-semibold text-gray-800 mb-4">Links</h2>
+                    <h2 className="text-xl font-heading font-semibold mb-4" style={{ color: '#111827' }}>Links</h2>
                     <div className="space-y-2">
                       {userData?.website && (
                         <div>
-                          <p className="text-sm font-medium text-gray-500 mb-1">Website</p>
-                          <a href={userData.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                          <p className="text-sm font-medium mb-1" style={{ color: '#4B5563' }}>Website</p>
+                          <a 
+                            href={userData.website} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="hover:underline transition-colors"
+                            style={{ color: '#777C6D' }}
+                            onMouseOver={(e) => e.currentTarget.style.color = '#656A5C'}
+                            onMouseOut={(e) => e.currentTarget.style.color = '#777C6D'}
+                          >
                             {userData.website}
                           </a>
                         </div>
                       )}
                       {userData?.linkedin && (
                         <div>
-                          <p className="text-sm font-medium text-gray-500 mb-1">LinkedIn</p>
-                          <a href={userData.linkedin} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                          <p className="text-sm font-medium mb-1" style={{ color: '#4B5563' }}>LinkedIn</p>
+                          <a 
+                            href={userData.linkedin} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="hover:underline transition-colors"
+                            style={{ color: '#777C6D' }}
+                            onMouseOver={(e) => e.currentTarget.style.color = '#656A5C'}
+                            onMouseOut={(e) => e.currentTarget.style.color = '#777C6D'}
+                          >
                             {userData.linkedin}
                           </a>
                         </div>
                       )}
                       {userData?.github && (
                         <div>
-                          <p className="text-sm font-medium text-gray-500 mb-1">GitHub</p>
-                          <a href={userData.github} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                          <p className="text-sm font-medium mb-1" style={{ color: '#4B5563' }}>GitHub</p>
+                          <a 
+                            href={userData.github} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="hover:underline transition-colors"
+                            style={{ color: '#777C6D' }}
+                            onMouseOver={(e) => e.currentTarget.style.color = '#656A5C'}
+                            onMouseOut={(e) => e.currentTarget.style.color = '#777C6D'}
+                          >
                             {userData.github}
                           </a>
                         </div>
@@ -904,16 +1136,19 @@ export default function ProfilePage() {
 
         {/* Danger Zone: Account deletion - moved to bottom of page */}
         <div className="mt-8">
-          <div className="bg-white rounded-2xl shadow-md p-6 border-2 border-red-200">
-            <h2 className="text-xl font-semibold text-red-600 mb-2">Danger Zone</h2>
-            <p className="text-sm text-gray-700 mb-4">
+          <div className="rounded-2xl shadow-md p-6 border-2" style={{ backgroundColor: '#EEEEEE', borderColor: '#FCA5A5' }}>
+            <h2 className="text-xl font-semibold mb-2" style={{ color: '#DC2626' }}>Danger Zone</h2>
+            <p className="text-sm mb-4" style={{ color: '#111827' }}>
               Deleting your account will schedule permanent removal of your personal data after a 30-day grace period. 
               You will be logged out immediately and cannot access your account during this period.
             </p>
             <div className="flex justify-end">
               <button
                 onClick={() => setShowDeleteModal(true)}
-                className="px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium"
+                className="px-6 py-2.5 text-white rounded-lg transition font-medium focus:outline-none focus:ring-2 focus:ring-offset-2"
+                style={{ backgroundColor: '#EF4444' }}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#DC2626'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#EF4444'}
               >
                 Delete Account
               </button>
@@ -934,37 +1169,38 @@ export default function ProfilePage() {
           }}
         >
           <div 
-            className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6 mx-4" 
+            className="rounded-lg shadow-2xl max-w-md w-full p-6 mx-4 border" 
+            style={{ backgroundColor: '#EEEEEE', borderColor: '#E5E7EB' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start mb-4">
               <div className="shrink-0">
-                <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-6 w-6" style={{ color: '#DC2626' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
               <div className="ml-3 flex-1">
-                <h3 className="text-lg font-heading font-semibold text-gray-900 mb-2">Confirm Account Deletion</h3>
-                <p className="text-sm text-gray-700 mb-4">
+                <h3 className="text-lg font-heading font-semibold mb-2" style={{ color: '#111827' }}>Confirm Account Deletion</h3>
+                <p className="text-sm mb-4" style={{ color: '#111827' }}>
                   This will schedule your account for <strong>permanent deletion in 30 days</strong>. 
                   You will be logged out immediately and cannot log in during the grace period.
                 </p>
-                <p className="text-sm text-gray-600 mb-4">
+                <p className="text-sm mb-4" style={{ color: '#4B5563' }}>
                   <strong>Please enter your password to confirm this action:</strong>
                 </p>
               </div>
             </div>
 
             {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-800">
+              <div className="mb-4 p-3 border rounded-lg" style={{ backgroundColor: '#FEF2F2', borderColor: '#FCA5A5' }}>
+                <p className="text-sm" style={{ color: '#991B1B' }}>
                   {error?.response?.data?.error?.message || error?.message || 'Failed to delete account'}
                 </p>
               </div>
             )}
 
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Password <span className="text-red-600">*</span>
+            <label className="block text-sm font-medium mb-2" style={{ color: '#111827' }}>
+              Password <span style={{ color: '#DC2626' }}>*</span>
             </label>
             <input
               type="password"
@@ -972,7 +1208,8 @@ export default function ProfilePage() {
               onChange={(e) => setDeletePassword(e.target.value)}
               placeholder="Enter your password to confirm"
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              className="w-full px-3 py-2 border rounded-lg mb-4 focus:ring-2 focus:border-transparent"
+              style={{ borderColor: '#D1D5DB' }}
             />
 
             <div className="flex justify-end space-x-3 mt-6">
@@ -983,16 +1220,111 @@ export default function ProfilePage() {
                   setError(null);
                 }} 
                 disabled={deleting}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition disabled:opacity-50"
+                className="px-4 py-2 rounded-lg transition disabled:opacity-50 focus:outline-none focus:ring-2"
+                style={{ backgroundColor: '#F3F4F6', color: '#111827' }}
+                onMouseOver={(e) => !deleting && (e.currentTarget.style.backgroundColor = '#E5E7EB')}
+                onMouseOut={(e) => !deleting && (e.currentTarget.style.backgroundColor = '#F3F4F6')}
               >
                 Cancel
               </button>
               <button 
                 onClick={handleDeleteAccount} 
                 disabled={deleting || !deletePassword.trim()} 
-                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                className="px-6 py-2 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed font-medium focus:outline-none focus:ring-2 focus:ring-offset-2"
+                style={{ backgroundColor: '#EF4444' }}
+                onMouseOver={(e) => !deleting && (e.currentTarget.style.backgroundColor = '#DC2626')}
+                onMouseOut={(e) => !deleting && (e.currentTarget.style.backgroundColor = '#EF4444')}
               >
                 {deleting ? 'Deleting...' : 'Yes, Delete My Account'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Delete Confirmation Modal - Education */}
+      {showEducationDeleteModal && deletingEducation && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50" 
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={(e) => {
+            if (!isDeleting) {
+              handleCancelEducationDelete();
+            }
+          }}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 border border-gray-200" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="bg-red-50 border-b border-red-100 px-6 py-4">
+              <div className="flex items-center space-x-3">
+                <div className="flex-shrink-0">
+                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-heading font-semibold text-gray-900">Confirm Deletion</h3>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6">
+              <p className="text-gray-700 mb-4">
+                Are you sure you want to delete this education entry?
+              </p>
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+                <p className="font-semibold text-gray-900">{deletingEducation.institution}</p>
+                <p className="text-gray-700">{deletingEducation.degree} — {deletingEducation.fieldOfStudy}</p>
+              </div>
+              <p className="text-sm text-red-600 font-medium">
+                This action cannot be undone.
+              </p>
+
+              {/* Error Display */}
+              {error && (
+                <div className="mt-4">
+                  <ErrorMessage
+                    error={error}
+                    onDismiss={() => setError(null)}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 border-t">
+              <button
+                type="button"
+                onClick={handleCancelEducationDelete}
+                disabled={isDeleting}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteEducation}
+                disabled={isDeleting}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              >
+                {isDeleting ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    <span>Delete</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -1012,16 +1344,20 @@ export default function ProfilePage() {
           }}
         >
           <div 
-            className="bg-white rounded-lg shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto relative border border-gray-200" 
+            className="rounded-lg shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto relative border" 
+            style={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center z-10">
-              <h3 className="text-2xl font-semibold">Edit Profile</h3>
+            <div className="sticky top-0 border-b px-6 py-4 flex justify-between items-center z-10" style={{ backgroundColor: '#FFFFFF' }}>
+              <h3 className="text-2xl font-semibold" style={{ color: '#111827' }}>Edit Profile</h3>
               <button
                 onClick={handleCancel}
                 disabled={isSaving}
-                className="text-gray-400 hover:text-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="transition disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ color: '#9CA3AF' }}
+                onMouseOver={(e) => !isSaving && (e.currentTarget.style.color = '#4B5563')}
+                onMouseOut={(e) => !isSaving && (e.currentTarget.style.color = '#9CA3AF')}
                 title={isSaving ? "Please wait while saving..." : "Close"}
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1030,7 +1366,7 @@ export default function ProfilePage() {
               </button>
             </div>
 
-            {/* Modal Content */}
+              const response = await api.put('/api/users/me', formData);
             <div className="p-6">
               {/* Error Display */}
               {error && (
@@ -1188,19 +1524,25 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex justify-end space-x-4 pt-6 border-t sticky bottom-0 bg-white">
+                <div className="flex justify-end space-x-4 pt-6 border-t sticky bottom-0" style={{ backgroundColor: '#FFFFFF' }}>
                   <button
                     type="button"
                     onClick={handleCancel}
                     disabled={isSaving}
-                    className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-6 py-2 border rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ borderColor: '#D1D5DB', color: '#374151' }}
+                    onMouseOver={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#F9FAFB')}
+                    onMouseOut={(e) => !isSaving && (e.currentTarget.style.backgroundColor = 'transparent')}
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSaving}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-6 py-2 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: '#777C6D' }}
+                    onMouseOver={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#656A5C')}
+                    onMouseOut={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#777C6D')}
                   >
                     {isSaving ? 'Saving...' : 'Save Changes'}
                   </button>
@@ -1229,6 +1571,26 @@ export default function ProfilePage() {
           }}
           getToken={getToken}
           editingJob={editingEmployment}
+        />
+      )}
+
+      {/* Add/Edit Education Modal */}
+      {showEducationModal && (
+        <EducationModal
+          isOpen={showEducationModal}
+          onClose={() => {
+            setShowEducationModal(false);
+            setEditingEducation(null);
+          }}
+          onSuccess={(newEducation, message) => {
+            setEducationList(newEducation);
+            setEditingEducation(null);
+            setShowEducationModal(false);
+            setEducationSuccessMessage(message);
+            setTimeout(() => setEducationSuccessMessage(null), 5000);
+          }}
+          getToken={getToken}
+          editingEducation={editingEducation}
         />
       )}
 
@@ -1320,6 +1682,331 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// Education Modal Component
+function EducationModal({ isOpen, onClose, onSuccess, getToken, editingEducation }) {
+  const isEditMode = !!editingEducation;
+
+  const [formData, setFormData] = useState({
+    institution: '',
+    degree: '',
+    fieldOfStudy: '',
+    location: '',
+    startDate: '',
+    endDate: '',
+    current: false,
+    gpa: '',
+    gpaPrivate: true,
+    achievements: ''
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
+
+  // Pre-populate when editing
+  useEffect(() => {
+    if (editingEducation) {
+      const startDate = new Date(editingEducation.startDate);
+      const startMonth = String(startDate.getMonth() + 1).padStart(2, '0');
+      const startYear = startDate.getFullYear();
+      const formattedStartDate = `${startMonth}/${startYear}`;
+
+      let formattedEndDate = '';
+      if (editingEducation.endDate && !editingEducation.current) {
+        const endDate = new Date(editingEducation.endDate);
+        const endMonth = String(endDate.getMonth() + 1).padStart(2, '0');
+        const endYear = endDate.getFullYear();
+        formattedEndDate = `${endMonth}/${endYear}`;
+      }
+
+      setFormData({
+        institution: editingEducation.institution || '',
+        degree: editingEducation.degree || '',
+        fieldOfStudy: editingEducation.fieldOfStudy || '',
+        location: editingEducation.location || '',
+        startDate: formattedStartDate,
+        endDate: formattedEndDate,
+        current: editingEducation.current || false,
+        gpa: typeof editingEducation.gpa !== 'undefined' && editingEducation.gpa !== null ? String(editingEducation.gpa) : '',
+        gpaPrivate: typeof editingEducation.gpaPrivate === 'boolean' ? editingEducation.gpaPrivate : true,
+        achievements: editingEducation.achievements || ''
+      });
+    } else {
+      setFormData({
+        institution: '',
+        degree: '',
+        fieldOfStudy: '',
+        location: '',
+        startDate: '',
+        endDate: '',
+        current: false,
+        gpa: '',
+        gpaPrivate: true,
+        achievements: ''
+      });
+    }
+    setError(null);
+    setSuccessMessage(null);
+  }, [editingEducation]);
+
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+
+    // handle date formatting similar to employment
+    if (name === 'startDate' || name === 'endDate') {
+      let cleaned = value.replace(/\D/g, '');
+      if (cleaned.length > 6) cleaned = cleaned.substring(0, 6);
+      let formatted = cleaned;
+      if (cleaned.length >= 3) formatted = cleaned.substring(0, 2) + '/' + cleaned.substring(2);
+      setFormData(prev => ({ ...prev, [name]: formatted }));
+      return;
+    }
+
+    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+  };
+
+  const validateForm = () => {
+    const errors = [];
+
+    if (!formData.institution.trim()) {
+      errors.push({ field: 'institution', message: 'Institution is required' });
+    }
+
+    if (!formData.degree) {
+      errors.push({ field: 'degree', message: 'Degree is required' });
+    }
+
+    if (!formData.fieldOfStudy.trim()) {
+      errors.push({ field: 'fieldOfStudy', message: 'Field of study is required' });
+    }
+
+    if (!formData.startDate) {
+      errors.push({ field: 'startDate', message: 'Start date is required' });
+    } else {
+      const datePattern = /^(0[1-9]|1[0-2])\/\d{4}$/;
+      if (!datePattern.test(formData.startDate)) {
+        errors.push({ field: 'startDate', message: 'Invalid start date format. Use MM/YYYY' });
+      }
+    }
+
+    if (!formData.current) {
+      if (!formData.endDate) {
+        errors.push({ field: 'endDate', message: 'Graduation date is required when not currently enrolled' });
+      } else {
+        const datePattern = /^(0[1-9]|1[0-2])\/\d{4}$/;
+        if (!datePattern.test(formData.endDate)) {
+          errors.push({ field: 'endDate', message: 'Invalid graduation date format. Use MM/YYYY' });
+        } else {
+          const [endMonth, endYear] = formData.endDate.split('/');
+          const endDateObj = new Date(endYear, endMonth - 1, 1);
+          if (isNaN(endDateObj.getTime())) {
+            errors.push({ field: 'endDate', message: 'Invalid graduation date' });
+          } else if (formData.startDate) {
+            const startPattern = /^(0[1-9]|1[0-2])\/\d{4}$/;
+            if (startPattern.test(formData.startDate)) {
+              const [startMonth, startYear] = formData.startDate.split('/');
+              const startDateObj = new Date(startYear, startMonth - 1, 1);
+              if (!isNaN(startDateObj.getTime()) && startDateObj >= endDateObj) {
+                errors.push({ field: 'endDate', message: 'Graduation date must be after start date' });
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (formData.gpa) {
+      const g = parseFloat(formData.gpa);
+      if (isNaN(g) || g < 0 || g > 4.5) {
+        errors.push({ field: 'gpa', message: 'GPA must be a number between 0.0 and 4.5' });
+      }
+    }
+
+    if (formData.achievements && formData.achievements.length > 1000) {
+      errors.push({ field: 'achievements', message: 'Achievements text is too long' });
+    }
+
+    return errors;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessMessage(null);
+
+    const validationErrors = validateForm();
+    if (validationErrors.length > 0) {
+      setError({ customError: { errorCode: 2001, message: 'Please fix the following errors before submitting:', errors: validationErrors } });
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+
+      // Format dates exactly like employment format
+      const payload = { ...formData };
+      const parseMMYYYY = (dateStr) => {
+        if (!dateStr) return null;
+        const [month, year] = dateStr.split('/');
+        if (!month || !year) return null;
+        const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+        return date.toISOString();
+      };
+
+      payload.startDate = parseMMYYYY(formData.startDate);
+      payload.endDate = formData.current ? null : parseMMYYYY(formData.endDate);
+      
+      // Handle optional fields
+      if (payload.gpa === '') {
+        delete payload.gpa;
+      } else if (payload.gpa) {
+        payload.gpa = parseFloat(payload.gpa);
+      }
+      if (!payload.achievements) delete payload.achievements;
+      if (!payload.location) delete payload.location;
+
+      let response;
+      if (isEditMode) {
+        // Edit existing education
+        response = await api.put(`/api/profile/education/${editingEducation._id}`, payload);
+      } else {
+        // Add new education
+        response = await api.post('/api/profile/education', payload);
+      }
+      
+      const successMsg = isEditMode 
+        ? 'Education entry updated successfully!' 
+        : 'Education entry added successfully!';
+      
+      // Call success callback with updated education list and message
+      onSuccess(response.data.data.education || response.data.data || [], successMsg);
+      
+      // For add mode only: clear form and show inline success message
+      if (!isEditMode) {
+        setFormData({
+          institution: '', 
+          degree: '', 
+          fieldOfStudy: '', 
+          location: '', 
+          startDate: '', 
+          endDate: '', 
+          current: false, 
+          gpa: '', 
+          gpaPrivate: true, 
+          achievements: ''
+        });
+        setError(null);
+        setSuccessMessage(successMsg);
+        setTimeout(() => setSuccessMessage(null), 3000);
+      }
+    } catch (err) {
+      console.error(isEditMode ? 'Error updating education:' : 'Error adding education:', err);
+      setError(err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleClose = () => {
+    setFormData({ institution: '', degree: '', fieldOfStudy: '', location: '', startDate: '', endDate: '', current: false, gpa: '', gpaPrivate: true, achievements: '' });
+    setError(null);
+    setSuccessMessage(null);
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  const DEGREE_OPTIONS = ["High School", "Associate", "Bachelor's", "Master's", "PhD", "Other"];
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }} onClick={handleClose}>
+      <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto relative border border-gray-200" onClick={(e) => e.stopPropagation()}>
+        <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center z-10">
+          <h3 className="text-2xl font-heading font-semibold">{isEditMode ? 'Edit Education' : 'Add Education'}</h3>
+          <button onClick={handleClose} disabled={isSaving} className="text-gray-400 hover:text-gray-600 transition">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="p-6">
+          {successMessage && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-green-800 font-medium">{successMessage}</p>
+            </div>
+          )}
+
+          {error && (
+            <ErrorMessage error={error} onDismiss={() => setError(null)} className="mb-6" />
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Institution <span className="text-red-500">*</span></label>
+              <input name="institution" value={formData.institution} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="University of Example" />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Degree <span className="text-red-500">*</span></label>
+                <select name="degree" value={formData.degree} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                  <option value="">Select degree...</option>
+                  {DEGREE_OPTIONS.map(d => (<option key={d} value={d}>{d}</option>))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Field of Study <span className="text-red-500">*</span></label>
+                <input name="fieldOfStudy" value={formData.fieldOfStudy} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Computer Science" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Start Date (MM/YYYY) <span className="text-red-500">*</span></label>
+                <input name="startDate" value={formData.startDate} onChange={handleInputChange} placeholder="09/2020" maxLength={7} className="w-full px-4 py-2 border border-gray-300 rounded-lg" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Graduation Date (MM/YYYY) {!formData.current && <span className="text-red-500">*</span>}</label>
+                <input name="endDate" value={formData.endDate} onChange={handleInputChange} placeholder="06/2024" maxLength={7} disabled={formData.current} className="w-full px-4 py-2 border border-gray-300 rounded-lg disabled:bg-gray-100" />
+              </div>
+            </div>
+
+            <div className="flex items-center">
+              <input type="checkbox" name="current" checked={formData.current} onChange={handleInputChange} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
+              <label className="ml-2 block text-sm text-gray-700">I am currently enrolled</label>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">GPA (optional)</label>
+                <input name="gpa" value={formData.gpa} onChange={handleInputChange} placeholder="3.75" className="w-full px-4 py-2 border border-gray-300 rounded-lg" />
+              </div>
+              <div className="flex items-center">
+                <input type="checkbox" name="gpaPrivate" checked={formData.gpaPrivate} onChange={handleInputChange} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
+                <label className="ml-2 block text-sm text-gray-700">Keep GPA private</label>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Honors / Achievements</label>
+              <textarea name="achievements" value={formData.achievements} onChange={handleInputChange} rows={4} className="w-full px-4 py-2 border border-gray-300 rounded-lg resize-none" placeholder="Dean's List, Cum Laude, Scholarship..." />
+            </div>
+
+            <div className="flex justify-end space-x-4 pt-6 border-t sticky bottom-0 bg-white">
+              <button type="button" onClick={handleClose} disabled={isSaving} className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">Close</button>
+              <button type="submit" disabled={isSaving} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">{isSaving ? (isEditMode ? 'Updating...' : 'Saving...') : (isEditMode ? 'Update Entry' : 'Save Entry')}</button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1742,14 +2429,20 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken, editingJob }) {
                 type="button"
                 onClick={handleClose}
                 disabled={isSaving}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-2 border rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ borderColor: '#D1D5DB', color: '#374151' }}
+                onMouseOver={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#F9FAFB')}
+                onMouseOut={(e) => !isSaving && (e.currentTarget.style.backgroundColor = 'transparent')}
               >
                 Close
               </button>
               <button
                 type="submit"
                 disabled={isSaving}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-2 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ backgroundColor: '#777C6D' }}
+                onMouseOver={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#656A5C')}
+                onMouseOut={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#777C6D')}
               >
                 {isSaving 
                   ? (isEditMode ? 'Updating...' : 'Saving...') 

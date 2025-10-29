@@ -3,6 +3,7 @@ import { SignedIn, SignedOut, UserButton } from "@clerk/clerk-react";
 import { useEffect, useState } from "react";
 import { useAuth, useUser } from "@clerk/clerk-react";
 import api, { setAuthToken } from "../api/axios";
+import Logo from "./Logo";
 
 export default function Navbar() {
     const { getToken } = useAuth();
@@ -46,23 +47,23 @@ export default function Navbar() {
 
     // NavLink active class styling
     const navLinkClass = ({ isActive }) => 
-        `px-3 py-2 rounded-lg transition-all duration-200 font-medium focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-600 ${
+        `px-3 py-2 rounded-lg transition-all duration-200 font-medium focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-primary-700 ${
             isActive 
-                ? 'bg-blue-700 text-white shadow-md' 
-                : 'text-white hover:bg-blue-500 hover:shadow-sm active:bg-blue-800'
+                ? 'bg-primary-800 text-white shadow-md' 
+                : 'text-white hover:bg-primary-600 hover:shadow-sm active:bg-primary-900'
         }`;
 
     return (
-        <nav className="bg-blue-600 text-white shadow-md sticky top-0 z-50" role="navigation" aria-label="Main navigation">
+        <nav className="text-white shadow-md sticky top-0 z-50" style={{ backgroundColor: '#4F5348' }} role="navigation" aria-label="Main navigation">
             <div className="px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-16">
                     {/* Logo/Brand */}
                     <Link 
                         to="/" 
-                        className="text-xl font-heading font-bold hover:text-blue-100 transition-colors focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-600 rounded px-2 py-1"
-                        aria-label="HotSho Home"
+                        className="flex items-center gap-2 hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-primary-700 rounded px-2 py-1"
+                        aria-label="Nirvana Home"
                     >
-                        HotSho
+                        <Logo variant="white" size="md" />
                     </Link>
 
                     {/* Desktop Navigation */}
@@ -134,7 +135,7 @@ export default function Navbar() {
                     {/* Mobile Menu Button */}
                     <button
                         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                        className="md:hidden p-2 rounded-lg hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-white transition-colors"
+                        className="md:hidden p-2 rounded-lg hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-white transition-colors"
                         aria-expanded={mobileMenuOpen}
                         aria-label="Toggle navigation menu"
                         aria-controls="mobile-menu"
@@ -157,9 +158,10 @@ export default function Navbar() {
             {/* Mobile Menu */}
             <div 
                 id="mobile-menu"
-                className={`md:hidden bg-blue-700 border-t border-blue-500 transition-all duration-300 ease-in-out overflow-hidden ${
+                className={`md:hidden border-t transition-all duration-300 ease-in-out overflow-hidden ${
                     mobileMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
                 }`}
+                style={{ backgroundColor: '#3A3D35', borderTopColor: '#656A5C' }}
                 aria-hidden={!mobileMenuOpen}
             >
                 <div className="px-4 py-3 space-y-2">
@@ -169,8 +171,8 @@ export default function Navbar() {
                             className={({ isActive }) => 
                                 `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${
                                     isActive 
-                                        ? 'bg-blue-800 text-white shadow-md' 
-                                        : 'text-white hover:bg-blue-600 active:bg-blue-900'
+                                        ? 'bg-primary-900 text-white shadow-md' 
+                                        : 'text-white hover:bg-primary-700 active:bg-primary-900'
                                 }`
                             }
                             aria-label="Register"
@@ -182,8 +184,8 @@ export default function Navbar() {
                             className={({ isActive }) => 
                                 `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${
                                     isActive 
-                                        ? 'bg-blue-800 text-white shadow-md' 
-                                        : 'text-white hover:bg-blue-600 active:bg-blue-900'
+                                        ? 'bg-primary-900 text-white shadow-md' 
+                                        : 'text-white hover:bg-primary-700 active:bg-primary-900'
                                 }`
                             }
                             aria-label="Login"
@@ -197,8 +199,8 @@ export default function Navbar() {
                             className={({ isActive }) => 
                                 `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${
                                     isActive 
-                                        ? 'bg-blue-800 text-white shadow-md' 
-                                        : 'text-white hover:bg-blue-600 active:bg-blue-900'
+                                        ? 'bg-primary-900 text-white shadow-md' 
+                                        : 'text-white hover:bg-primary-700 active:bg-primary-900'
                                 }`
                             }
                             aria-label="Dashboard"
@@ -210,8 +212,8 @@ export default function Navbar() {
                             className={({ isActive }) => 
                                 `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${
                                     isActive 
-                                        ? 'bg-blue-800 text-white shadow-md' 
-                                        : 'text-white hover:bg-blue-600 active:bg-blue-900'
+                                        ? 'bg-primary-900 text-white shadow-md' 
+                                        : 'text-white hover:bg-primary-700 active:bg-primary-900'
                                 }`
                             }
                             aria-label="Profile"
@@ -219,7 +221,7 @@ export default function Navbar() {
                             Profile
                         </NavLink>
                         <div className="pt-3 pb-2 flex items-center space-x-3 px-4">
-                            <span className="text-sm text-blue-100">Account</span>
+                            <span className="text-sm text-primary-50">Account</span>
                             <div className="custom-user-button">
                                 <UserButton 
                                     afterSignOutUrl="/login"
