@@ -105,9 +105,9 @@ export default function Dashboard() {
         <div className="max-w-2xl mx-auto">
           {/* Welcome Card */}
           <Card variant="primary" className="mb-6">
-            <div className="flex justify-between items-start">
-              <div>
-                <h1 className="text-3xl font-heading font-bold mb-2" style={{ color: '#4F5348' }}>
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+              <div className="flex-1 min-w-0">
+                <h1 className="text-3xl font-heading font-bold mb-2 break-words" style={{ color: '#4F5348' }}>
                   Welcome, {user?.fullName || user?.primaryEmailAddress?.emailAddress}
                 </h1>
                 <p className="text-sm" style={{ color: '#656A5C' }}>
@@ -119,7 +119,7 @@ export default function Dashboard() {
                   sessionStorage.setItem("logoutMessage", "You have been successfully logged out");
                   signOut();
                 }}
-                className="px-6 py-2 text-white rounded-lg transition focus:outline-none focus:ring-2 focus:ring-offset-2 whitespace-nowrap"
+                className="px-6 py-2 text-white rounded-lg transition focus:outline-none focus:ring-2 focus:ring-offset-2 whitespace-nowrap self-start sm:self-auto flex-shrink-0"
                 style={{ backgroundColor: '#EF4444' }}
                 onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#DC2626'}
                 onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#EF4444'}
