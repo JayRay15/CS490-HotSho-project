@@ -17,7 +17,7 @@
     --color-primary-800: #3A3D35;
     --color-primary-900: #252722;
     --color-primary: #777C6D;
-    
+
     /* Secondary Colors - Neutral Gray Palette */
     --color-secondary-50: #FAFAFA;
     --color-secondary-100: #F5F5F5;
@@ -30,7 +30,7 @@
     --color-secondary-800: #424242;
     --color-secondary-900: #212121;
     --color-secondary: #CBCBCB;
-    
+
     /* Accent Colors - Warm Sage */
     --color-accent-50: #F8F8F5;
     --color-accent-100: #EEEFD9;
@@ -43,7 +43,7 @@
     --color-accent-800: #434437;
     --color-accent-900: #2C2D24;
     --color-accent: #B7B89F;
-    
+
     /* Semantic Colors - Success */
     --color-success-50: #F0FDF4;
     --color-success-100: #DCFCE7;
@@ -56,7 +56,7 @@
     --color-success-800: #166534;
     --color-success-900: #14532D;
     --color-success: #22C55E;
-    
+
     /* Semantic Colors - Warning */
     --color-warning-50: #FFFBEB;
     --color-warning-100: #FEF3C7;
@@ -69,7 +69,7 @@
     --color-warning-800: #92400E;
     --color-warning-900: #78350F;
     --color-warning: #F59E0B;
-    
+
     /* Semantic Colors - Error */
     --color-error-50: #FEF2F2;
     --color-error-100: #FEE2E2;
@@ -82,7 +82,7 @@
     --color-error-800: #991B1B;
     --color-error-900: #7F1D1D;
     --color-error: #EF4444;
-    
+
     /* Semantic Colors - Info */
     --color-info-50: #F0F9FF;
     --color-info-100: #E0F2FE;
@@ -95,18 +95,18 @@
     --color-info-800: #075985;
     --color-info-900: #0C4A6E;
     --color-info: #0EA5E9;
-    
+
     /* Background Colors */
     --color-bg-light: #FFFFFF;
     --color-bg-default: #F9FAFB;
     --color-bg-dark: #F5F5F5;
-    
+
     /* Text Colors */
     --color-text-primary: #111827;
     --color-text-secondary: #4B5563;
     --color-text-tertiary: #9CA3AF;
     --color-text-inverse: #FFFFFF;
-    
+
     /* Legacy variable support (for backwards compatibility) */
     --primary: var(--color-primary);
     --accent: var(--color-accent);
@@ -126,46 +126,61 @@ body {
     font-family: 'Inter', sans-serif;
     background-color: var(--color-bg-light);
     color: var(--color-text-primary);
-    line-height: 1.6; /* Optimized for readability */
+    line-height: 1.6;
+    /* Optimized for readability */
 }
 
 /* ============================================
    Typography - Heading styles
    ============================================ */
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
     font-family: 'Poppins', sans-serif;
-    line-height: 1.3; /* Tighter line height for headings */
-    font-weight: 600; /* Default semibold for headings */
+    line-height: 1.3;
+    /* Tighter line height for headings */
+    font-weight: 600;
+    /* Default semibold for headings */
 }
 
 h1 {
-    font-size: 1.875rem; /* 30px */
-    font-weight: 700; /* Bold for main headings */
+    font-size: 1.875rem;
+    /* 30px */
+    font-weight: 700;
+    /* Bold for main headings */
 }
 
 h2 {
-    font-size: 1.5rem; /* 24px */
+    font-size: 1.5rem;
+    /* 24px */
     font-weight: 600;
 }
 
 h3 {
-    font-size: 1.25rem; /* 20px */
+    font-size: 1.25rem;
+    /* 20px */
     font-weight: 600;
 }
 
 h4 {
-    font-size: 1.125rem; /* 18px */
+    font-size: 1.125rem;
+    /* 18px */
     font-weight: 600;
 }
 
 h5 {
-    font-size: 1rem; /* 16px */
+    font-size: 1rem;
+    /* 16px */
     font-weight: 600;
 }
 
 h6 {
-    font-size: 0.875rem; /* 14px */
+    font-size: 0.875rem;
+    /* 14px */
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -198,4 +213,72 @@ p {
     border-radius: 1.25rem;
     box-shadow: 0 1px 3px 0 rgba(119, 124, 109, 0.1), 0 1px 2px 0 rgba(119, 124, 109, 0.06);
     padding: 1.5rem;
+}
+
+/* ============================================
+   Responsive improvements for UC-018
+   - Scales typography across devices
+   - Ensures a minimum touch target for interactive elements
+   - Prevents accidental horizontal scroll from components
+   ============================================ */
+
+/* Prevent horizontal overflow caused by modals or long content */
+html,
+body {
+    overflow-x: hidden;
+}
+
+/* Responsive base font and readable text sizes */
+html {
+    font-size: 16px;
+}
+
+body {
+    font-size: clamp(14px, 1.2vw, 16px);
+}
+
+h1 {
+    font-size: clamp(1.5rem, 2.5vw, 2.5rem);
+}
+
+h2 {
+    font-size: clamp(1.25rem, 2vw, 1.75rem);
+}
+
+h3 {
+    font-size: clamp(1.1rem, 1.6vw, 1.25rem);
+}
+
+/* Make sure interactive elements meet minimum touch target size (44x44px) */
+button,
+.btn,
+input[type="button"],
+input[type="submit"],
+a[role="button"] {
+    min-width: 44px;
+    min-height: 44px;
+}
+
+/* Slightly increase spacing on small screens to avoid cramped layouts */
+@media (max-width: 767px) {
+    .px-4 {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+
+    .p-4 {
+        padding: 1rem !important;
+    }
+
+    .max-w-4xl {
+        max-width: 100% !important;
+    }
+}
+
+/* Ensure form controls don't cause horizontal scrolling */
+input,
+textarea,
+select {
+    max-width: 100%;
+    box-sizing: border-box;
 }

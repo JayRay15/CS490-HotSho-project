@@ -14,12 +14,12 @@ export default function Button({
     ...props
 }) {
     const sizes = {
-        small: "py-1 px-3 text-sm",
-        medium: "py-2 px-4 text-base",
+        small: "py-2 px-3 text-sm",
+        medium: "py-3 px-5 text-base sm:py-2 sm:px-4 md:py-3 md:px-5",
         large: "py-3 px-6 text-lg"
     };
 
-    const base = "rounded-lg font-medium transition focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed";
+    const base = "rounded-lg font-medium transition focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed min-h-11";
     const styles = {
         primary: "bg-primary hover:bg-primary-600 active:bg-primary-700 text-text-inverse focus:ring-primary-400 disabled:bg-primary-300",
         secondary: "bg-accent hover:bg-accent-500 active:bg-accent-600 text-text-primary focus:ring-accent-400 disabled:bg-accent-300",
