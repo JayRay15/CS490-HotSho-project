@@ -14,6 +14,7 @@
     "@clerk/clerk-react": "^5.53.3",
     "@fontsource/inter": "^5.2.8",
     "axios": "^1.12.2",
+    "classnames": "^2.5.1",
     "lucide-react": "^0.548.0",
     "prop-types": "^15.8.1",
     "react": "^19.1.1",
