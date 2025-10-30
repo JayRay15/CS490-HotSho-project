@@ -79,12 +79,16 @@ jobs:
       - name: Run frontend tests
         working-directory: ./frontend
         run: npm run test:coverage
+        env:
+          ROLLUP_DISABLE_NATIVE: '1'
 
       - name: Check coverage thresholds
         working-directory: ./frontend
         run: |
           echo "Checking frontend coverage meets 90% threshold..."
           npm run test:coverage -- --run
+        env:
+          ROLLUP_DISABLE_NATIVE: '1'
 
       - name: Upload frontend coverage reports
         uses: codecov/codecov-action@v4
