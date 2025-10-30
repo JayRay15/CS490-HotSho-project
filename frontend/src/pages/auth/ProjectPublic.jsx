@@ -2,13 +2,14 @@ import React, { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ProjectDetail from '../../components/projects/ProjectDetail';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 
 export default function ProjectPublic() {
   const { id } = useParams();
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const load = async () => {
@@ -38,7 +39,7 @@ export default function ProjectPublic() {
   // render ProjectDetail inline (non-modal) for public viewing
   return (
     <div className="p-6">
-      <ProjectDetail project={project} onClose={() => { /* no-op for public view */ }} />
+      <ProjectDetail project={project} onClose={() => navigate(-1)} />
     </div>
   );
 }
