@@ -84,7 +84,7 @@ jobs:
         working-directory: ./frontend
         run: |
           # Create a patch script to modify Rollup's native.js
-          cat > patch-rollup.js << 'EOF'
+          cat > patch-rollup.cjs << 'EOF'
           const fs = require('fs');
           const path = require('path');
           const nativePath = path.join(__dirname, 'node_modules', 'rollup', 'dist', 'native.js');
@@ -102,7 +102,7 @@ jobs:
             console.log('⚠️  Rollup native.js not found');
           }
           EOF
-          node patch-rollup.js
+          node patch-rollup.cjs
 
       - name: Run frontend tests
         working-directory: ./frontend
