@@ -310,6 +310,21 @@ describe('profileController', () => {
           })
         );
       });
+
+      it('should return error if user not found when deleting skill', async () => {
+        mockReq.params = { skillId: 'skill-id' };
+        mockUser.findOneAndUpdate.mockResolvedValue(null);
+
+        await deleteSkill(mockReq, mockRes, mockNext);
+
+        expect(mockRes.status).toHaveBeenCalledWith(404);
+        expect(mockRes.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: false,
+            message: 'User not found',
+          })
+        );
+      });
     });
 
     describe('reorderSkills', () => {
@@ -439,6 +454,21 @@ describe('profileController', () => {
           expect.objectContaining({
             success: true,
             message: 'Education deleted successfully',
+          })
+        );
+      });
+
+      it('should return error if user not found when deleting education', async () => {
+        mockReq.params = { educationId: 'education-id' };
+        mockUser.findOneAndUpdate.mockResolvedValue(null);
+
+        await deleteEducation(mockReq, mockRes, mockNext);
+
+        expect(mockRes.status).toHaveBeenCalledWith(404);
+        expect(mockRes.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: false,
+            message: 'User not found',
           })
         );
       });
@@ -648,6 +678,21 @@ describe('profileController', () => {
           })
         );
       });
+
+      it('should return error if user not found when deleting project', async () => {
+        mockReq.params = { projectId: 'project-id' };
+        mockUser.findOneAndUpdate.mockResolvedValue(null);
+
+        await deleteProject(mockReq, mockRes, mockNext);
+
+        expect(mockRes.status).toHaveBeenCalledWith(404);
+        expect(mockRes.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: false,
+            message: 'User not found',
+          })
+        );
+      });
     });
 
     describe('getPublicProject', () => {
@@ -784,6 +829,21 @@ describe('profileController', () => {
           expect.objectContaining({
             success: true,
             message: 'Certification deleted successfully',
+          })
+        );
+      });
+
+      it('should return error if user not found when deleting certification', async () => {
+        mockReq.params = { certificationId: 'cert-id' };
+        mockUser.findOneAndUpdate.mockResolvedValue(null);
+
+        await deleteCertification(mockReq, mockRes, mockNext);
+
+        expect(mockRes.status).toHaveBeenCalledWith(404);
+        expect(mockRes.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: false,
+            message: 'User not found',
           })
         );
       });
