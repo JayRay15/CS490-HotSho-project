@@ -847,17 +847,31 @@ export default function ProfilePage() {
 
                 {/* Professional Information Section */}
                 <Card variant="default" title="Professional Information">
+                  <div className="flex justify-between items-center mb-4">
+                    <button
+                      onClick={handleEditClick}
+                      className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2 ml-auto"
+                      style={{ backgroundColor: '#777C6D' }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                      <span>Edit Profile</span>
+                    </button>
+                  </div>
                   
                   <div className="space-y-4">
                     <div>
-                      <p className="text-sm font-medium mb-1" style={{ color: '#4B5563' }}>Professional Headline</p>
-                      <p className="text-lg" style={{ color: '#111827' }}>{userData?.headline || '—'}</p>
+                      <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Professional Headline</p>
+                      <p className="text-lg" style={{ color: '#4F5348' }}>{userData?.headline || '—'}</p>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <p className="text-sm font-medium mb-1" style={{ color: '#4B5563' }}>Industry</p>
-                        <p style={{ color: '#111827' }}>{userData?.industry || '—'}</p>
+                        <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Industry</p>
+                        <p style={{ color: '#4F5348' }}>{userData?.industry || '—'}</p>
                       </div>
                       <div>
                         <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Experience Level</p>
@@ -879,7 +893,10 @@ export default function ProfilePage() {
                   <div className="flex justify-between items-center mb-4">
                     <button
                       onClick={() => setShowEmploymentModal(true)}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2 ml-auto"
+                      className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 ml-auto focus:outline-none focus:ring-2 focus:ring-offset-2"
+                      style={{ backgroundColor: '#777C6D' }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -954,7 +971,7 @@ export default function ProfilePage() {
                                   </span>
                                 </div>
                                 {job.description && (
-                                  <p className="mt-2 whitespace-pre-wrap" style={{ color: '#111827' }}>{job.description}</p>
+                                  <p className="mt-2 whitespace-pre-wrap" style={{ color: '#4F5348' }}>{job.description}</p>
                                 )}
                               </div>
                               
@@ -1016,7 +1033,10 @@ export default function ProfilePage() {
                   <div className="flex justify-between items-center mb-4">
                     <button
                       onClick={() => setShowEducationModal(true)}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2 ml-auto"
+                      className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 ml-auto focus:outline-none focus:ring-2 focus:ring-offset-2"
+                      style={{ backgroundColor: '#777C6D' }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -1027,8 +1047,8 @@ export default function ProfilePage() {
 
                   {/* Education Success Message */}
                   {educationSuccessMessage && (
-                    <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                      <p className="text-green-800 font-medium">{educationSuccessMessage}</p>
+                    <div className="mb-4 p-4 border rounded-lg" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }}>
+                      <p className="font-medium" style={{ color: '#166534' }}>{educationSuccessMessage}</p>
                     </div>
                   )}
 
@@ -1053,9 +1073,9 @@ export default function ProfilePage() {
                             <div className="bg-white border rounded-lg p-4 shadow-sm">
                               <div className="flex justify-between items-start">
                                 <div>
-                                  <h3 className="text-lg font-heading font-semibold text-gray-900">{edu.degree} — {edu.institution}</h3>
-                                  <p className="text-sm text-gray-600 mt-1">{edu.fieldOfStudy}</p>
-                                  <div className="text-sm text-gray-500 mt-2">
+                                  <h3 className="text-lg font-heading font-semibold" style={{ color: '#4F5348' }}>{edu.degree} — {edu.institution}</h3>
+                                  <p className="text-sm mt-1" style={{ color: '#656A5C' }}>{edu.fieldOfStudy}</p>
+                                  <div className="text-sm mt-2" style={{ color: '#9CA3AF' }}>
                                     {(() => {
                                       const startDate = new Date(edu.startDate);
                                       const startMonth = String(startDate.getMonth() + 1).padStart(2, '0');
@@ -1067,28 +1087,37 @@ export default function ProfilePage() {
                                   </div>
 
                                   {edu.achievements && (
-                                    <div className="mt-3 p-3 bg-gray-50 border rounded">
-                                      <strong className="text-gray-800">Honors / Achievements</strong>
-                                      <p className="mt-1 text-gray-700 whitespace-pre-wrap">{edu.achievements}</p>
+                                    <div className="mt-3 p-3 border rounded" style={{ backgroundColor: '#F5F6F4' }}>
+                                      <strong style={{ color: '#4F5348' }}>Honors / Achievements</strong>
+                                      <p className="mt-1 whitespace-pre-wrap" style={{ color: '#656A5C' }}>{edu.achievements}</p>
                                     </div>
                                   )}
 
                                   {typeof edu.gpa !== 'undefined' && edu.gpa !== null && (
-                                    <p className="mt-3 text-sm text-gray-700">GPA: {edu.gpaPrivate ? 'Private' : edu.gpa}</p>
+                                    <p className="mt-3 text-sm" style={{ color: '#656A5C' }}>GPA: {edu.gpaPrivate ? 'Private' : edu.gpa}</p>
                                   )}
                                 </div>
 
-                                <div className="flex-shrink-0 ml-4 text-gray-600 flex items-start gap-2">
+                                <div className="shrink-0 ml-4 flex items-start gap-2">
                                   {edu.current ? (
-                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">Ongoing</span>
+                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border" style={{ backgroundColor: '#DCFCE7', color: '#166534', borderColor: '#BBF7D0' }}>Ongoing</span>
                                   ) : (
-                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-800 border border-blue-100">Completed</span>
+                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border" style={{ backgroundColor: '#EFF6FF', color: '#1E40AF', borderColor: '#DBEAFE' }}>Completed</span>
                                   )}
 
                                   <div className="flex flex-col">
                                     <button
                                       onClick={() => handleEditEducation(edu)}
-                                      className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                      className="p-2 rounded-lg transition"
+                                      style={{ color: '#6B7280' }}
+                                      onMouseOver={(e) => {
+                                        e.currentTarget.style.color = '#777C6D';
+                                        e.currentTarget.style.backgroundColor = '#F5F6F4';
+                                      }}
+                                      onMouseOut={(e) => {
+                                        e.currentTarget.style.color = '#6B7280';
+                                        e.currentTarget.style.backgroundColor = 'transparent';
+                                      }}
                                       title="Edit education"
                                     >
                                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1099,7 +1128,16 @@ export default function ProfilePage() {
                                     {educationList.length > 1 && (
                                       <button
                                         onClick={() => handleDeleteEducationClick(edu)}
-                                        className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                                        className="p-2 rounded-lg transition"
+                                        style={{ color: '#6B7280' }}
+                                        onMouseOver={(e) => {
+                                          e.currentTarget.style.color = '#EF4444';
+                                          e.currentTarget.style.backgroundColor = '#FEF2F2';
+                                        }}
+                                        onMouseOut={(e) => {
+                                          e.currentTarget.style.color = '#6B7280';
+                                          e.currentTarget.style.backgroundColor = 'transparent';
+                                        }}
                                         title="Delete education"
                                       >
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1115,7 +1153,7 @@ export default function ProfilePage() {
                         ))}
                     </div>
                   ) : (
-                    <p className="text-gray-500 italic">No education added yet.</p>
+                    <p className="italic" style={{ color: '#9CA3AF' }}>No education added yet.</p>
                   )}
                 </Card>
 
@@ -1123,13 +1161,16 @@ export default function ProfilePage() {
                 <Card variant="default" title="Skills">
                   <div className="flex justify-between items-center mb-4">
                     <div>
-                      <p className="text-sm text-gray-600 mt-1">{skillList.length} total skills across {Object.keys(groupSkillsByCategory(skillList)).length} categories</p>
+                      <p className="text-sm mt-1" style={{ color: '#656A5C' }}>{skillList.length} total skills across {Object.keys(groupSkillsByCategory(skillList)).length} categories</p>
                     </div>
                     <div className="flex gap-2">
                       <button
                         onClick={exportSkillsByCategory}
                         disabled={skillList.length === 0}
-                        className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-4 py-2 border rounded-lg transition flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ borderColor: '#D1D5DB', color: '#656A5C' }}
+                        onMouseOver={(e) => !skillList.length === 0 && (e.currentTarget.style.backgroundColor = '#F5F6F4')}
+                        onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                         title="Export skills by category"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1139,7 +1180,10 @@ export default function ProfilePage() {
                       </button>
                       <button
                         onClick={() => { setEditingSkill(null); setShowSkillModal(true); }}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2"
+                        className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                        style={{ backgroundColor: '#777C6D' }}
+                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -1150,8 +1194,8 @@ export default function ProfilePage() {
                   </div>
 
                   {skillSuccessMessage && (
-                    <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                      <p className="text-green-800 font-medium">{skillSuccessMessage}</p>
+                    <div className="mb-4 p-4 border rounded-lg" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }}>
+                      <p className="font-medium" style={{ color: '#166534' }}>{skillSuccessMessage}</p>
                     </div>
                   )}
 
@@ -1244,10 +1288,10 @@ export default function ProfilePage() {
                     </DndContext>
                   ) : (
                     <div className="text-center py-12">
-                      <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#D1D5DB' }}>
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                       </svg>
-                      <p className="text-gray-500 italic">No skills added yet. Click "Add Skill" to get started!</p>
+                      <p className="italic" style={{ color: '#9CA3AF' }}>No skills added yet. Click "Add Skill" to get started!</p>
                     </div>
                   )}
                 </Card>
@@ -1257,7 +1301,10 @@ export default function ProfilePage() {
                   <div className="flex justify-end items-center mb-4">
                     <button
                       onClick={() => setShowProjectModal(true)}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2 ml-auto"
+                      className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 ml-auto focus:outline-none focus:ring-2 focus:ring-offset-2"
+                      style={{ backgroundColor: '#777C6D' }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -1267,7 +1314,7 @@ export default function ProfilePage() {
                   </div>
 
                       {projectSuccessMessage && (
-                        <div className="mb-4 p-4 bg-green-50 border border-green-200 text-green-800 rounded-lg flex items-center">
+                        <div className="mb-4 p-4 border rounded-lg flex items-center" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', color: '#166534' }}>
                           <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
                           </svg>
@@ -1295,7 +1342,7 @@ export default function ProfilePage() {
                           />
                         </>
                       ) : (
-                        <p className="text-gray-500 italic">No projects added yet.</p>
+                        <p className="italic" style={{ color: '#9CA3AF' }}>No projects added yet.</p>
                       )}
                       {selectedProject && (
                         <ProjectDetail project={selectedProject} onClose={() => setSelectedProject(null)} />
@@ -1307,7 +1354,10 @@ export default function ProfilePage() {
                   <div className="flex justify-between items-center mb-4">
                     <button
                       onClick={() => { setEditingCertification(null); setShowCertModal(true); }}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2 ml-auto"
+                      className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 ml-auto focus:outline-none focus:ring-2 focus:ring-offset-2"
+                      style={{ backgroundColor: '#777C6D' }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
                     >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -1343,16 +1393,16 @@ export default function ProfilePage() {
                               <div key={c._id || c.id || index} className="border rounded-lg p-4 hover:shadow-md transition relative">
                                 <div className="flex justify-between">
                                   <div>
-                                    <h3 className="text-lg font-heading font-semibold text-gray-900">{c.name}</h3>
-                                    <p className="text-gray-700 font-medium">{c.organization}</p>
-                                    <div className="flex items-center text-sm text-gray-600 mt-1 space-x-2">
+                                    <h3 className="text-lg font-heading font-semibold" style={{ color: '#4F5348' }}>{c.name}</h3>
+                                    <p className="font-medium" style={{ color: '#656A5C' }}>{c.organization}</p>
+                                    <div className="flex items-center text-sm mt-1 space-x-2" style={{ color: '#9CA3AF' }}>
                                       {c.certId && <span>ID: {c.certId}</span>}
                                       <span>•</span>
                                       <span>{c.industry || '—'}</span>
                                     </div>
-                                    <div className="text-sm mt-2">Earned: {formatDate(c.dateEarned)} · {c.doesNotExpire ? 'Does not expire' : formatDate(c.expirationDate)}</div>
-                                    <div className="text-sm mt-1">Verification: <strong className={`ml-2 ${c.verification === 'Verified' ? 'text-green-600' : c.verification === 'Pending' ? 'text-yellow-600' : 'text-gray-600'}`}>{c.verification}</strong></div>
-                                    {c.document && <div className="mt-2"><a className="text-sm text-blue-600 underline" href={c.document.data} target="_blank" rel="noreferrer">View document ({c.document.name})</a></div>}
+                                    <div className="text-sm mt-2" style={{ color: '#656A5C' }}>Earned: {formatDate(c.dateEarned)} · {c.doesNotExpire ? 'Does not expire' : formatDate(c.expirationDate)}</div>
+                                    <div className="text-sm mt-1" style={{ color: '#656A5C' }}>Verification: <strong className={`ml-2 ${c.verification === 'Verified' ? 'text-green-600' : c.verification === 'Pending' ? 'text-yellow-600' : 'text-gray-600'}`}>{c.verification}</strong></div>
+                                    {c.document && <div className="mt-2"><a className="text-sm underline" style={{ color: '#777C6D' }} href={c.document.data} target="_blank" rel="noreferrer">View document ({c.document.name})</a></div>}
                                     <div className="mt-2 text-sm">
                                       {expired && <span className="text-red-600">Expired</span>}
                                       {expiringSoon && <span className="text-yellow-600">Expires in {days} day(s)</span>}
@@ -1365,7 +1415,16 @@ export default function ProfilePage() {
                                         setEditingCertification(c);
                                         setShowCertModal(true);
                                       }}
-                                      className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                      className="p-2 rounded-lg transition"
+                                      style={{ color: '#6B7280' }}
+                                      onMouseOver={(e) => {
+                                        e.currentTarget.style.color = '#777C6D';
+                                        e.currentTarget.style.backgroundColor = '#F5F6F4';
+                                      }}
+                                      onMouseOut={(e) => {
+                                        e.currentTarget.style.color = '#6B7280';
+                                        e.currentTarget.style.backgroundColor = 'transparent';
+                                      }}
                                       title="Edit certification"
                                     >
                                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1386,7 +1445,16 @@ export default function ProfilePage() {
                                           alert('Failed to delete certification. Please try again.');
                                         }
                                       }}
-                                      className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                                      className="p-2 rounded-lg transition"
+                                      style={{ color: '#6B7280' }}
+                                      onMouseOver={(e) => {
+                                        e.currentTarget.style.color = '#EF4444';
+                                        e.currentTarget.style.backgroundColor = '#FEF2F2';
+                                      }}
+                                      onMouseOut={(e) => {
+                                        e.currentTarget.style.color = '#6B7280';
+                                        e.currentTarget.style.backgroundColor = 'transparent';
+                                      }}
                                       title="Delete certification"
                                     >
                                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1400,7 +1468,7 @@ export default function ProfilePage() {
                           })}
                         </div>
                       ) : (
-                        <p className="text-gray-500 italic">No certifications added yet.</p>
+                        <p className="italic" style={{ color: '#9CA3AF' }}>No certifications added yet.</p>
                       )}
                 </Card>
 
