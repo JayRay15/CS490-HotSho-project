@@ -42,10 +42,10 @@ app.get("/api/health", (req, res) => {
     message: "Server is running",
     timestamp: new Date().toISOString()
   });
+});
 
 // Public project page (shareable link)
 app.get('/api/projects/:projectId', getPublicProject);
-});
 
 // 404 handler - must come after all routes
 app.use(notFoundHandler);
