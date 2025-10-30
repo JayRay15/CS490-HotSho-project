@@ -8,10 +8,10 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "vitest",
-    "test:ui": "vitest --ui",
-    "test:coverage": "vitest run --coverage",
-    "test:watch": "vitest --watch"
+    "test": "cross-env ROLLUP_DISABLE_NATIVE=1 vitest",
+    "test:ui": "cross-env ROLLUP_DISABLE_NATIVE=1 vitest --ui",
+    "test:coverage": "cross-env ROLLUP_DISABLE_NATIVE=1 vitest run --coverage",
+    "test:watch": "cross-env ROLLUP_DISABLE_NATIVE=1 vitest --watch"
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.8.0",
@@ -42,6 +42,7 @@
     "@vitejs/plugin-react": "^5.0.4",
     "@vitest/coverage-v8": "^1.2.2",
     "autoprefixer": "^10.4.21",
+    "cross-env": "^7.0.3",
     "eslint": "^9.36.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.22",
