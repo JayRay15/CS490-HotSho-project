@@ -122,6 +122,7 @@ jobs:
 
       - name: Run frontend tests
         working-directory: ./frontend
+        timeout-minutes: 10
         run: npm run test:coverage
         env:
           ROLLUP_DISABLE_NATIVE: '1'
