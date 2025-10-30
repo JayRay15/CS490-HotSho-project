@@ -83,23 +83,40 @@ jobs:
       - name: Patch Rollup to disable native binaries
         working-directory: ./frontend
         run: |
-          # Create a patch script to modify Rollup's native.js
+          # Create a patch script to modify ALL Rollup native.js files (including nested in vitest)
           cat > patch-rollup.cjs << 'EOF'
           const fs = require('fs');
           const path = require('path');
-          const nativePath = path.join(__dirname, 'node_modules', 'rollup', 'dist', 'native.js');
+          const { execSync } = require('child_process');
           
-          if (fs.existsSync(nativePath)) {
-            let content = fs.readFileSync(nativePath, 'utf8');
-            // Replace the native binding loading with null to force JS fallback
-            content = content.replace(
-              /const nativeBinding = requireWithFriendlyError[^;]+;/g,
-              'const nativeBinding = null; // Patched for CI'
-            );
-            fs.writeFileSync(nativePath, content, 'utf8');
-            console.log('✅ Patched Rollup native.js successfully');
+          // Find all Rollup native.js files (top-level and nested in dependencies like vitest)
+          const rollupPaths = [
+            path.join(__dirname, 'node_modules', 'rollup', 'dist', 'native.js'),
+            path.join(__dirname, 'node_modules', 'vitest', 'node_modules', 'rollup', 'dist', 'native.js'),
+            path.join(__dirname, 'node_modules', 'vite', 'node_modules', 'rollup', 'dist', 'native.js'),
+          ];
+          
+          let patchedCount = 0;
+          rollupPaths.forEach(nativePath => {
+            if (fs.existsSync(nativePath)) {
+              let content = fs.readFileSync(nativePath, 'utf8');
+              // Replace the native binding loading with null to force JS fallback
+              const patched = content.replace(
+                /const nativeBinding = requireWithFriendlyError[^;]+;/g,
+                'const nativeBinding = null; // Patched for CI'
+              );
+              if (patched !== content) {
+                fs.writeFileSync(nativePath, patched, 'utf8');
+                console.log(`✅ Patched: ${nativePath}`);
+                patchedCount++;
+              }
+            }
+          });
+          
+          if (patchedCount === 0) {
+            console.log('⚠️  No Rollup native.js files found to patch');
           } else {
-            console.log('⚠️  Rollup native.js not found');
+            console.log(`✅ Successfully patched ${patchedCount} Rollup instance(s)`);
           }
           EOF
           node patch-rollup.cjs
