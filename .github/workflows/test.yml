@@ -55,6 +55,10 @@ jobs:
   frontend-tests:
     name: Frontend Tests
     runs-on: ubuntu-latest
+    env:
+      # Work around npm optional dependency bug with Rollup native binaries on Linux runners
+      # See https://github.com/npm/cli/issues/4828 and Rollup docs
+      ROLLUP_DISABLE_NATIVE: '1'
 
     steps:
       - name: Checkout code
