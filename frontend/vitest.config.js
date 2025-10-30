@@ -32,10 +32,10 @@ export default defineConfig({
         '**/*.config.{js,ts}',
       ],
       
-      // Coverage thresholds (temporarily lowered - TODO: increase to 90% and fix skipped tests)
+      // Coverage thresholds (TODO: increase to 90% - currently at achievable levels with passing tests)
       thresholds: {
-        branches: 40,
-        functions: 30,
+        branches: 70,
+        functions: 38,
         lines: 40,
         statements: 40,
       },
