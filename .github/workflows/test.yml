@@ -78,8 +78,15 @@ jobs:
         run: |
           npm ci
           # Manually install missing native binaries that npm optional dependency bug skips
+          # Install into vitest's nested node_modules where it's actually needed
+          cd node_modules/vitest
           npm install --no-save @rollup/rollup-linux-x64-gnu@4.52.5
+          cd ../..
+          # Install lightningcss for Tailwind
           npm install --no-save lightningcss-linux-x64-gnu
+          echo "Verifying installations:"
+          ls -la node_modules/@rollup/ || echo "No @rollup in top level"
+          ls -la node_modules/vitest/node_modules/@rollup/ || echo "No @rollup in vitest"
 
       - name: Run frontend tests
         working-directory: ./frontend
