@@ -76,32 +76,6 @@ jobs:
       - name: Install dependencies
         working-directory: ./frontend
         run: npm ci
-      
-      - name: Workaround for npm optional dependency bug
-        working-directory: ./frontend
-        run: |
-          # Patch Rollup to skip native binding check and use JS fallback
-          cat > patch.mjs << 'EOF'
-          import { readFileSync, writeFileSync } from 'fs';
-          import { execSync } from 'child_process';
-          
-          const files = execSync("find node_modules -name 'native.js' -path '*/rollup/dist/*'", { encoding: 'utf8' }).trim().split('\n');
-          
-          for (const file of files) {
-            let content = readFileSync(file, 'utf8');
-            // Wrap the native binding in try-catch to gracefully fall back to JS
-            content = content.replace(
-              /const nativeBinding = requireWithFriendlyError\(/,
-              'let nativeBinding; try { nativeBinding = requireWithFriendlyError('
-            ).replace(
-              /\);\s*const \{ parse,/,
-              '); } catch(e) { nativeBinding = null; }\nconst { parse,'
-            );
-            writeFileSync(file, content);
-            console.log('✅ Patched:', file);
-          }
-          EOF
-          node patch.mjs
 
       - name: Run frontend tests
         working-directory: ./frontend
