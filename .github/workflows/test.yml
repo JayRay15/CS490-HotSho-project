@@ -95,12 +95,16 @@ jobs:
           for (const file of files) {
             console.log(`Patching: ${file}`);
             let content = fs.readFileSync(file, 'utf8');
-            
-            // Replace the multi-line destructuring assignment
             const originalContent = content;
+            
+            // Make requireWithFriendlyError return an object with undefined properties
+            // This forces Rollup to use its JavaScript fallback instead of crashing
             content = content.replace(
-              /const \{ parse, parseAsync, xxhashBase64Url, xxhashBase36, xxhashBase16 \} = requireWithFriendlyError\(\s*[\s\S]*?\s*\);/g,
-              'const parse = null, parseAsync = null, xxhashBase64Url = null, xxhashBase36 = null, xxhashBase16 = null; // Patched for CI'
+              /const requireWithFriendlyError = id => \{[\s\S]*?\};/,
+              `const requireWithFriendlyError = id => {
+                // Patched for CI: Return empty object to skip native bindings
+                return { parse: undefined, parseAsync: undefined, xxhashBase64Url: undefined, xxhashBase36: undefined, xxhashBase16: undefined };
+              };`
             );
             
             if (content !== originalContent) {
