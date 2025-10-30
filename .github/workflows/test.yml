@@ -80,34 +80,45 @@ jobs:
       - name: Patch Rollup to disable native binaries
         working-directory: ./frontend
         run: |
-          # Find and patch ALL Rollup native.js files
-          echo "Finding Rollup native.js files..."
-          FILES=$(find node_modules -name "native.js" -path "*/rollup/dist/*")
-          if [ -z "$FILES" ]; then
-            echo "❌ ERROR: No Rollup native.js files found!"
-            exit 1
-          fi
+          node << 'EOJS'
+          const fs = require('fs');
+          const path = require('path');
+          const { execSync } = require('child_process');
           
-          echo "Found files:"
-          echo "$FILES"
+          // Find all native.js files
+          const findCmd = "find node_modules -name 'native.js' -path '*/rollup/dist/*'";
+          const files = execSync(findCmd, { encoding: 'utf8' }).trim().split('\n').filter(Boolean);
           
-          echo "Patching files..."
-          for file in $FILES; do
-            # Create a simple patch that just exports null for everything
-            cat > "$file" << 'PATCHEOF'
-// Patched for CI - native bindings disabled
-module.exports = {
-  parse: null,
-  parseAsync: null,
-  xxhashBase64Url: null,
-  xxhashBase36: null,
-  xxhashBase16: null
-};
-PATCHEOF
-            echo "✅ Patched: $file"
-          done
+          console.log(`Found ${files.length} Rollup native.js files`);
           
-          echo "✅ All Rollup native.js files patched successfully"
+          let patchedCount = 0;
+          for (const file of files) {
+            console.log(`Patching: ${file}`);
+            let content = fs.readFileSync(file, 'utf8');
+            
+            // Replace the multi-line destructuring assignment
+            const originalContent = content;
+            content = content.replace(
+              /const \{ parse, parseAsync, xxhashBase64Url, xxhashBase36, xxhashBase16 \} = requireWithFriendlyError\(\s*[\s\S]*?\s*\);/g,
+              'const parse = null, parseAsync = null, xxhashBase64Url = null, xxhashBase36 = null, xxhashBase16 = null; // Patched for CI'
+            );
+            
+            if (content !== originalContent) {
+              fs.writeFileSync(file, content, 'utf8');
+              console.log(`✅ Patched: ${file}`);
+              patchedCount++;
+            } else {
+              console.log(`⚠️  No changes for: ${file}`);
+            }
+          }
+          
+          if (patchedCount === 0) {
+            console.error('❌ No files were patched!');
+            process.exit(1);
+          }
+          
+          console.log(`✅ Successfully patched ${patchedCount} file(s)`);
+          EOJS
 
       - name: Run frontend tests
         working-directory: ./frontend
