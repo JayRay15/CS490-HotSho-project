@@ -5,6 +5,10 @@ import request from 'supertest';
 // Force successResponse to throw to exercise logout catch path
 jest.unstable_mockModule('../../utils/responseFormat.js', () => ({
   successResponse: () => { throw new Error('boom'); },
+  validationErrorResponse: (message = 'Validation failed', errors = []) => ({
+    response: { success: false, message, errors },
+    statusCode: 400
+  }),
   errorResponse: (message = 'Internal server error', statusCode = 500) => ({ response: { success: false, message }, statusCode }),
   sendResponse: (res, response, status) => res.status(status).json(response),
   ERROR_CODES: {}

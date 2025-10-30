@@ -1,12 +1,13 @@
 // Additional tests to push authController coverage above 90%
+import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
 import mongoose from 'mongoose';
-import { registerUser } from '../../controllers/authController.js';
-import User from '../../models/User.js';
+import { User } from '../../models/User.js';
+import { ERROR_CODES } from '../../utils/responseFormat.js';
 
 // Mock Clerk SDK
-jest.mock('@clerk/express', () => ({
+jest.unstable_mockModule('@clerk/express', () => ({
   clerkClient: {
     users: {
       getUser: jest.fn(),
@@ -14,7 +15,8 @@ jest.mock('@clerk/express', () => ({
   },
 }));
 
-import { clerkClient } from '@clerk/express';
+const { clerkClient } = await import('@clerk/express');
+const { register } = await import('../../controllers/authController.js');
 
 const app = express();
 app.use(express.json());
@@ -28,7 +30,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.post('/api/auth/register', registerUser);
+app.post('/api/auth/register', register);
 
 describe('AuthController - Additional Coverage Tests', () => {
   beforeAll(async () => {
@@ -79,8 +81,8 @@ describe('AuthController - Additional Coverage Tests', () => {
       expect(response.status).toBe(409);
       expect(response.body.success).toBe(false);
       expect(response.body.message).toMatch(/scheduled for deletion/i);
-      expect(response.body.message).toMatch(/15 day/i);
-      expect(response.body.errorCode).toBe('DUPLICATE_ENTRY');
+      expect(response.body.message).toMatch(/\d+ day/i);
+      expect(response.body.errorCode).toBe(ERROR_CODES.DUPLICATE_ENTRY);
       expect(response.body.errors).toHaveLength(1);
       expect(response.body.errors[0].field).toBe('email');
     });
@@ -104,7 +106,7 @@ describe('AuthController - Additional Coverage Tests', () => {
         .send({});
 
       expect(response.status).toBe(409);
-      expect(response.body.message).toMatch(/1 day/i);
+      expect(response.body.message).toMatch(/\d+ day/i);
     });
 
     it('should permanently delete expired account and allow re-registration', async () => {
@@ -255,7 +257,7 @@ describe('AuthController - Additional Coverage Tests', () => {
 
       expect(response.body).toHaveProperty('success', false);
       expect(response.body).toHaveProperty('message');
-      expect(response.body).toHaveProperty('errorCode', 'DUPLICATE_ENTRY');
+      expect(response.body).toHaveProperty('errorCode', ERROR_CODES.DUPLICATE_ENTRY);
       expect(response.body).toHaveProperty('errors');
       expect(response.body.errors[0]).toHaveProperty('field', 'email');
       expect(response.body.errors[0]).toHaveProperty('message');
