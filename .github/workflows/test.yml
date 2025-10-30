@@ -77,6 +77,18 @@ jobs:
         working-directory: ./frontend
         run: npm ci
       
+      - name: Debug - Check what was installed
+        working-directory: ./frontend
+        run: |
+          echo "=== Checking for Rollup installations ==="
+          ls -la node_modules/rollup/dist/native.js || echo "❌ Top-level rollup NOT found"
+          ls -la node_modules/vitest/node_modules/rollup/dist/native.js || echo "❌ Vitest's rollup NOT found"
+          ls -la node_modules/vite/node_modules/rollup/dist/native.js || echo "❌ Vite's rollup NOT found"
+          echo "=== Checking vitest directory ==="
+          ls -la node_modules/vitest/ || echo "❌ Vitest NOT installed"
+          echo "=== Finding ALL native.js files ==="
+          find node_modules -name "native.js" -path "*/rollup/dist/*" || echo "❌ No native.js files found"
+      
       - name: Patch Rollup to disable native binaries
         working-directory: ./frontend
         run: |
