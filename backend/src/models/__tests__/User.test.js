@@ -395,6 +395,198 @@ describe('User Model', () => {
     });
   });
 
+  describe('URL and Social Media Validation', () => {
+    it('should validate LinkedIn URL format', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        linkedin: 'https://linkedin.com/in/testuser',
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeUndefined();
+    });
+
+    it('should reject invalid LinkedIn URL', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        linkedin: 'not-a-valid-url',
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeDefined();
+      expect(error.errors.linkedin).toBeDefined();
+    });
+
+    it('should validate GitHub URL format', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        github: 'https://github.com/testuser',
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeUndefined();
+    });
+
+    it('should reject invalid GitHub URL', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        github: 'not-valid-github',
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeDefined();
+      expect(error.errors.github).toBeDefined();
+    });
+
+    it('should validate website URL', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        website: 'https://example.com',
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeUndefined();
+    });
+
+    it('should reject invalid website URL', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        website: 'not-a-url',
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeDefined();
+      expect(error.errors.website).toBeDefined();
+    });
+
+    it('should accept data URL for profile picture', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        picture: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD',
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeUndefined();
+    });
+
+    it('should accept regular URL for profile picture', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        picture: 'https://example.com/photo.jpg',
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeUndefined();
+    });
+
+    it('should reject invalid profile picture format', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        picture: 'invalid-picture-format',
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeDefined();
+      expect(error.errors.picture).toBeDefined();
+    });
+  });
+
+  describe('Optional Fields and Enums', () => {
+    it('should validate industry enum values', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        industry: 'Technology',
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeUndefined();
+    });
+
+    it('should reject invalid industry value', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        industry: 'InvalidIndustry',
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeDefined();
+      expect(error.errors.industry).toBeDefined();
+    });
+
+    it('should validate experienceLevel enum values', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        experienceLevel: 'Senior',
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeUndefined();
+    });
+
+    it('should reject invalid experienceLevel value', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        experienceLevel: 'InvalidLevel',
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeDefined();
+      expect(error.errors.experienceLevel).toBeDefined();
+    });
+
+    it('should validate headline maxlength', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        headline: 'a'.repeat(121), // Exceeds 120 char limit
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeDefined();
+      expect(error.errors.headline).toBeDefined();
+    });
+
+    it('should validate bio maxlength', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        bio: 'a'.repeat(501), // Exceeds 500 char limit
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeDefined();
+      expect(error.errors.bio).toBeDefined();
+    });
+  });
+
   describe('Password Comparison', () => {
     it('should compare passwords correctly', async () => {
       const bcrypt = await import('bcrypt');

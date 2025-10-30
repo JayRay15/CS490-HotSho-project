@@ -459,6 +459,109 @@ describe('userController', () => {
         })
       );
     });
+
+    it('should validate required fields on update', async () => {
+      mockReq.params = { employmentId: 'employment-id' };
+      mockReq.body = {
+        jobTitle: '',
+        company: 'Tech Corp',
+        startDate: '10/2023',
+      };
+
+      await updateEmployment(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          errors: expect.arrayContaining([
+            expect.objectContaining({
+              field: 'jobTitle',
+              message: expect.stringContaining('required'),
+            }),
+          ]),
+        })
+      );
+    });
+
+    it('should handle date format validation', async () => {
+      mockReq.params = { employmentId: 'employment-id' };
+      mockReq.body = {
+        jobTitle: 'Software Engineer',
+        company: 'Tech Corp',
+        startDate: 'invalid-date',
+      };
+
+      await updateEmployment(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          errors: expect.arrayContaining([
+            expect.objectContaining({
+              field: 'startDate',
+              message: expect.stringContaining('Invalid start date'),
+            }),
+          ]),
+        })
+      );
+    });
+
+    it('should handle description length validation', async () => {
+      mockReq.params = { employmentId: 'employment-id' };
+      mockReq.body = {
+        jobTitle: 'Software Engineer',
+        company: 'Tech Corp',
+        startDate: '10/2023',
+        description: 'a'.repeat(1001), // Exceeds 1000 char limit
+      };
+
+      await updateEmployment(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          errors: expect.arrayContaining([
+            expect.objectContaining({
+              field: 'description',
+              message: expect.stringContaining('too long'),
+            }),
+          ]),
+        })
+      );
+    });
+
+    it('should handle MM/YYYY date format', async () => {
+      mockReq.params = { employmentId: 'employment-id' };
+      mockReq.body = {
+        jobTitle: 'Software Engineer',
+        company: 'Tech Corp',
+        startDate: '01/2023',
+        endDate: '12/2023',
+        isCurrentPosition: false,
+      };
+
+      const mockUser = {
+        _id: 'user-id',
+        employment: [
+          {
+            _id: 'employment-id',
+            jobTitle: 'Software Engineer',
+            company: 'Tech Corp',
+          },
+        ],
+      };
+
+      User.findOneAndUpdate.mockResolvedValue(mockUser);
+
+      await updateEmployment(mockReq, mockRes, mockNext);
+
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          message: 'Employment entry updated successfully',
+        })
+      );
+    });
   });
 
   describe('deleteEmployment', () => {

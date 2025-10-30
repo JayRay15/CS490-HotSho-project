@@ -233,6 +233,85 @@ describe('profileController', () => {
       });
     });
 
+    describe('updateSkill', () => {
+      it('should update skill successfully', async () => {
+        mockReq.params = { skillId: 'skill-id' };
+        mockReq.body = { level: 'Expert' };
+
+        const testUser = {
+          _id: 'user-id',
+          skills: {
+            id: jest.fn().mockReturnValue({ name: 'JavaScript', level: 'Advanced' }),
+          },
+          save: jest.fn().mockResolvedValue(true),
+        };
+
+        mockUser.findOne.mockResolvedValue(testUser);
+
+        await updateSkill(mockReq, mockRes, mockNext);
+        await new Promise(resolve => setImmediate(resolve));
+
+        expect(testUser.save).toHaveBeenCalled();
+        expect(mockRes.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: true,
+            message: 'Skill updated successfully',
+          })
+        );
+      });
+
+      it('should return error if skill not found', async () => {
+        mockReq.params = { skillId: 'skill-id' };
+        mockReq.body = { level: 'Expert' };
+
+        const testUser = {
+          _id: 'user-id',
+          skills: {
+            id: jest.fn().mockReturnValue(null),
+          },
+        };
+
+        mockUser.findOne.mockResolvedValue(testUser);
+
+        await updateSkill(mockReq, mockRes, mockNext);
+
+        expect(mockRes.status).toHaveBeenCalledWith(404);
+        expect(mockRes.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: false,
+            message: 'Skill not found',
+          })
+        );
+      });
+    });
+
+    describe('deleteSkill', () => {
+      it('should delete skill successfully', async () => {
+        mockReq.params = { skillId: 'skill-id' };
+
+        const testUser = {
+          _id: 'user-id',
+          skills: [],
+        };
+
+        mockUser.findOneAndUpdate.mockResolvedValue(testUser);
+
+        await deleteSkill(mockReq, mockRes, mockNext);
+
+        expect(mockUser.findOneAndUpdate).toHaveBeenCalledWith(
+          { auth0Id: 'test-user-id' },
+          { $pull: { skills: { _id: 'skill-id' } } },
+          { new: true }
+        );
+        expect(mockRes.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: true,
+            message: 'Skill deleted successfully',
+          })
+        );
+      });
+    });
+
     describe('reorderSkills', () => {
       it('should reorder skills successfully', async () => {
         mockReq.body = { skills: ['skill-id-1', 'skill-id-2'] };
@@ -421,6 +500,152 @@ describe('profileController', () => {
             }),
           }),
           { new: true, runValidators: true }
+        );
+      });
+
+      it('should handle projectUrl to url mapping', async () => {
+        const projectData = {
+          name: 'Test Project',
+          description: 'Test Description',
+          startDate: '2023-01-01',
+          projectUrl: 'https://example.com',
+        };
+        mockReq.body = projectData;
+
+        const mockUser = {
+          _id: 'user-id',
+          projects: [{ ...projectData, url: 'https://example.com' }],
+        };
+
+        User.findOneAndUpdate.mockResolvedValue(mockUser);
+
+        await addProject(mockReq, mockRes, mockNext);
+
+        expect(mockRes.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: true,
+            message: 'Project added successfully',
+          })
+        );
+      });
+
+      it('should return validation error for missing required fields', async () => {
+        mockReq.body = { name: 'Test Project' }; // Missing description and startDate
+
+        await addProject(mockReq, mockRes, mockNext);
+
+        expect(mockRes.status).toHaveBeenCalledWith(400);
+        expect(mockRes.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: false,
+            message: 'Missing required fields',
+          })
+        );
+      });
+    });
+
+    describe('updateProject', () => {
+      it('should update project successfully', async () => {
+        mockReq.params = { projectId: 'project-id' };
+        mockReq.body = { name: 'Updated Project Name' };
+
+        const testUser = {
+          _id: 'user-id',
+          projects: {
+            id: jest.fn().mockReturnValue({ name: 'Test Project' }),
+          },
+          save: jest.fn().mockResolvedValue(true),
+        };
+
+        mockUser.findOne.mockResolvedValue(testUser);
+
+        await updateProject(mockReq, mockRes, mockNext);
+        await new Promise(resolve => setImmediate(resolve));
+
+        expect(testUser.save).toHaveBeenCalled();
+        expect(mockRes.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: true,
+            message: 'Project updated successfully',
+          })
+        );
+      });
+
+      it('should return error if project not found', async () => {
+        mockReq.params = { projectId: 'project-id' };
+        mockReq.body = { name: 'Updated Project' };
+
+        const testUser = {
+          _id: 'user-id',
+          projects: {
+            id: jest.fn().mockReturnValue(null),
+          },
+        };
+
+        mockUser.findOne.mockResolvedValue(testUser);
+
+        await updateProject(mockReq, mockRes, mockNext);
+
+        expect(mockRes.status).toHaveBeenCalledWith(404);
+        expect(mockRes.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: false,
+            message: 'Project not found',
+          })
+        );
+      });
+
+      it('should normalize technologies string to array on update', async () => {
+        mockReq.params = { projectId: 'project-id' };
+        mockReq.body = { technologies: 'Python, Django, PostgreSQL' };
+
+        const mockProject = { name: 'Test Project' };
+        const testUser = {
+          _id: 'user-id',
+          projects: {
+            id: jest.fn().mockReturnValue(mockProject),
+          },
+          save: jest.fn().mockResolvedValue(true),
+        };
+
+        mockUser.findOne.mockResolvedValue(testUser);
+
+        await updateProject(mockReq, mockRes, mockNext);
+        await new Promise(resolve => setImmediate(resolve));
+
+        expect(testUser.save).toHaveBeenCalled();
+        expect(mockRes.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: true,
+            message: 'Project updated successfully',
+          })
+        );
+      });
+    });
+
+    describe('deleteProject', () => {
+      it('should delete project successfully', async () => {
+        mockReq.params = { projectId: 'project-id' };
+
+        const testUser = {
+          _id: 'user-id',
+          projects: [],
+        };
+
+        mockUser.findOneAndUpdate.mockResolvedValue(testUser);
+
+        await deleteProject(mockReq, mockRes, mockNext);
+
+        expect(mockUser.findOneAndUpdate).toHaveBeenCalledWith(
+          { auth0Id: 'test-user-id' },
+          { $pull: { projects: { _id: 'project-id' } } },
+          { new: true }
+        );
+        expect(mockRes.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: true,
+            message: 'Project deleted successfully',
+          })
         );
       });
     });
