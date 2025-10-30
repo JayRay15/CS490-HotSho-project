@@ -77,58 +77,12 @@ jobs:
         working-directory: ./frontend
         run: npm ci
       
-      - name: Debug - Check what was installed
-        working-directory: ./frontend
-        run: |
-          echo "=== Checking for Rollup installations ==="
-          ls -la node_modules/rollup/dist/native.js || echo "❌ Top-level rollup NOT found"
-          ls -la node_modules/vitest/node_modules/rollup/dist/native.js || echo "❌ Vitest's rollup NOT found"
-          ls -la node_modules/vite/node_modules/rollup/dist/native.js || echo "❌ Vite's rollup NOT found"
-          echo "=== Checking vitest directory ==="
-          ls -la node_modules/vitest/ || echo "❌ Vitest NOT installed"
-          echo "=== Finding ALL native.js files ==="
-          find node_modules -name "native.js" -path "*/rollup/dist/*" || echo "❌ No native.js files found"
-      
       - name: Patch Rollup to disable native binaries
         working-directory: ./frontend
         run: |
-          # Create a patch script to modify ALL Rollup native.js files (including nested in vitest)
-          cat > patch-rollup.cjs << 'EOF'
-          const fs = require('fs');
-          const path = require('path');
-          const { execSync } = require('child_process');
-          
-          // Find all Rollup native.js files (top-level and nested in dependencies like vitest)
-          const rollupPaths = [
-            path.join(__dirname, 'node_modules', 'rollup', 'dist', 'native.js'),
-            path.join(__dirname, 'node_modules', 'vitest', 'node_modules', 'rollup', 'dist', 'native.js'),
-            path.join(__dirname, 'node_modules', 'vite', 'node_modules', 'rollup', 'dist', 'native.js'),
-          ];
-          
-          let patchedCount = 0;
-          rollupPaths.forEach(nativePath => {
-            if (fs.existsSync(nativePath)) {
-              let content = fs.readFileSync(nativePath, 'utf8');
-              // Replace the native binding loading with null to force JS fallback
-              const patched = content.replace(
-                /const nativeBinding = requireWithFriendlyError[^;]+;/g,
-                'const nativeBinding = null; // Patched for CI'
-              );
-              if (patched !== content) {
-                fs.writeFileSync(nativePath, patched, 'utf8');
-                console.log(`✅ Patched: ${nativePath}`);
-                patchedCount++;
-              }
-            }
-          });
-          
-          if (patchedCount === 0) {
-            console.log('⚠️  No Rollup native.js files found to patch');
-          } else {
-            console.log(`✅ Successfully patched ${patchedCount} Rollup instance(s)`);
-          }
-          EOF
-          node patch-rollup.cjs
+          # Use find to locate ALL native.js files and patch them with sed
+          find node_modules -name "native.js" -path "*/rollup/dist/*" -exec sed -i 's/const nativeBinding = requireWithFriendlyError([^;]*);/const nativeBinding = null; \/\/ Patched for CI/g' {} \;
+          echo "✅ Patched all Rollup native.js files"
 
       - name: Run frontend tests
         working-directory: ./frontend
