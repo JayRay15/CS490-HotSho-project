@@ -49,7 +49,7 @@ describe('Email Utility Tests', () => {
       await sendDeletionEmail(toEmail, fullName, deletionDate);
 
       expect(warnCalls.some(call => call.includes('SMTP not configured'))).toBe(true);
-      expect(logCalls.some(call => call.includes('[MOCK EMAIL] Account Deletion Scheduled'))).toBe(true);
+      expect(logCalls.some(call => call.includes('[MOCK EMAIL] Account Permanently Deleted'))).toBe(true);
     });
 
     test('should include user email in mock email output', async () => {
@@ -62,14 +62,14 @@ describe('Email Utility Tests', () => {
       expect(logCalls.some(call => call.includes(`To: ${toEmail}`))).toBe(true);
     });
 
-    test('should include deletion date in mock email output', async () => {
+    test('should include deletion confirmation in mock email output', async () => {
       const toEmail = 'test@example.com';
       const fullName = 'Test User';
       const deletionDate = new Date('2024-12-31');
 
       await sendDeletionEmail(toEmail, fullName, deletionDate);
 
-      expect(logCalls.some(call => call.includes('Deletion Date'))).toBe(true);
+      expect(logCalls.some(call => call.includes('Permanently Deleted'))).toBe(true);
     });
 
     test('should handle missing fullName gracefully', async () => {
@@ -102,27 +102,29 @@ describe('Email Utility Tests', () => {
       expect(logCalls.some(call => call.includes('Text Content'))).toBe(true);
     });
 
-    test('should format deletion date properly', async () => {
+    test('should include current year in mock email output', async () => {
       const toEmail = 'test@example.com';
       const fullName = 'Test User';
-      const deletionDate = new Date('2024-12-25');
+      const deletionDate = new Date();
 
       await sendDeletionEmail(toEmail, fullName, deletionDate);
 
-      // Date should be in the output
       const calls = logCalls.join(' ');
-      expect(calls).toContain('2024');
+      const currentYear = new Date().getFullYear().toString();
+      expect(calls).toContain(currentYear);
     });
 
-    test('should include 30-day grace period information', async () => {
+    // No grace period anymore
+    test('should indicate immediate permanent deletion (no grace period)', async () => {
       const toEmail = 'test@example.com';
       const fullName = 'Test User';
-      const deletionDate = new Date('2024-12-31');
+      const deletionDate = new Date();
 
       await sendDeletionEmail(toEmail, fullName, deletionDate);
 
-      const calls = logCalls.join(' ');
-      expect(calls).toContain('30');
+      const calls = logCalls.join(' ').toLowerCase();
+      expect(calls).toContain('immediately');
+      expect(calls).toContain('permanently deleted');
     });
   });
 

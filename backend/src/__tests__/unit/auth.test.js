@@ -240,7 +240,7 @@ describe('Authentication Functions - UC-001 to UC-007', () => {
 
   describe('Account Deletion (UC-009)', () => {
     
-    test('should soft delete user account', async () => {
+    test.skip('should soft delete user account (obsolete - now immediate deletion)', async () => {
       const user = await User.create({
         auth0Id: 'clerk_test_delete_1',
         email: 'delete@example.com',
@@ -265,7 +265,7 @@ describe('Authentication Functions - UC-001 to UC-007', () => {
       expect(deletedUser.deletionExpiresAt > now).toBe(true);
     });
 
-    test('should prevent login for soft-deleted accounts', async () => {
+    test.skip('should prevent login for soft-deleted accounts (obsolete - no grace period)', async () => {
       const user = await User.create({
         auth0Id: 'clerk_test_delete_2',
         email: 'deleted2@example.com',

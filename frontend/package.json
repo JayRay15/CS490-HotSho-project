@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "postinstall": "node -e \"const fs = require('fs'); const path = require('path'); const nativeDir = path.join(__dirname, 'node_modules', '@rollup'); if (fs.existsSync(nativeDir)) { const files = fs.readdirSync(nativeDir).filter(f => f.startsWith('rollup-linux')); files.forEach(f => { try { fs.rmSync(path.join(nativeDir, f), { recursive: true, force: true }); console.log('Removed', f); } catch(e) {} }); }\"",
     "dev": "vite --port 5173 --strictPort",
     "build": "vite build",
     "lint": "eslint .",
@@ -22,9 +23,9 @@
     "@fontsource/inter": "^5.2.8",
     "axios": "^1.12.2",
     "classnames": "^2.5.1",
+    "html2canvas": "^1.4.1",
     "jspdf": "^3.0.3",
     "jspdf-autotable": "^5.0.2",
-  "html2canvas": "^1.4.1",
     "lucide-react": "^0.548.0",
     "prop-types": "^15.8.1",
     "react": "^19.1.1",
@@ -49,6 +50,7 @@
     "globals": "^16.4.0",
     "jsdom": "^24.0.0",
     "postcss": "^8.5.6",
+    "rollup": "3.29.5",
     "tailwindcss": "^4.1.16",
     "vite": "^7.1.7",
     "vitest": "^1.2.2"

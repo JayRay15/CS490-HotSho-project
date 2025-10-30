@@ -53,7 +53,10 @@ const createTestApp = (userId = 'test_clerk_user') => {
   return app;
 };
 
-describe('Auth Controller Integration Tests', () => {
+const SKIP_DB = !!process.env.CI && !process.env.MONGODB_URI;
+const describeMaybe = SKIP_DB ? describe.skip : describe;
+
+describeMaybe('Auth Controller Integration Tests', () => {
 
   describe.skip('POST /api/auth/register - OAuth Registration (UC-003)', () => {
     let app;
@@ -285,24 +288,8 @@ describe('Auth Controller Integration Tests', () => {
       expect(response.body.message).toContain('Unauthorized');
     });
 
-    test('should block login for deleted users within grace period', async () => {
-      const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + 20);
-
-      await User.create({
-        auth0Id: 'clerk_user_login',
-        email: 'deleted-login@example.com',
-        name: 'Deleted Login User',
-        isDeleted: true,
-        deletionExpiresAt: futureDate
-      });
-
-      const response = await request(app)
-        .post('/api/auth/login')
-        .expect(403);
-
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toContain('scheduled for deletion');
+    test.skip('should block login for deleted users within grace period (obsolete - no grace period)', async () => {
+      // Obsolete due to policy change: immediate deletion (no grace window)
     });
   });
 
