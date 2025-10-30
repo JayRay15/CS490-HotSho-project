@@ -4,15 +4,14 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "postinstall": "node -e \"const fs = require('fs'); const path = require('path'); const nativeDir = path.join(__dirname, 'node_modules', '@rollup'); if (fs.existsSync(nativeDir)) { const files = fs.readdirSync(nativeDir).filter(f => f.startsWith('rollup-linux')); files.forEach(f => { try { fs.rmSync(path.join(nativeDir, f), { recursive: true, force: true }); console.log('Removed', f); } catch(e) {} }); }\"",
     "dev": "vite --port 5173 --strictPort",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "cross-env ROLLUP_DISABLE_NATIVE=1 vitest",
-    "test:ui": "cross-env ROLLUP_DISABLE_NATIVE=1 vitest --ui",
-    "test:coverage": "cross-env ROLLUP_DISABLE_NATIVE=1 vitest run --coverage",
-    "test:watch": "cross-env ROLLUP_DISABLE_NATIVE=1 vitest --watch"
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest --watch"
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.8.0",
