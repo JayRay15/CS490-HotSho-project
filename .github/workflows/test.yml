@@ -93,15 +93,18 @@ jobs:
           
           echo "Patching files..."
           for file in $FILES; do
-            # Use perl for multi-line regex since the code spans multiple lines
-            perl -i -pe 'BEGIN{undef $/;} s/const \{ parse, parseAsync, xxhashBase64Url, xxhashBase36, xxhashBase16 \} = requireWithFriendlyError\([^)]*\);/const parse = null, parseAsync = null, xxhashBase64Url = null, xxhashBase36 = null, xxhashBase16 = null; \/\/ Patched for CI/smg' "$file"
-            
-            if grep -q "Patched for CI" "$file"; then
-              echo "✅ Successfully patched: $file"
-            else
-              echo "❌ Failed to patch: $file"
-              exit 1
-            fi
+            # Create a simple patch that just exports null for everything
+            cat > "$file" << 'PATCHEOF'
+// Patched for CI - native bindings disabled
+module.exports = {
+  parse: null,
+  parseAsync: null,
+  xxhashBase64Url: null,
+  xxhashBase36: null,
+  xxhashBase16: null
+};
+PATCHEOF
+            echo "✅ Patched: $file"
           done
           
           echo "✅ All Rollup native.js files patched successfully"
