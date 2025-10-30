@@ -79,6 +79,8 @@ jobs:
           npm ci --omit=optional
           # Remove any Rollup native binaries that may have been cached or installed
           rm -rf node_modules/@rollup/rollup-linux-* || true
+          # Patch Rollup's native.js to skip native binary loading entirely
+          sed -i 's/const nativeBinding = requireWithFriendlyError.*$/const nativeBinding = null;/g' node_modules/rollup/dist/native.js || true
 
       - name: Run frontend tests
         working-directory: ./frontend
