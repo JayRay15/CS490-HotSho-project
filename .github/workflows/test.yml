@@ -69,12 +69,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          # Disable cache to ensure fresh install without stale optional deps
+          # cache: 'npm'
+          # cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
         working-directory: ./frontend
-        run: npm ci --no-optional
+        run: |
+          npm ci --omit=optional
+          # Remove any Rollup native binaries that may have been cached or installed
+          rm -rf node_modules/@rollup/rollup-linux-* || true
 
       - name: Run frontend tests
         working-directory: ./frontend
