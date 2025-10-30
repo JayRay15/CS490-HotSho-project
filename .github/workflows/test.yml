@@ -74,7 +74,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: ./frontend
-        run: npm ci
+        run: npm ci --no-optional
 
       - name: Run frontend tests
         working-directory: ./frontend
