@@ -2,9 +2,10 @@ name: Run Tests and Coverage
 
 on:
   push:
-    branches: [ main, develop, testing ]
+    branches: [ main, develop, testing, fixMergeConflictTest ]
   pull_request:
     branches: [ main, develop ]
+  workflow_dispatch:
 
 jobs:
   backend-tests:
