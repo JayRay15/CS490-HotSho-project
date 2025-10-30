@@ -182,7 +182,7 @@ export const sendFinalDeletionEmail = async (toEmail, fullName) => {
           <div class="content">
             <p>Hello <strong>${fullName || 'there'}</strong>,</p>
             
-            <p>This email confirms that your Nirvana account (<strong>${toEmail}</strong>) and all associated data have been <strong>permanently deleted</strong> from our systems as of <strong>${new Date().toLocaleDateString()}</strong>.</p>
+            <p>This email confirms that your Nirvana account (<strong>${toEmail}</strong>) and all associated data have been <strong>permanently deleted</strong> from our systems as of <strong>${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</strong>.</p>
             
             <div class="info-box">
               <strong>🗑️ What was deleted:</strong>

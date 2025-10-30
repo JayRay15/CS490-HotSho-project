@@ -254,7 +254,11 @@ export const deleteAccount = asyncHandler(async (req, res) => {
   const userIdForLog = user._id;
   const userAuth0Id = user.auth0Id;
 
-  console.log(`🗑️  Permanently deleting account: ${userEmail} (ID: ${userIdForLog}, Auth0: ${userAuth0Id})`);
+  console.log(`🗑️  Permanently deleting account:`);
+  console.log(`   Email: ${userEmail}`);
+  console.log(`   Name: "${userName}"`);
+  console.log(`   ID: ${userIdForLog}`);
+  console.log(`   Auth0: ${userAuth0Id}`);
   
   // CRITICAL: Delete user from Clerk/Auth0 first to prevent re-registration
   try {
@@ -310,9 +314,10 @@ export const deleteAccount = asyncHandler(async (req, res) => {
 
   // Send confirmation email (best-effort) using utils/email if available
   try {
+    console.log(`📧 ABOUT TO SEND DELETION EMAIL to: ${userEmail}, name: ${userName}`);
     const { sendDeletionEmail } = await import("../utils/email.js");
     await sendDeletionEmail(userEmail, userName);
-    console.log(`📧 Deletion email sent to: ${userEmail}`);
+    console.log(`📧 ✅ Deletion email successfully sent to: ${userEmail}`);
   } catch (err) {
     // If email helper not configured, log and continue
     console.warn("⚠️  Deletion email not sent:", err?.message || err);
