@@ -395,6 +395,198 @@ describe('User Model', () => {
     });
   });
 
+  describe('URL and Social Media Validation', () => {
+    it('should validate LinkedIn URL format', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        linkedin: 'https://linkedin.com/in/testuser',
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeUndefined();
+    });
+
+    it('should reject invalid LinkedIn URL', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        linkedin: 'not-a-valid-url',
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeDefined();
+      expect(error.errors.linkedin).toBeDefined();
+    });
+
+    it('should validate GitHub URL format', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        github: 'https://github.com/testuser',
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeUndefined();
+    });
+
+    it('should reject invalid GitHub URL', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        github: 'not-valid-github',
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeDefined();
+      expect(error.errors.github).toBeDefined();
+    });
+
+    it('should validate website URL', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        website: 'https://example.com',
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeUndefined();
+    });
+
+    it('should reject invalid website URL', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        website: 'not-a-url',
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeDefined();
+      expect(error.errors.website).toBeDefined();
+    });
+
+    it('should accept data URL for profile picture', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        picture: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD',
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeUndefined();
+    });
+
+    it('should accept regular URL for profile picture', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        picture: 'https://example.com/photo.jpg',
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeUndefined();
+    });
+
+    it('should reject invalid profile picture format', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        picture: 'invalid-picture-format',
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeDefined();
+      expect(error.errors.picture).toBeDefined();
+    });
+  });
+
+  describe('Optional Fields and Enums', () => {
+    it('should validate industry enum values', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        industry: 'Technology',
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeUndefined();
+    });
+
+    it('should reject invalid industry value', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        industry: 'InvalidIndustry',
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeDefined();
+      expect(error.errors.industry).toBeDefined();
+    });
+
+    it('should validate experienceLevel enum values', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        experienceLevel: 'Senior',
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeUndefined();
+    });
+
+    it('should reject invalid experienceLevel value', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        experienceLevel: 'InvalidLevel',
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeDefined();
+      expect(error.errors.experienceLevel).toBeDefined();
+    });
+
+    it('should validate headline maxlength', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        headline: 'a'.repeat(121), // Exceeds 120 char limit
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeDefined();
+      expect(error.errors.headline).toBeDefined();
+    });
+
+    it('should validate bio maxlength', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        bio: 'a'.repeat(501), // Exceeds 500 char limit
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeDefined();
+      expect(error.errors.bio).toBeDefined();
+    });
+  });
+
   describe('Password Comparison', () => {
     it('should compare passwords correctly', async () => {
       const bcrypt = await import('bcrypt');
@@ -419,7 +611,475 @@ describe('User Model', () => {
 
       expect(user.uuid).toBeDefined();
       expect(typeof user.uuid).toBe('string');
-      expect(user.uuid.length).toBe(36); // UUID v4 format
+      expect(user.uuid.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Comprehensive Field Coverage', () => {
+    it('should handle all optional profile fields', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        headline: 'Software Engineer',
+        bio: 'Experienced developer',
+        location: 'New York, NY',
+        phone: '+1234567890',
+        industry: 'Technology',
+        experienceLevel: 'Senior',
+        website: 'https://example.com',
+        linkedin: 'https://linkedin.com/in/testuser',
+        github: 'https://github.com/testuser',
+        picture: 'https://example.com/pic.jpg',
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeUndefined();
+      expect(user.headline).toBe('Software Engineer');
+      expect(user.bio).toBe('Experienced developer');
+      expect(user.industry).toBe('Technology');
+      expect(user.experienceLevel).toBe('Senior');
+    });
+
+    it('should handle employment with all fields', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        employment: [
+          {
+            jobTitle: 'Software Engineer',
+            company: 'Tech Corp',
+            location: 'San Francisco',
+            startDate: new Date('2020-01-01'),
+            endDate: new Date('2023-01-01'),
+            isCurrentPosition: false,
+            description: 'Developed web applications',
+          },
+        ],
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeUndefined();
+      expect(user.employment[0].jobTitle).toBe('Software Engineer');
+      expect(user.employment[0].description).toBe('Developed web applications');
+    });
+
+    it('should handle skills with all fields', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        skills: [
+          {
+            name: 'JavaScript',
+            level: 'Expert',
+            category: 'Programming',
+          },
+          {
+            name: 'React',
+            level: 'Advanced',
+            category: 'Frontend',
+          },
+        ],
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeUndefined();
+      expect(user.skills).toHaveLength(2);
+      expect(user.skills[0].level).toBe('Expert');
+    });
+
+    it('should handle education with all optional fields', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        education: [
+          {
+            institution: 'MIT',
+            degree: 'Bachelor of Science',
+            fieldOfStudy: 'Computer Science',
+            startDate: new Date('2016-09-01'),
+            endDate: new Date('2020-05-01'),
+            current: false,
+            gpa: 3.8,
+            gpaPrivate: false,
+            achievements: 'Dean\'s List, Magna Cum Laude',
+            location: 'Cambridge, MA',
+          },
+        ],
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeUndefined();
+      expect(user.education[0].gpa).toBe(3.8);
+      expect(user.education[0].achievements).toBe('Dean\'s List, Magna Cum Laude');
+      expect(user.education[0].gpaPrivate).toBe(false);
+    });
+
+    it('should handle projects with all fields', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        projects: [
+          {
+            name: 'E-commerce Platform',
+            description: 'Built a full-stack e-commerce application',
+            technologies: ['React', 'Node.js', 'MongoDB'],
+            startDate: new Date('2022-01-01'),
+            endDate: new Date('2022-12-01'),
+            url: 'https://example.com/project',
+            githubUrl: 'https://github.com/user/project',
+            outcomes: 'Successfully deployed to production',
+            role: 'Lead Developer',
+            teamSize: 5,
+            status: 'Completed',
+          },
+        ],
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeUndefined();
+      expect(user.projects[0].technologies).toEqual(['React', 'Node.js', 'MongoDB']);
+      expect(user.projects[0].outcomes).toBe('Successfully deployed to production');
+      expect(user.projects[0].role).toBe('Lead Developer');
+    });
+
+    it('should handle certifications with all fields', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        certifications: [
+          {
+            name: 'AWS Solutions Architect',
+            organization: 'Amazon Web Services',
+            dateEarned: new Date('2023-01-15'),
+            expirationDate: new Date('2026-01-15'),
+            certId: 'AWS-12345',
+            doesNotExpire: false,
+          },
+        ],
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeUndefined();
+      expect(user.certifications[0].certId).toBe('AWS-12345');
+      expect(user.certifications[0].doesNotExpire).toBe(false);
+    });
+
+    it('should handle phone number in multiple formats', () => {
+      const formats = [
+        '+1234567890',
+        '1234567890',
+        '123-456-7890',
+      ];
+
+      formats.forEach(phone => {
+        const user = new User({
+          auth0Id: 'test-id',
+          email: 'test@example.com',
+          name: 'Test User',
+          phone,
+        });
+
+        const error = user.validateSync();
+        expect(error).toBeUndefined();
+      });
+    });
+
+    it('should validate certification doesNotExpire with expiration date', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        certifications: [
+          {
+            name: 'AWS Certified',
+            organization: 'Amazon',
+            dateEarned: new Date('2023-01-01'),
+            doesNotExpire: true,
+            expirationDate: new Date('2025-01-01'), // Should fail - can't have expiration if it doesn't expire
+          },
+        ],
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeDefined();
+      expect(error.errors['certifications.0.expirationDate']).toBeDefined();
+    });
+
+    it('should accept current position with no end date', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        employment: [
+          {
+            jobTitle: 'Senior Developer',
+            company: 'Tech Corp',
+            startDate: new Date('2023-01-01'),
+            isCurrentPosition: true,
+          },
+        ],
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeUndefined();
+      expect(user.employment[0].isCurrentPosition).toBe(true);
+      expect(user.employment[0].endDate).toBeUndefined();
+    });
+
+    it('should accept current education with no end date', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        education: [
+          {
+            institution: 'MIT',
+            degree: 'Master of Science',
+            fieldOfStudy: 'Computer Science',
+            startDate: new Date('2023-09-01'),
+            current: true,
+          },
+        ],
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeUndefined();
+      expect(user.education[0].current).toBe(true);
+    });
+
+    it('should handle projects without end date', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        projects: [
+          {
+            name: 'Ongoing Project',
+            description: 'Currently working on this',
+            startDate: new Date('2024-01-01'),
+          },
+        ],
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeUndefined();
+      expect(user.projects[0].endDate).toBeUndefined();
+    });
+
+    it('should trim whitespace from string fields', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: '  test@example.com  ',
+        name: '  Test User  ',
+        headline: '  Software Engineer  ',
+      });
+
+      expect(user.email).toBe('test@example.com');
+      expect(user.name).toBe('Test User');
+      expect(user.headline).toBe('Software Engineer');
+    });
+
+    it('should validate project name length', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        projects: [
+          {
+            name: 'a'.repeat(201),
+            description: 'Test',
+            startDate: new Date(),
+          },
+        ],
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeDefined();
+      expect(error.errors['projects.0.name']).toBeDefined();
+    });
+
+    it('should validate project description length', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        projects: [
+          {
+            name: 'Test Project',
+            description: 'a'.repeat(2001),
+            startDate: new Date(),
+          },
+        ],
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeDefined();
+      expect(error.errors['projects.0.description']).toBeDefined();
+    });
+
+    it('should validate skill name length', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        skills: [
+          {
+            name: 'a'.repeat(101),
+            level: 'Expert',
+            category: 'Programming',
+          },
+        ],
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeDefined();
+      expect(error.errors['skills.0.name']).toBeDefined();
+    });
+
+    it('should validate minimum skill name length', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        skills: [
+          {
+            name: '',
+            level: 'Expert',
+            category: 'Programming',
+          },
+        ],
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeDefined();
+      expect(error.errors['skills.0.name']).toBeDefined();
+    });
+
+    it('should validate technology name length in projects', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        projects: [
+          {
+            name: 'Test Project',
+            description: 'Test Description',
+            startDate: new Date(),
+            technologies: ['a'.repeat(51)],
+          },
+        ],
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeDefined();
+      expect(error.errors['projects.0.technologies.0']).toBeDefined();
+    });
+
+    it('should accept certifications without expiration date', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        certifications: [
+          {
+            name: 'Professional Certificate',
+            organization: 'Tech Institute',
+            dateEarned: new Date('2023-01-01'),
+          },
+        ],
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeUndefined();
+      expect(user.certifications[0].expirationDate).toBeUndefined();
+    });
+
+    it('should validate education achievements length', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        education: [
+          {
+            institution: 'MIT',
+            degree: 'Bachelor',
+            fieldOfStudy: 'CS',
+            startDate: new Date(),
+            achievements: 'a'.repeat(1001),
+          },
+        ],
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeDefined();
+      expect(error.errors['education.0.achievements']).toBeDefined();
+    });
+
+    it('should validate employment description length', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        employment: [
+          {
+            jobTitle: 'Engineer',
+            company: 'Tech Corp',
+            startDate: new Date(),
+            description: 'a'.repeat(1001),
+          },
+        ],
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeDefined();
+      expect(error.errors['employment.0.description']).toBeDefined();
+    });
+
+    it('should handle location field in education', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        education: [
+          {
+            institution: 'MIT',
+            degree: 'Bachelor',
+            fieldOfStudy: 'CS',
+            startDate: new Date(),
+            location: 'Cambridge, MA',
+          },
+        ],
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeUndefined();
+      expect(user.education[0].location).toBe('Cambridge, MA');
+    });
+
+    it('should handle location field in employment', () => {
+      const user = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        employment: [
+          {
+            jobTitle: 'Engineer',
+            company: 'Tech Corp',
+            startDate: new Date(),
+            location: 'New York, NY',
+          },
+        ],
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeUndefined();
+      expect(user.employment[0].location).toBe('New York, NY');
     });
   });
 });

@@ -194,6 +194,36 @@ describe('userController', () => {
         { new: true, runValidators: true }
       );
     });
+
+    it('should return error if user not found during update', async () => {
+      mockReq.body = { name: 'Updated Name' };
+      User.findOneAndUpdate.mockResolvedValue(null);
+
+      await updateCurrentUser(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: 'User not found',
+        })
+      );
+    });
+
+    it('should return error if userId is missing during update', async () => {
+      mockReq.auth = {};
+      mockReq.body = { name: 'Updated Name' };
+
+      await updateCurrentUser(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(401);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: 'Unauthorized: missing authentication credentials',
+        })
+      );
+    });
   });
 
   describe('uploadProfilePicture', () => {
@@ -238,6 +268,42 @@ describe('userController', () => {
         })
       );
     });
+
+    it('should return error if user not found when uploading picture', async () => {
+      mockReq.file = {
+        buffer: Buffer.from('fake-image-data'),
+        mimetype: 'image/jpeg',
+      };
+      User.findOneAndUpdate.mockResolvedValue(null);
+
+      await uploadProfilePicture(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: 'User not found',
+        })
+      );
+    });
+
+    it('should return error if userId is missing when uploading picture', async () => {
+      mockReq.auth = {};
+      mockReq.file = {
+        buffer: Buffer.from('fake-image-data'),
+        mimetype: 'image/jpeg',
+      };
+
+      await uploadProfilePicture(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(401);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: 'Unauthorized: missing authentication credentials',
+        })
+      );
+    });
   });
 
   describe('deleteProfilePicture', () => {
@@ -260,6 +326,34 @@ describe('userController', () => {
         expect.objectContaining({
           success: true,
           message: 'Profile picture removed successfully',
+        })
+      );
+    });
+
+    it('should return error if user not found when deleting picture', async () => {
+      User.findOneAndUpdate.mockResolvedValue(null);
+
+      await deleteProfilePicture(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: 'User not found',
+        })
+      );
+    });
+
+    it('should return error if userId is missing when deleting picture', async () => {
+      mockReq.auth = {};
+
+      await deleteProfilePicture(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(401);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: 'Unauthorized: missing authentication credentials',
         })
       );
     });
@@ -390,6 +484,32 @@ describe('userController', () => {
       );
     });
 
+    it('should handle employment with location', async () => {
+      mockReq.body = {
+        jobTitle: 'Software Engineer',
+        company: 'Tech Corp',
+        location: 'New York, NY',
+        startDate: '10/2023',
+        isCurrentPosition: true,
+      };
+
+      const mockUser = {
+        _id: 'user-id',
+        employment: [],
+      };
+
+      User.findOneAndUpdate.mockResolvedValue(mockUser);
+
+      await addEmployment(mockReq, mockRes, mockNext);
+
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          message: 'Employment entry added successfully',
+        })
+      );
+    });
+
     it('should validate date format', async () => {
       mockReq.body = {
         jobTitle: 'Software Engineer',
@@ -422,6 +542,72 @@ describe('userController', () => {
               message: expect.stringContaining('after the start date'),
             }),
           ]),
+        })
+      );
+    });
+
+    it('should return error if user not found when adding employment', async () => {
+      mockReq.body = {
+        jobTitle: 'Software Engineer',
+        company: 'Tech Corp',
+        startDate: '10/2023',
+        isCurrentPosition: true,
+      };
+      User.findOneAndUpdate.mockResolvedValue(null);
+
+      await addEmployment(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: 'User not found',
+        })
+      );
+    });
+
+    it('should handle YYYY-MM date format in addEmployment', async () => {
+      mockReq.body = {
+        jobTitle: 'Software Engineer',
+        company: 'Tech Corp',
+        startDate: '2023-10',
+        endDate: '2024-05',
+        isCurrentPosition: false,
+      };
+
+      const mockUser = {
+        _id: 'user-id',
+        employment: [],
+      };
+
+      User.findOneAndUpdate.mockResolvedValue(mockUser);
+
+      await addEmployment(mockReq, mockRes, mockNext);
+
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          message: 'Employment entry added successfully',
+        })
+      );
+    });
+
+    it('should return error if userId is missing when adding employment', async () => {
+      mockReq.auth = {};
+      mockReq.body = {
+        jobTitle: 'Software Engineer',
+        company: 'Tech Corp',
+        startDate: '10/2023',
+        isCurrentPosition: true,
+      };
+
+      await addEmployment(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(401);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: 'Unauthorized: missing authentication credentials',
         })
       );
     });
@@ -459,6 +645,248 @@ describe('userController', () => {
         })
       );
     });
+
+    it('should validate required fields on update', async () => {
+      mockReq.params = { employmentId: 'employment-id' };
+      mockReq.body = {
+        jobTitle: '',
+        company: 'Tech Corp',
+        startDate: '10/2023',
+      };
+
+      await updateEmployment(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          errors: expect.arrayContaining([
+            expect.objectContaining({
+              field: 'jobTitle',
+              message: expect.stringContaining('required'),
+            }),
+          ]),
+        })
+      );
+    });
+
+    it('should handle date format validation', async () => {
+      mockReq.params = { employmentId: 'employment-id' };
+      mockReq.body = {
+        jobTitle: 'Software Engineer',
+        company: 'Tech Corp',
+        startDate: 'invalid-date',
+      };
+
+      await updateEmployment(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          errors: expect.arrayContaining([
+            expect.objectContaining({
+              field: 'startDate',
+              message: expect.stringContaining('Invalid start date'),
+            }),
+          ]),
+        })
+      );
+    });
+
+    it('should handle description length validation', async () => {
+      mockReq.params = { employmentId: 'employment-id' };
+      mockReq.body = {
+        jobTitle: 'Software Engineer',
+        company: 'Tech Corp',
+        startDate: '10/2023',
+        description: 'a'.repeat(1001), // Exceeds 1000 char limit
+      };
+
+      await updateEmployment(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          errors: expect.arrayContaining([
+            expect.objectContaining({
+              field: 'description',
+              message: expect.stringContaining('too long'),
+            }),
+          ]),
+        })
+      );
+    });
+
+    it('should handle MM/YYYY date format', async () => {
+      mockReq.params = { employmentId: 'employment-id' };
+      mockReq.body = {
+        jobTitle: 'Software Engineer',
+        company: 'Tech Corp',
+        startDate: '01/2023',
+        endDate: '12/2023',
+        isCurrentPosition: false,
+      };
+
+      const mockUser = {
+        _id: 'user-id',
+        employment: [
+          {
+            _id: 'employment-id',
+            jobTitle: 'Software Engineer',
+            company: 'Tech Corp',
+          },
+        ],
+      };
+
+      User.findOneAndUpdate.mockResolvedValue(mockUser);
+
+      await updateEmployment(mockReq, mockRes, mockNext);
+
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          message: 'Employment entry updated successfully',
+        })
+      );
+    });
+
+    it('should accept valid description length', async () => {
+      mockReq.params = { employmentId: 'employment-id' };
+      mockReq.body = {
+        jobTitle: 'Software Engineer',
+        company: 'Tech Corp',
+        startDate: '01/2023',
+        description: 'A valid description that is under the character limit',
+      };
+
+      const mockUser = {
+        _id: 'user-id',
+        employment: [
+          {
+            _id: 'employment-id',
+            jobTitle: 'Software Engineer',
+            company: 'Tech Corp',
+          },
+        ],
+      };
+
+      User.findOneAndUpdate.mockResolvedValue(mockUser);
+
+      await updateEmployment(mockReq, mockRes, mockNext);
+
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          message: 'Employment entry updated successfully',
+        })
+      );
+    });
+
+    it('should handle employment update with location', async () => {
+      mockReq.params = { employmentId: 'employment-id' };
+      mockReq.body = {
+        jobTitle: 'Software Engineer',
+        company: 'Tech Corp',
+        location: 'San Francisco, CA',
+        startDate: '01/2023',
+        isCurrentPosition: true,
+      };
+
+      const mockUser = {
+        _id: 'user-id',
+        employment: [
+          {
+            _id: 'employment-id',
+            jobTitle: 'Software Engineer',
+            company: 'Tech Corp',
+            location: 'San Francisco, CA',
+          },
+        ],
+      };
+
+      User.findOneAndUpdate.mockResolvedValue(mockUser);
+
+      await updateEmployment(mockReq, mockRes, mockNext);
+
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          message: 'Employment entry updated successfully',
+        })
+      );
+    });
+
+    it('should return error if user not found when updating employment', async () => {
+      mockReq.params = { employmentId: 'employment-id' };
+      mockReq.body = {
+        jobTitle: 'Software Engineer',
+        company: 'Tech Corp',
+        startDate: '10/2023',
+      };
+      User.findOneAndUpdate.mockResolvedValue(null);
+
+      await updateEmployment(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: 'User or employment entry not found',
+        })
+      );
+    });
+
+    it('should handle YYYY-MM date format in updateEmployment', async () => {
+      mockReq.params = { employmentId: 'employment-id' };
+      mockReq.body = {
+        jobTitle: 'Software Engineer',
+        company: 'Tech Corp',
+        startDate: '2023-01',
+        endDate: '2024-12',
+        isCurrentPosition: false,
+      };
+
+      const mockUser = {
+        _id: 'user-id',
+        employment: [
+          {
+            _id: 'employment-id',
+            jobTitle: 'Software Engineer',
+            company: 'Tech Corp',
+          },
+        ],
+      };
+
+      User.findOneAndUpdate.mockResolvedValue(mockUser);
+
+      await updateEmployment(mockReq, mockRes, mockNext);
+
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          message: 'Employment entry updated successfully',
+        })
+      );
+    });
+
+    it('should return error if userId is missing when updating employment', async () => {
+      mockReq.auth = {};
+      mockReq.params = { employmentId: 'employment-id' };
+      mockReq.body = {
+        jobTitle: 'Software Engineer',
+        company: 'Tech Corp',
+        startDate: '10/2023',
+      };
+
+      await updateEmployment(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(401);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: 'Unauthorized: missing authentication credentials',
+        })
+      );
+    });
   });
 
   describe('deleteEmployment', () => {
@@ -487,6 +915,21 @@ describe('userController', () => {
       );
     });
 
+    it('should return error if userId is missing when deleting employment', async () => {
+      mockReq.auth = {};
+      mockReq.params = { employmentId: 'employment-id' };
+
+      await deleteEmployment(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(401);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: 'Unauthorized: missing authentication credentials',
+        })
+      );
+    });
+
     it('should return error if employmentId is missing', async () => {
       mockReq.params = {};
 
@@ -497,6 +940,21 @@ describe('userController', () => {
         expect.objectContaining({
           success: false,
           message: 'Employment ID is required',
+        })
+      );
+    });
+
+    it('should return error if user not found when deleting employment', async () => {
+      mockReq.params = { employmentId: 'employment-id' };
+      User.findOneAndUpdate.mockResolvedValue(null);
+
+      await deleteEmployment(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: 'User not found',
         })
       );
     });
