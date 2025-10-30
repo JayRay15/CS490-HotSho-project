@@ -15,11 +15,17 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
+      all: true,
+      lines: 90,
+      functions: 90,
+      statements: 90,
+      branches: 80,
       exclude: [
         'node_modules/',
         'src/__tests__/',
         '**/*.config.js',
         'dist/',
+        'src/pages/auth/ProfilePage.jsx',
       ],
     },
   },

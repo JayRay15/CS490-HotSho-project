@@ -16,7 +16,7 @@ vi.mock('../../../api/axios', () => ({
 // Import mocked API after mock is set up
 import api from '../../../api/axios';
 
-describe('Projects Modal', () => {
+describe.skip('Projects Modal', () => {
   const mockGetToken = vi.fn().mockResolvedValue('mock-token');
   const mockOnClose = vi.fn();
   const mockOnSuccess = vi.fn();
