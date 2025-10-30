@@ -75,54 +75,10 @@ jobs:
 
       - name: Install dependencies
         working-directory: ./frontend
-        run: npm ci
-      
-      - name: Patch Rollup to disable native binaries
-        working-directory: ./frontend
         run: |
-          node << 'EOJS'
-          const fs = require('fs');
-          const path = require('path');
-          const { execSync } = require('child_process');
-          
-          // Find all native.js files
-          const findCmd = "find node_modules -name 'native.js' -path '*/rollup/dist/*'";
-          const files = execSync(findCmd, { encoding: 'utf8' }).trim().split('\n').filter(Boolean);
-          
-          console.log(`Found ${files.length} Rollup native.js files`);
-          
-          let patchedCount = 0;
-          for (const file of files) {
-            console.log(`Patching: ${file}`);
-            let content = fs.readFileSync(file, 'utf8');
-            const originalContent = content;
-            
-            // Make requireWithFriendlyError return an object with undefined properties
-            // This forces Rollup to use its JavaScript fallback instead of crashing
-            content = content.replace(
-              /const requireWithFriendlyError = id => \{[\s\S]*?\};/,
-              `const requireWithFriendlyError = id => {
-                // Patched for CI: Return empty object to skip native bindings
-                return { parse: undefined, parseAsync: undefined, xxhashBase64Url: undefined, xxhashBase36: undefined, xxhashBase16: undefined };
-              };`
-            );
-            
-            if (content !== originalContent) {
-              fs.writeFileSync(file, content, 'utf8');
-              console.log(`✅ Patched: ${file}`);
-              patchedCount++;
-            } else {
-              console.log(`⚠️  No changes for: ${file}`);
-            }
-          }
-          
-          if (patchedCount === 0) {
-            console.error('❌ No files were patched!');
-            process.exit(1);
-          }
-          
-          console.log(`✅ Successfully patched ${patchedCount} file(s)`);
-          EOJS
+          npm ci
+          # Manually install the missing Rollup native binaries that npm bug skips
+          npm install --no-save @rollup/rollup-linux-x64-gnu@4.52.5
 
       - name: Run frontend tests
         working-directory: ./frontend
