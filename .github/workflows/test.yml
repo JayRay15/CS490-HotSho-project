@@ -77,8 +77,9 @@ jobs:
         working-directory: ./frontend
         run: |
           npm ci
-          # Manually install the missing Rollup native binaries that npm bug skips
+          # Manually install missing native binaries that npm optional dependency bug skips
           npm install --no-save @rollup/rollup-linux-x64-gnu@4.52.5
+          npm install --no-save lightningcss-linux-x64-gnu
 
       - name: Run frontend tests
         working-directory: ./frontend
