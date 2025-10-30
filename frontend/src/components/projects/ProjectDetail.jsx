@@ -8,6 +8,19 @@ export default function ProjectDetail({ project, onClose }) {
   }, [onClose]);
 
   if (!project) return null;
+  const formatDate = (d) => {
+    if (!d) return '';
+    try {
+      const date = typeof d === 'string' || typeof d === 'number' ? new Date(d) : d;
+      if (isNaN(date)) return '';
+      return date.toLocaleDateString();
+    } catch (e) {
+      return '';
+    }
+  };
+
+  const startDateStr = formatDate(project.startDate);
+  const endDateStr = formatDate(project.endDate);
 
   const handlePrint = () => {
     // open a new window with a printable view and good print CSS
@@ -40,7 +53,7 @@ export default function ProjectDetail({ project, onClose }) {
         <body>
           <div class="container">
             <h1>${project.name}</h1>
-            <div class="meta">${project.industry || ''} ${project.industry ? '•' : ''} ${project.startDate || ''}${project.startDate && project.endDate ? ' — ' : ''}${project.endDate || ''}</div>
+            <div class="meta">${project.industry || ''} ${project.industry ? '•' : ''} ${startDateStr || ''}${startDateStr && endDateStr ? ' — ' : ''}${endDateStr || ''}</div>
             ${imgHtml}
             <div class="section description">${project.description || ''}</div>
             <div class="section">
@@ -82,7 +95,7 @@ export default function ProjectDetail({ project, onClose }) {
         <div className="p-6">
           {project.screenshot?.data && <img src={project.screenshot.data} alt={project.name} className="w-full max-h-64 object-cover rounded mb-4" />}
 
-          <div className="text-sm text-gray-600 mb-2">{project.industry} • {project.startDate} — {project.endDate}</div>
+          <div className="text-sm text-gray-600 mb-2">{project.industry} {project.industry ? '•' : ''} {startDateStr} {startDateStr && endDateStr ? '—' : ''} {endDateStr}</div>
 
           <div className="prose max-w-none">{project.description}</div>
 
