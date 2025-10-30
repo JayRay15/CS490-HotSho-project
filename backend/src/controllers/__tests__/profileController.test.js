@@ -167,6 +167,22 @@ describe('profileController', () => {
           })
         );
       });
+
+      it('should return error if user not found when updating employment', async () => {
+        mockReq.params = { employmentId: 'employment-id' };
+        mockReq.body = { company: 'Updated Company' };
+        mockUser.findOne.mockResolvedValue(null);
+
+        await updateEmployment(mockReq, mockRes, mockNext);
+
+        expect(mockRes.status).toHaveBeenCalledWith(404);
+        expect(mockRes.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: false,
+            message: 'User not found',
+          })
+        );
+      });
     });
 
     describe('deleteEmployment', () => {
@@ -407,6 +423,26 @@ describe('profileController', () => {
 
         expect(mockRes.status).toHaveBeenCalledWith(400);
       });
+
+      it('should return error if user not found when adding education', async () => {
+        mockReq.body = {
+          institution: 'Test University',
+          degree: 'Bachelor',
+          fieldOfStudy: 'Computer Science',
+          startDate: '2020-01-01',
+        };
+        User.findOneAndUpdate.mockResolvedValue(null);
+
+        await addEducation(mockReq, mockRes, mockNext);
+
+        expect(mockRes.status).toHaveBeenCalledWith(404);
+        expect(mockRes.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: false,
+            message: 'User not found',
+          })
+        );
+      });
     });
 
     describe('updateEducation', () => {
@@ -432,6 +468,46 @@ describe('profileController', () => {
           expect.objectContaining({
             success: true,
             message: 'Education updated successfully',
+          })
+        );
+      });
+
+      it('should return error if user not found when updating education', async () => {
+        mockReq.params = { educationId: 'education-id' };
+        mockReq.body = { degree: 'Master' };
+        mockUser.findOne.mockResolvedValue(null);
+
+        await updateEducation(mockReq, mockRes, mockNext);
+
+        expect(mockRes.status).toHaveBeenCalledWith(404);
+        expect(mockRes.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: false,
+            message: 'User not found',
+          })
+        );
+      });
+
+      it('should return error if education not found when updating', async () => {
+        mockReq.params = { educationId: 'education-id' };
+        mockReq.body = { degree: 'Master' };
+
+        const testUser = {
+          _id: 'user-id',
+          education: {
+            id: jest.fn().mockReturnValue(null),
+          },
+        };
+
+        mockUser.findOne.mockResolvedValue(testUser);
+
+        await updateEducation(mockReq, mockRes, mockNext);
+
+        expect(mockRes.status).toHaveBeenCalledWith(404);
+        expect(mockRes.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: false,
+            message: 'Education record not found',
           })
         );
       });
@@ -572,6 +648,25 @@ describe('profileController', () => {
           })
         );
       });
+
+      it('should return error if user not found when adding project', async () => {
+        mockReq.body = {
+          name: 'Test Project',
+          description: 'Test Description',
+          startDate: '2023-01-01',
+        };
+        User.findOneAndUpdate.mockResolvedValue(null);
+
+        await addProject(mockReq, mockRes, mockNext);
+
+        expect(mockRes.status).toHaveBeenCalledWith(404);
+        expect(mockRes.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: false,
+            message: 'User not found',
+          })
+        );
+      });
     });
 
     describe('updateProject', () => {
@@ -621,6 +716,22 @@ describe('profileController', () => {
           expect.objectContaining({
             success: false,
             message: 'Project not found',
+          })
+        );
+      });
+
+      it('should return error if user not found when updating project', async () => {
+        mockReq.params = { projectId: 'project-id' };
+        mockReq.body = { name: 'Updated Project' };
+        mockUser.findOne.mockResolvedValue(null);
+
+        await updateProject(mockReq, mockRes, mockNext);
+
+        expect(mockRes.status).toHaveBeenCalledWith(404);
+        expect(mockRes.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: false,
+            message: 'User not found',
           })
         );
       });
@@ -782,6 +893,25 @@ describe('profileController', () => {
 
         expect(mockRes.status).toHaveBeenCalledWith(400);
       });
+
+      it('should return error if user not found when adding certification', async () => {
+        mockReq.body = {
+          name: 'AWS Certified',
+          organization: 'Amazon',
+          dateEarned: '2023-01-01',
+        };
+        User.findOneAndUpdate.mockResolvedValue(null);
+
+        await addCertification(mockReq, mockRes, mockNext);
+
+        expect(mockRes.status).toHaveBeenCalledWith(404);
+        expect(mockRes.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: false,
+            message: 'User not found',
+          })
+        );
+      });
     });
 
     describe('updateCertification', () => {
@@ -807,6 +937,46 @@ describe('profileController', () => {
           expect.objectContaining({
             success: true,
             message: 'Certification updated successfully',
+          })
+        );
+      });
+
+      it('should return error if user not found when updating certification', async () => {
+        mockReq.params = { certificationId: 'cert-id' };
+        mockReq.body = { organization: 'Updated Org' };
+        mockUser.findOne.mockResolvedValue(null);
+
+        await updateCertification(mockReq, mockRes, mockNext);
+
+        expect(mockRes.status).toHaveBeenCalledWith(404);
+        expect(mockRes.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: false,
+            message: 'User not found',
+          })
+        );
+      });
+
+      it('should return error if certification not found when updating', async () => {
+        mockReq.params = { certificationId: 'cert-id' };
+        mockReq.body = { organization: 'Updated Org' };
+
+        const testUser = {
+          _id: 'user-id',
+          certifications: {
+            id: jest.fn().mockReturnValue(null),
+          },
+        };
+
+        mockUser.findOne.mockResolvedValue(testUser);
+
+        await updateCertification(mockReq, mockRes, mockNext);
+
+        expect(mockRes.status).toHaveBeenCalledWith(404);
+        expect(mockRes.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: false,
+            message: 'Certification not found',
           })
         );
       });

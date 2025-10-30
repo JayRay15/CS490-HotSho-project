@@ -539,6 +539,26 @@ describe('userController', () => {
         })
       );
     });
+
+    it('should return error if userId is missing when adding employment', async () => {
+      mockReq.auth = {};
+      mockReq.body = {
+        jobTitle: 'Software Engineer',
+        company: 'Tech Corp',
+        startDate: '10/2023',
+        isCurrentPosition: true,
+      };
+
+      await addEmployment(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(401);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: 'Unauthorized: missing authentication credentials',
+        })
+      );
+    });
   });
 
   describe('updateEmployment', () => {
@@ -676,6 +696,46 @@ describe('userController', () => {
         })
       );
     });
+
+    it('should return error if user not found when updating employment', async () => {
+      mockReq.params = { employmentId: 'employment-id' };
+      mockReq.body = {
+        jobTitle: 'Software Engineer',
+        company: 'Tech Corp',
+        startDate: '10/2023',
+      };
+      User.findOneAndUpdate.mockResolvedValue(null);
+
+      await updateEmployment(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: 'User or employment entry not found',
+        })
+      );
+    });
+
+    it('should return error if userId is missing when updating employment', async () => {
+      mockReq.auth = {};
+      mockReq.params = { employmentId: 'employment-id' };
+      mockReq.body = {
+        jobTitle: 'Software Engineer',
+        company: 'Tech Corp',
+        startDate: '10/2023',
+      };
+
+      await updateEmployment(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(401);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: 'Unauthorized: missing authentication credentials',
+        })
+      );
+    });
   });
 
   describe('deleteEmployment', () => {
@@ -700,6 +760,21 @@ describe('userController', () => {
         expect.objectContaining({
           success: true,
           message: 'Employment entry deleted successfully',
+        })
+      );
+    });
+
+    it('should return error if userId is missing when deleting employment', async () => {
+      mockReq.auth = {};
+      mockReq.params = { employmentId: 'employment-id' };
+
+      await deleteEmployment(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(401);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: 'Unauthorized: missing authentication credentials',
         })
       );
     });
