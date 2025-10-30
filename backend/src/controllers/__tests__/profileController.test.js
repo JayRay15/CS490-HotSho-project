@@ -635,6 +635,38 @@ describe('profileController', () => {
         );
       });
 
+      it('should convert startDate string to Date object', async () => {
+        const projectData = {
+          name: 'Test Project',
+          description: 'Test Description',
+          startDate: '2023-01-15',
+        };
+        mockReq.body = projectData;
+
+        const mockUser = {
+          _id: 'user-id',
+          projects: [projectData],
+        };
+
+        User.findOneAndUpdate.mockResolvedValue(mockUser);
+
+        await addProject(mockReq, mockRes, mockNext);
+
+        // Verify startDate was processed (converted to Date)
+        expect(User.findOneAndUpdate).toHaveBeenCalledWith(
+          { auth0Id: 'test-user-id' },
+          expect.objectContaining({
+            $push: expect.objectContaining({
+              projects: expect.objectContaining({
+                name: 'Test Project',
+                startDate: expect.any(Date),
+              }),
+            }),
+          }),
+          { new: true, runValidators: true }
+        );
+      });
+
       it('should handle projectUrl to url mapping', async () => {
         const projectData = {
           name: 'Test Project',
@@ -780,6 +812,65 @@ describe('profileController', () => {
         await updateProject(mockReq, mockRes, mockNext);
         await new Promise(resolve => setImmediate(resolve));
 
+        expect(testUser.save).toHaveBeenCalled();
+        expect(mockRes.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: true,
+            message: 'Project updated successfully',
+          })
+        );
+      });
+
+      it('should convert startDate and endDate strings to Date objects on update', async () => {
+        mockReq.params = { projectId: 'project-id' };
+        mockReq.body = { 
+          startDate: '2023-01-01',
+          endDate: '2023-12-31'
+        };
+
+        const mockProject = { name: 'Test Project' };
+        const testUser = {
+          _id: 'user-id',
+          projects: {
+            id: jest.fn().mockReturnValue(mockProject),
+          },
+          save: jest.fn().mockResolvedValue(true),
+        };
+
+        mockUser.findOne.mockResolvedValue(testUser);
+
+        await updateProject(mockReq, mockRes, mockNext);
+        await new Promise(resolve => setImmediate(resolve));
+
+        expect(testUser.save).toHaveBeenCalled();
+        expect(mockRes.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: true,
+            message: 'Project updated successfully',
+          })
+        );
+      });
+
+      it('should map projectUrl to url field on update', async () => {
+        mockReq.params = { projectId: 'project-id' };
+        mockReq.body = { projectUrl: 'https://newproject.com' };
+
+        const mockProject = { name: 'Test Project' };
+        const testUser = {
+          _id: 'user-id',
+          projects: {
+            id: jest.fn().mockReturnValue(mockProject),
+          },
+          save: jest.fn().mockResolvedValue(true),
+        };
+
+        mockUser.findOne.mockResolvedValue(testUser);
+
+        await updateProject(mockReq, mockRes, mockNext);
+        await new Promise(resolve => setImmediate(resolve));
+
+        // The projectUrl should be mapped to url
+        expect(mockProject.url).toBe('https://newproject.com');
         expect(testUser.save).toHaveBeenCalled();
         expect(mockRes.json).toHaveBeenCalledWith(
           expect.objectContaining({

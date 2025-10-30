@@ -781,6 +781,40 @@ describe('userController', () => {
       );
     });
 
+    it('should handle employment update with location', async () => {
+      mockReq.params = { employmentId: 'employment-id' };
+      mockReq.body = {
+        jobTitle: 'Software Engineer',
+        company: 'Tech Corp',
+        location: 'San Francisco, CA',
+        startDate: '01/2023',
+        isCurrentPosition: true,
+      };
+
+      const mockUser = {
+        _id: 'user-id',
+        employment: [
+          {
+            _id: 'employment-id',
+            jobTitle: 'Software Engineer',
+            company: 'Tech Corp',
+            location: 'San Francisco, CA',
+          },
+        ],
+      };
+
+      User.findOneAndUpdate.mockResolvedValue(mockUser);
+
+      await updateEmployment(mockReq, mockRes, mockNext);
+
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          message: 'Employment entry updated successfully',
+        })
+      );
+    });
+
     it('should return error if user not found when updating employment', async () => {
       mockReq.params = { employmentId: 'employment-id' };
       mockReq.body = {
