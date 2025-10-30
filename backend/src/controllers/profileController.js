@@ -409,6 +409,37 @@ export const deleteProject = asyncHandler(async (req, res) => {
   return sendResponse(res, response, statusCode);
 });
 
+// Public: Get a single project by id (search across users)
+export const getPublicProject = asyncHandler(async (req, res) => {
+  const { projectId } = req.params;
+
+  // Find a user document that contains a project with the given id
+  // Return only the matching project element to minimize payload
+  const user = await User.findOne(
+    { 'projects._id': projectId, isDeleted: { $ne: true } },
+    { 'projects.$': 1, name: 1, picture: 1 }
+  );
+
+  if (!user || !Array.isArray(user.projects) || user.projects.length === 0) {
+    const { response, statusCode } = errorResponse('Project not found', 404, ERROR_CODES.NOT_FOUND);
+    return sendResponse(res, response, statusCode);
+  }
+
+  // projects.$ returns the matched project as the first element
+  const project = user.projects[0];
+
+  const payload = {
+    project,
+    owner: {
+      name: user.name,
+      picture: user.picture
+    }
+  };
+
+  const { response, statusCode } = successResponse('Project retrieved', payload);
+  return sendResponse(res, response, statusCode);
+});
+
 // Certifications endpoints
 export const addCertification = asyncHandler(async (req, res) => {
   const sub = req.auth?.payload?.sub || req.auth?.userId;

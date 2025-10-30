@@ -7,10 +7,16 @@ import ProfileCompleteness from "../../components/ProfileCompleteness";
 import { useAccountDeletionCheck } from "../../hooks/useAccountDeletionCheck";
 import Certifications from "./Certifications";
 import Projects from "./Projects";
+import ProjectGrid from "../../components/projects/ProjectGrid";
+import ProjectDetail from "../../components/projects/ProjectDetail";
+import ProjectFilters from "../../components/projects/ProjectFilters";
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import Card from "../../components/Card";
 import Container from "../../components/Container";
-import { useNavigate } from "react-router-dom";
+// import { useNavigate } from "react-router-dom";
 import LoadingSpinner from "../../components/LoadingSpinner";
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import {
   DndContext,
   closestCenter,
@@ -108,7 +114,24 @@ export default function ProfilePage() {
   const handleEditProject = (project) => {
     setEditingProject(project);
     setShowProjectModal(true);
-  };    const handleDeleteSkill = async () => {
+  };
+
+  const handleDeleteProject = async (p) => {
+    if (!p) return;
+    if (!confirm('Delete project?')) return;
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      await api.delete(`/api/profile/projects/${p._id}`);
+      const me = await api.get('/api/users/me');
+      setProjectList(me?.data?.data?.projects || []);
+    } catch (e) {
+      console.error(e);
+      alert('Failed to delete project. Please try again.');
+    }
+  };
+
+  const handleDeleteSkill = async () => {
       if (!deletingSkill) return;
       setIsDeleting(true);
       setError(null);
@@ -173,30 +196,72 @@ export default function ProfilePage() {
 
   const exportSkillsByCategory = () => {
     const grouped = groupSkillsByCategory(skillList);
-    const exportData = {
-      exportDate: new Date().toISOString(),
-      totalSkills: skillList.length,
-      categories: Object.keys(grouped).map(category => ({
-        category,
-        count: grouped[category].length,
-        levelSummary: getSkillLevelSummary(grouped[category]),
-        skills: grouped[category].map(s => ({
-          name: s.name,
-          level: s.level,
-          category: s.category
-        }))
-      }))
-    };
+    const today = new Date();
+    const dateStr = today.toISOString().split('T')[0];
 
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `skills-export-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+
+    // Title
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.text('Skills Export', 40, 40);
+
+    // Meta
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.text(`Date: ${dateStr}`, 40, 60);
+    doc.text(`Total skills: ${skillList.length}`, 40, 75);
+
+    let currentY = 95;
+
+    const categories = Object.keys(grouped);
+    if (categories.length === 0) {
+      doc.text('No skills to export.', 40, currentY);
+    }
+
+    categories.forEach((category, idx) => {
+      if (idx > 0) {
+        currentY += 20; // spacing between categories
+      }
+
+      // Category header
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text(`${category} (${grouped[category].length})`, 40, currentY);
+
+      // Level summary line
+      const summary = getSkillLevelSummary(grouped[category]);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      currentY += 14;
+      doc.text(
+        `Beginner: ${summary.Beginner}   Intermediate: ${summary.Intermediate}   Advanced: ${summary.Advanced}   Expert: ${summary.Expert}`,
+        40,
+        currentY
+      );
+
+      // Table of skills in this category
+      const rows = grouped[category]
+        .map(s => [s.name || '', s.level || '', s.category || category]);
+
+      // Use autoTable for tabular data under this category
+      // @ts-ignore - plugin augments jsPDF instance
+      doc.autoTable({
+        startY: currentY + 8,
+        margin: { left: 40, right: 40 },
+        head: [['Name', 'Level', 'Category']],
+        body: rows,
+        styles: { font: 'helvetica', fontSize: 10 },
+        headStyles: { fillColor: [33, 150, 243], textColor: 255 },
+        alternateRowStyles: { fillColor: [245, 245, 245] },
+      });
+
+      // Update currentY to the end of the table
+      // @ts-ignore - plugin augments jsPDF instance with lastAutoTable
+      currentY = doc.lastAutoTable ? doc.lastAutoTable.finalY : currentY + 40;
+    });
+
+    doc.save(`skills-export-${dateStr}.pdf`);
   };
 
   const handleSkillDragEnd = async (event) => {
@@ -252,7 +317,19 @@ export default function ProfilePage() {
   const [editingProject, setEditingProject] = useState(null);
   const [editingCertification, setEditingCertification] = useState(null);
   const [projectSuccessMessage, setProjectSuccessMessage] = useState(null);
+  // const navigate = useNavigate();
+  // Using portfolio inline on profile; navigation not required here
+  // (keep useNavigate import removal later if unused)
+
+  const [selectedProject, setSelectedProject] = useState(null);
+  const params = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
+
+  const [projectFilters, setProjectFilters] = useState({ techs: [], industries: [], query: '', sort: 'dateDesc' });
+
+  const techOptions = projectList && Array.isArray(projectList) ? Array.from(new Set(projectList.flatMap(p => Array.isArray(p.technologies) ? p.technologies : (p.technologies || '').split?.(',') || []).map(t => t && t.trim()).filter(Boolean))).sort() : [];
+  const industryOptions = projectList && Array.isArray(projectList) ? Array.from(new Set(projectList.map(p => p.industry).filter(Boolean))).sort() : [];
 
   // Load user profile data
   useEffect(() => {
@@ -279,12 +356,11 @@ export default function ProfilePage() {
             return;
           }
           
-          // If user not found (404), register them first
+          // If user not found (404), redirect to dashboard to handle registration
           if (err.response?.status === 404 || err.customError?.errorCode === 3001) {
-            console.log("User not found in database, registering...");
-            await api.post('/api/auth/register');
-            // Retry getting user profile
-            response = await api.get('/api/users/me');
+            console.log("User not found in database, redirecting to dashboard...");
+            window.location.href = '/dashboard';
+            return;
           } else {
             throw err;
           }
@@ -315,6 +391,23 @@ export default function ProfilePage() {
         // Load server-backed lists
         setCertList(Array.isArray(data.certifications) ? data.certifications : []);
         setProjectList(Array.isArray(data.projects) ? data.projects : []);
+        // If URL contains a project id, open its detail once projects are loaded
+        if (params?.id) {
+          const list = Array.isArray(data.projects) ? data.projects : [];
+          const found = list.find(p => p._id === params.id || p.id === params.id);
+          if (found) {
+            setSelectedProject(found);
+          } else {
+            // fallback: try fetching a public project by id (if backend supports it)
+            try {
+              const resp = await api.get(`/api/projects/${params.id}`);
+              const proj = resp?.data?.data || resp?.data || null;
+              if (proj) setSelectedProject(proj);
+            } catch (e) {
+              // ignore - project may not be public
+            }
+          }
+        }
   setEmploymentList(data.employment || []);
   setEducationList(data.education || []);
   // Populate skills if present on the profile response. Support either top-level `skills` or nested `profile.skills` shapes.
@@ -336,6 +429,28 @@ export default function ProfilePage() {
       loadProfile();
     }
   }, [isSignedIn, getToken, signOut]);
+
+  // Watch for ?open=employment|skill|education|project in URL and open the corresponding modal
+  useEffect(() => {
+    try {
+      const qs = new URLSearchParams(location.search);
+      const open = qs.get('open');
+      if (!open) return;
+
+      if (open === 'employment') setShowEmploymentModal(true);
+      else if (open === 'education') setShowEducationModal(true);
+      else if (open === 'skill') { setEditingSkill(null); setShowSkillModal(true); }
+      else if (open === 'project') { setEditingProject(null); setShowProjectModal(true); }
+
+  // remove the open param so refreshing doesn't reopen it
+  qs.delete('open');
+  const newSearch = qs.toString();
+  const newPath = `${location.pathname}${newSearch ? `?${newSearch}` : ''}`;
+  navigate(newPath, { replace: true });
+    } catch (e) {
+      // ignore
+    }
+  }, [location.search, navigate]);
 
   // Refresh certifications from server when modal closes
   useEffect(() => {
@@ -479,15 +594,23 @@ export default function ProfilePage() {
       const token = await getToken();
       setAuthToken(token);
 
+      // Delete the account from the database
       await api.delete('/api/users/delete', { data: { password: deletePassword } });
 
-      // store message and sign out
-      sessionStorage.setItem("logoutMessage", "Your account deletion request was received. You have been logged out.");
-      signOut();
+      // Close modal immediately
+      setShowDeleteModal(false);
+      setDeletePassword("");
+      
+      // Store message for after logout
+      sessionStorage.setItem("logoutMessage", "Your account has been permanently deleted. You have been logged out.");
+      
+      // Sign out from Clerk - this will redirect to login page
+      // Important: await this to ensure Clerk session is cleared before any redirects
+      await signOut();
+      
     } catch (err) {
       console.error('Account deletion error:', err);
       setError(err);
-    } finally {
       setDeleting(false);
       setShowDeleteModal(false);
       setDeletePassword("");
@@ -724,17 +847,31 @@ export default function ProfilePage() {
 
                 {/* Professional Information Section */}
                 <Card variant="default" title="Professional Information">
+                  <div className="flex justify-between items-center mb-4">
+                    <button
+                      onClick={handleEditClick}
+                      className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2 ml-auto"
+                      style={{ backgroundColor: '#777C6D' }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                      <span>Edit Profile</span>
+                    </button>
+                  </div>
                   
                   <div className="space-y-4">
                     <div>
-                      <p className="text-sm font-medium mb-1" style={{ color: '#4B5563' }}>Professional Headline</p>
-                      <p className="text-lg" style={{ color: '#111827' }}>{userData?.headline || '—'}</p>
+                      <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Professional Headline</p>
+                      <p className="text-lg" style={{ color: '#4F5348' }}>{userData?.headline || '—'}</p>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <p className="text-sm font-medium mb-1" style={{ color: '#4B5563' }}>Industry</p>
-                        <p style={{ color: '#111827' }}>{userData?.industry || '—'}</p>
+                        <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Industry</p>
+                        <p style={{ color: '#4F5348' }}>{userData?.industry || '—'}</p>
                       </div>
                       <div>
                         <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Experience Level</p>
@@ -756,7 +893,10 @@ export default function ProfilePage() {
                   <div className="flex justify-between items-center mb-4">
                     <button
                       onClick={() => setShowEmploymentModal(true)}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2 ml-auto"
+                      className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 ml-auto focus:outline-none focus:ring-2 focus:ring-offset-2"
+                      style={{ backgroundColor: '#777C6D' }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -831,7 +971,7 @@ export default function ProfilePage() {
                                   </span>
                                 </div>
                                 {job.description && (
-                                  <p className="mt-2 whitespace-pre-wrap" style={{ color: '#111827' }}>{job.description}</p>
+                                  <p className="mt-2 whitespace-pre-wrap" style={{ color: '#4F5348' }}>{job.description}</p>
                                 )}
                               </div>
                               
@@ -893,7 +1033,10 @@ export default function ProfilePage() {
                   <div className="flex justify-between items-center mb-4">
                     <button
                       onClick={() => setShowEducationModal(true)}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2 ml-auto"
+                      className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 ml-auto focus:outline-none focus:ring-2 focus:ring-offset-2"
+                      style={{ backgroundColor: '#777C6D' }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -904,8 +1047,8 @@ export default function ProfilePage() {
 
                   {/* Education Success Message */}
                   {educationSuccessMessage && (
-                    <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                      <p className="text-green-800 font-medium">{educationSuccessMessage}</p>
+                    <div className="mb-4 p-4 border rounded-lg" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }}>
+                      <p className="font-medium" style={{ color: '#166534' }}>{educationSuccessMessage}</p>
                     </div>
                   )}
 
@@ -930,9 +1073,9 @@ export default function ProfilePage() {
                             <div className="bg-white border rounded-lg p-4 shadow-sm">
                               <div className="flex justify-between items-start">
                                 <div>
-                                  <h3 className="text-lg font-heading font-semibold text-gray-900">{edu.degree} — {edu.institution}</h3>
-                                  <p className="text-sm text-gray-600 mt-1">{edu.fieldOfStudy}</p>
-                                  <div className="text-sm text-gray-500 mt-2">
+                                  <h3 className="text-lg font-heading font-semibold" style={{ color: '#4F5348' }}>{edu.degree} — {edu.institution}</h3>
+                                  <p className="text-sm mt-1" style={{ color: '#656A5C' }}>{edu.fieldOfStudy}</p>
+                                  <div className="text-sm mt-2" style={{ color: '#9CA3AF' }}>
                                     {(() => {
                                       const startDate = new Date(edu.startDate);
                                       const startMonth = String(startDate.getMonth() + 1).padStart(2, '0');
@@ -944,28 +1087,37 @@ export default function ProfilePage() {
                                   </div>
 
                                   {edu.achievements && (
-                                    <div className="mt-3 p-3 bg-gray-50 border rounded">
-                                      <strong className="text-gray-800">Honors / Achievements</strong>
-                                      <p className="mt-1 text-gray-700 whitespace-pre-wrap">{edu.achievements}</p>
+                                    <div className="mt-3 p-3 border rounded" style={{ backgroundColor: '#F5F6F4' }}>
+                                      <strong style={{ color: '#4F5348' }}>Honors / Achievements</strong>
+                                      <p className="mt-1 whitespace-pre-wrap" style={{ color: '#656A5C' }}>{edu.achievements}</p>
                                     </div>
                                   )}
 
                                   {typeof edu.gpa !== 'undefined' && edu.gpa !== null && (
-                                    <p className="mt-3 text-sm text-gray-700">GPA: {edu.gpaPrivate ? 'Private' : edu.gpa}</p>
+                                    <p className="mt-3 text-sm" style={{ color: '#656A5C' }}>GPA: {edu.gpaPrivate ? 'Private' : edu.gpa}</p>
                                   )}
                                 </div>
 
-                                <div className="flex-shrink-0 ml-4 text-gray-600 flex items-start gap-2">
+                                <div className="shrink-0 ml-4 flex items-start gap-2">
                                   {edu.current ? (
-                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">Ongoing</span>
+                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border" style={{ backgroundColor: '#DCFCE7', color: '#166534', borderColor: '#BBF7D0' }}>Ongoing</span>
                                   ) : (
-                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-800 border border-blue-100">Completed</span>
+                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border" style={{ backgroundColor: '#EFF6FF', color: '#1E40AF', borderColor: '#DBEAFE' }}>Completed</span>
                                   )}
 
                                   <div className="flex flex-col">
                                     <button
                                       onClick={() => handleEditEducation(edu)}
-                                      className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                      className="p-2 rounded-lg transition"
+                                      style={{ color: '#6B7280' }}
+                                      onMouseOver={(e) => {
+                                        e.currentTarget.style.color = '#777C6D';
+                                        e.currentTarget.style.backgroundColor = '#F5F6F4';
+                                      }}
+                                      onMouseOut={(e) => {
+                                        e.currentTarget.style.color = '#6B7280';
+                                        e.currentTarget.style.backgroundColor = 'transparent';
+                                      }}
                                       title="Edit education"
                                     >
                                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -976,7 +1128,16 @@ export default function ProfilePage() {
                                     {educationList.length > 1 && (
                                       <button
                                         onClick={() => handleDeleteEducationClick(edu)}
-                                        className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                                        className="p-2 rounded-lg transition"
+                                        style={{ color: '#6B7280' }}
+                                        onMouseOver={(e) => {
+                                          e.currentTarget.style.color = '#EF4444';
+                                          e.currentTarget.style.backgroundColor = '#FEF2F2';
+                                        }}
+                                        onMouseOut={(e) => {
+                                          e.currentTarget.style.color = '#6B7280';
+                                          e.currentTarget.style.backgroundColor = 'transparent';
+                                        }}
                                         title="Delete education"
                                       >
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -992,7 +1153,7 @@ export default function ProfilePage() {
                         ))}
                     </div>
                   ) : (
-                    <p className="text-gray-500 italic">No education added yet.</p>
+                    <p className="italic" style={{ color: '#9CA3AF' }}>No education added yet.</p>
                   )}
                 </Card>
 
@@ -1000,13 +1161,16 @@ export default function ProfilePage() {
                 <Card variant="default" title="Skills">
                   <div className="flex justify-between items-center mb-4">
                     <div>
-                      <p className="text-sm text-gray-600 mt-1">{skillList.length} total skills across {Object.keys(groupSkillsByCategory(skillList)).length} categories</p>
+                      <p className="text-sm mt-1" style={{ color: '#656A5C' }}>{skillList.length} total skills across {Object.keys(groupSkillsByCategory(skillList)).length} categories</p>
                     </div>
                     <div className="flex gap-2">
                       <button
                         onClick={exportSkillsByCategory}
                         disabled={skillList.length === 0}
-                        className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-4 py-2 border rounded-lg transition flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{ borderColor: '#D1D5DB', color: '#656A5C' }}
+                        onMouseOver={(e) => !skillList.length === 0 && (e.currentTarget.style.backgroundColor = '#F5F6F4')}
+                        onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                         title="Export skills by category"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1016,7 +1180,10 @@ export default function ProfilePage() {
                       </button>
                       <button
                         onClick={() => { setEditingSkill(null); setShowSkillModal(true); }}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2"
+                        className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                        style={{ backgroundColor: '#777C6D' }}
+                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -1027,8 +1194,8 @@ export default function ProfilePage() {
                   </div>
 
                   {skillSuccessMessage && (
-                    <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                      <p className="text-green-800 font-medium">{skillSuccessMessage}</p>
+                    <div className="mb-4 p-4 border rounded-lg" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }}>
+                      <p className="font-medium" style={{ color: '#166534' }}>{skillSuccessMessage}</p>
                     </div>
                   )}
 
@@ -1121,20 +1288,23 @@ export default function ProfilePage() {
                     </DndContext>
                   ) : (
                     <div className="text-center py-12">
-                      <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#D1D5DB' }}>
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                       </svg>
-                      <p className="text-gray-500 italic">No skills added yet. Click "Add Skill" to get started!</p>
+                      <p className="italic" style={{ color: '#9CA3AF' }}>No skills added yet. Click "Add Skill" to get started!</p>
                     </div>
                   )}
                 </Card>
 
                 {/* Projects Section */}
                 <Card variant="default" title="Projects">
-                  <div className="flex justify-between items-center mb-4">
+                  <div className="flex justify-end items-center mb-4">
                     <button
                       onClick={() => setShowProjectModal(true)}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2 ml-auto"
+                      className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 ml-auto focus:outline-none focus:ring-2 focus:ring-offset-2"
+                      style={{ backgroundColor: '#777C6D' }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -1144,7 +1314,7 @@ export default function ProfilePage() {
                   </div>
 
                       {projectSuccessMessage && (
-                        <div className="mb-4 p-4 bg-green-50 border border-green-200 text-green-800 rounded-lg flex items-center">
+                        <div className="mb-4 p-4 border rounded-lg flex items-center" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', color: '#166534' }}>
                           <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
                           </svg>
@@ -1153,44 +1323,29 @@ export default function ProfilePage() {
                       )}
 
                       {projectList && projectList.length > 0 ? (
-                        <div className="space-y-4">
-                          {projectList.map((p, idx) => (
-                            <div key={p._id || p.id || idx} className="border rounded-lg p-4 hover:shadow-md transition relative">
-                              <div className="flex justify-between">
-                                <div>
-                                  <h3 className="text-lg font-heading font-semibold text-gray-900">{p.name}</h3>
-                                  <p className="text-gray-700 font-medium">{p.role} · Team: {p.teamSize}</p>
-                                  <div className="text-sm text-gray-600 mt-1">{p.industry || '—'} · {p.status}</div>
-                                  <div className="mt-2 text-sm text-gray-700">{p.description}</div>
-                                  {p.projectUrl && <div className="mt-2"><a href={p.projectUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline">Project link</a></div>}
-                                </div>
+                        <>
+                          <div className="mb-4">
+                            <ProjectFilters
+                              techOptions={techOptions}
+                              industryOptions={industryOptions}
+                              filters={projectFilters}
+                              onChange={setProjectFilters}
+                            />
+                          </div>
 
-                                <div className="flex items-start gap-2">
-                                  <button onClick={() => handleEditProject(p)} className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit project"> 
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                  </button>
-                                  <button onClick={async () => { 
-                                    if (!confirm('Delete project?')) return; 
-                                    try { 
-                                      const token = await getToken(); 
-                                      setAuthToken(token); 
-                                      await api.delete(`/api/profile/projects/${p._id}`); 
-                                      const me = await api.get('/api/users/me'); 
-                                      setProjectList(me?.data?.data?.projects || []); 
-                                    } catch (e) { 
-                                      console.error(e); 
-                                      alert('Failed to delete project. Please try again.');
-                                    } 
-                                  }} className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete project">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                          <ProjectGrid
+                            projects={projectList}
+                            filters={projectFilters}
+                            onOpenDetail={(p) => setSelectedProject(p)}
+                            onEdit={(p) => handleEditProject(p)}
+                            onDelete={(p) => handleDeleteProject(p)}
+                          />
+                        </>
                       ) : (
-                        <p className="text-gray-500 italic">No projects added yet.</p>
+                        <p className="italic" style={{ color: '#9CA3AF' }}>No projects added yet.</p>
+                      )}
+                      {selectedProject && (
+                        <ProjectDetail project={selectedProject} onClose={() => setSelectedProject(null)} />
                       )}
                 </Card>
 
@@ -1199,7 +1354,10 @@ export default function ProfilePage() {
                   <div className="flex justify-between items-center mb-4">
                     <button
                       onClick={() => { setEditingCertification(null); setShowCertModal(true); }}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center space-x-2 ml-auto"
+                      className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 ml-auto focus:outline-none focus:ring-2 focus:ring-offset-2"
+                      style={{ backgroundColor: '#777C6D' }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
                     >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -1235,16 +1393,16 @@ export default function ProfilePage() {
                               <div key={c._id || c.id || index} className="border rounded-lg p-4 hover:shadow-md transition relative">
                                 <div className="flex justify-between">
                                   <div>
-                                    <h3 className="text-lg font-heading font-semibold text-gray-900">{c.name}</h3>
-                                    <p className="text-gray-700 font-medium">{c.organization}</p>
-                                    <div className="flex items-center text-sm text-gray-600 mt-1 space-x-2">
+                                    <h3 className="text-lg font-heading font-semibold" style={{ color: '#4F5348' }}>{c.name}</h3>
+                                    <p className="font-medium" style={{ color: '#656A5C' }}>{c.organization}</p>
+                                    <div className="flex items-center text-sm mt-1 space-x-2" style={{ color: '#9CA3AF' }}>
                                       {c.certId && <span>ID: {c.certId}</span>}
                                       <span>•</span>
                                       <span>{c.industry || '—'}</span>
                                     </div>
-                                    <div className="text-sm mt-2">Earned: {formatDate(c.dateEarned)} · {c.doesNotExpire ? 'Does not expire' : formatDate(c.expirationDate)}</div>
-                                    <div className="text-sm mt-1">Verification: <strong className={`ml-2 ${c.verification === 'Verified' ? 'text-green-600' : c.verification === 'Pending' ? 'text-yellow-600' : 'text-gray-600'}`}>{c.verification}</strong></div>
-                                    {c.document && <div className="mt-2"><a className="text-sm text-blue-600 underline" href={c.document.data} target="_blank" rel="noreferrer">View document ({c.document.name})</a></div>}
+                                    <div className="text-sm mt-2" style={{ color: '#656A5C' }}>Earned: {formatDate(c.dateEarned)} · {c.doesNotExpire ? 'Does not expire' : formatDate(c.expirationDate)}</div>
+                                    <div className="text-sm mt-1" style={{ color: '#656A5C' }}>Verification: <strong className={`ml-2 ${c.verification === 'Verified' ? 'text-green-600' : c.verification === 'Pending' ? 'text-yellow-600' : 'text-gray-600'}`}>{c.verification}</strong></div>
+                                    {c.document && <div className="mt-2"><a className="text-sm underline" style={{ color: '#777C6D' }} href={c.document.data} target="_blank" rel="noreferrer">View document ({c.document.name})</a></div>}
                                     <div className="mt-2 text-sm">
                                       {expired && <span className="text-red-600">Expired</span>}
                                       {expiringSoon && <span className="text-yellow-600">Expires in {days} day(s)</span>}
@@ -1257,7 +1415,16 @@ export default function ProfilePage() {
                                         setEditingCertification(c);
                                         setShowCertModal(true);
                                       }}
-                                      className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                      className="p-2 rounded-lg transition"
+                                      style={{ color: '#6B7280' }}
+                                      onMouseOver={(e) => {
+                                        e.currentTarget.style.color = '#777C6D';
+                                        e.currentTarget.style.backgroundColor = '#F5F6F4';
+                                      }}
+                                      onMouseOut={(e) => {
+                                        e.currentTarget.style.color = '#6B7280';
+                                        e.currentTarget.style.backgroundColor = 'transparent';
+                                      }}
                                       title="Edit certification"
                                     >
                                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1278,7 +1445,16 @@ export default function ProfilePage() {
                                           alert('Failed to delete certification. Please try again.');
                                         }
                                       }}
-                                      className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                                      className="p-2 rounded-lg transition"
+                                      style={{ color: '#6B7280' }}
+                                      onMouseOver={(e) => {
+                                        e.currentTarget.style.color = '#EF4444';
+                                        e.currentTarget.style.backgroundColor = '#FEF2F2';
+                                      }}
+                                      onMouseOut={(e) => {
+                                        e.currentTarget.style.color = '#6B7280';
+                                        e.currentTarget.style.backgroundColor = 'transparent';
+                                      }}
                                       title="Delete certification"
                                     >
                                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1292,7 +1468,7 @@ export default function ProfilePage() {
                           })}
                         </div>
                       ) : (
-                        <p className="text-gray-500 italic">No certifications added yet.</p>
+                        <p className="italic" style={{ color: '#9CA3AF' }}>No certifications added yet.</p>
                       )}
                 </Card>
 
@@ -1486,8 +1662,8 @@ export default function ProfilePage() {
           <Card variant="outlined" className="mt-6 border-2" style={{ borderColor: '#FCA5A5', backgroundColor: '#FEF2F2' }}>
             <h2 className="text-xl font-semibold mb-2" style={{ color: '#DC2626' }}>Danger Zone</h2>
             <p className="text-sm mb-4" style={{ color: '#111827' }}>
-              Deleting your account will schedule permanent removal of your personal data after a 30-day grace period. 
-              You will be logged out immediately and cannot access your account during this period.
+              <strong>Warning:</strong> Deleting your account will <strong>immediately and permanently</strong> remove all your personal data. 
+              This action cannot be undone. You will be logged out immediately and your account will no longer exist.
             </p>
             <div className="flex justify-end">
               <button
@@ -1529,8 +1705,8 @@ export default function ProfilePage() {
               <div className="ml-3 flex-1">
                 <h3 className="text-lg font-heading font-semibold mb-2" style={{ color: '#111827' }}>Confirm Account Deletion</h3>
                 <p className="text-sm mb-4" style={{ color: '#111827' }}>
-                  This will schedule your account for <strong>permanent deletion in 30 days</strong>. 
-                  You will be logged out immediately and cannot log in during the grace period.
+                  <strong>Warning:</strong> This will <strong>immediately and permanently delete</strong> your account and all associated data. 
+                  This action cannot be undone and you will be logged out immediately.
                 </p>
                 <p className="text-sm mb-4" style={{ color: '#4B5563' }}>
                   <strong>Please enter your password to confirm this action:</strong>

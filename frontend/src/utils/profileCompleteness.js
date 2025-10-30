@@ -144,7 +144,7 @@ export const BADGES = [
     threshold: 'custom',
     check: (data) => {
       try {
-        const projects = JSON.parse(localStorage.getItem('projects') || '[]');
+        const projects = data?.projects || [];
         return projects.length >= 3;
       } catch {
         return false;
@@ -159,7 +159,7 @@ export const BADGES = [
     threshold: 'custom',
     check: (data) => {
       try {
-        const certs = JSON.parse(localStorage.getItem('certifications') || '[]');
+        const certs = data?.certifications || [];
         return certs.length >= 2;
       } catch {
         return false;
@@ -364,9 +364,10 @@ function calculateSkillsScore(userData) {
 /**
  * Calculate projects completeness
  */
-function calculateProjectsScore() {
+function calculateProjectsScore(userData) {
   try {
-    const projects = JSON.parse(localStorage.getItem('projects') || '[]');
+    // Use projects from userData (server data) instead of localStorage
+    const projects = userData?.projects || [];
     
     if (projects.length === 0) {
       return {
@@ -383,7 +384,7 @@ function calculateProjectsScore() {
     if (projects.length >= 3) score += 20;
 
     // Points for detailed projects (with URLs)
-    const withUrls = projects.filter(p => p.projectUrl && p.projectUrl.length > 0);
+    const withUrls = projects.filter(p => (p.url && p.url.length > 0) || (p.projectUrl && p.projectUrl.length > 0));
     score += Math.min(10, (withUrls.length / projects.length) * 10);
 
     if (projects.length < 3) {
@@ -399,9 +400,10 @@ function calculateProjectsScore() {
 /**
  * Calculate certifications completeness
  */
-function calculateCertificationsScore() {
+function calculateCertificationsScore(userData) {
   try {
-    const certifications = JSON.parse(localStorage.getItem('certifications') || '[]');
+    // Use certifications from userData (server data) instead of localStorage
+    const certifications = userData?.certifications || [];
     
     if (certifications.length === 0) {
       return {
@@ -437,8 +439,8 @@ export function calculateProfileCompleteness(userData) {
     employment: calculateEmploymentScore(userData),
     education: calculateEducationScore(userData),
     skills: calculateSkillsScore(userData),
-    projects: calculateProjectsScore(),
-    certifications: calculateCertificationsScore()
+    projects: calculateProjectsScore(userData),
+    certifications: calculateCertificationsScore(userData)
   };
 
   // Calculate weighted overall score
