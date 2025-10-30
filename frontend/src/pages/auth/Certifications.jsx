@@ -44,12 +44,9 @@ export default function Certifications({ getToken, onListUpdate, editingCertific
           setAuthToken(token);
           const me = await api.get('/api/users/me');
           setList(me?.data?.data?.certifications || []);
-        } catch (e) {}
-      } else {
-        try {
-          const raw = localStorage.getItem("certifications");
-          if (raw) setList(JSON.parse(raw));
-        } catch (e) {}
+        } catch (e) {
+          console.error('Failed to load certifications:', e);
+        }
       }
     };
     load();
@@ -78,7 +75,6 @@ export default function Certifications({ getToken, onListUpdate, editingCertific
   const saveList = (newList) => {
     setList(newList);
     onListUpdate?.(newList);
-    try { localStorage.setItem("certifications", JSON.stringify(newList)); } catch {}
   };
 
   const handleChange = (key) => (e) => {
@@ -117,29 +113,22 @@ export default function Certifications({ getToken, onListUpdate, editingCertific
     const err = validate();
     if (err) return alert(err);
 
+    if (!getToken) {
+      alert('Authentication required to save certifications');
+      return;
+    }
+
     try {
-      if (getToken) {
-        const token = await getToken();
-        setAuthToken(token);
-        if (editingId) {
-          await api.put(`/api/profile/certifications/${editingId}`, form);
-        } else {
-          await api.post('/api/profile/certifications', form);
-        }
-        const me = await api.get('/api/users/me');
-        const updated = me?.data?.data?.certifications || [];
-        saveList(updated);
+      const token = await getToken();
+      setAuthToken(token);
+      if (editingId) {
+        await api.put(`/api/profile/certifications/${editingId}`, form);
       } else {
-        // Fallback to localStorage
-        if (editingId) {
-          const updated = list.map((c) => (c.id === editingId ? { ...form, id: editingId } : c));
-          saveList(updated);
-        } else {
-          const item = { ...form, id: Date.now() };
-          const newList = [item, ...list];
-          saveList(newList);
-        }
+        await api.post('/api/profile/certifications', form);
       }
+      const me = await api.get('/api/users/me');
+      const updated = me?.data?.data?.certifications || [];
+      saveList(updated);
     } catch (e2) {
       console.error('Failed to save certification', e2);
       alert('Failed to save certification');
@@ -165,16 +154,18 @@ export default function Certifications({ getToken, onListUpdate, editingCertific
 
   const remove = async (id) => {
     if (!confirm("Delete this certification?")) return;
+    
+    if (!getToken) {
+      alert('Authentication required to delete certifications');
+      return;
+    }
+
     try {
-      if (getToken) {
-        const token = await getToken();
-        setAuthToken(token);
-        await api.delete(`/api/profile/certifications/${id}`);
-        const me = await api.get('/api/users/me');
-        saveList(me?.data?.data?.certifications || []);
-      } else {
-        saveList(list.filter((c) => c.id !== id));
-      }
+      const token = await getToken();
+      setAuthToken(token);
+      await api.delete(`/api/profile/certifications/${id}`);
+      const me = await api.get('/api/users/me');
+      saveList(me?.data?.data?.certifications || []);
     } catch (e) {
       console.error('Failed to delete certification', e);
       alert('Failed to delete certification. Please try again.');
