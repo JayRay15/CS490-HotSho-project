@@ -240,7 +240,15 @@ const userSchema = new mongoose.Schema(
     picture: { 
       type: String, 
       trim: true,
-      validate: validators.url
+      validate: {
+        validator: function(v) {
+          if (!v) return true; // Optional
+          // Allow standard URLs OR data URL images (JPG/PNG/GIF) used for inline storage
+          const isDataUrl = /^data:image\/(jpeg|jpg|png|gif);base64,[A-Za-z0-9+/=]+$/.test(v);
+          return isDataUrl || validators.url.validator(v);
+        },
+        message: 'Please enter a valid URL or data image (data:image/*;base64,...)'
+      }
     },
     headline: { type: String, trim: true, maxlength: 120 }, // Professional title/headline (per UC-021)
     bio: { type: String, maxlength: 500, trim: true }, // Brief summary (500 char limit per UC-021)
