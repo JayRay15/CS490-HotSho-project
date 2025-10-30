@@ -8,7 +8,7 @@ export const addEmployment = asyncHandler(async (req, res) => {
   const employmentData = req.body;
 
   // Validate required fields
-  const requiredFields = ['company', 'jobTitle', 'startDate'];
+  const requiredFields = ['company', 'position', 'startDate'];
   const missingFields = requiredFields.filter(field => !employmentData[field]);
   
   if (missingFields.length > 0) {
