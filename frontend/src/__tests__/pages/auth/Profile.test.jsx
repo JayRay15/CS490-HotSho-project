@@ -421,7 +421,7 @@ describe('Profile Page', () => {
             const deleteButton = screen.getByRole('button', { name: /delete account/i });
             await user.click(deleteButton);
 
-            expect(screen.getByText(/schedule your account for permanent deletion in 30 days/i)).toBeInTheDocument();
+            expect(screen.getByText(/immediately and permanently delete/i)).toBeInTheDocument();
         });
 
         it('should render password field in delete modal', async () => {
@@ -662,7 +662,7 @@ describe('Profile Page', () => {
 
         it('should display warning text about deletion', () => {
             render(<Profile />);
-            expect(screen.getByText(/permanently remove your personal data after a 30-day grace period/i)).toBeInTheDocument();
+            expect(screen.getByText(/immediately and permanently remove all your personal data/i)).toBeInTheDocument();
         });
 
         it('should have Delete Account button with danger variant', () => {
