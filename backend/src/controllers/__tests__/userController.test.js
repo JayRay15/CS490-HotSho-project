@@ -194,6 +194,36 @@ describe('userController', () => {
         { new: true, runValidators: true }
       );
     });
+
+    it('should return error if user not found during update', async () => {
+      mockReq.body = { name: 'Updated Name' };
+      User.findOneAndUpdate.mockResolvedValue(null);
+
+      await updateCurrentUser(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: 'User not found',
+        })
+      );
+    });
+
+    it('should return error if userId is missing during update', async () => {
+      mockReq.auth = {};
+      mockReq.body = { name: 'Updated Name' };
+
+      await updateCurrentUser(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(401);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: 'Unauthorized: missing authentication credentials',
+        })
+      );
+    });
   });
 
   describe('uploadProfilePicture', () => {
@@ -238,6 +268,42 @@ describe('userController', () => {
         })
       );
     });
+
+    it('should return error if user not found when uploading picture', async () => {
+      mockReq.file = {
+        buffer: Buffer.from('fake-image-data'),
+        mimetype: 'image/jpeg',
+      };
+      User.findOneAndUpdate.mockResolvedValue(null);
+
+      await uploadProfilePicture(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: 'User not found',
+        })
+      );
+    });
+
+    it('should return error if userId is missing when uploading picture', async () => {
+      mockReq.auth = {};
+      mockReq.file = {
+        buffer: Buffer.from('fake-image-data'),
+        mimetype: 'image/jpeg',
+      };
+
+      await uploadProfilePicture(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(401);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: 'Unauthorized: missing authentication credentials',
+        })
+      );
+    });
   });
 
   describe('deleteProfilePicture', () => {
@@ -260,6 +326,34 @@ describe('userController', () => {
         expect.objectContaining({
           success: true,
           message: 'Profile picture removed successfully',
+        })
+      );
+    });
+
+    it('should return error if user not found when deleting picture', async () => {
+      User.findOneAndUpdate.mockResolvedValue(null);
+
+      await deleteProfilePicture(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: 'User not found',
+        })
+      );
+    });
+
+    it('should return error if userId is missing when deleting picture', async () => {
+      mockReq.auth = {};
+
+      await deleteProfilePicture(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(401);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: 'Unauthorized: missing authentication credentials',
         })
       );
     });
@@ -422,6 +516,26 @@ describe('userController', () => {
               message: expect.stringContaining('after the start date'),
             }),
           ]),
+        })
+      );
+    });
+
+    it('should return error if user not found when adding employment', async () => {
+      mockReq.body = {
+        jobTitle: 'Software Engineer',
+        company: 'Tech Corp',
+        startDate: '10/2023',
+        isCurrentPosition: true,
+      };
+      User.findOneAndUpdate.mockResolvedValue(null);
+
+      await addEmployment(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: 'User not found',
         })
       );
     });
@@ -600,6 +714,21 @@ describe('userController', () => {
         expect.objectContaining({
           success: false,
           message: 'Employment ID is required',
+        })
+      );
+    });
+
+    it('should return error if user not found when deleting employment', async () => {
+      mockReq.params = { employmentId: 'employment-id' };
+      User.findOneAndUpdate.mockResolvedValue(null);
+
+      await deleteEmployment(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: 'User not found',
         })
       );
     });
