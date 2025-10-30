@@ -75,10 +75,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: ./frontend
-        run: |
-          npm ci --omit=optional
-          # Remove any Rollup native binaries that may have been cached or installed
-          rm -rf node_modules/@rollup/rollup-linux-* || true
+        run: npm ci
       
       - name: Patch Rollup to disable native binaries
         working-directory: ./frontend
