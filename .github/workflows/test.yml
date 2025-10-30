@@ -79,8 +79,30 @@ jobs:
           npm ci --omit=optional
           # Remove any Rollup native binaries that may have been cached or installed
           rm -rf node_modules/@rollup/rollup-linux-* || true
-          # Patch Rollup's native.js to skip native binary loading entirely
-          sed -i 's/const nativeBinding = requireWithFriendlyError.*$/const nativeBinding = null;/g' node_modules/rollup/dist/native.js || true
+      
+      - name: Patch Rollup to disable native binaries
+        working-directory: ./frontend
+        run: |
+          # Create a patch script to modify Rollup's native.js
+          cat > patch-rollup.js << 'EOF'
+          const fs = require('fs');
+          const path = require('path');
+          const nativePath = path.join(__dirname, 'node_modules', 'rollup', 'dist', 'native.js');
+          
+          if (fs.existsSync(nativePath)) {
+            let content = fs.readFileSync(nativePath, 'utf8');
+            // Replace the native binding loading with null to force JS fallback
+            content = content.replace(
+              /const nativeBinding = requireWithFriendlyError[^;]+;/g,
+              'const nativeBinding = null; // Patched for CI'
+            );
+            fs.writeFileSync(nativePath, content, 'utf8');
+            console.log('✅ Patched Rollup native.js successfully');
+          } else {
+            console.log('⚠️  Rollup native.js not found');
+          }
+          EOF
+          node patch-rollup.js
 
       - name: Run frontend tests
         working-directory: ./frontend
