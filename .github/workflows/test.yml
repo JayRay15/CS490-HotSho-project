@@ -91,13 +91,20 @@ jobs:
           echo "Found files:"
           echo "$FILES"
           
+          echo "Checking first file content..."
+          FIRST_FILE=$(echo "$FILES" | head -n1)
+          echo "Content around line with requireWithFriendlyError:"
+          grep -n "requireWithFriendlyError" "$FIRST_FILE" || echo "Pattern not found"
+          
           echo "Patching files..."
           for file in $FILES; do
-            sed -i 's/const nativeBinding = requireWithFriendlyError([^;]*);/const nativeBinding = null; \/\/ Patched for CI/g' "$file"
+            # Try multiple patterns to match the actual code
+            sed -i 's/const nativeBinding = requireWithFriendlyError(.*);/const nativeBinding = null; \/\/ Patched for CI/' "$file"
             if grep -q "const nativeBinding = null; // Patched for CI" "$file"; then
               echo "✅ Successfully patched: $file"
             else
-              echo "❌ Failed to patch: $file"
+              echo "❌ Failed to patch: $file - trying to show actual content..."
+              head -100 "$file" | tail -20
               exit 1
             fi
           done
