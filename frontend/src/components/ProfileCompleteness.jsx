@@ -10,6 +10,7 @@ import {
 export default function ProfileCompleteness({ userData }) {
   const [showDetails, setShowDetails] = useState(false);
   const [expandedSection, setExpandedSection] = useState(null);
+  const [showAllSuggestions, setShowAllSuggestions] = useState(false);
 
   if (!userData) return null;
 
@@ -283,7 +284,7 @@ export default function ProfileCompleteness({ userData }) {
                 💡 Top Suggestions for Improvement
               </h4>
               <div className="space-y-3">
-                {completeness.suggestions.slice(0, 5).map((suggestion, idx) => (
+                {(showAllSuggestions ? completeness.suggestions : completeness.suggestions.slice(0, 5)).map((suggestion, idx) => (
                   <div
                     key={idx}
                     className={`p-4 rounded-lg border-l-4 ${
@@ -316,9 +317,26 @@ export default function ProfileCompleteness({ userData }) {
                 ))}
               </div>
               {completeness.suggestions.length > 5 && (
-                <p className="text-sm text-gray-500 text-center mt-4">
-                  +{completeness.suggestions.length - 5} more suggestions
-                </p>
+                <button
+                  onClick={() => setShowAllSuggestions(!showAllSuggestions)}
+                  className="w-full mt-4 py-2 px-4 bg-gray-50 border border-gray-300 rounded-lg hover:bg-gray-100 transition flex items-center justify-center space-x-2 text-sm font-medium text-gray-700"
+                >
+                  {showAllSuggestions ? (
+                    <>
+                      <span>Show Less</span>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                      </svg>
+                    </>
+                  ) : (
+                    <>
+                      <span>Show {completeness.suggestions.length - 5} More Suggestions</span>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </>
+                  )}
+                </button>
               )}
             </div>
           )}
