@@ -31,10 +31,12 @@
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.4"
   },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "^4.52.5",
+    "@rollup/rollup-win32-x64-msvc": "^4.52.5"
+  },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
-    "@rollup/rollup-linux-x64-gnu": "^4.52.5",
-    "@rollup/rollup-win32-x64-msvc": "^4.52.5",
     "@tailwindcss/postcss": "^4.1.16",
     "@testing-library/jest-dom": "^6.3.0",
     "@testing-library/react": "^16.0.1",
