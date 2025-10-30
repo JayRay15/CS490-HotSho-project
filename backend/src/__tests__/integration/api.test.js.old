@@ -1,0 +1,461 @@
+import request from 'supertest';
+import express from 'express';
+import { User } from '../../models/User.js';
+import userRoutes from '../../routes/userRoutes.js';
+import profileRoutes from '../../routes/profileRoutes.js';
+
+// Create test app
+const createTestApp = () => {
+  const app = express();
+  app.use(express.json());
+
+  // Routes will use mocked Clerk auth from setup.js
+  app.use('/api/users', userRoutes);
+  app.use('/api/profile', profileRoutes);
+
+  return app;
+};
+
+describe('API Endpoint Tests - UC-011', () => {
+  let app;
+  let testUser;
+
+  beforeAll(() => {
+    app = createTestApp();
+  });
+
+  beforeEach(async () => {
+    // Create a test user before each test
+    testUser = await User.create({
+      auth0Id: 'test_clerk_user_123',
+      email: 'apitest@example.com',
+      name: 'API Test User',
+      password: 'TestPassword123',
+    });
+  });
+
+  describe('GET /api/users/me - Get Current User', () => {
+    
+    test('should return 200 and user profile with valid authentication', async () => {
+      const response = await request(app)
+        .get('/api/users/me')
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.email).toBe('apitest@example.com');
+      expect(response.body.data.name).toBe('API Test User');
+      expect(response.body.data.password).toBeUndefined(); // Password should not be returned
+    });
+
+    test('should return 404 when user not found', async () => {
+      await User.deleteMany({ auth0Id: 'test_clerk_user_123' });
+
+      const response = await request(app)
+        .get('/api/users/me')
+        .expect(404);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.message).toContain('not found');
+    });
+
+    test('should return 403 for soft-deleted accounts', async () => {
+      testUser.isDeleted = true;
+      testUser.deletedAt = new Date();
+      testUser.deletionExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      await testUser.save();
+
+      const response = await request(app)
+        .get('/api/users/me')
+        .expect(403);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.message).toContain('scheduled for deletion');
+    });
+  });
+
+  describe('PUT /api/users/me - Update Current User', () => {
+    
+    test('should return 200 and update user profile with valid data', async () => {
+      const updateData = {
+        name: 'Updated Name',
+        bio: 'Updated bio',
+        location: 'New York, NY',
+        phone: '123-456-7890',
+      };
+
+      const response = await request(app)
+        .put('/api/users/me')
+        .send(updateData)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.name).toBe('Updated Name');
+      expect(response.body.data.bio).toBe('Updated bio');
+      expect(response.body.data.location).toBe('New York, NY');
+    });
+
+    test('should return 400 with invalid email format', async () => {
+      const response = await request(app)
+        .put('/api/users/me')
+        .send({ email: 'invalid-email' })
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+    });
+
+    test('should return 400 with empty body', async () => {
+      const response = await request(app)
+        .put('/api/users/me')
+        .send({})
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.message).toContain('No update data');
+    });
+
+    test('should not allow updating auth0Id', async () => {
+      const response = await request(app)
+        .put('/api/users/me')
+        .send({ auth0Id: 'different_id', name: 'New Name' })
+        .expect(200);
+
+      const updatedUser = await User.findById(testUser._id);
+      expect(updatedUser.auth0Id).toBe('test_clerk_user_123'); // Should remain unchanged
+      expect(updatedUser.name).toBe('New Name'); // Other fields should update
+    });
+  });
+
+  describe('POST /api/profile/employment - Add Employment', () => {
+    
+    test('should return 200 and add employment with valid data', async () => {
+      const employmentData = {
+        jobTitle: 'Software Engineer',
+        company: 'Tech Corp',
+        location: 'San Francisco, CA',
+        startDate: '2020-01-01',
+        endDate: '2022-12-31',
+        description: 'Worked on web applications',
+      };
+
+      const response = await request(app)
+        .post('/api/profile/employment')
+        .send(employmentData)
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.employment).toHaveLength(1);
+      expect(response.body.data.employment[0].jobTitle).toBe('Software Engineer');
+    });
+
+    test('should return 400 with missing required fields', async () => {
+      const response = await request(app)
+        .post('/api/profile/employment')
+        .send({ jobTitle: 'Developer' }) // Missing company and startDate
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.errors).toBeDefined();
+    });
+
+    test('should accept current position without end date', async () => {
+      const employmentData = {
+        jobTitle: 'Senior Developer',
+        company: 'Startup Inc',
+        startDate: '2023-01-01',
+        isCurrentPosition: true,
+      };
+
+      const response = await request(app)
+        .post('/api/profile/employment')
+        .send(employmentData)
+        .expect(200);
+
+      expect(response.body.data.employment[0].isCurrentPosition).toBe(true);
+      expect(response.body.data.employment[0].endDate).toBeNull();
+    });
+
+    test('should return 400 with description exceeding 1000 characters', async () => {
+      const longDescription = 'a'.repeat(1001);
+
+      const response = await request(app)
+        .post('/api/profile/employment')
+        .send({
+          jobTitle: 'Developer',
+          company: 'Company',
+          startDate: '2020-01-01',
+          description: longDescription,
+        })
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+    });
+  });
+
+  describe('DELETE /api/users/delete - Delete Account', () => {
+    
+    test('should return 200 and soft-delete account with correct password', async () => {
+      const response = await request(app)
+        .delete('/api/users/delete')
+        .send({ password: 'TestPassword123' })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.message).toContain('30 days');
+
+      const deletedUser = await User.findById(testUser._id);
+      expect(deletedUser.isDeleted).toBe(true);
+      expect(deletedUser.deletedAt).toBeDefined();
+      expect(deletedUser.deletionExpiresAt).toBeDefined();
+    });
+
+    test('should return 401 with incorrect password', async () => {
+      const response = await request(app)
+        .delete('/api/users/delete')
+        .send({ password: 'WrongPassword123' })
+        .expect(401);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.message).toContain('Incorrect password');
+    });
+
+    test('should return 400 when password is missing', async () => {
+      const response = await request(app)
+        .delete('/api/users/delete')
+        .send({})
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+    });
+
+    test('should allow OAuth users to delete without password', async () => {
+      // Create OAuth user without password
+      const oauthUser = await User.create({
+        auth0Id: 'test_clerk_user_123',
+        email: 'oauth@example.com',
+        name: 'OAuth User',
+      });
+
+      const response = await request(app)
+        .delete('/api/users/delete')
+        .send({})
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+    });
+  });
+
+  describe('Profile Picture Upload', () => {
+    
+    test('should return 400 when no file provided', async () => {
+      const response = await request(app)
+        .post('/api/users/profile-picture')
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.message).toContain('No file provided');
+    });
+  });
+
+  describe('Response Format Consistency - UC-012', () => {
+    
+    test('should return consistent success response format', async () => {
+      const response = await request(app)
+        .get('/api/users/me')
+        .expect(200);
+
+      expect(response.body).toHaveProperty('success');
+      expect(response.body).toHaveProperty('message');
+      expect(response.body).toHaveProperty('data');
+      expect(response.body.success).toBe(true);
+    });
+
+    test('should return consistent error response format', async () => {
+      await User.deleteMany({ auth0Id: 'test_clerk_user_123' });
+
+      const response = await request(app)
+        .get('/api/users/me')
+        .expect(404);
+
+      expect(response.body).toHaveProperty('success');
+      expect(response.body).toHaveProperty('message');
+      expect(response.body).toHaveProperty('errorCode');
+      expect(response.body.success).toBe(false);
+    });
+
+    test('should return validation errors in consistent format', async () => {
+      const response = await request(app)
+        .post('/api/profile/employment')
+        .send({ jobTitle: 'Dev' }) // Missing required fields
+        .expect(400);
+
+      expect(response.body).toHaveProperty('success');
+      expect(response.body).toHaveProperty('message');
+      expect(response.body).toHaveProperty('errors');
+      expect(Array.isArray(response.body.errors)).toBe(true);
+    });
+  });
+});
+
+describe('Profile Management API Tests - UC-023 to UC-032', () => {
+  let app;
+  let testUser;
+
+  beforeAll(async () => {
+    app = await createTestApp();
+  });
+
+  beforeEach(async () => {
+    testUser = await User.create({
+      auth0Id: 'test_clerk_user_123',
+      email: 'profile@example.com',
+      name: 'Profile Test User',
+    });
+  });
+
+  describe('Skills Management (UC-026)', () => {
+    
+    test('should add skill successfully', async () => {
+      const skillData = {
+        name: 'JavaScript',
+        level: 'Advanced',
+        category: 'Technical',
+      };
+
+      const response = await request(app)
+        .post('/api/profile/skills')
+        .send(skillData)
+        .expect(200);
+
+      expect(response.body.data.skills).toHaveLength(1);
+      expect(response.body.data.skills[0].name).toBe('JavaScript');
+      expect(response.body.data.skills[0].level).toBe('Advanced');
+    });
+
+    test('should reject invalid skill level', async () => {
+      const response = await request(app)
+        .post('/api/profile/skills')
+        .send({
+          name: 'Python',
+          level: 'Master', // Invalid level
+          category: 'Technical',
+        })
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+    });
+  });
+
+  describe('Education Management (UC-028, UC-029)', () => {
+    
+    test('should add education entry successfully', async () => {
+      const educationData = {
+        institution: 'MIT',
+        degree: 'Bachelor of Science',
+        fieldOfStudy: 'Computer Science',
+        startDate: '2018-09-01',
+        endDate: '2022-05-15',
+        gpa: 3.8,
+      };
+
+      const response = await request(app)
+        .post('/api/profile/education')
+        .send(educationData)
+        .expect(200);
+
+      expect(response.body.data.education).toHaveLength(1);
+      expect(response.body.data.education[0].institution).toBe('MIT');
+      expect(response.body.data.education[0].gpa).toBe(3.8);
+    });
+
+    test('should accept education without GPA', async () => {
+      const response = await request(app)
+        .post('/api/profile/education')
+        .send({
+          institution: 'Stanford',
+          degree: 'Master',
+          fieldOfStudy: 'AI',
+          startDate: '2022-09-01',
+          current: true,
+        })
+        .expect(200);
+
+      expect(response.body.data.education[0].gpa).toBeUndefined();
+    });
+  });
+
+  describe('Projects Management (UC-031, UC-032)', () => {
+    
+    test('should add project successfully', async () => {
+      const projectData = {
+        name: 'E-commerce Platform',
+        description: 'Built a full-stack e-commerce application',
+        technologies: ['React', 'Node.js', 'MongoDB'],
+        startDate: '2023-01-01',
+        endDate: '2023-06-30',
+        status: 'Completed',
+      };
+
+      const response = await request(app)
+        .post('/api/profile/projects')
+        .send(projectData)
+        .expect(200);
+
+      expect(response.body.data.projects).toHaveLength(1);
+      expect(response.body.data.projects[0].name).toBe('E-commerce Platform');
+      expect(response.body.data.projects[0].technologies).toContain('React');
+    });
+
+    test('should accept ongoing project without end date', async () => {
+      const response = await request(app)
+        .post('/api/profile/projects')
+        .send({
+          name: 'Current Project',
+          description: 'Work in progress',
+          startDate: '2024-01-01',
+          current: true,
+          status: 'Ongoing',
+        })
+        .expect(200);
+
+      expect(response.body.data.projects[0].current).toBe(true);
+      expect(response.body.data.projects[0].status).toBe('Ongoing');
+    });
+  });
+
+  describe('Certifications Management (UC-030)', () => {
+    
+    test('should add certification successfully', async () => {
+      const certData = {
+        name: 'AWS Certified Solutions Architect',
+        organization: 'Amazon Web Services',
+        certId: 'AWS-123-XYZ',
+        dateEarned: '2023-01-15',
+        expirationDate: '2026-01-15',
+      };
+
+      const response = await request(app)
+        .post('/api/profile/certifications')
+        .send(certData)
+        .expect(200);
+
+      expect(response.body.data.certifications).toHaveLength(1);
+      expect(response.body.data.certifications[0].name).toBe('AWS Certified Solutions Architect');
+    });
+
+    test('should accept certification that does not expire', async () => {
+      const response = await request(app)
+        .post('/api/profile/certifications')
+        .send({
+          name: 'Certified Scrum Master',
+          organization: 'Scrum Alliance',
+          dateEarned: '2022-06-01',
+          doesNotExpire: true,
+        })
+        .expect(200);
+
+      expect(response.body.data.certifications[0].doesNotExpire).toBe(true);
+      expect(response.body.data.certifications[0].expirationDate).toBeUndefined();
+    });
+  });
+});

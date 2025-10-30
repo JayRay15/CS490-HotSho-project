@@ -8,4 +8,19 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
   },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/__tests__/setup.js',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'lcov'],
+      exclude: [
+        'node_modules/',
+        'src/__tests__/',
+        '**/*.config.js',
+        'dist/',
+      ],
+    },
+  },
 })
