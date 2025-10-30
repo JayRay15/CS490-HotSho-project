@@ -80,9 +80,29 @@ jobs:
       - name: Patch Rollup to disable native binaries
         working-directory: ./frontend
         run: |
-          # Use find to locate ALL native.js files and patch them with sed
-          find node_modules -name "native.js" -path "*/rollup/dist/*" -exec sed -i 's/const nativeBinding = requireWithFriendlyError([^;]*);/const nativeBinding = null; \/\/ Patched for CI/g' {} \;
-          echo "✅ Patched all Rollup native.js files"
+          # Find and patch ALL Rollup native.js files
+          echo "Finding Rollup native.js files..."
+          FILES=$(find node_modules -name "native.js" -path "*/rollup/dist/*")
+          if [ -z "$FILES" ]; then
+            echo "❌ ERROR: No Rollup native.js files found!"
+            exit 1
+          fi
+          
+          echo "Found files:"
+          echo "$FILES"
+          
+          echo "Patching files..."
+          for file in $FILES; do
+            sed -i 's/const nativeBinding = requireWithFriendlyError([^;]*);/const nativeBinding = null; \/\/ Patched for CI/g' "$file"
+            if grep -q "const nativeBinding = null; // Patched for CI" "$file"; then
+              echo "✅ Successfully patched: $file"
+            else
+              echo "❌ Failed to patch: $file"
+              exit 1
+            fi
+          done
+          
+          echo "✅ All Rollup native.js files patched successfully"
 
       - name: Run frontend tests
         working-directory: ./frontend
