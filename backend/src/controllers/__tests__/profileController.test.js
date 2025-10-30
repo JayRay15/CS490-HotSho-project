@@ -609,6 +609,32 @@ describe('profileController', () => {
         );
       });
 
+      it('should handle project with endDate', async () => {
+        const projectData = {
+          name: 'Test Project',
+          description: 'Test Description',
+          startDate: '2023-01-01',
+          endDate: '2023-12-31',
+        };
+        mockReq.body = projectData;
+
+        const mockUser = {
+          _id: 'user-id',
+          projects: [projectData],
+        };
+
+        User.findOneAndUpdate.mockResolvedValue(mockUser);
+
+        await addProject(mockReq, mockRes, mockNext);
+
+        expect(mockRes.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: true,
+            message: 'Project added successfully',
+          })
+        );
+      });
+
       it('should handle projectUrl to url mapping', async () => {
         const projectData = {
           name: 'Test Project',

@@ -484,6 +484,32 @@ describe('userController', () => {
       );
     });
 
+    it('should handle employment with location', async () => {
+      mockReq.body = {
+        jobTitle: 'Software Engineer',
+        company: 'Tech Corp',
+        location: 'New York, NY',
+        startDate: '10/2023',
+        isCurrentPosition: true,
+      };
+
+      const mockUser = {
+        _id: 'user-id',
+        employment: [],
+      };
+
+      User.findOneAndUpdate.mockResolvedValue(mockUser);
+
+      await addEmployment(mockReq, mockRes, mockNext);
+
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          message: 'Employment entry added successfully',
+        })
+      );
+    });
+
     it('should validate date format', async () => {
       mockReq.body = {
         jobTitle: 'Software Engineer',
@@ -536,6 +562,32 @@ describe('userController', () => {
         expect.objectContaining({
           success: false,
           message: 'User not found',
+        })
+      );
+    });
+
+    it('should handle YYYY-MM date format in addEmployment', async () => {
+      mockReq.body = {
+        jobTitle: 'Software Engineer',
+        company: 'Tech Corp',
+        startDate: '2023-10',
+        endDate: '2024-05',
+        isCurrentPosition: false,
+      };
+
+      const mockUser = {
+        _id: 'user-id',
+        employment: [],
+      };
+
+      User.findOneAndUpdate.mockResolvedValue(mockUser);
+
+      await addEmployment(mockReq, mockRes, mockNext);
+
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          message: 'Employment entry added successfully',
         })
       );
     });
@@ -697,6 +749,38 @@ describe('userController', () => {
       );
     });
 
+    it('should accept valid description length', async () => {
+      mockReq.params = { employmentId: 'employment-id' };
+      mockReq.body = {
+        jobTitle: 'Software Engineer',
+        company: 'Tech Corp',
+        startDate: '01/2023',
+        description: 'A valid description that is under the character limit',
+      };
+
+      const mockUser = {
+        _id: 'user-id',
+        employment: [
+          {
+            _id: 'employment-id',
+            jobTitle: 'Software Engineer',
+            company: 'Tech Corp',
+          },
+        ],
+      };
+
+      User.findOneAndUpdate.mockResolvedValue(mockUser);
+
+      await updateEmployment(mockReq, mockRes, mockNext);
+
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          message: 'Employment entry updated successfully',
+        })
+      );
+    });
+
     it('should return error if user not found when updating employment', async () => {
       mockReq.params = { employmentId: 'employment-id' };
       mockReq.body = {
@@ -713,6 +797,39 @@ describe('userController', () => {
         expect.objectContaining({
           success: false,
           message: 'User or employment entry not found',
+        })
+      );
+    });
+
+    it('should handle YYYY-MM date format in updateEmployment', async () => {
+      mockReq.params = { employmentId: 'employment-id' };
+      mockReq.body = {
+        jobTitle: 'Software Engineer',
+        company: 'Tech Corp',
+        startDate: '2023-01',
+        endDate: '2024-12',
+        isCurrentPosition: false,
+      };
+
+      const mockUser = {
+        _id: 'user-id',
+        employment: [
+          {
+            _id: 'employment-id',
+            jobTitle: 'Software Engineer',
+            company: 'Tech Corp',
+          },
+        ],
+      };
+
+      User.findOneAndUpdate.mockResolvedValue(mockUser);
+
+      await updateEmployment(mockReq, mockRes, mockNext);
+
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          message: 'Employment entry updated successfully',
         })
       );
     });
