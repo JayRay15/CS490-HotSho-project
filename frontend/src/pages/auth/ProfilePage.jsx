@@ -10,7 +10,7 @@ import Projects from "./Projects";
 import ProjectGrid from "../../components/projects/ProjectGrid";
 import ProjectDetail from "../../components/projects/ProjectDetail";
 import ProjectFilters from "../../components/projects/ProjectFilters";
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import Card from "../../components/Card";
 import Container from "../../components/Container";
 // import { useNavigate } from "react-router-dom";
@@ -323,6 +323,8 @@ export default function ProfilePage() {
 
   const [selectedProject, setSelectedProject] = useState(null);
   const params = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const [projectFilters, setProjectFilters] = useState({ techs: [], industries: [], query: '', sort: 'dateDesc' });
 
@@ -427,6 +429,28 @@ export default function ProfilePage() {
       loadProfile();
     }
   }, [isSignedIn, getToken, signOut]);
+
+  // Watch for ?open=employment|skill|education|project in URL and open the corresponding modal
+  useEffect(() => {
+    try {
+      const qs = new URLSearchParams(location.search);
+      const open = qs.get('open');
+      if (!open) return;
+
+      if (open === 'employment') setShowEmploymentModal(true);
+      else if (open === 'education') setShowEducationModal(true);
+      else if (open === 'skill') { setEditingSkill(null); setShowSkillModal(true); }
+      else if (open === 'project') { setEditingProject(null); setShowProjectModal(true); }
+
+  // remove the open param so refreshing doesn't reopen it
+  qs.delete('open');
+  const newSearch = qs.toString();
+  const newPath = `${location.pathname}${newSearch ? `?${newSearch}` : ''}`;
+  navigate(newPath, { replace: true });
+    } catch (e) {
+      // ignore
+    }
+  }, [location.search, navigate]);
 
   // Refresh certifications from server when modal closes
   useEffect(() => {
