@@ -286,14 +286,8 @@ const userSchema = new mongoose.Schema(
     employment: [employmentSchema],
     skills: [skillSchema],
     education: [educationSchema],
-  projects: [projectSchema],
-  certifications: [certificationSchema]
-    ,
-    // Soft-delete fields
-    isDeleted: { type: Boolean, default: false, index: true },
-    deletedAt: { type: Date },
-    // Timestamp when permanent deletion should occur (deletedAt + 30 days)
-    deletionExpiresAt: { type: Date }
+    projects: [projectSchema],
+    certifications: [certificationSchema]
   },
   { timestamps: true }
 );

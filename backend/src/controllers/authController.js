@@ -29,31 +29,13 @@ export const register = asyncHandler(async (req, res) => {
     console.warn("Failed to fetch user from Clerk:", e.message);
   }
 
-  // Check if user already exists by Clerk ID (exclude soft-deleted accounts)
-  const existingUser = await User.findOne({ auth0Id: userId, isDeleted: { $ne: true } });
+  // Check if user already exists by Clerk ID
+  const existingUser = await User.findOne({ auth0Id: userId });
   if (existingUser) {
     // Make this endpoint idempotent: return the existing user as success
+    console.log(`ℹ️  User already exists: ${existingUser.email}`);
     const { response, statusCode } = successResponse("User already exists", existingUser);
     return sendResponse(res, response, statusCode);
-  }
-
-  // Check if there's a soft-deleted account with this Clerk ID - allow re-registration
-  const deletedUser = await User.findOne({ auth0Id: userId, isDeleted: true });
-  if (deletedUser) {
-    // Check if still within grace period
-    const now = new Date();
-    if (deletedUser.deletionExpiresAt && deletedUser.deletionExpiresAt > now) {
-      const daysRemaining = Math.ceil((deletedUser.deletionExpiresAt - now) / (1000 * 60 * 60 * 24));
-      const { response, statusCode } = errorResponse(
-        `Your previous account is scheduled for deletion in ${daysRemaining} day(s). Please wait until the deletion is complete or contact support.`,
-        409,
-        ERROR_CODES.DUPLICATE_ENTRY
-      );
-      return sendResponse(res, response, statusCode);
-    }
-    // If grace period expired, permanently delete the old account now
-    await User.deleteOne({ _id: deletedUser._id });
-    console.log(`🗑️  Permanently deleted expired account: ${deletedUser.email}`);
   }
 
   // Validate email
@@ -65,9 +47,25 @@ export const register = asyncHandler(async (req, res) => {
     return sendResponse(res, response, statusCode);
   }
 
-  // Check for duplicate email (exclude soft-deleted accounts)
-  const emailExists = await User.findOne({ email, isDeleted: { $ne: true } });
+  // Check for duplicate email (might be from a different Clerk account)
+  console.log(`🔍 Checking for existing email in database: ${email}`);
+  const emailExists = await User.findOne({ email });
+  console.log(`🔍 Email exists result:`, emailExists ? `YES - ${emailExists._id}` : 'NO');
+  
   if (emailExists) {
+    console.log(`⚠️  Registration blocked: Email already exists in database`);
+    console.log(`   Existing user Clerk ID: ${emailExists.auth0Id}`);
+    console.log(`   New user Clerk ID: ${userId}`);
+    console.log(`   Email: ${email}`);
+    console.log(`   Database ID: ${emailExists._id}`);
+    console.log(`   Same Clerk ID?`, emailExists.auth0Id === userId);
+    
+    // If the Clerk IDs are different, this might be an old account that wasn't properly deleted
+    if (emailExists.auth0Id !== userId) {
+      console.warn(`⚠️  Different Clerk IDs! This might be an orphaned account.`);
+      console.warn(`   Consider deleting the old database record.`);
+    }
+    
     const { response, statusCode } = errorResponse(
       "An account with this email already exists",
       409,
@@ -75,25 +73,6 @@ export const register = asyncHandler(async (req, res) => {
       [{ field: 'email', message: 'This email is already registered', value: email }]
     );
     return sendResponse(res, response, statusCode);
-  }
-
-  // Check if there's a soft-deleted account with this email
-  const deletedEmailUser = await User.findOne({ email, isDeleted: true });
-  if (deletedEmailUser) {
-    const now = new Date();
-    if (deletedEmailUser.deletionExpiresAt && deletedEmailUser.deletionExpiresAt > now) {
-      const daysRemaining = Math.ceil((deletedEmailUser.deletionExpiresAt - now) / (1000 * 60 * 60 * 24));
-      const { response, statusCode } = errorResponse(
-        `An account with this email is scheduled for deletion in ${daysRemaining} day(s). Please wait until the deletion is complete.`,
-        409,
-        ERROR_CODES.DUPLICATE_ENTRY,
-        [{ field: 'email', message: 'This email is associated with an account pending deletion', value: email }]
-      );
-      return sendResponse(res, response, statusCode);
-    }
-    // If grace period expired, permanently delete the old account now
-    await User.deleteOne({ _id: deletedEmailUser._id });
-    console.log(`🗑️  Permanently deleted expired account: ${deletedEmailUser.email}`);
   }
 
   // Create new user with Clerk data
@@ -134,20 +113,6 @@ export const login = asyncHandler(async (req, res) => {
       ERROR_CODES.NOT_FOUND
     );
     return sendResponse(res, response, statusCode);
-  }
-
-  // Prevent login if user has requested deletion within the 30-day grace period
-  if (user.isDeleted) {
-    const now = new Date();
-    if (user.deletionExpiresAt && user.deletionExpiresAt > now) {
-      const { response, statusCode } = errorResponse(
-        "Account scheduled for deletion. You cannot log in during the 30-day grace period.",
-        403,
-        ERROR_CODES.UNAUTHORIZED
-      );
-      return sendResponse(res, response, statusCode);
-    }
-    // If deletionExpiresAt passed, we might let other cleanup processes handle permanent removal
   }
 
   const { response, statusCode } = successResponse("User authenticated successfully", user);

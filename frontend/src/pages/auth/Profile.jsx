@@ -70,13 +70,19 @@ export default function Profile() {
             // Delete request with body via axios
             await api.delete('/api/users/delete', { data: { password: deletePassword } });
 
+            // Close modal immediately
+            setShowDeleteModal(false);
+            setDeletePassword("");
+            
             // Clear sensitive state and log out via Clerk
-            sessionStorage.setItem("logoutMessage", "Your account deletion request was received. You have been logged out.");
-            signOut();
+            sessionStorage.setItem("logoutMessage", "Your account has been permanently deleted. You have been logged out.");
+            
+            // Sign out from Clerk - await to ensure session is cleared
+            await signOut();
+            
         } catch (err) {
             console.error('Account deletion error:', err);
             setError(err);
-        } finally {
             setDeleting(false);
             setShowDeleteModal(false);
             setDeletePassword("");
@@ -131,7 +137,7 @@ export default function Profile() {
 
                     <Card title="Danger Zone" className="mt-6">
                         <div className="p-4">
-                            <p className="text-sm text-gray-700 mb-4">Deleting your account will permanently remove your personal data after a 30-day grace period. This action is irreversible after that period.</p>
+                            <p className="text-sm text-gray-700 mb-4"><strong>Warning:</strong> Deleting your account will <strong>immediately and permanently</strong> remove all your personal data. This action cannot be undone.</p>
                             <div className="flex items-center justify-end">
                                 <Button variant="danger" onClick={() => setShowDeleteModal(true)}>
                                     Delete Account
@@ -145,7 +151,7 @@ export default function Profile() {
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
                             <div className="bg-white rounded-lg p-6 w-full max-w-md">
                                 <h3 className="text-lg font-semibold mb-2">Confirm Account Deletion</h3>
-                                <p className="text-sm text-gray-700 mb-4">This will schedule your account for permanent deletion in 30 days. You will be logged out immediately. To confirm, enter your password below.</p>
+                                <p className="text-sm text-gray-700 mb-4"><strong>Warning:</strong> This will <strong>immediately and permanently delete</strong> your account and all associated data. This action cannot be undone. To confirm, enter your password below.</p>
 
                                 <InputField
                                     label="Password"
