@@ -317,6 +317,7 @@ export default function ProfilePage() {
   const [editingProject, setEditingProject] = useState(null);
   const [editingCertification, setEditingCertification] = useState(null);
   const [projectSuccessMessage, setProjectSuccessMessage] = useState(null);
+  const [certificationSuccessMessage, setCertificationSuccessMessage] = useState(null);
   // const navigate = useNavigate();
   // Using portfolio inline on profile; navigation not required here
   // (keep useNavigate import removal later if unused)
@@ -825,49 +826,34 @@ export default function ProfilePage() {
                     </button>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Full Name</p>
-                      <p style={{ color: '#4F5348' }}>{userData?.name || '—'}</p>
+                  <div className="space-y-6">
+                    {/* Contact Information */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Full Name</p>
+                        <p style={{ color: '#4F5348' }}>{userData?.name || '—'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Email</p>
+                        <p style={{ color: '#4F5348' }}>{userData?.email || '—'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Phone</p>
+                        <p style={{ color: '#4F5348' }}>{userData?.phone || '—'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Location</p>
+                        <p style={{ color: '#4F5348' }}>{userData?.location || '—'}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Email</p>
-                      <p style={{ color: '#4F5348' }}>{userData?.email || '—'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Phone</p>
-                      <p style={{ color: '#4F5348' }}>{userData?.phone || '—'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Location</p>
-                      <p style={{ color: '#4F5348' }}>{userData?.location || '—'}</p>
-                    </div>
-                  </div>
-                </Card>
 
-                {/* Professional Information Section */}
-                <Card variant="default" title="Professional Information">
-                  <div className="flex justify-between items-center mb-4">
-                    <button
-                      onClick={handleEditClick}
-                      className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2 ml-auto"
-                      style={{ backgroundColor: '#777C6D' }}
-                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                      </svg>
-                      <span>Edit Profile</span>
-                    </button>
-                  </div>
-                  
-                  <div className="space-y-4">
+                    {/* Professional Headline */}
                     <div>
                       <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Professional Headline</p>
                       <p className="text-lg" style={{ color: '#4F5348' }}>{userData?.headline || '—'}</p>
                     </div>
                     
+                    {/* Professional Details */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Industry</p>
@@ -879,6 +865,7 @@ export default function ProfilePage() {
                       </div>
                     </div>
 
+                    {/* Bio / Summary */}
                     {userData?.bio && (
                       <div>
                         <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Bio / Summary</p>
@@ -1366,6 +1353,15 @@ export default function ProfilePage() {
                         </button>
                       </div>
 
+                      {certificationSuccessMessage && (
+                        <div className="mb-4 p-4 border rounded-lg flex items-center" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', color: '#166534' }}>
+                          <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                          </svg>
+                          {certificationSuccessMessage}
+                        </div>
+                      )}
+
                       {/* Compact certifications list */}
                       {certList && certList.length > 0 ? (
                         <div className="space-y-4">
@@ -1440,6 +1436,8 @@ export default function ProfilePage() {
                                           await api.delete(`/api/profile/certifications/${c._id}`);
                                           const me = await api.get('/api/users/me');
                                           setCertList(me?.data?.data?.certifications || []);
+                                          setCertificationSuccessMessage(`Certification "${c.name}" deleted successfully!`);
+                                          setTimeout(() => setCertificationSuccessMessage(null), 5000);
                                         } catch (e) {
                                           console.error(e);
                                           alert('Failed to delete certification. Please try again.');
@@ -1559,6 +1557,13 @@ export default function ProfilePage() {
                               getToken={getToken} 
                               onListUpdate={(updated) => setCertList(updated)} 
                               editingCertification={editingCertification}
+                              onSuccess={(updated, message) => {
+                                setCertList(updated);
+                                setShowCertModal(false);
+                                setEditingCertification(null);
+                                setCertificationSuccessMessage(message);
+                                setTimeout(() => setCertificationSuccessMessage(null), 5000);
+                              }}
                             />
                           </div>
                           

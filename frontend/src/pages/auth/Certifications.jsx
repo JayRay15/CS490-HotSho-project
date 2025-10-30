@@ -16,7 +16,7 @@ const SAMPLE_ORGS = [
 
 import api, { setAuthToken } from "../../api/axios";
 
-export default function Certifications({ getToken, onListUpdate, editingCertification }) {
+export default function Certifications({ getToken, onListUpdate, editingCertification, onSuccess }) {
   const [list, setList] = useState([]);
   const [form, setForm] = useState({
     name: "",
@@ -121,14 +121,26 @@ export default function Certifications({ getToken, onListUpdate, editingCertific
     try {
       const token = await getToken();
       setAuthToken(token);
+      
+      let successMessage;
       if (editingId) {
         await api.put(`/api/profile/certifications/${editingId}`, form);
+        successMessage = `Certification "${form.name}" updated successfully!`;
       } else {
         await api.post('/api/profile/certifications', form);
+        successMessage = `Certification "${form.name}" added successfully!`;
       }
+      
       const me = await api.get('/api/users/me');
       const updated = me?.data?.data?.certifications || [];
       saveList(updated);
+      
+      // Call onSuccess callback if provided, otherwise use alert
+      if (onSuccess) {
+        onSuccess(updated, successMessage);
+      } else {
+        alert(successMessage);
+      }
     } catch (e2) {
       console.error('Failed to save certification', e2);
       alert('Failed to save certification');
@@ -165,7 +177,18 @@ export default function Certifications({ getToken, onListUpdate, editingCertific
       setAuthToken(token);
       await api.delete(`/api/profile/certifications/${id}`);
       const me = await api.get('/api/users/me');
-      saveList(me?.data?.data?.certifications || []);
+      const updated = me?.data?.data?.certifications || [];
+      saveList(updated);
+      
+      const deletedCert = list.find(c => (c._id || c.id) === id);
+      const successMessage = `Certification "${deletedCert?.name || 'entry'}" deleted successfully!`;
+      
+      // Call onSuccess callback if provided, otherwise use alert
+      if (onSuccess) {
+        onSuccess(updated, successMessage);
+      } else {
+        alert(successMessage);
+      }
     } catch (e) {
       console.error('Failed to delete certification', e);
       alert('Failed to delete certification. Please try again.');
