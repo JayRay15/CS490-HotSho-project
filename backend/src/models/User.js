@@ -7,29 +7,18 @@ const validators = {
   phone: {
     validator: function(v) {
       if (!v) return true; // Optional field
-      // Must be at least 10 digits total, no letters allowed
-      // Supports formats: +12345678901, (123) 456-7890, 123-456-7890, 1234567890, +1 (234) 567-8901
-      
-      // Ensure the original string doesn't contain letters
-      if (/[a-zA-Z]/.test(v)) return false;
-      
-      // Remove all non-digit characters and check if remaining digits are valid
-      const digitsOnly = v.replace(/\D/g, '');
-      if (digitsOnly.length < 10 || digitsOnly.length > 15) return false;
-      
-      // Validate common phone formats
-      // Allows: optional +, optional country code, optional (), spaces, dots, hyphens
-      return /^[\+]?[0-9]{0,4}[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,4}[-\s\.]?[0-9]{1,9}$/.test(v);
+      // E.164 format or common formats: +1234567890, (123) 456-7890, 123-456-7890, 1234567890
+      return /^[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,9}$/.test(v);
     },
     message: 'Please enter a valid phone number'
   },
   url: {
     validator: function(v) {
       if (!v) return true; // Optional field
-      // Allow http://, https://, data: URIs, or no protocol
-      return /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/.test(v) || /^data:image\/(jpeg|jpg|png|gif);base64,/.test(v);
+      // Allow http://, https://, or no protocol
+      return /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/.test(v);
     },
-    message: 'Please enter a valid URL or data URI'
+    message: 'Please enter a valid URL'
   },
   gpa: {
     validator: function(v) {
