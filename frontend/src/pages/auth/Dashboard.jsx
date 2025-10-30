@@ -57,17 +57,35 @@ export default function Dashboard() {
             return;
           }
           
-          // If user not found (404), register them
+          // If user not found (404), this could be:
+          // 1. First time user (needs registration)
+          // 2. Deleted account trying to log back in (should NOT auto-register)
           if (err.response?.status === 404 || err.customError?.errorCode === 3001) {
-            console.log("User not found in database, registering...");
-            await api.post('/api/auth/register');
-            // After registration, fetch user data again
-            const response = await api.get('/api/users/me');
-            const data = response.data.data;
-            setUserData(data);
-            const completeness = calculateProfileCompleteness(data);
-            setProfileCompleteness(completeness.overallScore);
-            setAccountStatus('active');
+            console.log("User not found in database, attempting to register...");
+            
+            try {
+              // Attempt to register the user
+              await api.post('/api/auth/register');
+              console.log("✅ User registered successfully");
+              
+              // After registration, fetch user data again
+              const response = await api.get('/api/users/me');
+              const data = response.data.data;
+              setUserData(data);
+              const completeness = calculateProfileCompleteness(data);
+              setProfileCompleteness(completeness.overallScore);
+              setAccountStatus('active');
+            } catch (registerErr) {
+              console.error("Failed to register user:", registerErr);
+              
+              // If registration fails, log them out with appropriate message
+              sessionStorage.setItem(
+                "logoutMessage", 
+                "Unable to complete registration. Please try again."
+              );
+              await signOut();
+              return;
+            }
           } else {
             // Other errors - treat as active but log error
             console.error("Error checking user status:", err);

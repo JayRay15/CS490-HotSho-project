@@ -354,12 +354,11 @@ export default function ProfilePage() {
             return;
           }
           
-          // If user not found (404), register them first
+          // If user not found (404), redirect to dashboard to handle registration
           if (err.response?.status === 404 || err.customError?.errorCode === 3001) {
-            console.log("User not found in database, registering...");
-            await api.post('/api/auth/register');
-            // Retry getting user profile
-            response = await api.get('/api/users/me');
+            console.log("User not found in database, redirecting to dashboard...");
+            window.location.href = '/dashboard';
+            return;
           } else {
             throw err;
           }
@@ -571,15 +570,23 @@ export default function ProfilePage() {
       const token = await getToken();
       setAuthToken(token);
 
+      // Delete the account from the database
       await api.delete('/api/users/delete', { data: { password: deletePassword } });
 
-      // store message and sign out
-      sessionStorage.setItem("logoutMessage", "Your account deletion request was received. You have been logged out.");
-      signOut();
+      // Close modal immediately
+      setShowDeleteModal(false);
+      setDeletePassword("");
+      
+      // Store message for after logout
+      sessionStorage.setItem("logoutMessage", "Your account has been permanently deleted. You have been logged out.");
+      
+      // Sign out from Clerk - this will redirect to login page
+      // Important: await this to ensure Clerk session is cleared before any redirects
+      await signOut();
+      
     } catch (err) {
       console.error('Account deletion error:', err);
       setError(err);
-    } finally {
       setDeleting(false);
       setShowDeleteModal(false);
       setDeletePassword("");
@@ -1563,8 +1570,8 @@ export default function ProfilePage() {
           <Card variant="outlined" className="mt-6 border-2" style={{ borderColor: '#FCA5A5', backgroundColor: '#FEF2F2' }}>
             <h2 className="text-xl font-semibold mb-2" style={{ color: '#DC2626' }}>Danger Zone</h2>
             <p className="text-sm mb-4" style={{ color: '#111827' }}>
-              Deleting your account will schedule permanent removal of your personal data after a 30-day grace period. 
-              You will be logged out immediately and cannot access your account during this period.
+              <strong>Warning:</strong> Deleting your account will <strong>immediately and permanently</strong> remove all your personal data. 
+              This action cannot be undone. You will be logged out immediately and your account will no longer exist.
             </p>
             <div className="flex justify-end">
               <button
@@ -1606,8 +1613,8 @@ export default function ProfilePage() {
               <div className="ml-3 flex-1">
                 <h3 className="text-lg font-heading font-semibold mb-2" style={{ color: '#111827' }}>Confirm Account Deletion</h3>
                 <p className="text-sm mb-4" style={{ color: '#111827' }}>
-                  This will schedule your account for <strong>permanent deletion in 30 days</strong>. 
-                  You will be logged out immediately and cannot log in during the grace period.
+                  <strong>Warning:</strong> This will <strong>immediately and permanently delete</strong> your account and all associated data. 
+                  This action cannot be undone and you will be logged out immediately.
                 </p>
                 <p className="text-sm mb-4" style={{ color: '#4B5563' }}>
                   <strong>Please enter your password to confirm this action:</strong>

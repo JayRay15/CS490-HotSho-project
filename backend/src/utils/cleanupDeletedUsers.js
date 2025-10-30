@@ -2,6 +2,13 @@ import { User } from "../models/User.js";
 import { sendFinalDeletionEmail } from "./email.js";
 
 /**
+ * DEPRECATED: This cleanup job is no longer used.
+ * 
+ * As of UC-009 requirements update, accounts are deleted immediately upon request
+ * rather than after a 30-day grace period. This file is kept for reference but
+ * should not be imported or used.
+ * 
+ * Previous functionality:
  * Cleanup job that permanently deletes user accounts
  * that have exceeded their 30-day grace period
  */

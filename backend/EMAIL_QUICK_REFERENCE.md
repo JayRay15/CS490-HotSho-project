@@ -22,7 +22,7 @@ The account deletion email functionality is **complete and working**. You just n
    SMTP_SECURE=false
    SMTP_USER=your-email@gmail.com
    SMTP_PASS=your-app-password
-   SMTP_FROM="HotSho <no-reply@hotshoprofile.com>"
+   SMTP_FROM="Nirvana <no-reply@nirvanaprofile.com>"
    ```
 
 3. **Get Gmail App Password**:
