@@ -758,13 +758,13 @@ export default function Jobs() {
 
                 {/* Filter Actions */}
                 <div className="flex flex-wrap gap-2 mt-4">
-                  <Button onClick={clearFilters} variant="secondary" size="sm">
+                  <Button onClick={clearFilters} variant="secondary" size="small">
                     🔄 Clear All Filters
                   </Button>
-                  <Button onClick={saveSearchPreferences} variant="secondary" size="sm">
+                  <Button onClick={saveSearchPreferences} variant="secondary" size="small">
                     💾 Save Preferences
                   </Button>
-                  <Button onClick={loadSearchPreferences} variant="secondary" size="sm">
+                  <Button onClick={loadSearchPreferences} variant="secondary" size="small">
                     📂 Load Saved
                   </Button>
                 </div>
