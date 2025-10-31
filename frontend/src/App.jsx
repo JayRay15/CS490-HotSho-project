@@ -5,6 +5,7 @@ import Register from "./pages/auth/Register";
 import Login from "./pages/auth/Login";
 import Dashboard from "./pages/auth/Dashboard";
 import ProfilePage from "./pages/auth/ProfilePage";
+import Jobs from "./pages/auth/Jobs";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import Projects from "./pages/auth/Projects";
@@ -25,6 +26,7 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+          <Route path="/jobs" element={<ProtectedRoute><Jobs /></ProtectedRoute>} />
           <Route path="/profile/project/:id" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
           <Route path="/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
           <Route path="/portfolio" element={<ProtectedRoute><Portfolio /></ProtectedRoute>} />
