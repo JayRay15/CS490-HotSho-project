@@ -1,11 +1,15 @@
 import { SignIn } from "@clerk/clerk-react";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import LoadingSpinner from "../../components/LoadingSpinner";
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [logoutMessage, setLogoutMessage] = useState(null);
+
+  // Get the page user was trying to access (passed from ProtectedRoute)
+  const from = location.state?.from?.pathname || "/dashboard";
 
   useEffect(() => {
     // Check for logout success message
@@ -58,7 +62,7 @@ export default function Login() {
       <SignIn
         routing="virtual"
         signUpUrl="/register"
-        afterSignInUrl="/dashboard"
+        afterSignInUrl={from}
         appearance={{
           elements: {
             rootBox: "mx-auto",

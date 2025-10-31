@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { RedirectToSignIn, useAuth, useUser } from "@clerk/clerk-react";
+import { useAuth, useUser } from "@clerk/clerk-react";
 import api, { setAuthToken } from "../../api/axios";
 import ErrorMessage from "../../components/ErrorMessage";
 import ProfilePictureUpload from "../../components/ProfilePictureUpload";
@@ -708,21 +708,6 @@ export default function ProfilePage() {
     setShowEducationDeleteModal(false);
     setDeletingEducation(null);
   };
-
-  if (!isLoaded) {
-    return (
-      <LoadingSpinner 
-        fullScreen={true} 
-        size="lg"
-        text="Loading..." 
-        variant="logo" 
-      />
-    );
-  }
-
-  if (!isSignedIn) {
-    return <RedirectToSignIn />;
-  }
 
   // Show loading while checking account status
   if (isLoading && accountStatus === null) {

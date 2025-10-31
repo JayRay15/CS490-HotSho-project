@@ -10,6 +10,7 @@ import ForgotPassword from "./pages/auth/ForgotPassword";
 import Projects from "./pages/auth/Projects";
 import Portfolio from "./pages/auth/Portfolio";
 import ProjectPublic from "./pages/auth/ProjectPublic";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
   return (
@@ -22,12 +23,12 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/profile/project/:id" element={<ProfilePage />} />
-          <Route path="/projects" element={<Projects />} />
-          <Route path="/portfolio" element={<Portfolio />} />
-          <Route path="/portfolio/project/:id" element={<Portfolio />} />
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+          <Route path="/profile/project/:id" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+          <Route path="/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
+          <Route path="/portfolio" element={<ProtectedRoute><Portfolio /></ProtectedRoute>} />
+          <Route path="/portfolio/project/:id" element={<ProtectedRoute><Portfolio /></ProtectedRoute>} />
           <Route path="/projects/:id" element={<ProjectPublic />} />
         </Routes>
       </Router>

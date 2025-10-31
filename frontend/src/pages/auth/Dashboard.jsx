@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { RedirectToSignIn, useAuth, useUser } from "@clerk/clerk-react";
+import { useAuth, useUser } from "@clerk/clerk-react";
 import api, { setAuthToken } from "../../api/axios";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import Card from "../../components/Card";
@@ -305,11 +305,6 @@ export default function Dashboard() {
   // Check account status first before showing dashboard
   useEffect(() => {
     const checkAccountAndRegister = async () => {
-      if (!isSignedIn) {
-        setIsCheckingAccount(false);
-        return;
-      }
-
       setIsCheckingAccount(true);
       setIsRegistering(true);
       
@@ -387,10 +382,8 @@ export default function Dashboard() {
       }
     };
 
-    if (isSignedIn) {
-      checkAccountAndRegister();
-    }
-  }, [isSignedIn, getToken, signOut]);
+    checkAccountAndRegister();
+  }, [getToken, signOut]);
 
   // Show loading while checking account or Clerk is loading
   if (!isLoaded || isCheckingAccount || isRegistering) {
@@ -414,10 +407,6 @@ export default function Dashboard() {
         variant="spinner" 
       />
     );
-  }
-
-  if (!isSignedIn) {
-    return <RedirectToSignIn />;
   }
 
   // Build small summary lists for each category so each entry can be rendered on its own line
