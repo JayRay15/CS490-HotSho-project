@@ -31,6 +31,7 @@ export default function Jobs() {
     salaryMin: "",
     salaryMax: "",
     jobType: "",
+    industry: "",
     workMode: "",
     priority: "",
     tags: "",
@@ -42,6 +43,7 @@ export default function Jobs() {
   const [sortBy, setSortBy] = useState("dateAdded");
   const [sortOrder, setSortOrder] = useState("desc");
   const [showFilters, setShowFilters] = useState(false);
+  const [successMessage, setSuccessMessage] = useState(null);
 
   // Form state for adding/editing jobs
   const [formData, setFormData] = useState({
@@ -52,6 +54,7 @@ export default function Jobs() {
     salaryMin: "",
     salaryMax: "",
     jobType: "",
+    industry: "",
     workMode: "",
     description: "",
     url: "",
@@ -130,6 +133,11 @@ export default function Jobs() {
     // Apply job type filter
     if (filters.jobType) {
       filtered = filtered.filter((job) => job.jobType === filters.jobType);
+    }
+
+    // Apply industry filter
+    if (filters.industry) {
+      filtered = filtered.filter((job) => job.industry === filters.industry);
     }
 
     // Apply work mode filter
@@ -276,6 +284,7 @@ export default function Jobs() {
               }
             : undefined,
         jobType: formData.jobType || undefined,
+        industry: formData.industry || undefined,
         workMode: formData.workMode || undefined,
         description: formData.description || undefined,
         url: formData.url || undefined,
@@ -291,6 +300,10 @@ export default function Jobs() {
       await fetchStats();
       setShowAddModal(false);
       resetForm();
+      
+      // Show success message
+      setSuccessMessage("Job successfully added!");
+      setTimeout(() => setSuccessMessage(null), 5000);
     } catch (error) {
       console.error("Failed to add job:", error);
       alert(error.response?.data?.message || "Failed to add job. Please try again.");
@@ -317,6 +330,7 @@ export default function Jobs() {
               }
             : undefined,
         jobType: formData.jobType || undefined,
+        industry: formData.industry || undefined,
         workMode: formData.workMode || undefined,
         description: formData.description || undefined,
         url: formData.url || undefined,
@@ -328,6 +342,10 @@ export default function Jobs() {
         applicationDate: formData.applicationDate || undefined,
         deadline: formData.deadline || undefined,
       };
+
+      console.log("UPDATE JOB - Frontend formData:", formData);
+      console.log("UPDATE JOB - Frontend jobData being sent:", jobData);
+      console.log("UPDATE JOB - Industry value:", formData.industry, "->", jobData.industry);
 
       await api.put(`/api/jobs/${editingJob._id}`, jobData);
       await fetchJobs();
@@ -367,6 +385,8 @@ export default function Jobs() {
   };
 
   const handleEditJob = (job) => {
+    console.log("EDIT JOB - Opening edit modal for job:", job);
+    console.log("EDIT JOB - Job industry:", job.industry);
     setEditingJob(job);
     setFormData({
       title: job.title,
@@ -376,6 +396,7 @@ export default function Jobs() {
       salaryMin: job.salary?.min || "",
       salaryMax: job.salary?.max || "",
       jobType: job.jobType || "",
+      industry: job.industry || "",
       workMode: job.workMode || "",
       description: job.description || "",
       url: job.url || "",
@@ -387,6 +408,7 @@ export default function Jobs() {
       interviewNotes: job.interviewNotes || "",
       salaryNegotiationNotes: job.salaryNegotiationNotes || "",
     });
+    console.log("EDIT JOB - Form data set with industry:", job.industry || "");
     setShowEditModal(true);
   };
 
@@ -425,6 +447,7 @@ export default function Jobs() {
       salaryMin: "",
       salaryMax: "",
       jobType: "",
+      industry: "",
       workMode: "",
       description: "",
       url: "",
@@ -447,6 +470,7 @@ export default function Jobs() {
       salaryMin: "",
       salaryMax: "",
       jobType: "",
+      industry: "",
       workMode: "",
       priority: "",
       tags: "",
@@ -526,6 +550,24 @@ export default function Jobs() {
               Track your job applications through each stage of the hiring process
             </p>
           </div>
+
+          {/* Success Message */}
+          {successMessage && (
+            <div className="mb-4 p-4 bg-green-50 border-l-4 border-green-500 text-green-700 rounded-lg flex items-center justify-between">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                <span className="font-medium">{successMessage}</span>
+              </div>
+              <button
+                onClick={() => setSuccessMessage(null)}
+                className="ml-4 text-green-700 hover:text-green-900 font-bold"
+              >
+                ×
+              </button>
+            </div>
+          )}
 
           {/* Stats Cards */}
           {stats && (
@@ -642,6 +684,27 @@ export default function Jobs() {
                       <option value="Part-time">Part-time</option>
                       <option value="Contract">Contract</option>
                       <option value="Internship">Internship</option>
+                    </select>
+                  </div>
+
+                  {/* Industry Filter */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Industry</label>
+                    <select
+                      value={filters.industry}
+                      onChange={(e) => setFilters({ ...filters, industry: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">All Industries</option>
+                      <option value="Technology">Technology</option>
+                      <option value="Healthcare">Healthcare</option>
+                      <option value="Finance">Finance</option>
+                      <option value="Education">Education</option>
+                      <option value="Manufacturing">Manufacturing</option>
+                      <option value="Retail">Retail</option>
+                      <option value="Marketing">Marketing</option>
+                      <option value="Consulting">Consulting</option>
+                      <option value="Other">Other</option>
                     </select>
                   </div>
 
@@ -803,7 +866,11 @@ export default function Jobs() {
             onJobEdit={handleEditJob}
             onJobDelete={handleDeleteJob}
             onJobView={handleViewJob}
-            searchTerm={searchTerm}
+            highlightTerms={[
+              searchTerm?.trim(),
+              filters.location?.trim(),
+              ...(filters.tags ? filters.tags.split(",").map((t) => t.trim()) : []),
+            ].filter(Boolean)}
           />
         </div>
       </Container>
@@ -887,6 +954,25 @@ export default function Jobs() {
                     </select>
                   </div>
                   <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
+                    <select
+                      value={formData.industry}
+                      onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select...</option>
+                      <option value="Technology">Technology</option>
+                      <option value="Healthcare">Healthcare</option>
+                      <option value="Finance">Finance</option>
+                      <option value="Education">Education</option>
+                      <option value="Manufacturing">Manufacturing</option>
+                      <option value="Retail">Retail</option>
+                      <option value="Marketing">Marketing</option>
+                      <option value="Consulting">Consulting</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Work Mode</label>
                     <select
                       value={formData.workMode}
@@ -946,9 +1032,11 @@ export default function Jobs() {
                 <InputField
                   label="Description"
                   as="textarea"
-                  rows={3}
+                  rows={4}
+                  maxLength={2000}
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Describe the job responsibilities, requirements, and other details..."
                 />
 
                 <InputField
@@ -957,6 +1045,7 @@ export default function Jobs() {
                   rows={3}
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder="Personal notes about this opportunity..."
                 />
 
                 <div className="flex justify-end gap-3 pt-4">
@@ -1057,6 +1146,28 @@ export default function Jobs() {
                       <option value="Temporary">Temporary</option>
                     </select>
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
+                    <select
+                      value={formData.industry}
+                      onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select...</option>
+                      <option value="Technology">Technology</option>
+                      <option value="Healthcare">Healthcare</option>
+                      <option value="Finance">Finance</option>
+                      <option value="Education">Education</option>
+                      <option value="Manufacturing">Manufacturing</option>
+                      <option value="Retail">Retail</option>
+                      <option value="Marketing">Marketing</option>
+                      <option value="Consulting">Consulting</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Work Mode</label>
                     <select
@@ -1247,6 +1358,12 @@ export default function Jobs() {
                       <div>
                         <p className="text-sm font-medium text-gray-500">Job Type</p>
                         <p className="text-gray-900">{viewingJob.jobType}</p>
+                      </div>
+                    )}
+                    {viewingJob.industry && (
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Industry</p>
+                        <p className="text-gray-900">{viewingJob.industry}</p>
                       </div>
                     )}
                     {(viewingJob.salary?.min || viewingJob.salary?.max) && (
