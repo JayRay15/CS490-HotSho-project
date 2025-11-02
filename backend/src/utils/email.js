@@ -254,4 +254,111 @@ export const sendFinalDeletionEmail = async (toEmail, fullName) => {
   }
 };
 
-export default { sendDeletionEmail, sendFinalDeletionEmail };
+/**
+ * sendDeadlineReminderEmail - Sends a consolidated reminder email for upcoming/overdue job deadlines
+ * @param {string} toEmail - Recipient email
+ * @param {string} fullName - Recipient name
+ * @param {Array<{title:string, company?:string, deadline?:Date, days:number}>} items - Jobs with deadline metadata
+ */
+export const sendDeadlineReminderEmail = async (toEmail, fullName, items = []) => {
+  const subject = '⏰ Job application deadline reminders';
+
+  const rowsHtml = items.map((it) => {
+    const dueText = it.days < 0
+      ? `Overdue ${Math.abs(it.days)}d`
+      : it.days === 0
+        ? 'Due today'
+        : `${it.days}d left`;
+    const deadlineDate = it.deadline ? new Date(it.deadline).toLocaleDateString() : '—';
+    return `<tr>
+      <td style="padding:6px 8px; border-bottom:1px solid #eee; font-weight:600;">${it.title}</td>
+      <td style="padding:6px 8px; border-bottom:1px solid #eee; color:#555;">${it.company || ''}</td>
+      <td style="padding:6px 8px; border-bottom:1px solid #eee; color:#555;">${deadlineDate}</td>
+      <td style="padding:6px 8px; border-bottom:1px solid #eee;"><strong>${dueText}</strong></td>
+    </tr>`;
+  }).join('');
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 640px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #777C6D; color: white; padding: 16px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background-color: #ffffff; padding: 24px; border: 1px solid #ddd; border-radius: 0 0 8px 8px; }
+          .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #777; }
+          table { width: 100%; border-collapse: collapse; }
+          th { text-align: left; background:#f8f8f8; padding:8px; border-bottom:1px solid #eee; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h2>Upcoming Job Deadlines</h2>
+          </div>
+          <div class="content">
+            <p>Hello <strong>${fullName || 'there'}</strong>,</p>
+            <p>Here are your upcoming application deadlines that need attention:</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Role</th>
+                  <th>Company</th>
+                  <th>Deadline</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+              </tbody>
+            </table>
+            <p style="margin-top:16px;">You can review or update these directly from your Jobs dashboard.</p>
+            <div style="text-align:center; margin-top: 16px;">
+              <a href="${process.env.FRONTEND_ORIGIN || 'http://localhost:5173'}/jobs" style="display:inline-block; padding:10px 18px; background:#777C6D; color:#fff; text-decoration:none; border-radius:4px;">Open Jobs</a>
+            </div>
+          </div>
+          <div class="footer">
+            <p>This is an automated reminder from Nirvana.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const textContent = [
+    `Hello ${fullName || 'there'},`,
+    `\nUpcoming Job Deadlines:`,
+    ...items.map((it) => {
+      const dueText = it.days < 0 ? `Overdue ${Math.abs(it.days)}d` : (it.days === 0 ? 'Due today' : `${it.days}d left`);
+      const dl = it.deadline ? new Date(it.deadline).toLocaleDateString() : '—';
+      return ` - ${it.title}${it.company ? ' @ ' + it.company : ''} | ${dl} | ${dueText}`;
+    }),
+    `\nOpen Jobs: ${(process.env.FRONTEND_ORIGIN || 'http://localhost:5173') + '/jobs'}`
+  ].join('\n');
+
+  const transporter = createTransporter();
+  if (!transporter) {
+    console.log('📧 [MOCK EMAIL] Deadline Reminders:');
+    console.log(`   To: ${toEmail}`);
+    console.log(`   Subject: ${subject}`);
+    console.log(`   Text Content:\n${textContent}\n`);
+    return;
+  }
+
+  try {
+    const info = await transporter.sendMail({
+      from: process.env.SMTP_FROM || 'Nirvana <no-reply@nirvanaprofile.com>',
+      to: toEmail,
+      subject,
+      text: textContent,
+      html: htmlContent
+    });
+    console.log('✅ Deadline reminder email sent to:', toEmail, 'Message ID:', info.messageId);
+  } catch (error) {
+    console.error('❌ Failed to send deadline reminder email:', error.message);
+    throw error;
+  }
+};
+
+export default { sendDeletionEmail, sendFinalDeletionEmail, sendDeadlineReminderEmail };

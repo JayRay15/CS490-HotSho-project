@@ -5,6 +5,7 @@ import LoadingSpinner from "../../components/LoadingSpinner";
 import Container from "../../components/Container";
 import Card from "../../components/Card";
 import JobPipeline from "../../components/JobPipeline";
+import DeadlineCalendar from "../../components/DeadlineCalendar";
 import InputField from "../../components/InputField";
 import Button from "../../components/Button";
 
@@ -19,6 +20,7 @@ export default function Jobs() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
   const [editingJob, setEditingJob] = useState(null);
   const [viewingJob, setViewingJob] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -358,16 +360,24 @@ export default function Jobs() {
     }
   };
 
-  const handleJobStatusChange = async (jobId, newStatus) => {
+  const handleJobStatusChange = async (jobId, newStatus, options = {}) => {
     try {
       const token = await getToken();
       setAuthToken(token);
-      await api.put(`/api/jobs/${jobId}/status`, { status: newStatus });
+      if (options.extendDeadlineDays) {
+        const job = jobs.find(j => j._id === jobId);
+        const base = job?.deadline ? new Date(job.deadline) : new Date();
+        const newDate = new Date(base);
+        newDate.setDate(newDate.getDate() + options.extendDeadlineDays);
+        await api.put(`/api/jobs/${jobId}`, { deadline: newDate.toISOString() });
+      } else if (newStatus !== undefined) {
+        await api.put(`/api/jobs/${jobId}/status`, { status: newStatus });
+      }
       await fetchJobs();
       await fetchStats();
     } catch (error) {
       console.error("Failed to update job status:", error);
-      alert("Failed to update job status. Please try again.");
+      alert("Failed to update job. Please try again.");
     }
   };
 
@@ -435,6 +445,48 @@ export default function Jobs() {
     } catch (error) {
       console.error("Failed to bulk update jobs:", error);
       alert("Failed to update jobs. Please try again.");
+    }
+  };
+
+  const handleBulkDeadlineShift = async (days) => {
+    if (selectedJobs.length === 0) {
+      alert("Please select jobs to update");
+      return;
+    }
+    if (!window.confirm(`Shift deadlines by ${days} day(s) for ${selectedJobs.length} job(s)?`)) return;
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      await api.post("/api/jobs/bulk-update-deadline", {
+        jobIds: selectedJobs,
+        shiftDays: days,
+      });
+      await fetchJobs();
+      setSelectedJobs([]);
+    } catch (error) {
+      console.error("Failed to shift deadlines:", error);
+      alert("Failed to update deadlines.");
+    }
+  };
+
+  const handleBulkDeadlineSet = async (dateStr) => {
+    if (selectedJobs.length === 0) {
+      alert("Please select jobs to update");
+      return;
+    }
+    if (!window.confirm(`Set deadline to ${dateStr} for ${selectedJobs.length} job(s)?`)) return;
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      await api.post("/api/jobs/bulk-update-deadline", {
+        jobIds: selectedJobs,
+        setDate: new Date(dateStr).toISOString(),
+      });
+      await fetchJobs();
+      setSelectedJobs([]);
+    } catch (error) {
+      console.error("Failed to set deadlines:", error);
+      alert("Failed to update deadlines.");
     }
   };
 
@@ -583,6 +635,34 @@ export default function Jobs() {
             </div>
           )}
 
+          {/* Deadline Reminders */}
+          {(() => {
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            const soon = jobs
+              .filter(j => j.deadline)
+              .map(j => ({
+                job: j,
+                days: Math.round((new Date(j.deadline).setHours(0,0,0,0) - today) / (1000*60*60*24))
+              }))
+              .filter(x => x.days <= 3)
+              .sort((a,b) => a.days - b.days)
+              .slice(0,5);
+            return soon.length ? (
+              <Card variant="info" className="mb-4" title="Upcoming Deadlines">
+                <ul className="text-sm text-gray-800 space-y-1">
+                  {soon.map(({job, days}) => (
+                    <li key={job._id}>
+                      <button className={`font-medium ${days <= 0 ? 'text-red-700' : 'text-blue-700'} hover:underline`}
+                        onClick={() => handleViewJob(job)}
+                      >{job.title}</button> @ {job.company} — {days < 0 ? `Overdue ${Math.abs(days)}d` : days === 0 ? 'Due today' : `${days}d left`}
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            ) : null;
+          })()}
+
           {/* Controls */}
           <Card variant="primary" className="mb-6">
             <div className="flex flex-col md:flex-row gap-4">
@@ -642,6 +722,9 @@ export default function Jobs() {
                 >
                   {showFilters ? "Hide Filters" : "More Filters"}
                   {hasActiveFilters() && !showFilters && " ⚡"}
+                </Button>
+                <Button onClick={() => setShowCalendar(!showCalendar)} variant="secondary">
+                  {showCalendar ? "Pipeline View" : "Calendar View"}
                 </Button>
                 <Button onClick={() => setShowAddModal(true)} variant="primary">
                   Add Job
@@ -838,7 +921,7 @@ export default function Jobs() {
             {selectedJobs.length > 0 && (
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <p className="text-sm text-gray-600 mb-2">{selectedJobs.length} job(s) selected</p>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2 items-center">
                   {PIPELINE_STAGES.map((stage) => (
                     <button
                       key={stage}
@@ -854,24 +937,65 @@ export default function Jobs() {
                   >
                     Clear Selection
                   </button>
+                  <span className="mx-2 text-gray-300">|</span>
+                  <span className="text-xs font-semibold text-gray-700">Deadlines:</span>
+                  <div className="flex items-center gap-2 text-xs">
+                    <input
+                      type="number"
+                      id="shiftDaysInput"
+                      placeholder="Shift days (+/-)"
+                      className="px-2 py-1 border rounded w-32"
+                    />
+                    <button
+                      onClick={() => {
+                        const el = document.getElementById('shiftDaysInput');
+                        const val = parseInt(el?.value || '0', 10);
+                        if (!val) return alert('Enter days to shift (positive or negative)');
+                        handleBulkDeadlineShift(val);
+                      }}
+                      className="px-3 py-1 rounded bg-purple-100 hover:bg-purple-200 text-purple-700"
+                    >
+                      Shift
+                    </button>
+                    <input
+                      type="date"
+                      id="setDeadlineInput"
+                      className="px-2 py-1 border rounded"
+                    />
+                    <button
+                      onClick={() => {
+                        const el = document.getElementById('setDeadlineInput');
+                        const val = el?.value;
+                        if (!val) return alert('Pick a date');
+                        handleBulkDeadlineSet(val);
+                      }}
+                      className="px-3 py-1 rounded bg-green-100 hover:bg-green-200 text-green-700"
+                    >
+                      Set Date
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
           </Card>
 
-          {/* Pipeline View */}
-          <JobPipeline
-            jobs={filteredJobs}
-            onJobStatusChange={handleJobStatusChange}
-            onJobEdit={handleEditJob}
-            onJobDelete={handleDeleteJob}
-            onJobView={handleViewJob}
-            highlightTerms={[
-              searchTerm?.trim(),
-              filters.location?.trim(),
-              ...(filters.tags ? filters.tags.split(",").map((t) => t.trim()) : []),
-            ].filter(Boolean)}
-          />
+          {/* Pipeline or Calendar View */}
+          {showCalendar ? (
+            <DeadlineCalendar jobs={filteredJobs} onJobView={handleViewJob} />
+          ) : (
+            <JobPipeline
+              jobs={filteredJobs}
+              onJobStatusChange={handleJobStatusChange}
+              onJobEdit={handleEditJob}
+              onJobDelete={handleDeleteJob}
+              onJobView={handleViewJob}
+              highlightTerms={[
+                searchTerm?.trim(),
+                filters.location?.trim(),
+                ...(filters.tags ? filters.tags.split(",").map((t) => t.trim()) : []),
+              ].filter(Boolean)}
+            />
+          )}
         </div>
       </Container>
 

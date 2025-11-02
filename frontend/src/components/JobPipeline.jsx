@@ -105,6 +105,7 @@ export default function JobPipeline({ jobs, onJobStatusChange, onJobEdit, onJobD
                       onEdit={onJobEdit}
                       onDelete={onJobDelete}
                       onView={onJobView}
+                        onStatusChange={onJobStatusChange}
                       isDragging={draggedJob?._id === job._id}
                       highlightTerms={highlightTerms}
                     />
