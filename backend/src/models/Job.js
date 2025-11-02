@@ -39,6 +39,10 @@ const jobSchema = new mongoose.Schema(
       type: String,
       enum: ["Full-time", "Part-time", "Contract", "Internship", "Temporary"],
     },
+    industry: {
+      type: String,
+      enum: ["Technology", "Healthcare", "Finance", "Education", "Manufacturing", "Retail", "Marketing", "Consulting", "Other"],
+    },
     workMode: {
       type: String,
       enum: ["Remote", "Hybrid", "On-site"],

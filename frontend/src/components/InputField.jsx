@@ -6,6 +6,7 @@ export default function InputField({
     label,
     id,
     type = "text",
+    as = "input",
     value,
     onChange,
     placeholder,
@@ -14,6 +15,8 @@ export default function InputField({
     required,
     disabled,
     className = "",
+    maxLength,
+    rows,
     ...props
 }) {
     const inputClasses = clsx(
@@ -27,6 +30,30 @@ export default function InputField({
         className
     );
 
+    const Component = as === "textarea" ? "textarea" : "input";
+    const componentProps = {
+        id,
+        value,
+        onChange,
+        placeholder,
+        disabled,
+        required,
+        className: inputClasses,
+        "aria-invalid": error ? "true" : "false",
+        "aria-describedby": error ? `${id}-error` : helperText ? `${id}-helper` : undefined,
+        maxLength,
+        ...props
+    };
+
+    if (as === "textarea") {
+        componentProps.rows = rows || 4;
+    } else {
+        componentProps.type = type;
+    }
+
+    const currentLength = value?.length || 0;
+    const showCharCount = maxLength && as === "textarea";
+
     return (
         <div className="block">
             {label && (
@@ -38,20 +65,13 @@ export default function InputField({
                 </label>
             )}
             <div className="relative">
-                <input
-                    id={id}
-                    type={type}
-                    value={value}
-                    onChange={onChange}
-                    placeholder={placeholder}
-                    disabled={disabled}
-                    required={required}
-                    className={inputClasses}
-                    aria-invalid={error ? "true" : "false"}
-                    aria-describedby={error ? `${id}-error` : helperText ? `${id}-helper` : undefined}
-                    {...props}
-                />
+                <Component {...componentProps} />
             </div>
+            {showCharCount && (
+                <div className="mt-1 text-xs text-right text-gray-500">
+                    {currentLength} / {maxLength} characters
+                </div>
+            )}
             {(error || helperText) && (
                 <div
                     id={error ? `${id}-error` : `${id}-helper`}

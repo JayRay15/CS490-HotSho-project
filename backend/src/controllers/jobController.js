@@ -58,7 +58,10 @@ export const addJob = asyncHandler(async (req, res) => {
     return sendResponse(res, response, statusCode);
   }
 
-  const { title, company, status, location, salary, jobType, workMode, description, requirements, applicationDate, deadline, url, notes, contacts, materials, priority, tags, interviewNotes, salaryNegotiationNotes } = req.body;
+  const { title, company, status, location, salary, jobType, industry, workMode, description, requirements, applicationDate, deadline, url, notes, contacts, materials, priority, tags, interviewNotes, salaryNegotiationNotes } = req.body;
+
+  console.log("ADD JOB - Received data:", req.body);
+  console.log("ADD JOB - Industry field:", industry);
 
   // Validate required fields
   const errors = [];
@@ -88,6 +91,7 @@ export const addJob = asyncHandler(async (req, res) => {
     location: location?.trim(),
     salary,
     jobType,
+    industry,
     workMode,
     description,
     requirements,
@@ -111,6 +115,8 @@ export const addJob = asyncHandler(async (req, res) => {
   };
 
   const job = await Job.create(jobData);
+  
+  console.log("ADD JOB - Created job with industry:", job.industry);
 
   const { response, statusCode } = successResponse("Job added successfully", { job });
   return sendResponse(res, response, statusCode);
@@ -158,6 +164,7 @@ export const updateJob = asyncHandler(async (req, res) => {
     "location",
     "salary",
     "jobType",
+    "industry",
     "workMode",
     "description",
     "requirements",
@@ -174,6 +181,9 @@ export const updateJob = asyncHandler(async (req, res) => {
     "archived",
   ];
 
+  console.log("UPDATE JOB - Received data:", req.body);
+  console.log("UPDATE JOB - Industry field:", req.body.industry);
+
   allowedUpdates.forEach((field) => {
     if (req.body[field] !== undefined) {
       job[field] = req.body[field];
@@ -181,6 +191,8 @@ export const updateJob = asyncHandler(async (req, res) => {
   });
 
   await job.save();
+
+  console.log("UPDATE JOB - Saved job industry:", job.industry);
 
   const { response, statusCode } = successResponse("Job updated successfully", { job });
   return sendResponse(res, response, statusCode);

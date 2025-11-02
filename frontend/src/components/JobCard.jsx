@@ -17,7 +17,7 @@ const PRIORITY_COLORS = {
   "High": "text-red-600",
 };
 
-export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange, isDragging, searchTerm }) {
+export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange, isDragging, highlightTerms }) {
   const [showDetails, setShowDetails] = useState(false);
 
   const formatDate = (date) => {
@@ -46,17 +46,34 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
     }
   };
 
-  const highlightText = (text, highlight) => {
-    if (!highlight || !text) return text;
-    
-    const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
+  const highlightText = (text, highlights) => {
+    if (!text) return text;
+    const list = Array.isArray(highlights) ? highlights : [highlights];
+    const terms = Array.from(
+      new Set(
+        list
+          .filter(Boolean)
+          .map((t) => `${t}`.trim())
+          .filter((t) => t.length > 0)
+      )
+    );
+    if (terms.length === 0) return text;
+
+    // Escape regex special chars and sort by length desc to prefer longer matches first
+    const escaped = terms
+      .map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+      .sort((a, b) => b.length - a.length);
+    const re = new RegExp(`(${escaped.join("|")})`, "gi");
+    const lowerSet = new Set(terms.map((t) => t.toLowerCase()));
+
+    const parts = `${text}`.split(re);
     return (
       <>
-        {parts.map((part, index) => 
-          part.toLowerCase() === highlight.toLowerCase() ? (
+        {parts.map((part, index) =>
+          lowerSet.has(part.toLowerCase()) ? (
             <mark key={index} className="bg-yellow-200 px-1 rounded">{part}</mark>
           ) : (
-            part
+            <span key={index}>{part}</span>
           )
         )}
       </>
@@ -75,10 +92,10 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
       <div className="flex items-start justify-between mb-2">
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-lg text-gray-900 truncate">
-            {highlightText(job.title, searchTerm)}
+            {highlightText(job.title, highlightTerms)}
           </h3>
           <p className="text-sm text-gray-600 truncate">
-            {highlightText(job.company, searchTerm)}
+            {highlightText(job.company, highlightTerms)}
           </p>
         </div>
         {job.priority && (
@@ -95,7 +112,13 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
         {job.location && (
           <p className="flex items-center gap-1">
             <span className="text-gray-500">📍</span>
-            <span className="truncate">{highlightText(job.location, searchTerm)}</span>
+            <span className="truncate">{highlightText(job.location, highlightTerms)}</span>
+          </p>
+        )}
+        {job.industry && (
+          <p className="flex items-center gap-1">
+            <span className="text-gray-500">🏢</span>
+            <span>{job.industry}</span>
           </p>
         )}
         {formatSalary(job.salary) && (
@@ -126,7 +149,7 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
               key={idx}
               className="px-2 py-0.5 text-xs rounded-full bg-gray-200 text-gray-700"
             >
-              {tag}
+              {highlightText(tag, highlightTerms)}
             </span>
           ))}
           {job.tags.length > 3 && (
@@ -259,6 +282,7 @@ JobCard.propTypes = {
     }),
     workMode: PropTypes.string,
     jobType: PropTypes.string,
+    industry: PropTypes.string,
     description: PropTypes.string,
     requirements: PropTypes.arrayOf(PropTypes.string),
     applicationDate: PropTypes.string,
@@ -275,5 +299,5 @@ JobCard.propTypes = {
   onView: PropTypes.func,
   onStatusChange: PropTypes.func,
   isDragging: PropTypes.bool,
-  searchTerm: PropTypes.string,
+  highlightTerms: PropTypes.arrayOf(PropTypes.string),
 };
