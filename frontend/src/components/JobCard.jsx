@@ -46,6 +46,25 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
     }
   };
 
+  const daysUntil = (date) => {
+    if (!date) return null;
+    const end = new Date(date);
+    // zero out times for accurate day diff
+    const start = new Date();
+    start.setHours(0,0,0,0);
+    end.setHours(0,0,0,0);
+    const diffMs = end - start;
+    return Math.round(diffMs / (1000 * 60 * 60 * 24));
+  };
+
+  const deadlineDays = daysUntil(job.deadline);
+  const deadlineColor = (() => {
+    if (deadlineDays == null) return null;
+    if (deadlineDays <= 0) return "text-red-700 bg-red-100";
+    if (deadlineDays <= 7) return "text-yellow-700 bg-yellow-100";
+    return "text-green-700 bg-green-100";
+  })();
+
   const highlightText = (text, highlights) => {
     if (!text) return text;
     const list = Array.isArray(highlights) ? highlights : [highlights];
@@ -98,6 +117,11 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
             {highlightText(job.company, highlightTerms)}
           </p>
         </div>
+        {deadlineDays != null && (
+          <span className={`ml-2 text-xs font-medium px-2 py-1 rounded ${deadlineColor}`} title={new Date(job.deadline).toLocaleDateString()}>
+            {deadlineDays < 0 ? `Overdue ${Math.abs(deadlineDays)}d` : deadlineDays === 0 ? "Due today" : `${deadlineDays}d left`}
+          </span>
+        )}
         {job.priority && (
           <span className={`text-xs font-medium ml-2 ${PRIORITY_COLORS[job.priority]}`}>
             {job.priority === "High" && "🔴"}
@@ -159,8 +183,8 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
       )}
 
       {/* Actions */}
-      <div className="flex items-center justify-between gap-2 pt-2 border-t border-gray-200">
-        <div className="flex gap-2">
+      <div className="flex flex-col gap-2 pt-2 border-t border-gray-200">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setShowDetails(!showDetails)}
             className="text-xs text-blue-600 hover:text-blue-800"
@@ -175,8 +199,17 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
               Full Details
             </button>
           )}
+          {job.deadline && job._id && typeof window !== 'undefined' && (
+            <button
+              onClick={() => onStatusChange && onStatusChange(job._id, undefined, { extendDeadlineDays: 7 })}
+              className="text-xs text-purple-700 hover:text-purple-900"
+              title="Extend deadline by 7 days"
+            >
+              +7d
+            </button>
+          )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {onEdit && (
             <button
               onClick={() => onEdit(job)}
