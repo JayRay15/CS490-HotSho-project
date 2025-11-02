@@ -107,6 +107,31 @@ export default function Dashboard() {
   const [userData, setUserData] = useState(null);
   const [profileCompleteness, setProfileCompleteness] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
+  const [upcomingDeadlines, setUpcomingDeadlines] = useState([]);
+
+  // Helper: compute and set Next 5 Deadlines (filters out rejected/archived)
+  const fetchAndSetUpcomingDeadlines = async () => {
+    try {
+      const jobsRes = await api.get('/api/jobs');
+      const jobsList = jobsRes.data?.data?.jobs || [];
+      const now = new Date();
+      now.setHours(0,0,0,0);
+      const nowTs = now.getTime();
+      const sorted = jobsList
+        .filter(j => j.deadline && j.status !== 'Rejected' && j.archived !== true)
+        .map(j => {
+          const d = new Date(j.deadline);
+          d.setHours(0,0,0,0);
+          const days = Math.round((d.getTime() - nowTs) / (1000*60*60*24));
+          return { ...j, days };
+        })
+        .sort((a,b) => a.days - b.days)
+        .slice(0,5);
+      setUpcomingDeadlines(sorted);
+    } catch (err) {
+      console.error('Failed to fetch jobs for deadlines:', err);
+    }
+  };
 
   // Export ref for profile summary
   const exportRef = useRef(null);
@@ -324,6 +349,9 @@ export default function Dashboard() {
           // Calculate profile completeness
           const completeness = calculateProfileCompleteness(data);
           setProfileCompleteness(completeness.overallScore);
+
+          // Fetch jobs for deadline widget (DRY)
+          await fetchAndSetUpcomingDeadlines();
         } catch (err) {
           // Check if account is deleted/restricted (403 error)
           if (err?.response?.status === 403) {
@@ -356,6 +384,9 @@ export default function Dashboard() {
               const completeness = calculateProfileCompleteness(data);
               setProfileCompleteness(completeness.overallScore);
               setAccountStatus('active');
+
+              // Fetch jobs for deadline widget (DRY)
+              await fetchAndSetUpcomingDeadlines();
             } catch (registerErr) {
               console.error("Failed to register user:", registerErr);
               
@@ -553,6 +584,27 @@ export default function Dashboard() {
                   ].filter(Boolean)
                   )} />
                 </div>
+              </Card>
+
+              {/* Move Next 5 Deadlines to the left column for cleaner layout */}
+              <Card title="Next 5 Deadlines" className="mt-6">
+                {upcomingDeadlines.length === 0 ? (
+                  <p className="text-sm text-gray-600">No upcoming deadlines</p>
+                ) : (
+                  <ul className="space-y-2 text-sm">
+                    {upcomingDeadlines.map(item => {
+                      const color = item.days <= 0 ? 'text-red-700' : item.days <= 7 ? 'text-yellow-700' : 'text-green-700';
+                      return (
+                        <li key={item._id} className="flex justify-between">
+                          <Link to="/jobs" className={`hover:underline ${color} font-medium`}>{item.title}</Link>
+                          <span className="text-xs text-gray-500">
+                            {item.days < 0 ? `Overdue ${Math.abs(item.days)}d` : item.days === 0 ? 'Due today' : `${item.days}d left`}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
               </Card>
             </div>
 

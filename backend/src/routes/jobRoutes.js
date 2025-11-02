@@ -6,6 +6,8 @@ import {
   updateJob,
   updateJobStatus,
   bulkUpdateStatus,
+  bulkUpdateDeadline,
+  sendDeadlineReminders,
   deleteJob,
   getJobStats,
 } from "../controllers/jobController.js";
@@ -23,6 +25,12 @@ router.post("/", checkJwt, addJob);
 
 // POST /api/jobs/bulk-update-status - Bulk update job statuses
 router.post("/bulk-update-status", checkJwt, bulkUpdateStatus);
+
+// POST /api/jobs/bulk-update-deadline - Bulk update deadlines
+router.post("/bulk-update-deadline", checkJwt, bulkUpdateDeadline);
+
+// POST /api/jobs/send-deadline-reminders - Trigger reminders manually (auth required)
+router.post("/send-deadline-reminders", checkJwt, sendDeadlineReminders);
 
 // PUT /api/jobs/:jobId - Update a job
 router.put("/:jobId", checkJwt, updateJob);

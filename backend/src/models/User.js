@@ -300,6 +300,13 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Reminder metadata (non-breaking optional fields)
+// Used to prevent sending multiple deadline reminder emails in the same day
+// If unset, reminders will send as normal
+userSchema.add({
+  deadlineReminderLastSent: { type: Date }
+});
+
 // Hash password before saving (only if password exists)
 userSchema.pre('save', async function(next) {
   // Only hash the password if it has been modified (or is new) AND exists
