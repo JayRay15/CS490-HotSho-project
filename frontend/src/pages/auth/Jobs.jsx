@@ -5,6 +5,7 @@ import LoadingSpinner from "../../components/LoadingSpinner";
 import Container from "../../components/Container";
 import Card from "../../components/Card";
 import JobPipeline from "../../components/JobPipeline";
+import DeadlineCalendar from "../../components/DeadlineCalendar";
 import InputField from "../../components/InputField";
 import Button from "../../components/Button";
 
@@ -19,6 +20,7 @@ export default function Jobs() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
   const [editingJob, setEditingJob] = useState(null);
   const [viewingJob, setViewingJob] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -31,6 +33,7 @@ export default function Jobs() {
     salaryMin: "",
     salaryMax: "",
     jobType: "",
+    industry: "",
     workMode: "",
     priority: "",
     tags: "",
@@ -42,6 +45,7 @@ export default function Jobs() {
   const [sortBy, setSortBy] = useState("dateAdded");
   const [sortOrder, setSortOrder] = useState("desc");
   const [showFilters, setShowFilters] = useState(false);
+  const [successMessage, setSuccessMessage] = useState(null);
 
   // Form state for adding/editing jobs
   const [formData, setFormData] = useState({
@@ -52,6 +56,7 @@ export default function Jobs() {
     salaryMin: "",
     salaryMax: "",
     jobType: "",
+    industry: "",
     workMode: "",
     description: "",
     url: "",
@@ -130,6 +135,11 @@ export default function Jobs() {
     // Apply job type filter
     if (filters.jobType) {
       filtered = filtered.filter((job) => job.jobType === filters.jobType);
+    }
+
+    // Apply industry filter
+    if (filters.industry) {
+      filtered = filtered.filter((job) => job.industry === filters.industry);
     }
 
     // Apply work mode filter
@@ -276,6 +286,7 @@ export default function Jobs() {
               }
             : undefined,
         jobType: formData.jobType || undefined,
+        industry: formData.industry || undefined,
         workMode: formData.workMode || undefined,
         description: formData.description || undefined,
         url: formData.url || undefined,
@@ -291,6 +302,10 @@ export default function Jobs() {
       await fetchStats();
       setShowAddModal(false);
       resetForm();
+      
+      // Show success message
+      setSuccessMessage("Job successfully added!");
+      setTimeout(() => setSuccessMessage(null), 5000);
     } catch (error) {
       console.error("Failed to add job:", error);
       alert(error.response?.data?.message || "Failed to add job. Please try again.");
@@ -317,6 +332,7 @@ export default function Jobs() {
               }
             : undefined,
         jobType: formData.jobType || undefined,
+        industry: formData.industry || undefined,
         workMode: formData.workMode || undefined,
         description: formData.description || undefined,
         url: formData.url || undefined,
@@ -329,6 +345,10 @@ export default function Jobs() {
         deadline: formData.deadline || undefined,
       };
 
+      console.log("UPDATE JOB - Frontend formData:", formData);
+      console.log("UPDATE JOB - Frontend jobData being sent:", jobData);
+      console.log("UPDATE JOB - Industry value:", formData.industry, "->", jobData.industry);
+
       await api.put(`/api/jobs/${editingJob._id}`, jobData);
       await fetchJobs();
       setShowEditModal(false);
@@ -340,16 +360,24 @@ export default function Jobs() {
     }
   };
 
-  const handleJobStatusChange = async (jobId, newStatus) => {
+  const handleJobStatusChange = async (jobId, newStatus, options = {}) => {
     try {
       const token = await getToken();
       setAuthToken(token);
-      await api.put(`/api/jobs/${jobId}/status`, { status: newStatus });
+      if (options.extendDeadlineDays) {
+        const job = jobs.find(j => j._id === jobId);
+        const base = job?.deadline ? new Date(job.deadline) : new Date();
+        const newDate = new Date(base);
+        newDate.setDate(newDate.getDate() + options.extendDeadlineDays);
+        await api.put(`/api/jobs/${jobId}`, { deadline: newDate.toISOString() });
+      } else if (newStatus !== undefined) {
+        await api.put(`/api/jobs/${jobId}/status`, { status: newStatus });
+      }
       await fetchJobs();
       await fetchStats();
     } catch (error) {
       console.error("Failed to update job status:", error);
-      alert("Failed to update job status. Please try again.");
+      alert("Failed to update job. Please try again.");
     }
   };
 
@@ -367,6 +395,8 @@ export default function Jobs() {
   };
 
   const handleEditJob = (job) => {
+    console.log("EDIT JOB - Opening edit modal for job:", job);
+    console.log("EDIT JOB - Job industry:", job.industry);
     setEditingJob(job);
     setFormData({
       title: job.title,
@@ -376,6 +406,7 @@ export default function Jobs() {
       salaryMin: job.salary?.min || "",
       salaryMax: job.salary?.max || "",
       jobType: job.jobType || "",
+      industry: job.industry || "",
       workMode: job.workMode || "",
       description: job.description || "",
       url: job.url || "",
@@ -387,6 +418,7 @@ export default function Jobs() {
       interviewNotes: job.interviewNotes || "",
       salaryNegotiationNotes: job.salaryNegotiationNotes || "",
     });
+    console.log("EDIT JOB - Form data set with industry:", job.industry || "");
     setShowEditModal(true);
   };
 
@@ -416,6 +448,48 @@ export default function Jobs() {
     }
   };
 
+  const handleBulkDeadlineShift = async (days) => {
+    if (selectedJobs.length === 0) {
+      alert("Please select jobs to update");
+      return;
+    }
+    if (!window.confirm(`Shift deadlines by ${days} day(s) for ${selectedJobs.length} job(s)?`)) return;
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      await api.post("/api/jobs/bulk-update-deadline", {
+        jobIds: selectedJobs,
+        shiftDays: days,
+      });
+      await fetchJobs();
+      setSelectedJobs([]);
+    } catch (error) {
+      console.error("Failed to shift deadlines:", error);
+      alert("Failed to update deadlines.");
+    }
+  };
+
+  const handleBulkDeadlineSet = async (dateStr) => {
+    if (selectedJobs.length === 0) {
+      alert("Please select jobs to update");
+      return;
+    }
+    if (!window.confirm(`Set deadline to ${dateStr} for ${selectedJobs.length} job(s)?`)) return;
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      await api.post("/api/jobs/bulk-update-deadline", {
+        jobIds: selectedJobs,
+        setDate: new Date(dateStr).toISOString(),
+      });
+      await fetchJobs();
+      setSelectedJobs([]);
+    } catch (error) {
+      console.error("Failed to set deadlines:", error);
+      alert("Failed to update deadlines.");
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       title: "",
@@ -425,6 +499,7 @@ export default function Jobs() {
       salaryMin: "",
       salaryMax: "",
       jobType: "",
+      industry: "",
       workMode: "",
       description: "",
       url: "",
@@ -447,6 +522,7 @@ export default function Jobs() {
       salaryMin: "",
       salaryMax: "",
       jobType: "",
+      industry: "",
       workMode: "",
       priority: "",
       tags: "",
@@ -527,6 +603,24 @@ export default function Jobs() {
             </p>
           </div>
 
+          {/* Success Message */}
+          {successMessage && (
+            <div className="mb-4 p-4 bg-green-50 border-l-4 border-green-500 text-green-700 rounded-lg flex items-center justify-between">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                <span className="font-medium">{successMessage}</span>
+              </div>
+              <button
+                onClick={() => setSuccessMessage(null)}
+                className="ml-4 text-green-700 hover:text-green-900 font-bold"
+              >
+                ×
+              </button>
+            </div>
+          )}
+
           {/* Stats Cards */}
           {stats && (
             <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
@@ -540,6 +634,34 @@ export default function Jobs() {
               ))}
             </div>
           )}
+
+          {/* Deadline Reminders */}
+          {(() => {
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            const soon = jobs
+              .filter(j => j.deadline)
+              .map(j => ({
+                job: j,
+                days: Math.round((new Date(j.deadline).setHours(0,0,0,0) - today) / (1000*60*60*24))
+              }))
+              .filter(x => x.days <= 3)
+              .sort((a,b) => a.days - b.days)
+              .slice(0,5);
+            return soon.length ? (
+              <Card variant="info" className="mb-4" title="Upcoming Deadlines">
+                <ul className="text-sm text-gray-800 space-y-1">
+                  {soon.map(({job, days}) => (
+                    <li key={job._id}>
+                      <button className={`font-medium ${days <= 0 ? 'text-red-700' : 'text-blue-700'} hover:underline`}
+                        onClick={() => handleViewJob(job)}
+                      >{job.title}</button> @ {job.company} — {days < 0 ? `Overdue ${Math.abs(days)}d` : days === 0 ? 'Due today' : `${days}d left`}
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            ) : null;
+          })()}
 
           {/* Controls */}
           <Card variant="primary" className="mb-6">
@@ -601,6 +723,9 @@ export default function Jobs() {
                   {showFilters ? "Hide Filters" : "More Filters"}
                   {hasActiveFilters() && !showFilters && " ⚡"}
                 </Button>
+                <Button onClick={() => setShowCalendar(!showCalendar)} variant="secondary">
+                  {showCalendar ? "Pipeline View" : "Calendar View"}
+                </Button>
                 <Button onClick={() => setShowAddModal(true)} variant="primary">
                   Add Job
                 </Button>
@@ -642,6 +767,27 @@ export default function Jobs() {
                       <option value="Part-time">Part-time</option>
                       <option value="Contract">Contract</option>
                       <option value="Internship">Internship</option>
+                    </select>
+                  </div>
+
+                  {/* Industry Filter */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Industry</label>
+                    <select
+                      value={filters.industry}
+                      onChange={(e) => setFilters({ ...filters, industry: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">All Industries</option>
+                      <option value="Technology">Technology</option>
+                      <option value="Healthcare">Healthcare</option>
+                      <option value="Finance">Finance</option>
+                      <option value="Education">Education</option>
+                      <option value="Manufacturing">Manufacturing</option>
+                      <option value="Retail">Retail</option>
+                      <option value="Marketing">Marketing</option>
+                      <option value="Consulting">Consulting</option>
+                      <option value="Other">Other</option>
                     </select>
                   </div>
 
@@ -775,7 +921,7 @@ export default function Jobs() {
             {selectedJobs.length > 0 && (
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <p className="text-sm text-gray-600 mb-2">{selectedJobs.length} job(s) selected</p>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2 items-center">
                   {PIPELINE_STAGES.map((stage) => (
                     <button
                       key={stage}
@@ -791,20 +937,65 @@ export default function Jobs() {
                   >
                     Clear Selection
                   </button>
+                  <span className="mx-2 text-gray-300">|</span>
+                  <span className="text-xs font-semibold text-gray-700">Deadlines:</span>
+                  <div className="flex items-center gap-2 text-xs">
+                    <input
+                      type="number"
+                      id="shiftDaysInput"
+                      placeholder="Shift days (+/-)"
+                      className="px-2 py-1 border rounded w-32"
+                    />
+                    <button
+                      onClick={() => {
+                        const el = document.getElementById('shiftDaysInput');
+                        const val = parseInt(el?.value || '0', 10);
+                        if (!val) return alert('Enter days to shift (positive or negative)');
+                        handleBulkDeadlineShift(val);
+                      }}
+                      className="px-3 py-1 rounded bg-purple-100 hover:bg-purple-200 text-purple-700"
+                    >
+                      Shift
+                    </button>
+                    <input
+                      type="date"
+                      id="setDeadlineInput"
+                      className="px-2 py-1 border rounded"
+                    />
+                    <button
+                      onClick={() => {
+                        const el = document.getElementById('setDeadlineInput');
+                        const val = el?.value;
+                        if (!val) return alert('Pick a date');
+                        handleBulkDeadlineSet(val);
+                      }}
+                      className="px-3 py-1 rounded bg-green-100 hover:bg-green-200 text-green-700"
+                    >
+                      Set Date
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
           </Card>
 
-          {/* Pipeline View */}
-          <JobPipeline
-            jobs={filteredJobs}
-            onJobStatusChange={handleJobStatusChange}
-            onJobEdit={handleEditJob}
-            onJobDelete={handleDeleteJob}
-            onJobView={handleViewJob}
-            searchTerm={searchTerm}
-          />
+          {/* Pipeline or Calendar View */}
+          {showCalendar ? (
+            <DeadlineCalendar jobs={filteredJobs} onJobView={handleViewJob} />
+          ) : (
+            <JobPipeline
+              jobs={filteredJobs}
+              onJobStatusChange={handleJobStatusChange}
+              onJobEdit={handleEditJob}
+              onJobDelete={handleDeleteJob}
+              onJobView={handleViewJob}
+              highlightTerms={[
+                searchTerm?.trim(),
+                filters.location?.trim(),
+                ...(filters.tags ? filters.tags.split(",").map((t) => t.trim()) : []),
+              ].filter(Boolean)}
+            />
+          )}
         </div>
       </Container>
 
@@ -887,6 +1078,25 @@ export default function Jobs() {
                     </select>
                   </div>
                   <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
+                    <select
+                      value={formData.industry}
+                      onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select...</option>
+                      <option value="Technology">Technology</option>
+                      <option value="Healthcare">Healthcare</option>
+                      <option value="Finance">Finance</option>
+                      <option value="Education">Education</option>
+                      <option value="Manufacturing">Manufacturing</option>
+                      <option value="Retail">Retail</option>
+                      <option value="Marketing">Marketing</option>
+                      <option value="Consulting">Consulting</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Work Mode</label>
                     <select
                       value={formData.workMode}
@@ -946,9 +1156,11 @@ export default function Jobs() {
                 <InputField
                   label="Description"
                   as="textarea"
-                  rows={3}
+                  rows={4}
+                  maxLength={2000}
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Describe the job responsibilities, requirements, and other details..."
                 />
 
                 <InputField
@@ -957,6 +1169,7 @@ export default function Jobs() {
                   rows={3}
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder="Personal notes about this opportunity..."
                 />
 
                 <div className="flex justify-end gap-3 pt-4">
@@ -1057,6 +1270,28 @@ export default function Jobs() {
                       <option value="Temporary">Temporary</option>
                     </select>
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
+                    <select
+                      value={formData.industry}
+                      onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select...</option>
+                      <option value="Technology">Technology</option>
+                      <option value="Healthcare">Healthcare</option>
+                      <option value="Finance">Finance</option>
+                      <option value="Education">Education</option>
+                      <option value="Manufacturing">Manufacturing</option>
+                      <option value="Retail">Retail</option>
+                      <option value="Marketing">Marketing</option>
+                      <option value="Consulting">Consulting</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Work Mode</label>
                     <select
@@ -1247,6 +1482,12 @@ export default function Jobs() {
                       <div>
                         <p className="text-sm font-medium text-gray-500">Job Type</p>
                         <p className="text-gray-900">{viewingJob.jobType}</p>
+                      </div>
+                    )}
+                    {viewingJob.industry && (
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Industry</p>
+                        <p className="text-gray-900">{viewingJob.industry}</p>
                       </div>
                     )}
                     {(viewingJob.salary?.min || viewingJob.salary?.max) && (

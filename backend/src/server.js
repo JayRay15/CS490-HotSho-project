@@ -8,6 +8,7 @@ import profileRoutes from "./routes/profileRoutes.js";
 import jobRoutes from "./routes/jobRoutes.js";
 import resumeRoutes from "./routes/resumeRoutes.js";
 import { getPublicProject } from "./controllers/profileController.js";
+import { startDeadlineReminderSchedule } from "./utils/deadlineReminders.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 // Cleanup schedule no longer needed - accounts are deleted immediately
 // import { startCleanupSchedule } from "./utils/cleanupDeletedUsers.js";
@@ -59,4 +60,12 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  // Start daily deadline reminders if enabled via env flag
+  try {
+    startDeadlineReminderSchedule();
+  } catch (err) {
+    console.error('Failed to start deadline reminder schedule:', err?.message || err);
+  }
+});

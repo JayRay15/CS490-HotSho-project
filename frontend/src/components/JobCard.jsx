@@ -17,7 +17,7 @@ const PRIORITY_COLORS = {
   "High": "text-red-600",
 };
 
-export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange, isDragging, searchTerm }) {
+export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange, isDragging, highlightTerms }) {
   const [showDetails, setShowDetails] = useState(false);
 
   const formatDate = (date) => {
@@ -46,17 +46,53 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
     }
   };
 
-  const highlightText = (text, highlight) => {
-    if (!highlight || !text) return text;
-    
-    const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
+  const daysUntil = (date) => {
+    if (!date) return null;
+    const end = new Date(date);
+    // zero out times for accurate day diff
+    const start = new Date();
+    start.setHours(0,0,0,0);
+    end.setHours(0,0,0,0);
+    const diffMs = end - start;
+    return Math.round(diffMs / (1000 * 60 * 60 * 24));
+  };
+
+  const deadlineDays = daysUntil(job.deadline);
+  const deadlineColor = (() => {
+    if (deadlineDays == null) return null;
+    if (deadlineDays <= 0) return "text-red-700 bg-red-100";
+    if (deadlineDays <= 7) return "text-yellow-700 bg-yellow-100";
+    return "text-green-700 bg-green-100";
+  })();
+
+  const highlightText = (text, highlights) => {
+    if (!text) return text;
+    const list = Array.isArray(highlights) ? highlights : [highlights];
+    const terms = Array.from(
+      new Set(
+        list
+          .filter(Boolean)
+          .map((t) => `${t}`.trim())
+          .filter((t) => t.length > 0)
+      )
+    );
+    if (terms.length === 0) return text;
+
+    // Escape regex special chars and sort by length desc to prefer longer matches first
+    const escaped = terms
+      .map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+      .sort((a, b) => b.length - a.length);
+    const re = new RegExp(`(${escaped.join("|")})`, "gi");
+    const lowerSet = new Set(terms.map((t) => t.toLowerCase()));
+
+    const parts = `${text}`.split(re);
     return (
       <>
-        {parts.map((part, index) => 
-          part.toLowerCase() === highlight.toLowerCase() ? (
+        {parts.map((part, index) =>
+          lowerSet.has(part.toLowerCase()) ? (
             <mark key={index} className="bg-yellow-200 px-1 rounded">{part}</mark>
           ) : (
-            part
+            <span key={index}>{part}</span>
           )
         )}
       </>
@@ -75,12 +111,17 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
       <div className="flex items-start justify-between mb-2">
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-lg text-gray-900 truncate">
-            {highlightText(job.title, searchTerm)}
+            {highlightText(job.title, highlightTerms)}
           </h3>
           <p className="text-sm text-gray-600 truncate">
-            {highlightText(job.company, searchTerm)}
+            {highlightText(job.company, highlightTerms)}
           </p>
         </div>
+        {deadlineDays != null && (
+          <span className={`ml-2 text-xs font-medium px-2 py-1 rounded ${deadlineColor}`} title={new Date(job.deadline).toLocaleDateString()}>
+            {deadlineDays < 0 ? `Overdue ${Math.abs(deadlineDays)}d` : deadlineDays === 0 ? "Due today" : `${deadlineDays}d left`}
+          </span>
+        )}
         {job.priority && (
           <span className={`text-xs font-medium ml-2 ${PRIORITY_COLORS[job.priority]}`}>
             {job.priority === "High" && "🔴"}
@@ -95,7 +136,13 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
         {job.location && (
           <p className="flex items-center gap-1">
             <span className="text-gray-500">📍</span>
-            <span className="truncate">{highlightText(job.location, searchTerm)}</span>
+            <span className="truncate">{highlightText(job.location, highlightTerms)}</span>
+          </p>
+        )}
+        {job.industry && (
+          <p className="flex items-center gap-1">
+            <span className="text-gray-500">🏢</span>
+            <span>{job.industry}</span>
           </p>
         )}
         {formatSalary(job.salary) && (
@@ -126,7 +173,7 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
               key={idx}
               className="px-2 py-0.5 text-xs rounded-full bg-gray-200 text-gray-700"
             >
-              {tag}
+              {highlightText(tag, highlightTerms)}
             </span>
           ))}
           {job.tags.length > 3 && (
@@ -136,8 +183,8 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
       )}
 
       {/* Actions */}
-      <div className="flex items-center justify-between gap-2 pt-2 border-t border-gray-200">
-        <div className="flex gap-2">
+      <div className="flex flex-col gap-2 pt-2 border-t border-gray-200">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setShowDetails(!showDetails)}
             className="text-xs text-blue-600 hover:text-blue-800"
@@ -152,8 +199,17 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
               Full Details
             </button>
           )}
+          {job.deadline && job._id && typeof window !== 'undefined' && (
+            <button
+              onClick={() => onStatusChange && onStatusChange(job._id, undefined, { extendDeadlineDays: 7 })}
+              className="text-xs text-purple-700 hover:text-purple-900"
+              title="Extend deadline by 7 days"
+            >
+              +7d
+            </button>
+          )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {onEdit && (
             <button
               onClick={() => onEdit(job)}
@@ -259,6 +315,7 @@ JobCard.propTypes = {
     }),
     workMode: PropTypes.string,
     jobType: PropTypes.string,
+    industry: PropTypes.string,
     description: PropTypes.string,
     requirements: PropTypes.arrayOf(PropTypes.string),
     applicationDate: PropTypes.string,
@@ -275,5 +332,5 @@ JobCard.propTypes = {
   onView: PropTypes.func,
   onStatusChange: PropTypes.func,
   isDragging: PropTypes.bool,
-  searchTerm: PropTypes.string,
+  highlightTerms: PropTypes.arrayOf(PropTypes.string),
 };
