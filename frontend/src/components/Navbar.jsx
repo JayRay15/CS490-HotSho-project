@@ -86,6 +86,9 @@ export default function Navbar() {
                             <NavLink to="/jobs" className={navLinkClass} aria-label="Jobs">
                                 Jobs
                             </NavLink>
+                            <NavLink to="/resumes" className={navLinkClass} aria-label="Resumes">
+                                Resumes
+                            </NavLink>
                             <div className="ml-3 custom-user-button">
                                 <UserButton 
                                     afterSignOutUrl="/login"
@@ -235,6 +238,19 @@ export default function Navbar() {
                             aria-label="Jobs"
                         >
                             Jobs
+                        </NavLink>
+                        <NavLink 
+                            to="/resumes" 
+                            className={({ isActive }) => 
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${
+                                    isActive 
+                                        ? 'bg-primary-900 text-white shadow-md' 
+                                        : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                }`
+                            }
+                            aria-label="Resumes"
+                        >
+                            Resumes
                         </NavLink>
                         <div className="pt-3 pb-2 flex items-center space-x-3 px-4">
                             <span className="text-sm text-primary-50">Account</span>
