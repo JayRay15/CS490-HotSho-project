@@ -3,6 +3,8 @@ import { useAuth } from "@clerk/clerk-react";
 import { setAuthToken } from "../../api/axios";
 import { fetchTemplates, createTemplate as apiCreateTemplate, updateTemplate as apiUpdateTemplate, deleteTemplate as apiDeleteTemplate, importTemplate as apiImportTemplate } from "../../api/resumeTemplates";
 import { fetchResumes, updateResume as apiUpdateResume, deleteResume as apiDeleteResume } from "../../api/resumes";
+import { generateAIResume } from "../../api/aiResume";
+import api from "../../api/axios";
 import Container from "../../components/Container";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
@@ -16,7 +18,7 @@ const TEMPLATE_TYPES = [
 ];
 
 // Simple resume preview tile (Google Docs style)
-function ResumeTile({ resume, onEdit, onDelete }) {
+function ResumeTile({ resume, onView, onDelete }) {
   const theme = { primary: "#4F5348", text: "#222", bg: "#FFF" };
   
   return (
@@ -25,7 +27,7 @@ function ResumeTile({ resume, onEdit, onDelete }) {
       <div 
         className="h-64 p-4 flex flex-col justify-start border-b cursor-pointer"
         style={{ backgroundColor: "#F9F9F9" }}
-        onClick={onEdit}
+        onClick={onView}
       >
         <div className="text-xs font-bold mb-2" style={{ color: theme.primary }}>
           {resume.name || "Untitled Resume"}
@@ -49,12 +51,10 @@ function ResumeTile({ resume, onEdit, onDelete }) {
           </div>
           <div className="flex gap-2 ml-2">
             <button
-              onClick={(e) => { e.stopPropagation(); onEdit(); }}
-              className="text-xs px-3 py-1 text-blue-600 hover:bg-blue-50 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled
-              title="Coming soon"
+              onClick={(e) => { e.stopPropagation(); onView(); }}
+              className="text-xs px-3 py-1 text-blue-600 hover:bg-blue-50 rounded-lg transition"
             >
-              Edit
+              View
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
@@ -261,6 +261,21 @@ export default function ResumeTemplates() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingResume, setDeletingResume] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // AI Resume Creation Modal State
+  const [showAIResumeModal, setShowAIResumeModal] = useState(false);
+  const [jobs, setJobs] = useState([]);
+  const [aiFormData, setAIFormData] = useState({
+    name: "",
+    jobId: "",
+    templateId: "",
+  });
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState(null);
+  
+  // View Resume Modal State
+  const [showViewResumeModal, setShowViewResumeModal] = useState(false);
+  const [viewingResume, setViewingResume] = useState(null);
 
   const authWrap = async () => {
     const token = await getToken();
@@ -272,6 +287,21 @@ export default function ResumeTemplates() {
     const [tpls, res] = await Promise.all([fetchTemplates(), fetchResumes()]);
     setTemplates(tpls.data.data.templates || []);
     setResumes(res.data.data.resumes || []);
+  };
+
+  const loadJobs = async () => {
+    try {
+      await authWrap();
+      const response = await api.get("/api/jobs");
+      // Filter for saved and applied jobs
+      const savedAppliedJobs = response.data.data.jobs.filter(
+        job => job.status === "Interested" || job.status === "Applied"
+      );
+      setJobs(savedAppliedJobs);
+    } catch (err) {
+      console.error("Failed to load jobs:", err);
+      setJobs([]);
+    }
   };
 
   useEffect(() => {
@@ -289,8 +319,51 @@ export default function ResumeTemplates() {
   }, []);
 
   // Resume handlers
-  const handleEditResume = (resume) => {
-    alert("Resume editing will be implemented in UC-047/048");
+  const handleViewResume = (resume) => {
+    setViewingResume(resume);
+    setShowViewResumeModal(true);
+  };
+
+  const handleOpenAIResumeModal = async () => {
+    setShowAIResumeModal(true);
+    setGenerationError(null);
+    setAIFormData({ name: "", jobId: "", templateId: "" });
+    await loadJobs();
+  };
+
+  const handleGenerateAIResume = async (e) => {
+    e.preventDefault();
+    setGenerationError(null);
+    
+    if (!aiFormData.name || !aiFormData.jobId || !aiFormData.templateId) {
+      setGenerationError("Please fill in all fields");
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      await authWrap();
+      const response = await generateAIResume(
+        aiFormData.jobId,
+        aiFormData.templateId,
+        aiFormData.name
+      );
+      
+      // Success!
+      setShowAIResumeModal(false);
+      setAIFormData({ name: "", jobId: "", templateId: "" });
+      await loadAll();
+      
+      // Show success message
+      alert(`Resume "${aiFormData.name}" generated successfully with AI!`);
+    } catch (err) {
+      console.error("AI generation error:", err);
+      setGenerationError(
+        err.response?.data?.message || "Failed to generate resume. Please try again."
+      );
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleDeleteResumeClick = (resume) => {
@@ -418,7 +491,7 @@ export default function ResumeTemplates() {
             </div>
             <div className="flex gap-3">
               <button
-                onClick={() => alert("Add Resume functionality coming in UC-047")}
+                onClick={handleOpenAIResumeModal}
                 className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{ backgroundColor: '#777C6D' }}
                 onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
@@ -461,7 +534,7 @@ export default function ResumeTemplates() {
                 <ResumeTile
                   key={resume._id}
                   resume={resume}
-                  onEdit={() => handleEditResume(resume)}
+                  onView={() => handleViewResume(resume)}
                   onDelete={() => handleDeleteResumeClick(resume)}
                 />
               ))}
@@ -854,6 +927,172 @@ export default function ResumeTemplates() {
         />
       )}
 
+      {/* AI Resume Creation Modal */}
+      {showAIResumeModal && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={() => !isGenerating && setShowAIResumeModal(false)}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl max-w-2xl w-full border border-gray-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center z-10">
+              <div>
+                <h3 className="text-2xl font-heading font-semibold">Create Resume with AI</h3>
+                <p className="text-sm text-gray-600 mt-1">Generate tailored resume content based on a job posting</p>
+              </div>
+              <button
+                onClick={() => setShowAIResumeModal(false)}
+                disabled={isGenerating}
+                className="text-gray-400 hover:text-gray-600 transition disabled:opacity-50"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-6">
+              <form onSubmit={handleGenerateAIResume} className="space-y-6">
+                {/* Resume Name */}
+                <div>
+                  <label htmlFor="resumeName" className="block text-sm font-medium text-gray-700 mb-2">
+                    Resume Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="resumeName"
+                    value={aiFormData.name}
+                    onChange={(e) => setAIFormData({...aiFormData, name: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="e.g., Software Engineer at Google"
+                    required
+                    disabled={isGenerating}
+                  />
+                </div>
+
+                {/* Job Selection */}
+                <div>
+                  <label htmlFor="jobSelect" className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Job to Tailor For <span className="text-red-500">*</span>
+                  </label>
+                  {jobs.length === 0 ? (
+                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <p className="text-sm text-yellow-800">
+                        No saved or applied jobs found. Please save or apply to jobs first.
+                      </p>
+                    </div>
+                  ) : (
+                    <select
+                      id="jobSelect"
+                      value={aiFormData.jobId}
+                      onChange={(e) => setAIFormData({...aiFormData, jobId: e.target.value})}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                      disabled={isGenerating}
+                    >
+                      <option value="">-- Select a job --</option>
+                      {jobs.map((job) => (
+                        <option key={job._id} value={job._id}>
+                          {job.title} at {job.company} ({job.status})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                {/* Template Selection */}
+                <div>
+                  <label htmlFor="templateSelect" className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Template <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    id="templateSelect"
+                    value={aiFormData.templateId}
+                    onChange={(e) => setAIFormData({...aiFormData, templateId: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                    disabled={isGenerating}
+                  >
+                    <option value="">-- Select a template --</option>
+                    {templates.map((template) => (
+                      <option key={template._id} value={template._id}>
+                        {template.name} ({template.type})
+                        {template.isDefault ? " - Default" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* AI Features Info */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start space-x-3">
+                    <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    <div>
+                      <h4 className="text-sm font-semibold text-blue-900 mb-1">AI will generate:</h4>
+                      <ul className="text-sm text-blue-800 space-y-1">
+                        <li>• Tailored professional summary</li>
+                        <li>• Achievement-focused experience bullets</li>
+                        <li>• Relevant skills from your profile</li>
+                        <li>• ATS-optimized keywords</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Error Message */}
+                {generationError && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-800">{generationError}</p>
+                  </div>
+                )}
+
+                {/* Footer */}
+                <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 -mx-6 -mb-6 border-t">
+                  <button
+                    type="button"
+                    onClick={() => setShowAIResumeModal(false)}
+                    disabled={isGenerating}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isGenerating || jobs.length === 0}
+                    className="px-4 py-2 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                    style={{ backgroundColor: isGenerating ? '#9CA3AF' : '#777C6D' }}
+                    onMouseOver={(e) => !isGenerating && (e.currentTarget.style.backgroundColor = '#656A5C')}
+                    onMouseOut={(e) => !isGenerating && (e.currentTarget.style.backgroundColor = '#777C6D')}
+                  >
+                    {isGenerating ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>Generating with AI...</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        <span>Generate Resume</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete Confirmation Modal */}
       {showDeleteModal && deletingResume && (
         <div 
@@ -923,6 +1162,201 @@ export default function ResumeTemplates() {
                     <span>Delete</span>
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Resume Modal */}
+      {showViewResumeModal && viewingResume && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50" 
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={() => setShowViewResumeModal(false)}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl max-w-4xl w-full mx-4 border border-gray-200 max-h-[90vh] overflow-hidden flex flex-col" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="bg-blue-50 border-b border-blue-100 px-6 py-4 flex justify-between items-center">
+              <div className="flex items-center space-x-3">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <h3 className="text-lg font-heading font-semibold text-gray-900">{viewingResume.name}</h3>
+              </div>
+              <button
+                onClick={() => setShowViewResumeModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {/* Resume Metadata */}
+              {viewingResume.metadata?.generatedAt && (
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    <span className="font-semibold text-blue-900">AI-Generated Resume</span>
+                  </div>
+                  <p className="text-sm text-blue-700">
+                    Generated on {new Date(viewingResume.metadata.generatedAt).toLocaleString()}
+                  </p>
+                  {viewingResume.metadata.tailoredForJob && (
+                    <p className="text-sm text-blue-700 mt-1">
+                      Tailored for: <span className="font-medium">{viewingResume.metadata.tailoredForJob}</span>
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Professional Summary */}
+              {viewingResume.sections?.summary && (
+                <div className="mb-6">
+                  <h4 className="text-lg font-heading font-semibold text-gray-900 mb-3 pb-2 border-b-2 border-gray-300">
+                    Professional Summary
+                  </h4>
+                  <p className="text-gray-700 leading-relaxed">
+                    {viewingResume.sections.summary}
+                  </p>
+                </div>
+              )}
+
+              {/* Experience Section */}
+              {viewingResume.sections?.experience && viewingResume.sections.experience.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="text-lg font-heading font-semibold text-gray-900 mb-3 pb-2 border-b-2 border-gray-300">
+                    Experience
+                  </h4>
+                  <div className="space-y-4">
+                    {viewingResume.sections.experience.map((job, idx) => (
+                      <div key={idx} className="border-l-4 border-blue-500 pl-4">
+                        <h5 className="font-semibold text-gray-900">{job.jobTitle}</h5>
+                        <p className="text-sm text-gray-600 mb-2">
+                          {job.company} • {job.startDate} - {job.isCurrentPosition ? 'Present' : job.endDate}
+                        </p>
+                        {job.bullets && job.bullets.length > 0 && (
+                          <ul className="list-disc list-inside space-y-1">
+                            {job.bullets.map((bullet, bulletIdx) => (
+                              <li key={bulletIdx} className="text-gray-700">{bullet}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Skills Section */}
+              {viewingResume.sections?.skills && viewingResume.sections.skills.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="text-lg font-heading font-semibold text-gray-900 mb-3 pb-2 border-b-2 border-gray-300">
+                    Skills
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {viewingResume.sections.skills.map((skill, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
+                        style={{ backgroundColor: '#DBEAFE', color: '#1E40AF' }}
+                      >
+                        {typeof skill === 'string' ? skill : skill.name || skill}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Education Section */}
+              {viewingResume.sections?.education && viewingResume.sections.education.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="text-lg font-heading font-semibold text-gray-900 mb-3 pb-2 border-b-2 border-gray-300">
+                    Education
+                  </h4>
+                  <div className="space-y-3">
+                    {viewingResume.sections.education.map((edu, idx) => (
+                      <div key={idx}>
+                        <h5 className="font-semibold text-gray-900">{edu.degree} in {edu.fieldOfStudy}</h5>
+                        <p className="text-sm text-gray-600">
+                          {edu.institution} • {edu.graduationYear}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Projects Section */}
+              {viewingResume.sections?.projects && viewingResume.sections.projects.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="text-lg font-heading font-semibold text-gray-900 mb-3 pb-2 border-b-2 border-gray-300">
+                    Projects
+                  </h4>
+                  <div className="space-y-3">
+                    {viewingResume.sections.projects.map((proj, idx) => (
+                      <div key={idx}>
+                        <h5 className="font-semibold text-gray-900">{proj.name}</h5>
+                        <p className="text-sm text-gray-700 mb-1">{proj.description}</p>
+                        {proj.technologies && proj.technologies.length > 0 && (
+                          <p className="text-xs text-gray-500">
+                            Technologies: {proj.technologies.join(', ')}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ATS Keywords */}
+              {viewingResume.metadata?.atsKeywords && viewingResume.metadata.atsKeywords.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="text-lg font-heading font-semibold text-gray-900 mb-3 pb-2 border-b-2 border-gray-300">
+                    ATS Keywords
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {viewingResume.metadata.atsKeywords.map((keyword, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center px-2 py-1 rounded text-xs font-medium"
+                        style={{ backgroundColor: '#FEF3C7', color: '#92400E' }}
+                      >
+                        {keyword}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Tailoring Notes */}
+              {viewingResume.metadata?.tailoringNotes && (
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <h4 className="text-sm font-semibold text-green-900 mb-2">AI Tailoring Notes</h4>
+                  <p className="text-sm text-green-700">{viewingResume.metadata.tailoringNotes}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-gray-50 px-6 py-4 flex justify-between items-center border-t">
+              <p className="text-sm text-gray-500">
+                Last modified: {new Date(viewingResume.updatedAt).toLocaleString()}
+              </p>
+              <button
+                onClick={() => setShowViewResumeModal(false)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              >
+                Close
               </button>
             </div>
           </div>

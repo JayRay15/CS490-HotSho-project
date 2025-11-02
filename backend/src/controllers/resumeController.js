@@ -1,6 +1,9 @@
 import { ResumeTemplate } from "../models/ResumeTemplate.js";
 import { Resume } from "../models/Resume.js";
 import { errorResponse, sendResponse, successResponse, ERROR_CODES } from "../utils/responseFormat.js";
+import { generateResumeContent, regenerateSection, analyzeATSCompatibility } from "../utils/geminiService.js";
+import { User } from "../models/User.js";
+import { Job } from "../models/Job.js";
 
 const getUserId = (req) => req.auth?.userId || req.auth?.payload?.sub;
 
@@ -200,6 +203,280 @@ export const deleteResume = async (req, res) => {
     return sendResponse(res, response, statusCode);
   } catch (err) {
     const { response, statusCode } = errorResponse("Failed to delete resume", 500, ERROR_CODES.DATABASE_ERROR);
+    return sendResponse(res, response, statusCode);
+  }
+};
+
+// AI-powered resume generation
+export const generateAIResume = async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { jobId, templateId, name } = req.body;
+
+    if (!jobId || !templateId || !name) {
+      const { response, statusCode } = errorResponse(
+        "jobId, templateId, and name are required",
+        400,
+        ERROR_CODES.MISSING_REQUIRED_FIELD
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Fetch job posting
+    const job = await Job.findOne({ _id: jobId, userId }).lean();
+    if (!job) {
+      const { response, statusCode } = errorResponse("Job not found", 404, ERROR_CODES.NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Fetch user profile (Clerk user ID is stored in auth0Id field)
+    const user = await User.findOne({ auth0Id: userId }).lean();
+    if (!user) {
+      const { response, statusCode } = errorResponse("User profile not found", 404, ERROR_CODES.NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Verify template exists
+    const template = await ResumeTemplate.findOne({
+      _id: templateId,
+      $or: [{ userId }, { isShared: true }],
+    }).lean();
+    if (!template) {
+      const { response, statusCode } = errorResponse("Template not found", 404, ERROR_CODES.NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Prepare user profile data
+    const userProfile = {
+      employment: user.employment || [],
+      skills: user.skills || [],
+      education: user.education || [],
+      projects: user.projects || [],
+      certifications: user.certifications || [],
+    };
+
+    // Prepare job posting data
+    const jobPosting = {
+      title: job.title,
+      company: job.company,
+      description: job.description,
+      requirements: job.requirements || job.description,
+    };
+
+    // Generate content with AI
+    const aiContent = await generateResumeContent(jobPosting, userProfile, template);
+
+    // Map experience bullets to actual employment records
+    const experienceSection = user.employment?.map((job, index) => {
+      const jobKey = `job${index}`;
+      const bullets = aiContent.experienceBullets?.[jobKey] || 
+                     aiContent.experienceBullets?.[job._id?.toString()] ||
+                     [];
+      
+      return {
+        jobTitle: job.jobTitle,
+        company: job.company,
+        location: job.location,
+        startDate: job.startDate,
+        endDate: job.endDate,
+        isCurrentPosition: job.isCurrentPosition,
+        bullets: bullets.length > 0 ? bullets : [job.description || ""],
+      };
+    }) || [];
+
+    // Create resume with AI-generated content
+    const sections = {
+      summary: aiContent.summary || "",
+      experience: experienceSection,
+      skills: aiContent.relevantSkills || [],
+      education: user.education || [],
+      projects: user.projects || [],
+    };
+
+    const resume = await Resume.create({
+      userId,
+      templateId,
+      name,
+      sections,
+      metadata: {
+        tailoredForJob: jobId,
+        atsKeywords: aiContent.atsKeywords || [],
+        tailoringNotes: aiContent.tailoringNotes || "",
+        generatedAt: new Date(),
+      },
+    });
+
+    const { response, statusCode } = successResponse(
+      "Resume generated with AI",
+      {
+        resume,
+        aiInsights: {
+          atsKeywords: aiContent.atsKeywords,
+          tailoringNotes: aiContent.tailoringNotes,
+        },
+      },
+      201
+    );
+    return sendResponse(res, response, statusCode);
+  } catch (err) {
+    console.error("AI resume generation error:", err);
+    const { response, statusCode } = errorResponse(
+      `Failed to generate AI resume: ${err.message}`,
+      500,
+      ERROR_CODES.EXTERNAL_SERVICE_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+};
+
+// Regenerate a specific section of a resume
+export const regenerateResumeSection = async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { id } = req.params;
+    const { section } = req.body;
+
+    if (!section || !["summary", "experience", "skills"].includes(section)) {
+      const { response, statusCode } = errorResponse(
+        "Valid section (summary, experience, skills) is required",
+        400,
+        ERROR_CODES.MISSING_REQUIRED_FIELD
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
+    const resume = await Resume.findOne({ _id: id, userId });
+    if (!resume) {
+      const { response, statusCode } = errorResponse("Resume not found", 404, ERROR_CODES.NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Get job and user profile
+    const jobId = resume.metadata?.tailoredForJob;
+    if (!jobId) {
+      const { response, statusCode } = errorResponse(
+        "Resume was not generated with AI",
+        400,
+        ERROR_CODES.INVALID_INPUT
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
+    const job = await Job.findOne({ _id: jobId, userId }).lean();
+    if (!job) {
+      const { response, statusCode } = errorResponse("Original job not found", 404, ERROR_CODES.NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    const user = await User.findOne({ auth0Id: userId }).lean();
+    if (!user) {
+      const { response, statusCode } = errorResponse("User profile not found", 404, ERROR_CODES.NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    const userProfile = {
+      employment: user.employment || [],
+      skills: user.skills || [],
+      education: user.education || [],
+      projects: user.projects || [],
+    };
+
+    const jobPosting = {
+      title: job.title,
+      company: job.company,
+      description: job.description,
+      requirements: job.requirements || job.description,
+    };
+
+    // Regenerate the section
+    const regenerated = await regenerateSection(section, jobPosting, userProfile, resume.sections);
+
+    // Update resume with new content
+    if (section === "summary") {
+      resume.sections.summary = regenerated.summary;
+    } else if (section === "experience") {
+      // Map regenerated bullets to experience
+      resume.sections.experience = user.employment?.map((job, index) => {
+        const existingExp = resume.sections.experience[index] || {};
+        const jobKey = `job${index}`;
+        const bullets = regenerated[jobKey] || regenerated[job._id?.toString()] || existingExp.bullets || [];
+        
+        return {
+          ...existingExp,
+          jobTitle: job.jobTitle,
+          company: job.company,
+          location: job.location,
+          startDate: job.startDate,
+          endDate: job.endDate,
+          isCurrentPosition: job.isCurrentPosition,
+          bullets,
+        };
+      });
+    } else if (section === "skills") {
+      resume.sections.skills = regenerated;
+    }
+
+    await resume.save();
+
+    const { response, statusCode } = successResponse("Section regenerated", { resume });
+    return sendResponse(res, response, statusCode);
+  } catch (err) {
+    console.error("Section regeneration error:", err);
+    const { response, statusCode } = errorResponse(
+      `Failed to regenerate section: ${err.message}`,
+      500,
+      ERROR_CODES.EXTERNAL_SERVICE_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+};
+
+// Analyze ATS compatibility
+export const analyzeATS = async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { id } = req.params;
+
+    const resume = await Resume.findOne({ _id: id, userId }).lean();
+    if (!resume) {
+      const { response, statusCode } = errorResponse("Resume not found", 404, ERROR_CODES.NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    const jobId = resume.metadata?.tailoredForJob;
+    if (!jobId) {
+      const { response, statusCode } = errorResponse(
+        "Resume was not tailored for a job",
+        400,
+        ERROR_CODES.INVALID_INPUT
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
+    const job = await Job.findOne({ _id: jobId, userId }).lean();
+    if (!job) {
+      const { response, statusCode } = errorResponse("Original job not found", 404, ERROR_CODES.NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    const jobPosting = {
+      title: job.title,
+      company: job.company,
+      description: job.description,
+      requirements: job.requirements || job.description,
+    };
+
+    const analysis = await analyzeATSCompatibility(resume.sections, jobPosting);
+
+    const { response, statusCode } = successResponse("ATS analysis complete", { analysis });
+    return sendResponse(res, response, statusCode);
+  } catch (err) {
+    console.error("ATS analysis error:", err);
+    const { response, statusCode } = errorResponse(
+      `Failed to analyze ATS compatibility: ${err.message}`,
+      500,
+      ERROR_CODES.EXTERNAL_SERVICE_ERROR
+    );
     return sendResponse(res, response, statusCode);
   }
 };

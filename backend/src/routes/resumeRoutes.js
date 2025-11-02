@@ -10,6 +10,9 @@ import {
   createResumeFromTemplate,
   updateResume,
   deleteResume,
+  generateAIResume,
+  regenerateResumeSection,
+  analyzeATS,
 } from "../controllers/resumeController.js";
 
 const router = express.Router();
@@ -26,5 +29,10 @@ router.get("/resumes", checkJwt, listResumes);
 router.post("/resumes", checkJwt, createResumeFromTemplate);
 router.put("/resumes/:id", checkJwt, updateResume);
 router.delete("/resumes/:id", checkJwt, deleteResume);
+
+// AI-powered resume generation routes
+router.post("/resumes/generate", checkJwt, generateAIResume);
+router.post("/resumes/:id/regenerate", checkJwt, regenerateResumeSection);
+router.get("/resumes/:id/ats-analysis", checkJwt, analyzeATS);
 
 export default router;
