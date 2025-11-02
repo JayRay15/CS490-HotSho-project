@@ -45,33 +45,44 @@ Certifications:
 ${userProfile.certifications?.map(cert => `- ${cert.name} (${cert.issuingOrganization})`).join('\n') || 'No certifications'}
 
 **TASK:**
-Generate the following sections for a resume tailored to this job posting. Use ONLY factual information from the user's profile. Do NOT fabricate experience, skills, or achievements.
+Generate professional resume content tailored to this job posting. Create compelling, achievement-focused content that highlights how the user's actual experience matches the job requirements.
 
-1. **Professional Summary** (3-4 sentences highlighting relevant experience and skills for THIS specific job)
+IMPORTANT RULES:
+- Use ONLY factual information from the user's profile
+- DO NOT fabricate dates, companies, or specific achievements
+- If employment descriptions are missing, create professional bullet points based on the job title and company context
+- Make bullet points achievement-oriented using action verbs (Led, Developed, Implemented, etc.)
+- Focus on impact and results when possible
+- Ensure all content is ready for a professional resume - no technical notes or disclaimers
 
-2. **Tailored Experience Bullets** (For each relevant job in their history, provide 3-5 achievement-focused bullet points that emphasize skills/experience relevant to the target job. Use action verbs and quantify when possible based on their actual experience)
+Generate:
 
-3. **Relevant Skills** (Select 8-12 skills from their profile that are most relevant to this job posting. Prioritize skills mentioned in the job description)
+1. **Professional Summary** (3-4 compelling sentences that position the candidate for THIS specific role)
 
-4. **ATS Keywords** (List 10-15 important keywords from the job posting that should be naturally incorporated)
+2. **Experience Bullets** (For EACH job in their employment history, create 3-5 strong, achievement-focused bullet points that:
+   - Highlight relevant skills and accomplishments
+   - Use strong action verbs
+   - Connect their experience to the target job requirements
+   - Show progression and impact)
+
+3. **Relevant Skills** (Select 10-15 skills from their profile most relevant to this job. Include both technical and soft skills mentioned in the job description)
+
+4. **ATS Keywords** (10-15 important keywords from the job posting for ATS optimization)
 
 **OUTPUT FORMAT (JSON):**
 {
-  "summary": "Professional summary text here...",
+  "summary": "Compelling professional summary...",
   "experienceBullets": {
-    "jobId1": [
-      "Bullet point 1",
-      "Bullet point 2",
-      "Bullet point 3"
-    ],
-    "jobId2": [...]
+    "job0": ["Bullet 1", "Bullet 2", "Bullet 3", "Bullet 4", "Bullet 5"],
+    "job1": ["Bullet 1", "Bullet 2", "Bullet 3"],
+    "job2": [...]
   },
-  "relevantSkills": ["skill1", "skill2", ...],
+  "relevantSkills": ["skill1", "skill2", "skill3", ...],
   "atsKeywords": ["keyword1", "keyword2", ...],
-  "tailoringNotes": "Brief explanation of how this content was tailored to the job"
+  "tailoringNotes": "One sentence about the tailoring strategy"
 }
 
-Return ONLY valid JSON, no markdown formatting.`;
+Return ONLY valid JSON, no markdown formatting. Make all content professional and resume-ready.`;
 
   try {
     const result = await model.generateContent(prompt);

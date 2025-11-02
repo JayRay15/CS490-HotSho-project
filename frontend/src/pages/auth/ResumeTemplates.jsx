@@ -3,7 +3,7 @@ import { useAuth } from "@clerk/clerk-react";
 import { setAuthToken } from "../../api/axios";
 import { fetchTemplates, createTemplate as apiCreateTemplate, updateTemplate as apiUpdateTemplate, deleteTemplate as apiDeleteTemplate, importTemplate as apiImportTemplate } from "../../api/resumeTemplates";
 import { fetchResumes, updateResume as apiUpdateResume, deleteResume as apiDeleteResume } from "../../api/resumes";
-import { generateAIResume } from "../../api/aiResume";
+import { generateAIResume, regenerateResumeSection } from "../../api/aiResume";
 import api from "../../api/axios";
 import Container from "../../components/Container";
 import Card from "../../components/Card";
@@ -32,13 +32,40 @@ function ResumeTile({ resume, onView, onDelete }) {
         <div className="text-xs font-bold mb-2" style={{ color: theme.primary }}>
           {resume.name || "Untitled Resume"}
         </div>
-        <div className="flex-1 space-y-1">
-          <div className="h-2 bg-gray-300 rounded w-3/4"></div>
-          <div className="h-2 bg-gray-200 rounded w-full"></div>
-          <div className="h-2 bg-gray-200 rounded w-5/6"></div>
-          <div className="h-2 bg-gray-300 rounded w-2/3 mt-3"></div>
-          <div className="h-2 bg-gray-200 rounded w-full"></div>
-          <div className="h-2 bg-gray-200 rounded w-4/5"></div>
+        <div className="flex-1 space-y-2 overflow-hidden">
+          {/* Contact Info Preview */}
+          {resume.sections?.contactInfo && (
+            <div className="text-[8px] text-gray-700 font-semibold">
+              {resume.sections.contactInfo.name || "Name"}
+            </div>
+          )}
+          
+          {/* Summary Preview */}
+          {resume.sections?.summary && (
+            <div className="text-[7px] text-gray-600 leading-tight line-clamp-2">
+              {resume.sections.summary.substring(0, 100)}...
+            </div>
+          )}
+          
+          {/* Experience Preview */}
+          {resume.sections?.experience && resume.sections.experience.length > 0 && (
+            <div className="mt-2">
+              <div className="text-[7px] text-gray-700 font-semibold">
+                {resume.sections.experience[0].company}
+              </div>
+              <div className="text-[6px] text-gray-500 italic">
+                {resume.sections.experience[0].title}
+              </div>
+            </div>
+          )}
+          
+          {/* Skills Preview */}
+          {resume.sections?.skills && resume.sections.skills.length > 0 && (
+            <div className="mt-2 text-[6px] text-gray-600">
+              {resume.sections.skills.slice(0, 3).join(' • ')}
+              {resume.sections.skills.length > 3 && ' ...'}
+            </div>
+          )}
         </div>
       </div>
       
@@ -337,6 +364,10 @@ export default function ResumeTemplates() {
   // View Resume Modal State
   const [showViewResumeModal, setShowViewResumeModal] = useState(false);
   const [viewingResume, setViewingResume] = useState(null);
+  const [regeneratingSection, setRegeneratingSection] = useState(null);
+  
+  // Success message state
+  const [successMessage, setSuccessMessage] = useState(null);
 
   const authWrap = async () => {
     const token = await getToken();
@@ -385,6 +416,32 @@ export default function ResumeTemplates() {
     setShowViewResumeModal(true);
   };
 
+  const handleRegenerateSection = async (section) => {
+    if (!viewingResume || !viewingResume.metadata?.generatedAt) return;
+    
+    setRegeneratingSection(section);
+    try {
+      await authWrap();
+      const response = await regenerateResumeSection(viewingResume._id, section);
+      
+      // Update the viewing resume with new content
+      const updatedResume = response.data.data.resume;
+      setViewingResume(updatedResume);
+      
+      // Also update in the resumes list
+      setResumes(prev => prev.map(r => r._id === updatedResume._id ? updatedResume : r));
+      
+      // Show success banner
+      setSuccessMessage(`${section.charAt(0).toUpperCase() + section.slice(1)} regenerated successfully!`);
+      setTimeout(() => setSuccessMessage(null), 4000);
+    } catch (err) {
+      console.error(`Failed to regenerate ${section}:`, err);
+      alert(`Failed to regenerate ${section}. Please try again.`);
+    } finally {
+      setRegeneratingSection(null);
+    }
+  };
+
   const handleOpenAIResumeModal = async () => {
     setShowAIResumeModal(true);
     setGenerationError(null);
@@ -415,8 +472,9 @@ export default function ResumeTemplates() {
       setAIFormData({ name: "", jobId: "", templateId: "" });
       await loadAll();
       
-      // Show success message
-      alert(`Resume "${aiFormData.name}" generated successfully with AI!`);
+      // Show success banner
+      setSuccessMessage(`Resume "${aiFormData.name}" generated successfully with AI!`);
+      setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err) {
       console.error("AI generation error:", err);
       setGenerationError(
@@ -540,6 +598,13 @@ export default function ResumeTemplates() {
     <div className="min-h-screen" style={{ backgroundColor: "#E4E6E0" }}>
       <Container level={1} className="pt-12 pb-12">
         <div className="max-w-7xl mx-auto">
+          {/* Success Banner */}
+          {successMessage && (
+            <div className="mb-6 p-4 border rounded-lg" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }}>
+              <p className="font-medium" style={{ color: '#166534' }}>{successMessage}</p>
+            </div>
+          )}
+
           {/* Header */}
           <div className="mb-6 flex items-center justify-between">
             <div>
@@ -1266,22 +1331,87 @@ export default function ResumeTemplates() {
                 {/* Resume Header */}
                 <div className="text-center mb-8 pb-6 border-b-2" style={{ borderColor: '#4F5348' }}>
                   <h1 className="text-3xl font-bold mb-2" style={{ color: '#2C2C2C', fontFamily: 'Georgia, serif' }}>
-                    {viewingResume.name}
+                    {viewingResume.sections?.contactInfo?.name || 'Your Name'}
                   </h1>
-                  {viewingResume.metadata?.generatedAt && (
-                    <p className="text-xs" style={{ color: '#666' }}>
-                      AI-Generated Resume • {viewingResume.metadata.tailoredForJob && `Tailored for ${viewingResume.metadata.tailoredForJob} • `}
-                      {new Date(viewingResume.metadata.generatedAt).toLocaleDateString()}
-                    </p>
+                  <div className="text-sm flex flex-wrap justify-center gap-2" style={{ color: '#666', fontFamily: 'Times New Roman, serif' }}>
+                    {viewingResume.sections?.contactInfo?.email && (
+                      <span>{viewingResume.sections.contactInfo.email}</span>
+                    )}
+                    {viewingResume.sections?.contactInfo?.phone && (
+                      <>
+                        {viewingResume.sections?.contactInfo?.email && <span>•</span>}
+                        <span>{viewingResume.sections.contactInfo.phone}</span>
+                      </>
+                    )}
+                    {viewingResume.sections?.contactInfo?.location && (
+                      <>
+                        {(viewingResume.sections?.contactInfo?.email || viewingResume.sections?.contactInfo?.phone) && <span>•</span>}
+                        <span>{viewingResume.sections.contactInfo.location}</span>
+                      </>
+                    )}
+                  </div>
+                  {/* Links row */}
+                  {(viewingResume.sections?.contactInfo?.linkedin || 
+                    viewingResume.sections?.contactInfo?.github || 
+                    viewingResume.sections?.contactInfo?.website) && (
+                    <div className="text-xs flex flex-wrap justify-center gap-2 mt-1" style={{ color: '#4A5568' }}>
+                      {viewingResume.sections?.contactInfo?.linkedin && (
+                        <a 
+                          href={viewingResume.sections.contactInfo.linkedin} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="hover:underline"
+                        >
+                          LinkedIn
+                        </a>
+                      )}
+                      {viewingResume.sections?.contactInfo?.github && (
+                        <>
+                          {viewingResume.sections?.contactInfo?.linkedin && <span>•</span>}
+                          <a 
+                            href={viewingResume.sections.contactInfo.github} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="hover:underline"
+                          >
+                            GitHub
+                          </a>
+                        </>
+                      )}
+                      {viewingResume.sections?.contactInfo?.website && (
+                        <>
+                          {(viewingResume.sections?.contactInfo?.linkedin || viewingResume.sections?.contactInfo?.github) && <span>•</span>}
+                          <a 
+                            href={viewingResume.sections.contactInfo.website} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="hover:underline"
+                          >
+                            Portfolio
+                          </a>
+                        </>
+                      )}
+                    </div>
                   )}
                 </div>
 
                 {/* Professional Summary */}
                 {viewingResume.sections?.summary && (
                   <div className="mb-6">
-                    <h2 className="text-lg font-bold mb-3 uppercase tracking-wide" style={{ color: '#4F5348', fontFamily: 'Georgia, serif' }}>
-                      Professional Summary
-                    </h2>
+                    <div className="flex justify-between items-center mb-3">
+                      <h2 className="text-lg font-bold uppercase tracking-wide" style={{ color: '#4F5348', fontFamily: 'Georgia, serif' }}>
+                        Professional Summary
+                      </h2>
+                      {viewingResume.metadata?.generatedAt && (
+                        <button
+                          onClick={() => handleRegenerateSection('summary')}
+                          disabled={regeneratingSection === 'summary'}
+                          className="print:hidden text-xs px-3 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100 transition disabled:opacity-50"
+                        >
+                          {regeneratingSection === 'summary' ? '⟳ Regenerating...' : '⟳ Regenerate'}
+                        </button>
+                      )}
+                    </div>
                     <p className="text-sm leading-relaxed" style={{ color: '#2C2C2C', textAlign: 'justify', fontFamily: 'Times New Roman, serif' }}>
                       {viewingResume.sections.summary}
                     </p>
@@ -1291,9 +1421,20 @@ export default function ResumeTemplates() {
                 {/* Experience Section */}
                 {viewingResume.sections?.experience && viewingResume.sections.experience.length > 0 && (
                   <div className="mb-6">
-                    <h2 className="text-lg font-bold mb-3 uppercase tracking-wide" style={{ color: '#4F5348', fontFamily: 'Georgia, serif' }}>
-                      Professional Experience
-                    </h2>
+                    <div className="flex justify-between items-center mb-3">
+                      <h2 className="text-lg font-bold uppercase tracking-wide" style={{ color: '#4F5348', fontFamily: 'Georgia, serif' }}>
+                        Professional Experience
+                      </h2>
+                      {viewingResume.metadata?.generatedAt && (
+                        <button
+                          onClick={() => handleRegenerateSection('experience')}
+                          disabled={regeneratingSection === 'experience'}
+                          className="print:hidden text-xs px-3 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100 transition disabled:opacity-50"
+                        >
+                          {regeneratingSection === 'experience' ? '⟳ Regenerating...' : '⟳ Regenerate'}
+                        </button>
+                      )}
+                    </div>
                     <div className="space-y-5">
                       {viewingResume.sections.experience.map((job, idx) => (
                         <div key={idx}>
@@ -1326,9 +1467,20 @@ export default function ResumeTemplates() {
                 {/* Skills Section */}
                 {viewingResume.sections?.skills && viewingResume.sections.skills.length > 0 && (
                   <div className="mb-6">
-                    <h2 className="text-lg font-bold mb-3 uppercase tracking-wide" style={{ color: '#4F5348', fontFamily: 'Georgia, serif' }}>
-                      Technical Skills
-                    </h2>
+                    <div className="flex justify-between items-center mb-3">
+                      <h2 className="text-lg font-bold uppercase tracking-wide" style={{ color: '#4F5348', fontFamily: 'Georgia, serif' }}>
+                        Technical Skills
+                      </h2>
+                      {viewingResume.metadata?.generatedAt && (
+                        <button
+                          onClick={() => handleRegenerateSection('skills')}
+                          disabled={regeneratingSection === 'skills'}
+                          className="print:hidden text-xs px-3 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100 transition disabled:opacity-50"
+                        >
+                          {regeneratingSection === 'skills' ? '⟳ Regenerating...' : '⟳ Regenerate'}
+                        </button>
+                      )}
+                    </div>
                     <p className="text-sm leading-relaxed" style={{ color: '#2C2C2C', fontFamily: 'Times New Roman, serif' }}>
                       {viewingResume.sections.skills.map((skill, idx) => (
                         typeof skill === 'string' ? skill : skill.name || skill
@@ -1389,26 +1541,8 @@ export default function ResumeTemplates() {
                   </div>
                 )}
 
-                {/* ATS Keywords Section - Subtle at bottom */}
-                {viewingResume.metadata?.atsKeywords && viewingResume.metadata.atsKeywords.length > 0 && (
-                  <div className="mt-8 pt-4 border-t border-gray-200">
-                    <h3 className="text-xs font-semibold mb-2 uppercase tracking-wide" style={{ color: '#888' }}>
-                      Keywords
-                    </h3>
-                    <p className="text-xs leading-relaxed" style={{ color: '#999', fontFamily: 'Times New Roman, serif' }}>
-                      {viewingResume.metadata.atsKeywords.join(' • ')}
-                    </p>
-                  </div>
-                )}
-
-                {/* Tailoring Notes - Footer */}
-                {viewingResume.metadata?.tailoringNotes && (
-                  <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded">
-                    <p className="text-xs italic" style={{ color: '#666', fontFamily: 'Times New Roman, serif' }}>
-                      <span className="font-semibold">Note:</span> {viewingResume.metadata.tailoringNotes}
-                    </p>
-                  </div>
-                )}
+                {/* Optional: ATS Keywords - hidden by default, only visible in metadata view */}
+                {/* These keywords are embedded in the content above for ATS scanning */}
               </div>
             </div>
 

@@ -291,6 +291,16 @@ export const generateAIResume = async (req, res) => {
       skills: aiContent.relevantSkills || [],
       education: user.education || [],
       projects: user.projects || [],
+      // Add contact information
+      contactInfo: {
+        name: user.name,
+        email: user.email,
+        phone: user.phone || "",
+        location: user.location || "",
+        linkedin: user.linkedin || "",
+        github: user.github || "",
+        website: user.website || "",
+      },
     };
 
     const resume = await Resume.create({
@@ -299,7 +309,7 @@ export const generateAIResume = async (req, res) => {
       name,
       sections,
       metadata: {
-        tailoredForJob: jobId,
+        tailoredForJob: `${job.title} at ${job.company}`,
         atsKeywords: aiContent.atsKeywords || [],
         tailoringNotes: aiContent.tailoringNotes || "",
         generatedAt: new Date(),
