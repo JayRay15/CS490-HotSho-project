@@ -87,20 +87,44 @@ function TemplatePreviewCard({ template, isDefault, onSetDefault, onCustomize, o
         )}
       </div>
 
-      {/* Mini preview */}
+      {/* Mini preview - Document style */}
       <div 
-        className="border rounded-lg p-3 mb-3 h-32 overflow-hidden cursor-pointer hover:border-blue-400 transition"
-        style={{ backgroundColor: "#F9F9F9" }}
+        className="border rounded-lg p-4 mb-3 h-40 overflow-hidden cursor-pointer hover:border-blue-400 transition bg-white shadow-sm"
         onClick={onPreview}
       >
-        <div className="text-xs font-bold mb-1" style={{ color: theme.colors?.primary }}>
-          Resume Preview
+        {/* Sample resume header */}
+        <div className="text-center mb-2 pb-1 border-b" style={{ borderColor: theme.colors?.primary }}>
+          <div className="text-xs font-bold" style={{ color: theme.colors?.primary || '#4F5348', fontFamily: 'Georgia, serif' }}>
+            John Doe
+          </div>
+          <div className="text-[8px] text-gray-500">john.doe@email.com • (555) 123-4567</div>
         </div>
-        <div className="space-y-1">
-          <div className="h-1 bg-gray-300 rounded w-3/4"></div>
-          <div className="h-1 bg-gray-200 rounded w-full"></div>
-          <div className="h-1 bg-gray-300 rounded w-2/3 mt-2"></div>
-          <div className="h-1 bg-gray-200 rounded w-5/6"></div>
+        
+        {/* Sample section */}
+        <div className="mb-2">
+          <div className="text-[9px] font-bold mb-1 uppercase" style={{ color: theme.colors?.primary || '#4F5348' }}>
+            Experience
+          </div>
+          <div className="text-[7px] font-semibold text-gray-800">Senior Developer</div>
+          <div className="text-[6px] text-gray-500 italic mb-1">Tech Company Inc.</div>
+          <div className="space-y-0.5">
+            <div className="flex items-start gap-1">
+              <div className="w-1 h-1 rounded-full bg-gray-400 mt-0.5 flex-shrink-0"></div>
+              <div className="text-[6px] text-gray-700 leading-tight">Led development of key features</div>
+            </div>
+            <div className="flex items-start gap-1">
+              <div className="w-1 h-1 rounded-full bg-gray-400 mt-0.5 flex-shrink-0"></div>
+              <div className="text-[6px] text-gray-700 leading-tight">Improved system performance</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Sample skills */}
+        <div>
+          <div className="text-[9px] font-bold mb-1 uppercase" style={{ color: theme.colors?.primary || '#4F5348' }}>
+            Skills
+          </div>
+          <div className="text-[6px] text-gray-700">JavaScript • React • Node.js • Python • SQL</div>
         </div>
       </div>
 
@@ -164,72 +188,109 @@ function TemplatePreviewModal({ template, onClose }) {
           </button>
         </div>
         
-        <div className="p-8">
-          {/* Simulated resume page */}
+        <div className="p-8 bg-gray-100">
+          {/* Simulated resume page - Document style */}
           <div 
-            className="bg-white shadow-lg rounded-lg p-12 mx-auto"
-            style={{ maxWidth: "8.5in", minHeight: "11in", color: theme.colors?.text }}
+            className="bg-white shadow-lg mx-auto"
+            style={{ maxWidth: "8.5in", minHeight: "11in", padding: "0.75in" }}
           >
-            <div className="text-center mb-6">
-              <h1 className="text-3xl font-bold mb-2" style={{ color: theme.colors?.primary }}>
-                Your Name
+            {/* Header */}
+            <div className="text-center mb-8 pb-6 border-b-2" style={{ borderColor: theme.colors?.primary }}>
+              <h1 className="text-3xl font-bold mb-2" style={{ color: '#2C2C2C', fontFamily: 'Georgia, serif' }}>
+                JANE DOE
               </h1>
-              <p className="text-sm" style={{ color: theme.colors?.muted }}>
-                your.email@example.com | (555) 123-4567 | City, State
+              <p className="text-sm" style={{ color: '#666', fontFamily: 'Times New Roman, serif' }}>
+                jane.doe@email.com • (555) 987-6543 • New York, NY • linkedin.com/in/janedoe
               </p>
             </div>
 
             {layout.sectionsOrder?.map((section) => (
               <div key={section} className="mb-6">
                 <h2 
-                  className="text-xl font-bold border-b-2 pb-1 mb-3 uppercase"
-                  style={{ color: theme.colors?.primary, borderColor: theme.colors?.primary }}
+                  className="text-lg font-bold mb-3 uppercase tracking-wide"
+                  style={{ color: theme.colors?.primary || '#4F5348', fontFamily: 'Georgia, serif' }}
                 >
-                  {section}
+                  {section === "summary" && "Professional Summary"}
+                  {section === "experience" && "Professional Experience"}
+                  {section === "skills" && "Technical Skills"}
+                  {section === "education" && "Education"}
+                  {section === "projects" && "Projects"}
+                  {!["summary", "experience", "skills", "education", "projects"].includes(section) && section}
                 </h2>
-                <div className="space-y-2 text-sm">
+                <div className="text-sm" style={{ color: '#2C2C2C' }}>
                   {section === "summary" && (
-                    <p>Results-driven professional with extensive experience in the field. Proven track record of delivering high-quality results and exceeding expectations.</p>
+                    <p style={{ textAlign: 'justify', lineHeight: '1.6', fontFamily: 'Times New Roman, serif' }}>
+                      Results-oriented professional with 8+ years of experience driving innovation and leading cross-functional teams. 
+                      Proven track record of delivering high-impact projects and exceeding organizational goals through strategic thinking 
+                      and collaborative problem-solving. Expertise in leveraging cutting-edge technologies to optimize processes and 
+                      enhance business outcomes.
+                    </p>
                   )}
                   {section === "experience" && (
-                    <>
+                    <div className="space-y-5">
                       <div>
-                        <div className="flex justify-between font-semibold">
-                          <span>Senior Position</span>
-                          <span className="text-gray-600">2020 - Present</span>
+                        <div className="flex justify-between items-baseline mb-1">
+                          <h3 className="text-base font-bold" style={{ fontFamily: 'Georgia, serif' }}>Senior Software Engineer</h3>
+                          <span className="text-xs font-semibold" style={{ color: '#666' }}>Jan 2021 - Present</span>
                         </div>
-                        <div className="text-gray-600">Company Name, Location</div>
-                        <ul className="list-disc list-inside mt-1 space-y-1">
-                          <li>Led team of 5 professionals in delivering key projects</li>
-                          <li>Improved efficiency by 30% through process optimization</li>
+                        <p className="text-sm italic mb-2" style={{ color: '#555', fontFamily: 'Georgia, serif' }}>Tech Solutions Inc., New York, NY</p>
+                        <ul className="space-y-1 ml-5" style={{ listStyleType: 'disc', fontFamily: 'Times New Roman, serif' }}>
+                          <li>Architected and deployed scalable microservices infrastructure serving 500K+ daily active users</li>
+                          <li>Led team of 6 engineers in delivering mission-critical features, improving system performance by 45%</li>
+                          <li>Implemented CI/CD pipelines reducing deployment time by 60% and minimizing production incidents</li>
                         </ul>
                       </div>
-                    </>
+                      <div>
+                        <div className="flex justify-between items-baseline mb-1">
+                          <h3 className="text-base font-bold" style={{ fontFamily: 'Georgia, serif' }}>Software Developer</h3>
+                          <span className="text-xs font-semibold" style={{ color: '#666' }}>Jun 2018 - Dec 2020</span>
+                        </div>
+                        <p className="text-sm italic mb-2" style={{ color: '#555', fontFamily: 'Georgia, serif' }}>Digital Innovations LLC, San Francisco, CA</p>
+                        <ul className="space-y-1 ml-5" style={{ listStyleType: 'disc', fontFamily: 'Times New Roman, serif' }}>
+                          <li>Developed full-stack web applications using modern frameworks, increasing user engagement by 35%</li>
+                          <li>Collaborated with product team to design and implement customer-facing features for B2B platform</li>
+                        </ul>
+                      </div>
+                    </div>
                   )}
                   {section === "skills" && (
-                    <div className="flex flex-wrap gap-2">
-                      {["Leadership", "Project Management", "Communication", "Problem Solving", "Team Collaboration"].map(skill => (
-                        <span key={skill} className="px-3 py-1 bg-gray-100 rounded-full text-xs">
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
+                    <p style={{ lineHeight: '1.6', fontFamily: 'Times New Roman, serif' }}>
+                      JavaScript • TypeScript • React • Node.js • Python • Java • MongoDB • PostgreSQL • AWS • Docker • 
+                      Kubernetes • CI/CD • Git • Agile/Scrum • REST APIs • GraphQL • Microservices • System Design
+                    </p>
                   )}
                   {section === "education" && (
                     <div>
-                      <div className="flex justify-between font-semibold">
-                        <span>Bachelor of Science in Computer Science</span>
-                        <span className="text-gray-600">2016 - 2020</span>
+                      <div className="flex justify-between items-baseline">
+                        <h3 className="text-base font-bold" style={{ fontFamily: 'Georgia, serif' }}>Bachelor of Science in Computer Science</h3>
+                        <span className="text-xs font-semibold" style={{ color: '#666' }}>May 2018</span>
                       </div>
-                      <div className="text-gray-600">University Name, Location</div>
-                      <div className="text-sm">GPA: 3.8/4.0</div>
+                      <p className="text-sm italic" style={{ color: '#555', fontFamily: 'Georgia, serif' }}>University of California, Berkeley</p>
+                      <p className="text-sm mt-1" style={{ fontFamily: 'Times New Roman, serif' }}>GPA: 3.85/4.0 • Dean's List • Magna Cum Laude</p>
                     </div>
                   )}
                   {section === "projects" && (
-                    <div>
-                      <div className="font-semibold">Notable Project Name</div>
-                      <p className="text-gray-600 text-xs mb-1">Technologies: React, Node.js, MongoDB</p>
-                      <p>Developed a full-stack application serving 10,000+ users with 99.9% uptime.</p>
+                    <div className="space-y-3">
+                      <div>
+                        <h3 className="text-base font-bold" style={{ fontFamily: 'Georgia, serif' }}>E-Commerce Platform Redesign</h3>
+                        <p className="text-xs italic mb-1" style={{ color: '#666', fontFamily: 'Times New Roman, serif' }}>
+                          Technologies: React, Redux, Node.js, Express, PostgreSQL, Stripe API
+                        </p>
+                        <p style={{ lineHeight: '1.6', fontFamily: 'Times New Roman, serif' }}>
+                          Built responsive full-stack e-commerce application with payment processing, inventory management, 
+                          and real-time analytics dashboard. Achieved 99.9% uptime and handled 50K+ monthly transactions.
+                        </p>
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold" style={{ fontFamily: 'Georgia, serif' }}>AI-Powered Task Management System</h3>
+                        <p className="text-xs italic mb-1" style={{ color: '#666', fontFamily: 'Times New Roman, serif' }}>
+                          Technologies: Python, TensorFlow, React, MongoDB, AWS Lambda
+                        </p>
+                        <p style={{ lineHeight: '1.6', fontFamily: 'Times New Roman, serif' }}>
+                          Developed intelligent task prioritization system using machine learning algorithms. 
+                          Improved team productivity by 30% through automated scheduling and smart notifications.
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1197,154 +1258,158 @@ export default function ResumeTemplates() {
               </button>
             </div>
 
-            {/* Modal Content */}
-            <div className="flex-1 overflow-y-auto p-6">
-              {/* Resume Metadata */}
-              {viewingResume.metadata?.generatedAt && (
-                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                    <span className="font-semibold text-blue-900">AI-Generated Resume</span>
-                  </div>
-                  <p className="text-sm text-blue-700">
-                    Generated on {new Date(viewingResume.metadata.generatedAt).toLocaleString()}
-                  </p>
-                  {viewingResume.metadata.tailoredForJob && (
-                    <p className="text-sm text-blue-700 mt-1">
-                      Tailored for: <span className="font-medium">{viewingResume.metadata.tailoredForJob}</span>
+            {/* Modal Content - Document Style */}
+            <div className="flex-1 overflow-y-auto bg-gray-100 p-8">
+              {/* Paper-like Resume Document */}
+              <div className="max-w-[8.5in] mx-auto bg-white shadow-lg" style={{ minHeight: '11in', padding: '0.75in' }}>
+                
+                {/* Resume Header */}
+                <div className="text-center mb-8 pb-6 border-b-2" style={{ borderColor: '#4F5348' }}>
+                  <h1 className="text-3xl font-bold mb-2" style={{ color: '#2C2C2C', fontFamily: 'Georgia, serif' }}>
+                    {viewingResume.name}
+                  </h1>
+                  {viewingResume.metadata?.generatedAt && (
+                    <p className="text-xs" style={{ color: '#666' }}>
+                      AI-Generated Resume • {viewingResume.metadata.tailoredForJob && `Tailored for ${viewingResume.metadata.tailoredForJob} • `}
+                      {new Date(viewingResume.metadata.generatedAt).toLocaleDateString()}
                     </p>
                   )}
                 </div>
-              )}
 
-              {/* Professional Summary */}
-              {viewingResume.sections?.summary && (
-                <div className="mb-6">
-                  <h4 className="text-lg font-heading font-semibold text-gray-900 mb-3 pb-2 border-b-2 border-gray-300">
-                    Professional Summary
-                  </h4>
-                  <p className="text-gray-700 leading-relaxed">
-                    {viewingResume.sections.summary}
-                  </p>
-                </div>
-              )}
-
-              {/* Experience Section */}
-              {viewingResume.sections?.experience && viewingResume.sections.experience.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="text-lg font-heading font-semibold text-gray-900 mb-3 pb-2 border-b-2 border-gray-300">
-                    Experience
-                  </h4>
-                  <div className="space-y-4">
-                    {viewingResume.sections.experience.map((job, idx) => (
-                      <div key={idx} className="border-l-4 border-blue-500 pl-4">
-                        <h5 className="font-semibold text-gray-900">{job.jobTitle}</h5>
-                        <p className="text-sm text-gray-600 mb-2">
-                          {job.company} • {job.startDate} - {job.isCurrentPosition ? 'Present' : job.endDate}
-                        </p>
-                        {job.bullets && job.bullets.length > 0 && (
-                          <ul className="list-disc list-inside space-y-1">
-                            {job.bullets.map((bullet, bulletIdx) => (
-                              <li key={bulletIdx} className="text-gray-700">{bullet}</li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                    ))}
+                {/* Professional Summary */}
+                {viewingResume.sections?.summary && (
+                  <div className="mb-6">
+                    <h2 className="text-lg font-bold mb-3 uppercase tracking-wide" style={{ color: '#4F5348', fontFamily: 'Georgia, serif' }}>
+                      Professional Summary
+                    </h2>
+                    <p className="text-sm leading-relaxed" style={{ color: '#2C2C2C', textAlign: 'justify', fontFamily: 'Times New Roman, serif' }}>
+                      {viewingResume.sections.summary}
+                    </p>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Skills Section */}
-              {viewingResume.sections?.skills && viewingResume.sections.skills.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="text-lg font-heading font-semibold text-gray-900 mb-3 pb-2 border-b-2 border-gray-300">
-                    Skills
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {viewingResume.sections.skills.map((skill, idx) => (
-                      <span
-                        key={idx}
-                        className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
-                        style={{ backgroundColor: '#DBEAFE', color: '#1E40AF' }}
-                      >
-                        {typeof skill === 'string' ? skill : skill.name || skill}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Education Section */}
-              {viewingResume.sections?.education && viewingResume.sections.education.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="text-lg font-heading font-semibold text-gray-900 mb-3 pb-2 border-b-2 border-gray-300">
-                    Education
-                  </h4>
-                  <div className="space-y-3">
-                    {viewingResume.sections.education.map((edu, idx) => (
-                      <div key={idx}>
-                        <h5 className="font-semibold text-gray-900">{edu.degree} in {edu.fieldOfStudy}</h5>
-                        <p className="text-sm text-gray-600">
-                          {edu.institution} • {edu.graduationYear}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Projects Section */}
-              {viewingResume.sections?.projects && viewingResume.sections.projects.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="text-lg font-heading font-semibold text-gray-900 mb-3 pb-2 border-b-2 border-gray-300">
-                    Projects
-                  </h4>
-                  <div className="space-y-3">
-                    {viewingResume.sections.projects.map((proj, idx) => (
-                      <div key={idx}>
-                        <h5 className="font-semibold text-gray-900">{proj.name}</h5>
-                        <p className="text-sm text-gray-700 mb-1">{proj.description}</p>
-                        {proj.technologies && proj.technologies.length > 0 && (
-                          <p className="text-xs text-gray-500">
-                            Technologies: {proj.technologies.join(', ')}
+                {/* Experience Section */}
+                {viewingResume.sections?.experience && viewingResume.sections.experience.length > 0 && (
+                  <div className="mb-6">
+                    <h2 className="text-lg font-bold mb-3 uppercase tracking-wide" style={{ color: '#4F5348', fontFamily: 'Georgia, serif' }}>
+                      Professional Experience
+                    </h2>
+                    <div className="space-y-5">
+                      {viewingResume.sections.experience.map((job, idx) => (
+                        <div key={idx}>
+                          <div className="flex justify-between items-baseline mb-1">
+                            <h3 className="text-base font-bold" style={{ color: '#2C2C2C', fontFamily: 'Georgia, serif' }}>
+                              {job.jobTitle}
+                            </h3>
+                            <span className="text-xs font-semibold" style={{ color: '#666', fontFamily: 'Times New Roman, serif' }}>
+                              {job.startDate} - {job.isCurrentPosition ? 'Present' : job.endDate}
+                            </span>
+                          </div>
+                          <p className="text-sm italic mb-2" style={{ color: '#555', fontFamily: 'Georgia, serif' }}>
+                            {job.company}
                           </p>
-                        )}
-                      </div>
-                    ))}
+                          {job.bullets && job.bullets.length > 0 && (
+                            <ul className="space-y-1 ml-5" style={{ listStyleType: 'disc' }}>
+                              {job.bullets.map((bullet, bulletIdx) => (
+                                <li key={bulletIdx} className="text-sm leading-relaxed" style={{ color: '#2C2C2C', fontFamily: 'Times New Roman, serif' }}>
+                                  {bullet}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* ATS Keywords */}
-              {viewingResume.metadata?.atsKeywords && viewingResume.metadata.atsKeywords.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="text-lg font-heading font-semibold text-gray-900 mb-3 pb-2 border-b-2 border-gray-300">
-                    ATS Keywords
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {viewingResume.metadata.atsKeywords.map((keyword, idx) => (
-                      <span
-                        key={idx}
-                        className="inline-flex items-center px-2 py-1 rounded text-xs font-medium"
-                        style={{ backgroundColor: '#FEF3C7', color: '#92400E' }}
-                      >
-                        {keyword}
-                      </span>
-                    ))}
+                {/* Skills Section */}
+                {viewingResume.sections?.skills && viewingResume.sections.skills.length > 0 && (
+                  <div className="mb-6">
+                    <h2 className="text-lg font-bold mb-3 uppercase tracking-wide" style={{ color: '#4F5348', fontFamily: 'Georgia, serif' }}>
+                      Technical Skills
+                    </h2>
+                    <p className="text-sm leading-relaxed" style={{ color: '#2C2C2C', fontFamily: 'Times New Roman, serif' }}>
+                      {viewingResume.sections.skills.map((skill, idx) => (
+                        typeof skill === 'string' ? skill : skill.name || skill
+                      )).join(' • ')}
+                    </p>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Tailoring Notes */}
-              {viewingResume.metadata?.tailoringNotes && (
-                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <h4 className="text-sm font-semibold text-green-900 mb-2">AI Tailoring Notes</h4>
-                  <p className="text-sm text-green-700">{viewingResume.metadata.tailoringNotes}</p>
-                </div>
-              )}
+                {/* Education Section */}
+                {viewingResume.sections?.education && viewingResume.sections.education.length > 0 && (
+                  <div className="mb-6">
+                    <h2 className="text-lg font-bold mb-3 uppercase tracking-wide" style={{ color: '#4F5348', fontFamily: 'Georgia, serif' }}>
+                      Education
+                    </h2>
+                    <div className="space-y-3">
+                      {viewingResume.sections.education.map((edu, idx) => (
+                        <div key={idx}>
+                          <div className="flex justify-between items-baseline">
+                            <h3 className="text-base font-bold" style={{ color: '#2C2C2C', fontFamily: 'Georgia, serif' }}>
+                              {edu.degree} in {edu.fieldOfStudy}
+                            </h3>
+                            <span className="text-xs font-semibold" style={{ color: '#666', fontFamily: 'Times New Roman, serif' }}>
+                              {edu.graduationYear}
+                            </span>
+                          </div>
+                          <p className="text-sm italic" style={{ color: '#555', fontFamily: 'Georgia, serif' }}>
+                            {edu.institution}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Projects Section */}
+                {viewingResume.sections?.projects && viewingResume.sections.projects.length > 0 && (
+                  <div className="mb-6">
+                    <h2 className="text-lg font-bold mb-3 uppercase tracking-wide" style={{ color: '#4F5348', fontFamily: 'Georgia, serif' }}>
+                      Projects
+                    </h2>
+                    <div className="space-y-3">
+                      {viewingResume.sections.projects.map((proj, idx) => (
+                        <div key={idx}>
+                          <h3 className="text-base font-bold" style={{ color: '#2C2C2C', fontFamily: 'Georgia, serif' }}>
+                            {proj.name}
+                          </h3>
+                          <p className="text-sm leading-relaxed mb-1" style={{ color: '#2C2C2C', fontFamily: 'Times New Roman, serif' }}>
+                            {proj.description}
+                          </p>
+                          {proj.technologies && proj.technologies.length > 0 && (
+                            <p className="text-xs italic" style={{ color: '#666', fontFamily: 'Times New Roman, serif' }}>
+                              Technologies: {proj.technologies.join(', ')}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ATS Keywords Section - Subtle at bottom */}
+                {viewingResume.metadata?.atsKeywords && viewingResume.metadata.atsKeywords.length > 0 && (
+                  <div className="mt-8 pt-4 border-t border-gray-200">
+                    <h3 className="text-xs font-semibold mb-2 uppercase tracking-wide" style={{ color: '#888' }}>
+                      Keywords
+                    </h3>
+                    <p className="text-xs leading-relaxed" style={{ color: '#999', fontFamily: 'Times New Roman, serif' }}>
+                      {viewingResume.metadata.atsKeywords.join(' • ')}
+                    </p>
+                  </div>
+                )}
+
+                {/* Tailoring Notes - Footer */}
+                {viewingResume.metadata?.tailoringNotes && (
+                  <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded">
+                    <p className="text-xs italic" style={{ color: '#666', fontFamily: 'Times New Roman, serif' }}>
+                      <span className="font-semibold">Note:</span> {viewingResume.metadata.tailoringNotes}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Modal Footer */}
@@ -1352,12 +1417,23 @@ export default function ResumeTemplates() {
               <p className="text-sm text-gray-500">
                 Last modified: {new Date(viewingResume.updatedAt).toLocaleString()}
               </p>
-              <button
-                onClick={() => setShowViewResumeModal(false)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-              >
-                Close
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => window.print()}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  </svg>
+                  Print
+                </button>
+                <button
+                  onClick={() => setShowViewResumeModal(false)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
