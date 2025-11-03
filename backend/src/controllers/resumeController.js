@@ -512,7 +512,8 @@ export const generateAIResume = async (req, res) => {
       name,
       sections,
       metadata: {
-        tailoredForJob: `${job.title} at ${job.company}`,
+        tailoredForJob: jobId, // Store the job ID, not the title
+        tailoredForJobTitle: `${job.title} at ${job.company}`, // Store title separately for display
         atsKeywords: aiContent.atsKeywords || [],
         tailoringNotes: aiContent.tailoringNotes || "",
         generatedAt: new Date(),
@@ -719,6 +720,9 @@ export const regenerateResumeSection = async (req, res) => {
     return sendResponse(res, response, statusCode);
   } catch (err) {
     console.error("Section regeneration error:", err);
+    console.error("Error stack:", err.stack);
+    console.error("Section:", req.body?.section);
+    console.error("Resume ID:", req.params?.id);
     const { response, statusCode } = errorResponse(
       `Failed to regenerate section: ${err.message}`,
       500,

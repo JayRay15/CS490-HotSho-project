@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "@clerk/clerk-react";
+import { DndProvider, useDrag, useDrop } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import { setAuthToken } from "../../api/axios";
 import { fetchTemplates, createTemplate as apiCreateTemplate, updateTemplate as apiUpdateTemplate, deleteTemplate as apiDeleteTemplate, importTemplate as apiImportTemplate } from "../../api/resumeTemplates";
 import { fetchResumes, updateResume as apiUpdateResume, deleteResume as apiDeleteResume } from "../../api/resumes";
@@ -15,6 +17,45 @@ const TEMPLATE_TYPES = [
   { value: "chronological", label: "Chronological" },
   { value: "functional", label: "Functional" },
   { value: "hybrid", label: "Hybrid" },
+];
+
+const DEFAULT_SECTIONS = [
+  { key: 'contactInfo', label: 'Contact Info' },
+  { key: 'summary', label: 'Summary' },
+  { key: 'experience', label: 'Experience' },
+  { key: 'skills', label: 'Skills' },
+  { key: 'education', label: 'Education' },
+  { key: 'projects', label: 'Projects' },
+  { key: 'certifications', label: 'Certifications' },
+];
+
+// Section arrangement presets/templates
+const SECTION_PRESETS = [
+  {
+    name: 'Standard',
+    order: ['contactInfo', 'summary', 'experience', 'education', 'skills', 'projects', 'certifications'],
+    description: 'Traditional resume layout'
+  },
+  {
+    name: 'Skills-First',
+    order: ['contactInfo', 'skills', 'experience', 'projects', 'education', 'certifications', 'summary'],
+    description: 'Emphasize skills before experience'
+  },
+  {
+    name: 'Project-Focused',
+    order: ['contactInfo', 'summary', 'projects', 'experience', 'skills', 'education', 'certifications'],
+    description: 'Highlight projects prominently'
+  },
+  {
+    name: 'Academic',
+    order: ['contactInfo', 'education', 'projects', 'experience', 'skills', 'certifications', 'summary'],
+    description: 'Education and academic work first'
+  },
+  {
+    name: 'Minimal',
+    order: ['contactInfo', 'experience', 'education', 'skills'],
+    description: 'Only essential sections'
+  },
 ];
 
 // Helper function to format dates
@@ -43,7 +84,8 @@ const formatDate = (dateString) => {
 function ResumeTile({ resume, template, onView, onDelete, onRename }) {
   const theme = template?.theme || { colors: { primary: "#4F5348", text: "#222" } };
   const fonts = theme?.fonts || { heading: "Inter, sans-serif", body: "Inter, sans-serif", sizes: {} };
-  
+
+
   return (
     <Card variant="outlined" interactive className="overflow-hidden !p-0">
       {/* Preview Area */}
@@ -56,42 +98,40 @@ function ResumeTile({ resume, template, onView, onDelete, onRename }) {
           {resume.name || "Untitled Resume"}
         </div>
         <div className="flex-1 space-y-2 overflow-hidden">
-          {/* Contact Info Preview */}
-          {resume.sections?.contactInfo && (
-            <div className="text-[8px] text-gray-700 font-semibold" style={{ fontFamily: fonts.heading }}>
-              {resume.sections.contactInfo.name || "Name"}
-            </div>
-          )}
-          
-          {/* Summary Preview */}
-          {resume.sections?.summary && (
-            <div className="text-[7px] text-gray-600 leading-tight line-clamp-2" style={{ fontFamily: fonts.body }}>
-              {resume.sections.summary.substring(0, 100)}...
-            </div>
-          )}
-          
-          {/* Experience Preview */}
-          {resume.sections?.experience && resume.sections.experience.length > 0 && (
-            <div className="mt-2">
-              <div className="text-[7px] text-gray-700 font-semibold" style={{ fontFamily: fonts.heading }}>
-                {resume.sections.experience[0].company}
+            {/* Simple preview of resume sections */}
+            {resume.sections?.contactInfo && (
+              <div className="text-[8px] text-gray-700 font-semibold" style={{ fontFamily: fonts.heading }}>
+                {resume.sections.contactInfo.name || "Name"}
               </div>
-              <div className="text-[6px] text-gray-500 italic" style={{ fontFamily: fonts.heading }}>
-                {resume.sections.experience[0].title}
+            )}
+            {resume.sections?.summary && (
+              <div className="text-[7px] text-gray-600 leading-tight line-clamp-2" style={{ fontFamily: fonts.body }}>
+                {resume.sections.summary.substring(0, 100)}...
               </div>
-            </div>
-          )}
-          
-          {/* Skills Preview */}
-          {resume.sections?.skills && resume.sections.skills.length > 0 && (
-            <div className="mt-2 text-[6px] text-gray-600" style={{ fontFamily: fonts.body }}>
-              {resume.sections.skills.slice(0, 3).join(' • ')}
-              {resume.sections.skills.length > 3 && ' ...'}
-            </div>
-          )}
+            )}
+            {resume.sections?.experience && resume.sections.experience.length > 0 && (
+              <div className="mt-2">
+                <div className="text-[7px] text-gray-700 font-semibold" style={{ fontFamily: fonts.heading }}>
+                  {resume.sections.experience[0].company}
+                </div>
+                <div className="text-[6px] text-gray-500 italic" style={{ fontFamily: fonts.heading }}>
+                  {resume.sections.experience[0].title}
+                </div>
+              </div>
+            )}
+            {resume.sections?.skills && resume.sections.skills.length > 0 && (
+              <div className="mt-2 text-[6px] text-gray-600" style={{ fontFamily: fonts.body }}>
+                {resume.sections.skills.slice(0, 3).join(' • ')}
+                {resume.sections.skills.length > 3 && ' ...'}
+              </div>
+            )}
+            {resume.sections?.education && resume.sections.education.length > 0 && (
+              <div className="mt-2 text-[6px] text-gray-600" style={{ fontFamily: fonts.body }}>
+                {resume.sections.education[0].school} ({resume.sections.education[0].degree})
+              </div>
+            )}
         </div>
       </div>
-      
       {/* Info & Actions */}
       <div className="px-2 pt-2 pb-2">
         <div className="flex items-center gap-2 mb-1.5">
@@ -453,6 +493,20 @@ export default function ResumeTemplates() {
   const [showViewResumeModal, setShowViewResumeModal] = useState(false);
   const [viewingResume, setViewingResume] = useState(null);
   const [regeneratingSection, setRegeneratingSection] = useState(null);
+  
+    // Section Customization State (UC-048)
+    const [visibleSections, setVisibleSections] = useState(DEFAULT_SECTIONS.map(s => s.key));
+    const [sectionOrder, setSectionOrder] = useState(DEFAULT_SECTIONS.map(s => s.key));
+    const [sectionFormatting, setSectionFormatting] = useState({});
+    const [selectedJobType, setSelectedJobType] = useState('general');
+    const [showPresetMenu, setShowPresetMenu] = useState(false);
+    const [showSavePresetModal, setShowSavePresetModal] = useState(false);
+    const [presetName, setPresetName] = useState('');
+    const [customPresets, setCustomPresets] = useState([]);
+    const [showFormattingPanel, setShowFormattingPanel] = useState(false);
+    const [formattingSection, setFormattingSection] = useState(null);
+    const [showCustomizationPanel, setShowCustomizationPanel] = useState(false);
+  
   // Removed PDF experimental feature states
   // const [viewingAsPdf, setViewingAsPdf] = useState(false);
   // const [pdfUrl, setPdfUrl] = useState(null);
@@ -466,6 +520,106 @@ export default function ResumeTemplates() {
     const token = await getToken();
     setAuthToken(token);
   };
+
+  // UC-048 handlers and derived helpers
+  const jobTypeConfigs = {
+    general: { required: ['contactInfo', 'experience', 'education'], recommended: ['skills', 'summary'] },
+    technical: { required: ['contactInfo', 'skills', 'experience'], recommended: ['projects', 'education'] },
+    creative: { required: ['contactInfo', 'projects', 'experience'], recommended: ['skills', 'summary'] },
+    academic: { required: ['contactInfo', 'education', 'projects'], recommended: ['experience', 'certifications'] },
+    entry_level: { required: ['contactInfo', 'education', 'skills'], recommended: ['projects', 'experience'] },
+  };
+
+  const handleToggleSection = (key) => {
+    setVisibleSections((prev) =>
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    );
+  };
+
+  const applyPreset = (preset) => {
+    setSectionOrder(preset.order);
+    setVisibleSections(preset.order);
+    setShowPresetMenu(false);
+  };
+
+  const saveCustomPreset = () => {
+    if (!presetName.trim()) return;
+    const newPreset = {
+      name: presetName.trim(),
+      order: sectionOrder,
+      description: 'Custom arrangement',
+      isCustom: true
+    };
+    setCustomPresets([...customPresets, newPreset]);
+    setPresetName('');
+    setShowSavePresetModal(false);
+  };
+
+  const openSectionFormatting = (sectionKey) => {
+    setFormattingSection(sectionKey);
+    setShowFormattingPanel(true);
+  };
+
+  const updateSectionFormatting = (key, formatting) => {
+    setSectionFormatting((prev) => ({
+      ...prev,
+      [key]: { ...(prev[key] || {}), ...formatting }
+    }));
+  };
+
+  const applyJobTypeConfig = (jobType) => {
+    setSelectedJobType(jobType);
+    const config = jobTypeConfigs[jobType];
+    if (config) {
+      const recommendedSections = [...config.required, ...config.recommended];
+      setSectionOrder(recommendedSections.filter(key => DEFAULT_SECTIONS.find(s => s.key === key)));
+      setVisibleSections(recommendedSections);
+    }
+  };
+
+  const getSectionStatus = (sectionKey) => {
+    const config = jobTypeConfigs[selectedJobType];
+    if (config?.required?.includes(sectionKey)) return 'required';
+    if (config?.recommended?.includes(sectionKey)) return 'recommended';
+    return 'optional';
+  };
+
+  // Drag-and-drop move for sections (will be used in modal)
+  const moveSection = (dragIndex, hoverIndex) => {
+    setSectionOrder((prevOrder) => {
+      const newOrder = [...prevOrder];
+      const [removed] = newOrder.splice(dragIndex, 1);
+      newOrder.splice(hoverIndex, 0, removed);
+      return newOrder;
+    });
+  };
+
+  // Auto-save section customization (debounced) when viewing resume
+  useEffect(() => {
+    if (!viewingResume?._id) return;
+    const customization = {
+      order: sectionOrder,
+      visible: visibleSections,
+      formatting: sectionFormatting,
+      jobType: selectedJobType
+    };
+    const timeoutId = setTimeout(() => {
+      saveSectionCustomization(viewingResume._id, customization);
+    }, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [viewingResume?._id, sectionOrder, visibleSections, sectionFormatting, selectedJobType]);
+
+  // When opening a resume, hydrate customization from existing data or template order
+  useEffect(() => {
+    if (!showViewResumeModal || !viewingResume) return;
+    const existing = viewingResume.sectionCustomization || {};
+    const order = existing.order || (templates.find(t => t._id === viewingResume.templateId)?.layout?.sectionsOrder) || DEFAULT_SECTIONS.map(s => s.key);
+    const vis = existing.visible || order;
+    setSectionOrder(order);
+    setVisibleSections(vis);
+    setSectionFormatting(existing.formatting || {});
+    setSelectedJobType(existing.jobType || 'general');
+  }, [showViewResumeModal, viewingResume]);
 
   const loadAll = async () => {
     await authWrap();
@@ -502,6 +656,16 @@ export default function ResumeTemplates() {
       }
     })();
   }, []);
+
+  // Save section customization
+  const saveSectionCustomization = async (resumeId, customization) => {
+    try {
+      await authWrap();
+      await apiUpdateResume(resumeId, { sectionCustomization: customization });
+    } catch (err) {
+      console.error("Failed to save section customization:", err);
+    }
+  };
 
   // Resume handlers
   const handleViewResume = async (resume) => {
@@ -2420,8 +2584,7 @@ export default function ResumeTemplates() {
           }
         };
         
-        // Get section order from template layout, fallback to default order
-        const sectionsOrder = resumeTemplate.layout?.sectionsOrder || ["summary", "experience", "skills", "education", "projects"];
+  // Order is controlled by 'sectionOrder' state (hydrated from template or resume)
         
         // Get section display names from template (preserved from PDF)
         const sectionStyles = resumeTemplate.layout?.sectionStyles || {};
@@ -2444,8 +2607,9 @@ export default function ResumeTemplates() {
               if (!viewingResume.sections?.summary) return null;
               const sectionSpacing = resumeTemplate.layout?.sectionSpacing || 24;
               const headerStyle = resumeTemplate.layout?.headerStyle || 'underline';
+              const summaryFmt = sectionFormatting['summary'] || {};
               return (
-                <div key="summary" style={{ marginBottom: `${sectionSpacing}px` }}>
+                <div key="summary" style={{ marginBottom: `${summaryFmt.spacing ?? sectionSpacing}px` }}>
                   <div className="flex justify-between items-center mb-3">
                     <h2 
                       className="font-bold uppercase tracking-wide" 
@@ -2472,7 +2636,7 @@ export default function ResumeTemplates() {
                   <p 
                     className="leading-relaxed" 
                     style={{ 
-                      color: theme.colors.text, 
+                      color: summaryFmt.color || theme.colors.text, 
                       textAlign: resumeTemplate.layout?.textAlignment || 'justify', 
                       fontFamily: theme.fonts.body, 
                       fontSize: theme.fonts.sizes?.body || "14px",
@@ -2556,8 +2720,9 @@ export default function ResumeTemplates() {
               if (!viewingResume.sections?.skills || viewingResume.sections.skills.length === 0) return null;
               const skillsSectionSpacing = resumeTemplate.layout?.sectionSpacing || 24;
               const skillsHeaderStyle = resumeTemplate.layout?.headerStyle || 'underline';
+              const skillsFmt = sectionFormatting['skills'] || {};
               return (
-                <div key="skills" style={{ marginBottom: `${skillsSectionSpacing}px` }}>
+                <div key="skills" style={{ marginBottom: `${skillsFmt.spacing ?? skillsSectionSpacing}px` }}>
                   <div className="flex justify-between items-center mb-3">
                     <h2 
                       className="font-bold uppercase tracking-wide" 
@@ -2584,7 +2749,7 @@ export default function ResumeTemplates() {
                   <p 
                     className="leading-relaxed" 
                     style={{ 
-                      color: theme.colors.text, 
+                      color: skillsFmt.color || theme.colors.text, 
                       fontFamily: theme.fonts.body, 
                       fontSize: theme.fonts.sizes?.body || "14px",
                       textAlign: resumeTemplate.layout?.textAlignment || 'left',
@@ -2602,8 +2767,9 @@ export default function ResumeTemplates() {
               if (!viewingResume.sections?.education || viewingResume.sections.education.length === 0) return null;
               const eduSectionSpacing = resumeTemplate.layout?.sectionSpacing || 24;
               const eduHeaderStyle = resumeTemplate.layout?.headerStyle || 'underline';
+              const educationFmt = sectionFormatting['education'] || {};
               return (
-                <div key="education" style={{ marginBottom: `${eduSectionSpacing}px` }}>
+                <div key="education" style={{ marginBottom: `${educationFmt.spacing ?? eduSectionSpacing}px` }}>
                   <h2 
                     className="font-bold mb-3 uppercase tracking-wide" 
                     style={{ 
@@ -2803,8 +2969,9 @@ export default function ResumeTemplates() {
               if (!viewingResume.sections?.projects || viewingResume.sections.projects.length === 0) return null;
               const projSectionSpacing = resumeTemplate.layout?.sectionSpacing || 24;
               const projHeaderStyle = resumeTemplate.layout?.headerStyle || 'underline';
+              const projectsFmt = sectionFormatting['projects'] || {};
               return (
-                <div key="projects" style={{ marginBottom: `${projSectionSpacing}px` }}>
+                <div key="projects" style={{ marginBottom: `${projectsFmt.spacing ?? projSectionSpacing}px` }}>
                   <h2 
                     className="font-bold mb-3 uppercase tracking-wide" 
                     style={{ 
@@ -2826,7 +2993,7 @@ export default function ResumeTemplates() {
                         <p 
                           className="leading-relaxed mb-1" 
                           style={{ 
-                            color: theme.colors.text, 
+                            color: projectsFmt.color || theme.colors.text, 
                             fontFamily: theme.fonts.body, 
                             fontSize: theme.fonts.sizes?.body || "14px",
                             textAlign: resumeTemplate.layout?.textAlignment || 'left',
@@ -2858,8 +3025,9 @@ export default function ResumeTemplates() {
               if (!viewingResume.sections?.awards || viewingResume.sections.awards.length === 0) return null;
               const awardsSectionSpacing = resumeTemplate.layout?.sectionSpacing || 24;
               const awardsHeaderStyle = resumeTemplate.layout?.headerStyle || 'underline';
+              const awardsFmt = sectionFormatting['awards'] || {};
               return (
-                <div key="awards" style={{ marginBottom: `${awardsSectionSpacing}px` }}>
+                <div key="awards" style={{ marginBottom: `${awardsFmt.spacing ?? awardsSectionSpacing}px` }}>
                   <h2 
                     className="font-bold mb-3 uppercase tracking-wide" 
                     style={{ 
@@ -2877,7 +3045,7 @@ export default function ResumeTemplates() {
                       <div 
                         key={idx} 
                         style={{ 
-                          color: theme.colors.text, 
+                          color: awardsFmt.color || theme.colors.text, 
                           fontFamily: theme.fonts.body, 
                           fontSize: theme.fonts.sizes?.body || "14px",
                           textAlign: resumeTemplate.layout?.textAlignment || 'left',
@@ -2896,8 +3064,9 @@ export default function ResumeTemplates() {
               if (!viewingResume.sections?.certifications || viewingResume.sections.certifications.length === 0) return null;
               const certSectionSpacing = resumeTemplate.layout?.sectionSpacing || 24;
               const certHeaderStyle = resumeTemplate.layout?.headerStyle || 'underline';
+              const certFmt = sectionFormatting['certifications'] || {};
               return (
-                <div key="certifications" style={{ marginBottom: `${certSectionSpacing}px` }}>
+                <div key="certifications" style={{ marginBottom: `${certFmt.spacing ?? certSectionSpacing}px` }}>
                   <h2 
                     className="font-bold mb-3 uppercase tracking-wide" 
                     style={{ 
@@ -2915,7 +3084,7 @@ export default function ResumeTemplates() {
                       <div 
                         key={idx} 
                         style={{ 
-                          color: theme.colors.text, 
+                          color: certFmt.color || theme.colors.text, 
                           fontFamily: theme.fonts.body, 
                           fontSize: theme.fonts.sizes?.body || "14px",
                           textAlign: resumeTemplate.layout?.textAlignment || 'left',
@@ -2935,6 +3104,83 @@ export default function ResumeTemplates() {
           }
         };
         
+        // DnD item for section toggle/reorder in customization panel
+        const SectionToggleItem = ({ section, index }) => {
+          const ref = React.useRef(null);
+          const [, drop] = useDrop({
+            accept: 'section',
+            hover(item) {
+              if (item.index === index) return;
+              moveSection(item.index, index);
+              item.index = index;
+            },
+          });
+          const [{ isDragging }, drag] = useDrag({
+            type: 'section',
+            item: { type: 'section', key: section.key, index },
+            collect: (monitor) => ({ isDragging: monitor.isDragging() }),
+          });
+          drag(drop(ref));
+
+          const hasFormatting = !!sectionFormatting[section.key];
+          const sectionStatus = getSectionStatus(section.key);
+
+          // Completion indicator
+          const isComplete = viewingResume.sections?.[section.key] && (
+            Array.isArray(viewingResume.sections[section.key])
+              ? viewingResume.sections[section.key].length > 0
+              : !!viewingResume.sections[section.key]
+          );
+
+          const getBorderColor = () => {
+            if (sectionStatus === 'required') return 'border-red-300';
+            if (sectionStatus === 'recommended') return 'border-yellow-300';
+            return 'border-gray-300';
+          };
+
+          return (
+            <div
+              ref={ref}
+              style={{ opacity: isDragging ? 0.5 : 1 }}
+              className={`flex items-center gap-2 text-sm cursor-move border-2 ${getBorderColor()} px-3 py-2 rounded-lg bg-white hover:shadow-md transition-shadow relative`}
+            >
+              <input
+                type="checkbox"
+                checked={visibleSections.includes(section.key)}
+                onChange={() => handleToggleSection(section.key)}
+                className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+              />
+              <span className="font-medium text-gray-700">{section.label}</span>
+              <span
+                className={`text-sm ${isComplete ? 'text-green-600' : 'text-gray-400'}`}
+                title={isComplete ? 'Section complete' : 'Section incomplete'}
+              >
+                {isComplete ? '✓' : '○'}
+              </span>
+              {sectionStatus === 'required' && (
+                <span className="text-[10px] px-1.5 py-0.5 bg-red-100 text-red-700 rounded font-semibold">REQ</span>
+              )}
+              {sectionStatus === 'recommended' && (
+                <span className="text-[10px] px-1.5 py-0.5 bg-yellow-100 text-yellow-700 rounded font-semibold">REC</span>
+              )}
+              <button
+                onClick={(e) => { e.stopPropagation(); openSectionFormatting(section.key); }}
+                className={`p-1 rounded hover:bg-gray-100 transition ${hasFormatting ? 'text-blue-600' : 'text-gray-400'}`}
+                title="Format section"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                </svg>
+              </button>
+              <span className="text-gray-400 text-sm ml-auto" style={{ cursor: 'grab' }}>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                </svg>
+              </span>
+            </div>
+          );
+        };
+
         return (
         <>
         <div 
@@ -2948,25 +3194,137 @@ export default function ResumeTemplates() {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="bg-blue-50 border-b border-blue-100 px-6 py-4 flex justify-between items-center">
+            <div className="bg-gray-50 border-b border-gray-200 px-6 py-4 flex justify-between items-center">
               <div className="flex items-center space-x-3">
-                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-[#777C6D]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 <h3 className="text-lg font-heading font-semibold text-gray-900">{viewingResume.name}</h3>
               </div>
-              <button
-                onClick={() => setShowViewResumeModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowCustomizationPanel(v => !v)}
+                  className="px-4 py-2 text-white rounded-lg transition flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                  style={{ backgroundColor: '#777C6D' }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                  </svg>
+                  <span>{showCustomizationPanel ? 'Hide Customization' : 'Customize Sections'}</span>
+                </button>
+                <button
+                  onClick={() => setShowViewResumeModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
             {/* Modal Content - HTML View only (PDF experimental removed) */}
-            <div className="flex-1 overflow-y-auto py-8 px-4" style={{ backgroundColor: '#525252' }}>
+            <div className="flex-1 overflow-y-auto py-4 px-4" style={{ backgroundColor: '#525252' }}>
+              {/* Customization Panel */}
+              {showCustomizationPanel && (
+                <div className="mb-4 mx-auto bg-white border border-gray-200 rounded-lg shadow-lg" style={{ width: '8.5in' }}>
+                  <div className="bg-gray-50 border-b border-gray-200 px-4 py-3 rounded-t-lg">
+                    <div className="flex items-center space-x-2">
+                      <svg className="w-5 h-5 text-[#777C6D]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                      </svg>
+                      <h4 className="text-sm font-heading font-semibold text-gray-900">Section Customization</h4>
+                    </div>
+                  </div>
+                  
+                  <div className="p-4 space-y-4">
+                    {/* Job Type and Presets Row */}
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-2">
+                        <label className="text-sm font-medium text-gray-700">Job Type:</label>
+                        <select
+                          value={selectedJobType}
+                          onChange={(e) => applyJobTypeConfig(e.target.value)}
+                          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                        >
+                          <option value="general">General</option>
+                          <option value="technical">Technical/Engineering</option>
+                          <option value="creative">Creative/Design</option>
+                          <option value="academic">Academic/Research</option>
+                          <option value="entry_level">Entry Level</option>
+                        </select>
+                      </div>
+                      <div className="flex items-center gap-2 relative">
+                        <button
+                          onClick={() => setShowPresetMenu(v => !v)}
+                          className="px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition text-sm flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          Presets
+                        </button>
+                        {showPresetMenu && (
+                          <div className="absolute right-0 top-12 z-10 w-64 bg-white border border-gray-200 rounded-lg shadow-xl">
+                            <div className="py-2 max-h-64 overflow-auto">
+                              <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Built-in Presets</div>
+                              {SECTION_PRESETS.map(preset => (
+                                <button
+                                  key={preset.name}
+                                  onClick={() => applyPreset(preset)}
+                                  className="w-full text-left px-3 py-2 hover:bg-blue-50 transition"
+                                >
+                                  <div className="font-medium text-sm text-gray-900">{preset.name}</div>
+                                  <div className="text-xs text-gray-500">{preset.description}</div>
+                                </button>
+                              ))}
+                              {customPresets.length > 0 && (
+                                <>
+                                  <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide mt-2 border-t">Custom Presets</div>
+                                  {customPresets.map((preset, idx) => (
+                                    <button
+                                      key={idx}
+                                      onClick={() => applyPreset(preset)}
+                                      className="w-full text-left px-3 py-2 hover:bg-blue-50 transition"
+                                    >
+                                      <div className="font-medium text-sm text-gray-900">{preset.name}</div>
+                                    </button>
+                                  ))}
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        <button
+                          onClick={() => setShowSavePresetModal(true)}
+                          className="px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition text-sm flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                          </svg>
+                          Save Preset
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Sections Grid */}
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 mb-2 block">Section Order & Visibility (Drag to Reorder)</label>
+                      <DndProvider backend={HTML5Backend}>
+                        <div className="flex flex-wrap gap-2">
+                          {sectionOrder.map((key, idx) => {
+                            const section = DEFAULT_SECTIONS.find(s => s.key === key);
+                            if (!section) return null;
+                            return <SectionToggleItem key={key} section={section} index={idx} />;
+                          })}
+                        </div>
+                      </DndProvider>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div 
                 className="resume-printable mx-auto bg-white shadow-2xl print:shadow-none" 
                 style={{ 
@@ -3062,11 +3420,211 @@ export default function ResumeTemplates() {
                 )}
               </div>
 
-              {/* Render sections in the order specified by template layout */}
-              {sectionsOrder.map(sectionType => renderSection(sectionType))}
+              {/* Render sections in current customized order and visibility */}
+              {sectionOrder
+                .filter(sectionKey => visibleSections.includes(sectionKey))
+                .map(sectionType => renderSection(sectionType))}
 
               </div>
             </div>
+
+            {/* Save Preset Modal */}
+            {showSavePresetModal && (
+              <div 
+                className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+                style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+                onClick={() => setShowSavePresetModal(false)}
+              >
+                <div 
+                  className="bg-white rounded-lg shadow-2xl max-w-md w-full border border-gray-200"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Modal Header */}
+                  <div className="bg-blue-50 border-b border-blue-100 px-6 py-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="flex-shrink-0">
+                        <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-heading font-semibold text-gray-900">Save Section Arrangement</h3>
+                    </div>
+                  </div>
+
+                  {/* Modal Content */}
+                  <div className="p-6">
+                    <label htmlFor="presetName" className="block text-sm font-medium text-gray-700 mb-2">
+                      Preset Name
+                    </label>
+                    <input
+                      id="presetName"
+                      type="text"
+                      value={presetName}
+                      onChange={(e) => setPresetName(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && presetName.trim()) {
+                          saveCustomPreset();
+                        }
+                      }}
+                      placeholder="e.g., My Custom Layout"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      autoFocus
+                    />
+                  </div>
+
+                  {/* Modal Actions */}
+                  <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t">
+                    <button
+                      onClick={() => setShowSavePresetModal(false)}
+                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={saveCustomPreset}
+                      disabled={!presetName.trim()}
+                      className="px-4 py-2 text-white rounded-lg transition disabled:opacity-50"
+                      style={{ backgroundColor: '#777C6D' }}
+                      onMouseOver={(e) => !presetName.trim() ? null : e.currentTarget.style.backgroundColor = '#656A5C'}
+                      onMouseOut={(e) => !presetName.trim() ? null : e.currentTarget.style.backgroundColor = '#777C6D'}
+                    >
+                      Save Preset
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Section Formatting Panel */}
+            {showFormattingPanel && formattingSection && (
+              <div 
+                className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+                style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+                onClick={() => setShowFormattingPanel(false)}
+              >
+                <div 
+                  className="bg-white rounded-lg shadow-2xl max-w-lg w-full border border-gray-200"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Modal Header */}
+                  <div className="bg-gray-50 border-b border-gray-200 px-6 py-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="flex-shrink-0">
+                          <svg className="w-6 h-6 text-[#777C6D]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                          </svg>
+                        </div>
+                        <h3 className="text-lg font-heading font-semibold text-gray-900">
+                          Format: {DEFAULT_SECTIONS.find(s => s.key === formattingSection)?.label}
+                        </h3>
+                      </div>
+                      <button
+                        type="button"
+                        aria-label="Close"
+                        onClick={() => setShowFormattingPanel(false)}
+                        className="p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#777C6D] focus:ring-offset-1"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Modal Content */}
+                  <div className="p-6 space-y-5">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Font Size</label>
+                      <select
+                        value={sectionFormatting[formattingSection]?.fontSize || 'medium'}
+                        onChange={(e) => updateSectionFormatting(formattingSection, { fontSize: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#777C6D] focus:border-transparent"
+                      >
+                        <option value="small">Small</option>
+                        <option value="medium">Medium (Default)</option>
+                        <option value="large">Large</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Font Weight</label>
+                      <select
+                        value={sectionFormatting[formattingSection]?.fontWeight || 'normal'}
+                        onChange={(e) => updateSectionFormatting(formattingSection, { fontWeight: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#777C6D] focus:border-transparent"
+                      >
+                        <option value="light">Light</option>
+                        <option value="normal">Normal (Default)</option>
+                        <option value="bold">Bold</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Text Color</label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="color"
+                          value={sectionFormatting[formattingSection]?.color || '#000000'}
+                          onChange={(e) => updateSectionFormatting(formattingSection, { color: e.target.value })}
+                          className="h-10 w-20 border border-gray-300 rounded cursor-pointer"
+                        />
+                        <input
+                          type="text"
+                          value={sectionFormatting[formattingSection]?.color || '#000000'}
+                          onChange={(e) => updateSectionFormatting(formattingSection, { color: e.target.value })}
+                          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#777C6D] focus:border-transparent font-mono text-sm"
+                          placeholder="#000000"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Bottom Spacing (px)</label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="range"
+                          value={sectionFormatting[formattingSection]?.spacing || 24}
+                          onChange={(e) => updateSectionFormatting(formattingSection, { spacing: e.target.value })}
+                          className="flex-1"
+                          min="0"
+                          max="100"
+                        />
+                        <input
+                          type="number"
+                          value={sectionFormatting[formattingSection]?.spacing || 24}
+                          onChange={(e) => updateSectionFormatting(formattingSection, { spacing: e.target.value })}
+                          className="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#777C6D] focus:border-transparent text-sm"
+                          min="0"
+                          max="100"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Modal Actions */}
+                  <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t">
+                    <button
+                      onClick={() => {
+                        const newFormatting = { ...sectionFormatting };
+                        delete newFormatting[formattingSection];
+                        setSectionFormatting(newFormatting);
+                        setShowFormattingPanel(false);
+                      }}
+                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
+                    >
+                      Reset to Default
+                    </button>
+                    <button
+                      onClick={() => setShowFormattingPanel(false)}
+                      className="px-4 py-2 text-white rounded-lg transition"
+                      style={{ backgroundColor: '#777C6D' }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Modal Footer */}
             <div className="bg-gray-50 px-6 py-4 flex justify-between items-center border-t print:hidden">
@@ -3085,7 +3643,10 @@ export default function ResumeTemplates() {
                 </button>
                 <button
                   onClick={() => setShowViewResumeModal(false)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                  className="px-4 py-2 text-white rounded-lg transition"
+                  style={{ backgroundColor: '#777C6D' }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
                 >
                   Close
                 </button>
