@@ -30,7 +30,10 @@ app.use(cors({
   credentials: false
 }));
 
-app.use(express.json());
+// Increase JSON body size limit to handle PDF buffers (base64 encoded PDFs can be large)
+// Default is 100kb, we need at least 15MB for PDF files (5MB PDF * 1.33 base64 overhead + other data)
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
 // API Routes
 app.use("/api/users", userRoutes);

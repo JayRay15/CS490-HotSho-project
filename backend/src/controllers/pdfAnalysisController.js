@@ -1,19 +1,27 @@
 /**
- * Analyze a PDF resume to extract styling hints
- * This provides basic analysis - color/font extraction from PDFs is limited
+ * Analyze a PDF resume to extract styling hints and detailed layout
+ * Extracts both high-level styling suggestions and precise layout metadata
  */
+import { extractPdfLayout, mapTextRegionsToSections } from '../utils/pdfLayoutExtractor.js';
+
 export const analyzePDF = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: 'No PDF file uploaded' });
     }
 
+    // Store PDF buffer for later use in template generation
+    const pdfBuffer = req.file.buffer;
+
     // Use pdfjs-dist for both text extraction and color detection
     let analysis;
+    let detailedLayout = null;
+    let sectionMapping = null;
+    
     try {
       const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
       // Convert Buffer to Uint8Array for pdfjs-dist
-      const uint8Array = new Uint8Array(req.file.buffer);
+      const uint8Array = new Uint8Array(pdfBuffer);
       const loadingTask = pdfjsLib.getDocument({ data: uint8Array });
       const pdfDoc = await loadingTask.promise;
 
@@ -28,12 +36,23 @@ export const analyzePDF = async (req, res) => {
         headerStyle: 'underline'
       };
       
+      // Extract fonts from PDF
+      const extractedFonts = new Set();
       for (let p = 1; p <= maxPages; p++) {
         const page = await pdfDoc.getPage(p);
         const tc = await page.getTextContent();
         const viewport = page.getViewport({ scale: 1.0 });
         const pageText = tc.items?.map((it) => it.str).join('\n') || '';
         textParts.push(pageText);
+        
+        // Extract fonts from text items
+        if (tc.items) {
+          tc.items.forEach(item => {
+            if (item.fontName) {
+              extractedFonts.add(item.fontName);
+            }
+          });
+        }
         
         // Analyze layout from first page only
         if (p === 1 && tc.items && tc.items.length > 0) {
@@ -42,11 +61,17 @@ export const analyzePDF = async (req, res) => {
       }
       const fullText = textParts.join('\n');
 
+      // Convert font set to array of font objects
+      const fontsArray = Array.from(extractedFonts).map(name => ({ name }));
+      if (fontsArray.length > 0) {
+        console.log(`Extracted ${fontsArray.length} font(s) from PDF:`, fontsArray.map(f => f.name));
+      }
+
       analysis = {
         text: fullText,
         pageCount: pdfDoc.numPages || maxPages,
         metadata: {},
-        suggestions: analyzeContent(fullText, layoutInfo)
+        suggestions: analyzeContent(fullText, layoutInfo, fontsArray)
       };
 
       // Color detection from first page
@@ -78,6 +103,36 @@ export const analyzePDF = async (req, res) => {
           textAlignment: analysis.suggestions.layout.textAlignment
         });
       }
+
+      // Extract detailed layout for pixel-perfect PDF generation
+      try {
+        console.log('Extracting detailed PDF layout...');
+        detailedLayout = await extractPdfLayout(pdfBuffer);
+        
+        // Map text regions to resume sections
+        if (detailedLayout.pages && detailedLayout.pages.length > 0) {
+          const firstPage = detailedLayout.pages[0];
+          if (firstPage.textRegions && firstPage.textRegions.length > 0) {
+            sectionMapping = mapTextRegionsToSections(firstPage.textRegions, analysis.text);
+            console.log('✓ Mapped text regions to resume sections');
+          }
+        }
+        
+        // Use fonts from detailed layout if available (these have better font name extraction)
+        if (detailedLayout.fonts && detailedLayout.fonts.size > 0) {
+          const detailedFontsArray = Array.from(detailedLayout.fonts.values());
+          console.log(`✓ Using ${detailedFontsArray.length} font(s) from detailed layout extraction`);
+          // Update analysis suggestions with better font information
+          const fontAnalysis = analyzeContent(analysis.text, layoutInfo, detailedFontsArray);
+          analysis.suggestions.fonts = fontAnalysis.fonts;
+        }
+        
+        const fontCount = detailedLayout.fonts ? detailedLayout.fonts.size : 0;
+        console.log(`✓ Extracted detailed layout: ${detailedLayout.pages.length} page(s), ${fontCount} font(s)`);
+      } catch (layoutErr) {
+        console.warn('Detailed layout extraction failed (non-critical):', layoutErr?.message || layoutErr);
+        // Continue without detailed layout - template will still work but without pixel-perfect generation
+      }
     } catch (e) {
       // Fallback: no pdfjs available
       console.log('pdfjs text/color extraction failed:', e?.message || e);
@@ -89,8 +144,16 @@ export const analyzePDF = async (req, res) => {
       };
     }
 
+    // Include detailed layout and PDF buffer in response (if available)
+    const response = {
+      ...analysis,
+      pdfBuffer: pdfBuffer.toString('base64'), // Base64 encode for JSON transport
+      detailedLayout: detailedLayout, // Detailed layout metadata
+      sectionMapping: sectionMapping // Mapping of text regions to sections
+    };
+
     console.log('PDF analysis suggestions:', analysis.suggestions);
-    res.json(analysis);
+    res.json(response);
   } catch (error) {
     console.error('PDF analysis error:', error);
     res.status(500).json({ 
@@ -214,7 +277,142 @@ function extractLayoutInfo(textItems, viewport) {
 /**
  * Analyze PDF text content to provide styling suggestions and extract structure
  */
-function analyzeContent(text, layoutInfo = null) {
+function analyzeContent(text, layoutInfo = null, extractedFonts = null) {
+  // Map PDF font names to web font families
+  // Now receives fontInfo object with name, originalName, baseFont, etc.
+  const mapPdfFontToWebFont = (pdfFontName, fontInfo = null) => {
+    if (!pdfFontName) return "Arial, Helvetica, sans-serif";
+    
+    // Use actual font name if available (extracted from PDF font descriptor)
+    const nameToCheck = (fontInfo && fontInfo.name) ? fontInfo.name : pdfFontName;
+    const lower = nameToCheck.toLowerCase();
+    
+    // Clean up the font name - remove common PDF prefixes/suffixes
+    let cleanName = nameToCheck
+      .replace(/^[A-Z]{6,}\+/, '') // Remove subset prefix like "ABCDEF+"
+      .replace(/^(A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z|a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z){1,6}\+/, '') // Remove 1-6 char subset prefix
+      .replace(/^[a-z]_d\d+_f\d+/, '') // Remove generic prefix
+      .replace(/\s+/g, '') // Remove spaces
+      .trim();
+    
+    const cleanLower = cleanName.toLowerCase();
+    
+    // Generic font names (like g_d1_f2) - default to Arial/Helvetica
+    if (!cleanName || cleanName.length < 3 || lower.startsWith('g_') || lower.match(/^[a-z]_d\d+_f\d+$/)) {
+      return "Arial, Helvetica, sans-serif";
+    }
+    
+    // Map actual font family names to web fonts
+    // Check for common font families
+    if (cleanLower.includes('helvetica') || cleanLower.includes('arial')) {
+      return "Arial, Helvetica, sans-serif";
+    } else if (cleanLower.includes('times') || cleanLower.includes('roman')) {
+      return "Times, 'Times New Roman', serif";
+    } else if (cleanLower.includes('courier')) {
+      return "'Courier New', Courier, monospace";
+    } else if (cleanLower.includes('georgia')) {
+      return "Georgia, serif";
+    } else if (cleanLower.includes('verdana')) {
+      return "Verdana, sans-serif";
+    } else if (cleanLower.includes('calibri')) {
+      return "Calibri, sans-serif";
+    } else if (cleanLower.includes('cambria')) {
+      return "Cambria, serif";
+    } else if (cleanLower.includes('garamond')) {
+      return "Garamond, serif";
+    } else if (cleanLower.includes('palatino')) {
+      return "'Palatino Linotype', Palatino, serif";
+    } else if (cleanLower.includes('lato')) {
+      return "Lato, sans-serif";
+    } else if (cleanLower.includes('open') && cleanLower.includes('sans')) {
+      return "'Open Sans', sans-serif";
+    } else if (cleanLower.includes('roboto')) {
+      return "Roboto, sans-serif";
+    } else if (cleanLower.includes('montserrat')) {
+      return "Montserrat, sans-serif";
+    } else if (cleanLower.includes('raleway')) {
+      return "Raleway, sans-serif";
+    } else if (cleanLower.includes('source') && cleanLower.includes('sans')) {
+      return "'Source Sans Pro', sans-serif";
+    } else if (cleanLower.includes('ubuntu')) {
+      return "Ubuntu, sans-serif";
+    } else if (cleanLower.includes('playfair')) {
+      return "'Playfair Display', serif";
+    } else if (cleanLower.includes('merriweather')) {
+      return "Merriweather, serif";
+    } else if (cleanLower.includes('crimson')) {
+      return "Crimson Text, serif";
+    } else {
+      // Try to use the cleaned font name directly if it looks like a valid font name
+      // If it contains only letters and looks like a font name, use it
+      if (cleanName.match(/^[A-Za-z]+[A-Za-z\s]*$/)) {
+        // Looks like a valid font name (letters and spaces only)
+        // Capitalize first letter of each word
+        const formattedName = cleanName.split(/\s+/).map(word => 
+          word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        ).join(' ');
+        return `"${formattedName}", sans-serif`;
+      }
+      // Default fallback
+      return "Arial, Helvetica, sans-serif";
+    }
+  };
+
+  // Determine fonts from extracted PDF fonts if available
+  let headingFont = "Arial, Helvetica, sans-serif";
+  let bodyFont = "Arial, Helvetica, sans-serif";
+  
+  if (extractedFonts && extractedFonts.length > 0) {
+    // extractedFonts can be either an array of font info objects (from detailed extraction)
+    // or an array of font name strings (from basic extraction)
+    // Normalize to array of objects with name and optional metadata
+    const fontsWithMetadata = extractedFonts.map(f => {
+      if (typeof f === 'string') {
+        return { name: f, size: 12, originalName: f };
+      }
+      // Already an object - use it
+      return {
+        name: f.name || f.originalName || 'Arial',
+        originalName: f.originalName || f.name || 'Arial',
+        baseFont: f.baseFont,
+        size: f.size || 12,
+        weight: f.weight,
+        style: f.style
+      };
+    });
+    
+    // Sort fonts by size - larger fonts are typically headings
+    const fontsWithSizes = fontsWithMetadata
+      .sort((a, b) => (b.size || 0) - (a.size || 0)); // Sort by size, descending
+    
+    // Largest font is likely the heading, smallest is body text
+    if (fontsWithSizes.length > 0) {
+      const largestFont = fontsWithSizes[0];
+      const smallestFont = fontsWithSizes[fontsWithSizes.length - 1];
+      
+      // Map using the actual extracted font name with metadata
+      headingFont = mapPdfFontToWebFont(largestFont.name, largestFont);
+      bodyFont = mapPdfFontToWebFont(smallestFont.name, smallestFont);
+      
+      // Also check for explicit bold fonts in the name
+      const boldFont = fontsWithSizes.find(f => {
+        const name = (f.name || '').toLowerCase();
+        return name.includes('bold') || name.includes('bd') || f.weight === 'bold';
+      });
+      if (boldFont) {
+        headingFont = mapPdfFontToWebFont(boldFont.name, boldFont);
+      }
+      
+      console.log(`Mapped PDF fonts - Body: ${bodyFont} (from "${smallestFont.name}", ${smallestFont.size}px), Heading: ${headingFont} (from "${largestFont.name}", ${largestFont.size}px)`);
+    } else {
+      // Fallback: use first font
+      const firstFont = fontsWithMetadata[0];
+      bodyFont = mapPdfFontToWebFont(firstFont.name, firstFont);
+      headingFont = bodyFont;
+      console.log(`Mapped PDF fonts - Body: ${bodyFont}, Heading: ${headingFont} (fallback)`);
+    }
+  }
+
   const suggestions = {
     colors: {
       primary: "#4F5348",  // Default sage green
@@ -222,8 +420,8 @@ function analyzeContent(text, layoutInfo = null) {
       muted: "#666"
     },
     fonts: {
-      heading: "Inter, sans-serif",
-      body: "Inter, sans-serif",
+      heading: headingFont,
+      body: bodyFont,
       sizes: {
         name: "36px",
         sectionHeader: "18px",
@@ -265,6 +463,33 @@ function analyzeContent(text, layoutInfo = null) {
     suggestions.layout.educationFormat = educationFormat;
     console.log('✓ Extracted education format from PDF:', educationFormat);
   }
+
+  // Extract project format from PDF
+  const projectFormat = extractProjectFormat(lines, text);
+  if (projectFormat) {
+    suggestions.layout.projectFormat = projectFormat;
+    console.log('✓ Extracted project format from PDF:', projectFormat);
+  }
+
+  // Extract experience format from PDF
+  const experienceFormat = extractExperienceFormat(lines, text);
+  if (experienceFormat) {
+    suggestions.layout.experienceFormat = experienceFormat;
+    console.log('✓ Extracted experience format from PDF:', experienceFormat);
+  }
+  
+  // Log ALL layout details for debugging
+  console.log('📋 Complete layout extracted:', JSON.stringify({
+    headerAlignment: suggestions.layout.headerAlignment,
+    sectionSpacing: suggestions.layout.sectionSpacing,
+    textAlignment: suggestions.layout.textAlignment,
+    headerStyle: suggestions.layout.headerStyle,
+    lineHeight: suggestions.layout.lineHeight,
+    paragraphSpacing: suggestions.layout.paragraphSpacing,
+    projectFormat: suggestions.layout.projectFormat,
+    experienceFormat: suggestions.layout.experienceFormat,
+    educationFormat: suggestions.layout.educationFormat
+  }, null, 2));
 
   // Detect resume type based on content structure
   const experienceIndex = lowerText.indexOf('experience');
@@ -328,14 +553,6 @@ function analyzeContent(text, layoutInfo = null) {
     if (avgHeaderLength < 15) {
       suggestions.fonts.sizes.sectionHeader = "20px"; // Larger for short headers
     }
-  }
-
-  // Font family suggestions based on common patterns
-  // (This is speculative - PDFs don't easily expose font info)
-  if (text.match(/\u2022/g)) {
-    // Has bullet points, might be using a modern sans-serif
-    suggestions.fonts.body = "Inter, sans-serif";
-    suggestions.fonts.heading = "Inter, sans-serif";
   }
 
   return suggestions;
@@ -564,6 +781,185 @@ function extractEducationFormat(lines, fullText) {
   };
 }
 
+/**
+ * Extract project format from PDF text
+ * Detects if projects use "Title | Technologies" on same line, or separate lines
+ */
+function extractProjectFormat(lines, fullText) {
+  const lowerText = fullText.toLowerCase();
+  const projectsIndex = lowerText.indexOf('project');
+  
+  if (projectsIndex === -1) {
+    return null;
+  }
+
+  // Find projects section in lines
+  let projectsStartIdx = -1;
+  let projectsEndIdx = lines.length;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim().toLowerCase();
+    if ((trimmed === 'projects' || trimmed.includes('projects')) && projectsStartIdx === -1) {
+      projectsStartIdx = i + 1; // Start after header
+      break;
+    }
+  }
+  
+  // Find end of projects section
+  const sectionHeaders = ['experience', 'skills', 'education', 'awards', 'certifications', 'summary'];
+  for (let i = projectsStartIdx; i < lines.length; i++) {
+    const trimmed = lines[i].trim().toLowerCase();
+    if (sectionHeaders.some(header => trimmed === header || trimmed.includes(header))) {
+      projectsEndIdx = i;
+      break;
+    }
+  }
+
+  if (projectsStartIdx === -1 || projectsStartIdx >= projectsEndIdx) {
+    return null;
+  }
+
+  // Analyze project entries
+  const projectLines = lines.slice(projectsStartIdx, projectsEndIdx);
+  const entryLines = projectLines.filter(l => l.trim().length > 0).slice(0, 20);
+  
+  let titleWithTech = false;
+  let hasBullets = false;
+  
+  for (let i = 0; i < entryLines.length; i++) {
+    const line = entryLines[i].trim();
+    
+    // Check for "Title | Tech1, Tech2" format
+    if (line.includes('|')) {
+      const parts = line.split('|');
+      if (parts.length === 2) {
+        const left = parts[0].trim();
+        const right = parts[1].trim();
+        // Left should be a project name (not too long), right should have commas (tech list)
+        if (left.length < 50 && right.includes(',')) {
+          titleWithTech = true;
+        }
+      }
+    }
+    
+    // Check for bullet points (●, •, -)
+    if (/^[●•\-]\s/.test(line)) {
+      hasBullets = true;
+    }
+  }
+
+  // Detect bullet character type (●, •, -, etc.)
+  let bulletCharacter = '•'; // Default
+  for (let i = 0; i < entryLines.length; i++) {
+    const line = entryLines[i].trim();
+    if (/^[●•\-]\s/.test(line)) {
+      if (line.startsWith('●')) bulletCharacter = '●';
+      else if (line.startsWith('•')) bulletCharacter = '•';
+      else if (line.startsWith('-')) bulletCharacter = '-';
+      break;
+    }
+  }
+
+  return {
+    titleWithTech: titleWithTech,
+    hasBullets: hasBullets,
+    bulletCharacter: bulletCharacter,
+    // Additional format hints
+    techOnSameLineAsTitle: titleWithTech,
+    bulletsAfterTitle: hasBullets
+  };
+}
+
+/**
+ * Extract experience format from PDF text
+ * Detects how experience entries are formatted
+ */
+function extractExperienceFormat(lines, fullText) {
+  const lowerText = fullText.toLowerCase();
+  const experienceIndex = lowerText.indexOf('experience');
+  
+  if (experienceIndex === -1) {
+    return null;
+  }
+
+  // Find experience section
+  let expStartIdx = -1;
+  let expEndIdx = lines.length;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim().toLowerCase();
+    if ((trimmed === 'experience' || trimmed.includes('experience')) && !trimmed.includes('no ') && expStartIdx === -1) {
+      expStartIdx = i + 1;
+      break;
+    }
+  }
+  
+  const sectionHeaders = ['skills', 'education', 'projects', 'awards', 'certifications', 'summary'];
+  for (let i = expStartIdx; i < lines.length; i++) {
+    const trimmed = lines[i].trim().toLowerCase();
+    if (sectionHeaders.some(header => trimmed === header || trimmed.includes(header))) {
+      expEndIdx = i;
+      break;
+    }
+  }
+
+  if (expStartIdx === -1 || expStartIdx >= expEndIdx) {
+    return null;
+  }
+
+  const expLines = lines.slice(expStartIdx, expEndIdx);
+  const entryLines = expLines.filter(l => l.trim().length > 0).slice(0, 20);
+  
+  let titleCompanySameLine = false;
+  let datesOnRight = false;
+  let hasBullets = false;
+  
+  for (let i = 0; i < entryLines.length; i++) {
+    const line = entryLines[i].trim();
+    
+    // Check if job title and company on same line (common patterns: "Title at Company" or "Title | Company")
+    if (/\s+at\s+/i.test(line) || line.includes('|')) {
+      titleCompanySameLine = true;
+    }
+    
+    // Check for dates on the right (line ends with year or date pattern)
+    if (/^\d{4}$|^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[\s,]\d{4}$/.test(line) ||
+        /\d{4}\s*$/.test(line)) {
+      datesOnRight = true;
+    }
+    
+    // Check for bullet points
+    if (/^[●•\-]\s/.test(line)) {
+      hasBullets = true;
+    }
+  }
+
+  // Detect bullet character and spacing
+  let bulletCharacter = '•';
+  let bulletIndentation = 0;
+  for (let i = 0; i < entryLines.length; i++) {
+    const line = entryLines[i].trim();
+    if (/^[●•\-]\s/.test(line)) {
+      if (line.startsWith('●')) bulletCharacter = '●';
+      else if (line.startsWith('•')) bulletCharacter = '•';
+      else if (line.startsWith('-')) bulletCharacter = '-';
+      // Calculate indentation (count spaces/tabs before bullet)
+      const originalLine = entryLines[i];
+      const beforeBullet = originalLine.match(/^(\s*)/)?.[1] || '';
+      bulletIndentation = beforeBullet.length;
+      break;
+    }
+  }
+
+  return {
+    titleCompanySameLine: titleCompanySameLine,
+    datesOnRight: datesOnRight,
+    hasBullets: hasBullets,
+    bulletCharacter: bulletCharacter,
+    bulletIndentation: bulletIndentation
+  };
+}
+
 // Heuristic: detect colors from operator list (primary, text, muted)
 function detectColorsFromOps(pdfjsLib, fnArray, argsArray) {
   const { OPS } = pdfjsLib;
@@ -623,7 +1019,7 @@ function detectColorsFromOps(pdfjsLib, fnArray, argsArray) {
     
     return brightness > 0.3 && brightness < 0.7 && saturation < 0.3;
   };
-
+  
   // Score colors for primary selection
   const scorePrimaryColor = ({ r, g, b }) => {
     const maxVal = Math.max(r, g, b);
@@ -693,7 +1089,7 @@ function detectColorsFromOps(pdfjsLib, fnArray, argsArray) {
         // Categorize colors
         if (isPrimaryColor(rgb)) {
           const existing = primaryColors.get(hex) || { count: 0, rgb, score: 0 };
-          existing.count++;
+        existing.count++;
           existing.score = scorePrimaryColor(rgb);
           primaryColors.set(hex, existing);
         } else if (isTextColor(rgb)) {

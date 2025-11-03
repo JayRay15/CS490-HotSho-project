@@ -40,8 +40,9 @@ const formatDate = (dateString) => {
 };
 
 // Simple resume preview tile (Google Docs style)
-function ResumeTile({ resume, onView, onDelete, onRename }) {
-  const theme = { primary: "#4F5348", text: "#222", bg: "#FFF" };
+function ResumeTile({ resume, template, onView, onDelete, onRename }) {
+  const theme = template?.theme || { colors: { primary: "#4F5348", text: "#222" } };
+  const fonts = theme?.fonts || { heading: "Inter, sans-serif", body: "Inter, sans-serif", sizes: {} };
   
   return (
     <Card variant="outlined" interactive className="overflow-hidden !p-0">
@@ -51,20 +52,20 @@ function ResumeTile({ resume, onView, onDelete, onRename }) {
         style={{ backgroundColor: "#F9F9F9" }}
         onClick={onView}
       >
-        <div className="text-xs font-bold mb-2" style={{ color: theme.primary }}>
+        <div className="text-xs font-bold mb-2" style={{ color: theme.colors?.primary || '#4F5348', fontFamily: fonts.heading }}>
           {resume.name || "Untitled Resume"}
         </div>
         <div className="flex-1 space-y-2 overflow-hidden">
           {/* Contact Info Preview */}
           {resume.sections?.contactInfo && (
-            <div className="text-[8px] text-gray-700 font-semibold">
+            <div className="text-[8px] text-gray-700 font-semibold" style={{ fontFamily: fonts.heading }}>
               {resume.sections.contactInfo.name || "Name"}
             </div>
           )}
           
           {/* Summary Preview */}
           {resume.sections?.summary && (
-            <div className="text-[7px] text-gray-600 leading-tight line-clamp-2">
+            <div className="text-[7px] text-gray-600 leading-tight line-clamp-2" style={{ fontFamily: fonts.body }}>
               {resume.sections.summary.substring(0, 100)}...
             </div>
           )}
@@ -72,10 +73,10 @@ function ResumeTile({ resume, onView, onDelete, onRename }) {
           {/* Experience Preview */}
           {resume.sections?.experience && resume.sections.experience.length > 0 && (
             <div className="mt-2">
-              <div className="text-[7px] text-gray-700 font-semibold">
+              <div className="text-[7px] text-gray-700 font-semibold" style={{ fontFamily: fonts.heading }}>
                 {resume.sections.experience[0].company}
               </div>
-              <div className="text-[6px] text-gray-500 italic">
+              <div className="text-[6px] text-gray-500 italic" style={{ fontFamily: fonts.heading }}>
                 {resume.sections.experience[0].title}
               </div>
             </div>
@@ -83,7 +84,7 @@ function ResumeTile({ resume, onView, onDelete, onRename }) {
           
           {/* Skills Preview */}
           {resume.sections?.skills && resume.sections.skills.length > 0 && (
-            <div className="mt-2 text-[6px] text-gray-600">
+            <div className="mt-2 text-[6px] text-gray-600" style={{ fontFamily: fonts.body }}>
               {resume.sections.skills.slice(0, 3).join(' • ')}
               {resume.sections.skills.length > 3 && ' ...'}
             </div>
@@ -94,7 +95,7 @@ function ResumeTile({ resume, onView, onDelete, onRename }) {
       {/* Info & Actions */}
       <div className="px-2 pt-2 pb-2">
         <div className="flex items-center gap-2 mb-1.5">
-          <p className="text-sm font-medium text-gray-900 line-clamp-2 flex-1 min-w-0">{resume.name}</p>
+          <p className="text-sm font-medium text-gray-900 line-clamp-2 flex-1 min-w-0" style={{ fontFamily: fonts.heading }}>{resume.name}</p>
           <button
             onClick={(e) => { e.stopPropagation(); onRename(); }}
             className="p-1 rounded-lg transition flex-shrink-0"
@@ -129,11 +130,11 @@ function ResumeTile({ resume, onView, onDelete, onRename }) {
                 e.currentTarget.style.color = '#6B7280';
                 e.currentTarget.style.backgroundColor = 'transparent';
               }}
-              title="View resume"
+              title="View"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
               </svg>
             </button>
             <button
@@ -141,17 +142,17 @@ function ResumeTile({ resume, onView, onDelete, onRename }) {
               className="p-1 rounded-lg transition flex-shrink-0"
               style={{ color: '#6B7280' }}
               onMouseOver={(e) => {
-                e.currentTarget.style.color = '#EF4444';
-                e.currentTarget.style.backgroundColor = '#FEF2F2';
+                e.currentTarget.style.color = '#B91C1C';
+                e.currentTarget.style.backgroundColor = '#FEE2E2';
               }}
               onMouseOut={(e) => {
                 e.currentTarget.style.color = '#6B7280';
                 e.currentTarget.style.backgroundColor = 'transparent';
               }}
-              title="Delete resume"
+              title="Delete"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0H7m4-4h2a2 2 0 012 2v2H9V5a2 2 0 012-2z" />
               </svg>
             </button>
           </div>
@@ -452,6 +453,11 @@ export default function ResumeTemplates() {
   const [showViewResumeModal, setShowViewResumeModal] = useState(false);
   const [viewingResume, setViewingResume] = useState(null);
   const [regeneratingSection, setRegeneratingSection] = useState(null);
+  // Removed PDF experimental feature states
+  // const [viewingAsPdf, setViewingAsPdf] = useState(false);
+  // const [pdfUrl, setPdfUrl] = useState(null);
+  // const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  // const [experimentalFeaturesEnabled, setExperimentalFeaturesEnabled] = useState(false);
   
   // Success message state
   const [successMessage, setSuccessMessage] = useState(null);
@@ -498,9 +504,50 @@ export default function ResumeTemplates() {
   }, []);
 
   // Resume handlers
-  const handleViewResume = (resume) => {
+  const handleViewResume = async (resume) => {
     setViewingResume(resume);
     setShowViewResumeModal(true);
+    // Always use HTML view now; PDF experimental view removed
+  };
+
+  const loadResumePdf = async (resumeId) => {
+    try {
+      setIsGeneratingPdf(true);
+      await authWrap();
+      const token = await getToken();
+      setAuthToken(token);
+      
+      console.log('Loading PDF for resume:', resumeId);
+      const response = await api.get(`/api/resume/resumes/${resumeId}/pdf`, {
+        responseType: 'blob',
+        timeout: 30000 // 30 second timeout for PDF generation
+      });
+      
+      // Verify we got a PDF blob
+      if (!response.data || response.data.size === 0) {
+        throw new Error('Empty PDF response');
+      }
+      
+      // Create object URL for the PDF blob
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      setPdfUrl(url);
+      console.log('PDF loaded successfully, size:', blob.size, 'bytes');
+    } catch (err) {
+      console.error('Failed to load PDF:', err);
+      // Fall back to HTML view if PDF generation fails
+      setViewingAsPdf(false);
+      setPdfUrl(null);
+      
+      const errorMessage = err.response?.data?.message || err.message || 'Unknown error';
+      if (err.response?.status === 400 || err.response?.status === 404) {
+        alert(`PDF generation not available: ${errorMessage}\n\nShowing HTML view instead.`);
+      } else {
+        alert(`Failed to generate PDF: ${errorMessage}\n\nShowing HTML view instead.`);
+      }
+    } finally {
+      setIsGeneratingPdf(false);
+    }
   };
 
   const handleRegenerateSection = async (section) => {
@@ -746,6 +793,10 @@ export default function ResumeTemplates() {
       let type = "chronological"; // Default type
       let extractedStructure = null; // Store extracted PDF structure
       let extractedLayout = null; // Store extracted PDF layout
+      // Initialize PDF data variables (will be populated if PDF analysis succeeds)
+      let pdfBuffer = null;
+      let detailedLayout = null;
+      let sectionMapping = null;
       
       // Try to analyze PDF if it's a PDF file
       if (file.type === 'application/pdf') {
@@ -769,6 +820,12 @@ export default function ResumeTemplates() {
           // Use axios client with configured baseURL
           const { data: analysis } = await api.post('/api/pdf-analysis/analyze', formData);
           console.info('PDF analysis received', analysis?.suggestions);
+          
+          // Store PDF buffer and detailed layout for pixel-perfect generation
+          pdfBuffer = analysis?.pdfBuffer || null;
+          detailedLayout = analysis?.detailedLayout || null;
+          sectionMapping = analysis?.sectionMapping || null;
+          
           // Use suggestions from PDF analysis if available
           if (analysis?.suggestions) {
             theme = {
@@ -882,6 +939,12 @@ export default function ResumeTemplates() {
       // Store education format if extracted from PDF (already included in extractedLayout)
       let educationFormat = extractedLayout?.educationFormat || null;
       
+      // Store project and experience formats if extracted from PDF
+      const projectFormat = extractedLayout?.projectFormat || null;
+      const experienceFormat = extractedLayout?.experienceFormat || null;
+      
+      console.log('Storing layout formats:', { educationFormat, projectFormat, experienceFormat });
+      
       return {
         name: templateName,
         type: type,
@@ -895,11 +958,17 @@ export default function ResumeTemplates() {
           headerStyle: extractedLayout?.headerStyle || 'underline',
           lineHeight: extractedLayout?.lineHeight || 1.5,
           paragraphSpacing: extractedLayout?.paragraphSpacing || 8,
-          // Store education format if extracted
-          educationFormat: educationFormat
+          // Store section-specific formats if extracted
+          educationFormat: educationFormat,
+          projectFormat: projectFormat,
+          experienceFormat: experienceFormat
         },
         theme: theme,
-        analysis: __analysis || { used: false }
+        analysis: __analysis || { used: false },
+        // Include PDF data for pixel-perfect generation
+        pdfBuffer: pdfBuffer || null,
+        pdfLayout: detailedLayout || null,
+        sectionMapping: sectionMapping || null
       };
     } catch (error) {
       console.error("Error processing file:", error);
@@ -944,7 +1013,8 @@ export default function ResumeTemplates() {
     
     try {
       await authWrap();
-      await apiImportTemplate(pendingImport);
+      const response = await apiImportTemplate(pendingImport);
+      console.log("Template import response:", response);
       setShowCustomizeImport(false);
       setPendingImport(null);
       setImportFile(null);
@@ -953,8 +1023,10 @@ export default function ResumeTemplates() {
       setSuccessMessage("Template imported successfully!");
       setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err) {
-      console.error(err);
-      alert("Failed to finalize template import");
+      console.error("Template import error:", err);
+      console.error("Error response:", err.response?.data);
+      const errorMessage = err.response?.data?.message || err.message || "Failed to import template";
+      alert(`Failed to import template: ${errorMessage}`);
     }
   };
 
@@ -972,41 +1044,45 @@ export default function ResumeTemplates() {
           )}
 
           {/* Header */}
-          <div className="mb-6 flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-heading font-bold mb-2" style={{ color: "#4F5348" }}>
-                My Resumes
-              </h1>
-              <p className="text-sm" style={{ color: "#656A5C" }}>
-                Create and manage your resume versions
-              </p>
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h1 className="text-3xl font-heading font-bold mb-2" style={{ color: "#4F5348" }}>
+                  My Resumes
+                </h1>
+                <p className="text-sm" style={{ color: "#656A5C" }}>
+                  Resumes & Cover Letters
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleOpenAIResumeModal}
+                  className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                  style={{ backgroundColor: '#777C6D' }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span>Add Resume</span>
+                </button>
+                <button
+                  onClick={() => setShowTemplateModal(true)}
+                  className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                  style={{ backgroundColor: '#777C6D' }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+                  </svg>
+                  <span>Manage Templates</span>
+                </button>
+              </div>
             </div>
-            <div className="flex gap-3">
-              <button
-                onClick={handleOpenAIResumeModal}
-                className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
-                style={{ backgroundColor: '#777C6D' }}
-                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                <span>Add Resume</span>
-              </button>
-              <button
-                onClick={() => setShowTemplateModal(true)}
-                className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
-                style={{ backgroundColor: '#777C6D' }}
-                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
-                </svg>
-                <span>Manage Templates</span>
-              </button>
-            </div>
+            
+            {/* Removed Experimental Features Toggle */}
           </div>
 
           {/* Resumes Grid */}
@@ -1026,6 +1102,7 @@ export default function ResumeTemplates() {
                 <ResumeTile
                   key={resume._id}
                   resume={resume}
+                  template={templates.find(t => t._id === resume.templateId)}
                   onView={() => handleViewResume(resume)}
                   onRename={() => {
                     setRenamingResume(resume);
@@ -1063,7 +1140,10 @@ export default function ResumeTemplates() {
               <div className="flex gap-3 items-center">
                 <button
                   onClick={() => setShowImport(true)}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
+                  className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                  style={{ backgroundColor: '#777C6D' }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
                 >
                   Import Template
                 </button>
@@ -1973,35 +2053,6 @@ export default function ResumeTemplates() {
                   </select>
                 </div>
 
-                {/* Generate Variations Button */}
-                {!showVariations && (
-                  <div className="flex justify-between items-center">
-                    <button
-                      type="button"
-                      onClick={handleGenerateVariations}
-                      disabled={!aiFormData.jobId || !aiFormData.templateId || isGeneratingVariations}
-                      className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-                    >
-                      {isGeneratingVariations ? (
-                        <>
-                          <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          <span>Generating Variations...</span>
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                          </svg>
-                          <span>Generate Multiple Variations (Recommended)</span>
-                        </>
-                      )}
-                    </button>
-                    <span className="text-sm text-gray-500">or proceed to generate single version</span>
-                  </div>
-                )}
 
                 {/* Variations Display */}
                 {showVariations && variations.length > 0 && (
@@ -2914,116 +2965,106 @@ export default function ResumeTemplates() {
               </button>
             </div>
 
-            {/* Modal Content - Print Preview Style */}
-            <div className="flex-1 overflow-y-auto" style={{ backgroundColor: '#525252' }}>
-              {/* Paper-like Resume Document - Looks like print preview */}
-              <div className="py-8 px-4">
+            {/* Modal Content - HTML View only (PDF experimental removed) */}
+            <div className="flex-1 overflow-y-auto py-8 px-4" style={{ backgroundColor: '#525252' }}>
+              <div 
+                className="resume-printable mx-auto bg-white shadow-2xl print:shadow-none" 
+                style={{ 
+                  width: '8.5in', 
+                  minHeight: '11in', 
+                  padding: '0.75in',
+                  boxShadow: '0 0 0.5cm rgba(0,0,0,0.5)'
+                }}
+              >
+              
+              {/* Resume Header */}
+              <div 
+                className="pb-6 border-b-2"
+                style={{ 
+                  borderColor: theme.colors.primary,
+                  textAlign: resumeTemplate.layout?.headerAlignment || 'center',
+                  marginBottom: `${resumeTemplate.layout?.sectionSpacing || 32}px`
+                }}
+              >
+                <h1 className="font-bold mb-2" style={{ color: theme.colors.text, fontFamily: theme.fonts.heading, fontSize: theme.fonts.sizes?.name || "36px" }}>
+                  {viewingResume.sections?.contactInfo?.name || 'Your Name'}
+                </h1>
                 <div 
-                  className="resume-printable mx-auto bg-white shadow-2xl print:shadow-none" 
+                  className="flex flex-wrap gap-2 justify-center" 
                   style={{ 
-                    width: '8.5in', 
-                    minHeight: '11in', 
-                    padding: '0.75in',
-                    boxShadow: '0 0 0.5cm rgba(0,0,0,0.5)'
+                    color: theme.colors.muted, 
+                    fontFamily: theme.fonts.body, 
+                    fontSize: theme.fonts.sizes?.small || "12px"
                   }}
                 >
-                
-                {/* Resume Header */}
-                <div 
-                  className="pb-6 border-b-2"
-                  style={{ 
-                    borderColor: theme.colors.primary,
-                    textAlign: resumeTemplate.layout?.headerAlignment || 'center',
-                    marginBottom: `${resumeTemplate.layout?.sectionSpacing || 32}px`
-                  }}
-                >
-                  <h1 className="font-bold mb-2" style={{ color: theme.colors.text, fontFamily: theme.fonts.heading, fontSize: theme.fonts.sizes?.name || "36px" }}>
-                    {viewingResume.sections?.contactInfo?.name || 'Your Name'}
-                  </h1>
+                  {viewingResume.sections?.contactInfo?.email && (
+                    <span>{viewingResume.sections.contactInfo.email}</span>
+                  )}
+                  {viewingResume.sections?.contactInfo?.phone && (
+                    <>
+                      {viewingResume.sections?.contactInfo?.email && <span>•</span>}
+                      <span>{viewingResume.sections.contactInfo.phone}</span>
+                    </>
+                  )}
+                  {viewingResume.sections?.contactInfo?.location && (
+                    <>
+                      {(viewingResume.sections?.contactInfo?.email || viewingResume.sections?.contactInfo?.phone) && <span>•</span>}
+                      <span>{viewingResume.sections.contactInfo.location}</span>
+                    </>
+                  )}
+                </div>
+                {/* Links row */}
+                {(viewingResume.sections?.contactInfo?.linkedin || 
+                  viewingResume.sections?.contactInfo?.github || 
+                  viewingResume.sections?.contactInfo?.website) && (
                   <div 
-                    className="flex flex-wrap gap-2" 
+                    className="text-xs flex flex-wrap gap-2 mt-1 justify-center" 
                     style={{ 
-                      color: theme.colors.muted, 
-                      fontFamily: theme.fonts.body, 
-                      fontSize: theme.fonts.sizes?.small || "12px",
-                      justifyContent: resumeTemplate.layout?.headerAlignment === 'center' ? 'center' : 
-                                     resumeTemplate.layout?.headerAlignment === 'right' ? 'flex-end' : 'flex-start'
+                      color: '#4A5568'
                     }}
                   >
-                    {viewingResume.sections?.contactInfo?.email && (
-                      <span>{viewingResume.sections.contactInfo.email}</span>
+                    {viewingResume.sections?.contactInfo?.linkedin && (
+                      <a 
+                        href={viewingResume.sections.contactInfo.linkedin} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="hover:underline"
+                      >
+                        LinkedIn
+                      </a>
                     )}
-                    {viewingResume.sections?.contactInfo?.phone && (
+                    {viewingResume.sections?.contactInfo?.github && (
                       <>
-                        {viewingResume.sections?.contactInfo?.email && <span>•</span>}
-                        <span>{viewingResume.sections.contactInfo.phone}</span>
-                      </>
-                    )}
-                    {viewingResume.sections?.contactInfo?.location && (
-                      <>
-                        {(viewingResume.sections?.contactInfo?.email || viewingResume.sections?.contactInfo?.phone) && <span>•</span>}
-                        <span>{viewingResume.sections.contactInfo.location}</span>
-                      </>
-                    )}
-                  </div>
-                  {/* Links row */}
-                  {(viewingResume.sections?.contactInfo?.linkedin || 
-                    viewingResume.sections?.contactInfo?.github || 
-                    viewingResume.sections?.contactInfo?.website) && (
-                    <div 
-                      className="text-xs flex flex-wrap gap-2 mt-1" 
-                      style={{ 
-                        color: '#4A5568',
-                        justifyContent: resumeTemplate.layout?.headerAlignment === 'center' ? 'center' : 
-                                       resumeTemplate.layout?.headerAlignment === 'right' ? 'flex-end' : 'flex-start'
-                      }}
-                    >
-                      {viewingResume.sections?.contactInfo?.linkedin && (
+                        {viewingResume.sections?.contactInfo?.linkedin && <span>•</span>}
                         <a 
-                          href={viewingResume.sections.contactInfo.linkedin} 
+                          href={viewingResume.sections.contactInfo.github} 
                           target="_blank" 
                           rel="noopener noreferrer"
                           className="hover:underline"
                         >
-                          LinkedIn
+                          GitHub
                         </a>
-                      )}
-                      {viewingResume.sections?.contactInfo?.github && (
-                        <>
-                          {viewingResume.sections?.contactInfo?.linkedin && <span>•</span>}
-                          <a 
-                            href={viewingResume.sections.contactInfo.github} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="hover:underline"
-                          >
-                            GitHub
-                          </a>
-                        </>
-                      )}
-                      {viewingResume.sections?.contactInfo?.website && (
-                        <>
-                          {(viewingResume.sections?.contactInfo?.linkedin || viewingResume.sections?.contactInfo?.github) && <span>•</span>}
-                          <a 
-                            href={viewingResume.sections.contactInfo.website} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="hover:underline"
-                          >
-                            Portfolio
-                          </a>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
+                      </>
+                    )}
+                    {viewingResume.sections?.contactInfo?.website && (
+                      <>
+                        {(viewingResume.sections?.contactInfo?.linkedin || viewingResume.sections?.contactInfo?.github) && <span>•</span>}
+                        <a 
+                          href={viewingResume.sections.contactInfo.website} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                        >
+                          Portfolio
+                        </a>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
 
-                {/* Render sections in the order specified by template layout */}
-                {sectionsOrder.map(sectionType => renderSection(sectionType))}
+              {/* Render sections in the order specified by template layout */}
+              {sectionsOrder.map(sectionType => renderSection(sectionType))}
 
-                {/* Optional: ATS Keywords - hidden by default, only visible in metadata view */}
-                {/* These keywords are embedded in the content above for ATS scanning */}
-                </div>
               </div>
             </div>
 

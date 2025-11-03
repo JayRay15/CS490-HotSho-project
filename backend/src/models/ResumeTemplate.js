@@ -33,6 +33,22 @@ const resumeTemplateSchema = new mongoose.Schema(
     isDefault: { type: Boolean, default: false },
     isShared: { type: Boolean, default: false },
     sharedWith: { type: [String], default: [] }, // optional list of userIds
+    // PDF template storage for pixel-perfect generation
+    // Note: MongoDB has a 16MB document size limit
+    // For large PDFs, consider using GridFS or external storage
+    originalPdf: { 
+      type: Buffer, 
+      required: false,
+      select: false // Don't include in queries by default (too large)
+    }, // Store original PDF file buffer
+    pdfLayout: { 
+      type: mongoose.Schema.Types.Mixed, 
+      default: null 
+    }, // Detailed layout metadata from extractPdfLayout
+    sectionMapping: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null
+    } // Mapping of text regions to resume sections
   },
   { timestamps: true }
 );

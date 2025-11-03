@@ -126,6 +126,19 @@ Return ONLY valid JSON, no markdown formatting.`;
  * @returns {Object} Generated resume content
  */
 export async function generateResumeContent(jobPosting, userProfile, template) {
+  // Validate inputs
+  if (!jobPosting || !userProfile) {
+    throw new Error('jobPosting and userProfile are required');
+  }
+  
+  // Ensure template has safe defaults
+  if (!template) {
+    template = { layout: {} };
+  }
+  if (!template.layout) {
+    template.layout = {};
+  }
+  
   const model = genAI.getGenerativeModel({ model: "models/gemini-2.5-flash" });
 
   const prompt = `You are an expert resume writer and career coach. Generate tailored resume content based on the job posting and user's profile.
@@ -148,7 +161,9 @@ ${userProfile.skills?.map(skill => `- ${skill.name} (${skill.level})`).join('\n'
 
 Education:
 ${userProfile.education?.map(edu => `
-- ${edu.degree} in ${edu.fieldOfStudy} from ${edu.institution} (${edu.graduationYear})
+- ${edu.degree || ''} ${edu.fieldOfStudy ? `in ${edu.fieldOfStudy}` : ''} from ${edu.institution || ''} (${edu.graduationYear || edu.endDate || edu.startDate || 'N/A'})
+  Location: ${edu.location || 'Not specified'}
+  GPA: ${edu.gpa && !edu.gpaPrivate ? edu.gpa : 'Not specified'}
 `).join('\n') || 'No education listed'}
 
 Projects:
@@ -160,6 +175,36 @@ ${userProfile.projects?.map(proj => `
 Certifications:
 ${userProfile.certifications?.map(cert => `- ${cert.name} (${cert.issuingOrganization})`).join('\n') || 'No certifications'}
 
+**RESUME TEMPLATE FORMAT (DETECTED FROM UPLOADED TEMPLATE):**
+${template && template.layout && template.layout.projectFormat ? `
+PROJECTS FORMAT (detected from template): ${JSON.stringify(template.layout.projectFormat)}
+- You MUST match the template's format EXACTLY
+- Template structure: ${template.layout.projectFormat.titleWithTech ? '"Project Title | Technology1, Technology2, Technology3" on ONE line' : 'Project Title on first line, Technologies on second line (separate)'}, then ${template.layout.projectFormat.bulletsAfterTitle ? 'bullet points' : 'description'} below
+- Bullet character to use: "${template.layout.projectFormat.bulletCharacter || '•'}"
+- ${template.layout.projectFormat.titleWithTech ? 'CRITICAL: Put project title AND technologies on the SAME line, separated by a pipe (|) character' : 'Put project title on first line, technologies on second line'}
+- Use bullet points: ${template.layout.projectFormat.hasBullets ? `YES, use "${template.layout.projectFormat.bulletCharacter || '•'}" character` : 'NO, use paragraph format'}
+` : `
+PROJECTS FORMAT: Standard format (template format not detected)
+- Use: Project Title, then Technologies, then bullet points
+`}
+
+${template && template.layout && template.layout.experienceFormat ? `
+EXPERIENCE FORMAT (detected from template): ${JSON.stringify(template.layout.experienceFormat)}
+- Match the template format EXACTLY:
+  - Job Title and Company: ${template.layout.experienceFormat.titleCompanySameLine ? 'On the SAME line (e.g., "Software Engineer at Company Name")' : 'On SEPARATE lines (Title on first line, Company on second)'}
+  - Dates placement: ${template.layout.experienceFormat.datesOnRight ? 'On the RIGHT side of the same line' : 'On a line below the title/company'}
+  - Bullet points: ${template.layout.experienceFormat.hasBullets ? `Use "${template.layout.experienceFormat.bulletCharacter || '•'}" character` : 'Use paragraph format'}
+  - Bullet indentation: ${template.layout.experienceFormat.bulletIndentation || 0} spaces
+` : 'Use standard format: Job title, company, dates, then bullet points'}
+
+${template && template.layout && template.layout.educationFormat ? `
+EDUCATION FORMAT (detected from template): ${JSON.stringify(template.layout.educationFormat)}
+- Follow the template's field order and layout EXACTLY: ${template.layout.educationFormat.order.join(' → ')}
+- Dates placement: ${template.layout.educationFormat.datesOnRight ? 'On the RIGHT side' : 'On a line below'}
+- Location placement: ${template.layout.educationFormat.locationAfterInstitution ? 'After institution name' : 'Separate line'}
+- GPA format: ${template.layout.educationFormat.gpaSeparateLine ? 'On separate line' : 'On same line as degree/institution'}
+` : 'Use standard format: Degree, institution, dates, GPA'}
+
 **TASK:**
 Generate professional resume content tailored to this job posting. Create compelling, achievement-focused content that highlights how the user's actual experience matches the job requirements.
 
@@ -170,6 +215,7 @@ IMPORTANT RULES:
 - Make bullet points achievement-oriented using action verbs (Led, Developed, Implemented, etc.)
 - Focus on impact and results when possible
 - Ensure all content is ready for a professional resume - no technical notes or disclaimers
+- **CRITICAL: Follow the template format exactly as specified above for projects, experience, and education**
 
 Generate:
 
@@ -181,9 +227,15 @@ Generate:
    - Connect their experience to the target job requirements
    - Show progression and impact)
 
-3. **Relevant Skills** (Select 10-15 skills from their profile most relevant to this job. Include both technical and soft skills mentioned in the job description)
+3. **Projects** (For EACH project, format according to template EXACTLY:
+   - ${template && template.layout && template.layout.projectFormat && template.layout.projectFormat.titleWithTech ? 'FIRST LINE: "Project Name | Tech1, Tech2, Tech3" (title and tech on SAME line with pipe separator)' : 'FIRST LINE: Project name only\nSECOND LINE: Tech1, Tech2, Tech3 (technologies on separate line)'}
+   - Then 3-4 achievement-focused bullet points using "${template && template.layout && template.layout.projectFormat ? (template.layout.projectFormat.bulletCharacter || '•') : '•'}" character
+   - Each bullet should start with the exact bullet character specified
+   - Use action verbs and quantify results when possible)
 
-4. **ATS Keywords** (10-15 important keywords from the job posting for ATS optimization)
+4. **Relevant Skills** (Select 10-15 skills from their profile most relevant to this job. Include both technical and soft skills mentioned in the job description)
+
+5. **ATS Keywords** (10-15 important keywords from the job posting for ATS optimization)
 
 **OUTPUT FORMAT (JSON):**
 {
@@ -193,6 +245,13 @@ Generate:
     "job1": ["Bullet 1", "Bullet 2", "Bullet 3"],
     "job2": [...]
   },
+  "projects": [
+    {
+      "name": "Project Name",
+      "technologies": ["Tech1", "Tech2", "Tech3"],
+      "bullets": ["Bullet 1", "Bullet 2", "Bullet 3", "Bullet 4"]
+    }
+  ],
   "relevantSkills": ["skill1", "skill2", "skill3", ...],
   "atsKeywords": ["keyword1", "keyword2", ...],
   "tailoringNotes": "One sentence about the tailoring strategy"
@@ -215,8 +274,33 @@ Return ONLY valid JSON, no markdown formatting. Make all content professional an
     if (cleanedText.endsWith('```')) {
       cleanedText = cleanedText.slice(0, -3);
     }
+    cleanedText = cleanedText.trim();
     
-    const generatedContent = JSON.parse(cleanedText.trim());
+    // Log first 500 chars for debugging
+    console.log('AI Response (first 500 chars):', cleanedText.substring(0, 500));
+    
+    // Try to parse JSON
+    let generatedContent;
+    try {
+      generatedContent = JSON.parse(cleanedText);
+    } catch (parseError) {
+      console.error('JSON Parse Error at position:', parseError.message);
+      console.error('Text around error position:', cleanedText.substring(Math.max(0, parseError.message.match(/position (\d+)/)?.[1] - 100 || 0), Math.min(cleanedText.length, parseError.message.match(/position (\d+)/)?.[1] + 100 || 500)));
+      
+      // Try to fix common JSON issues
+      // Remove trailing commas before ] or }
+      cleanedText = cleanedText.replace(/,(\s*[}\]])/g, '$1');
+      
+      // Try parsing again
+      try {
+        generatedContent = JSON.parse(cleanedText);
+        console.log('✓ Fixed JSON and parsed successfully');
+      } catch (retryError) {
+        console.error('Failed to parse JSON after fixes:', retryError);
+        throw new Error(`Invalid JSON response from AI: ${parseError.message}. Response preview: ${cleanedText.substring(0, 200)}...`);
+      }
+    }
+    
     return generatedContent;
   } catch (error) {
     console.error('Error generating resume content with Gemini:', error);

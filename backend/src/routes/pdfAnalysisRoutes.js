@@ -6,10 +6,11 @@ import { checkJwt } from '../middleware/checkJwt.js';
 const router = express.Router();
 
 // Configure multer for memory storage
+// Increased limit to 10MB to accommodate larger PDF templates
 const upload = multer({ 
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
+    fileSize: 10 * 1024 * 1024 // 10MB limit
   },
   fileFilter: (req, file, cb) => {
     if (file.mimetype === 'application/pdf') {
