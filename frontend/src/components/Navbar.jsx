@@ -87,7 +87,7 @@ export default function Navbar() {
                                 Jobs
                             </NavLink>
                             <NavLink to="/resumes" className={navLinkClass} aria-label="Resumes">
-                                Resumes
+                                Resumes & Cover Letters
                             </NavLink>
                             <div className="ml-3 custom-user-button">
                                 <UserButton 

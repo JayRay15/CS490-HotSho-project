@@ -48,7 +48,18 @@ const resumeTemplateSchema = new mongoose.Schema(
     sectionMapping: {
       type: mongoose.Schema.Types.Mixed,
       default: null
-    } // Mapping of text regions to resume sections
+    }, // Mapping of text regions to resume sections
+    // DOCX template storage for content replacement generation
+    originalDocx: {
+      type: Buffer,
+      required: false,
+      select: false // Exclude by default due to size
+    },
+    docxPlaceholders: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null // Optional: record placeholder schema (e.g., keys used)
+    },
+    hasDocx: { type: Boolean, default: false }
   },
   { timestamps: true }
 );

@@ -15,6 +15,7 @@ import {
   regenerateResumeSection,
   analyzeATS,
   generateResumePDF,
+  generateResumeDOCX,
 } from "../controllers/resumeController.js";
 
 const router = express.Router();
@@ -38,5 +39,6 @@ router.post("/resumes/generate-variations", checkJwt, generateResumeVariations);
 router.post("/resumes/:id/regenerate", checkJwt, regenerateResumeSection);
 router.get("/resumes/:id/ats-analysis", checkJwt, analyzeATS);
 router.get("/resumes/:id/pdf", checkJwt, generateResumePDF);
+router.get("/resumes/:id/docx", checkJwt, generateResumeDOCX);
 
 export default router;

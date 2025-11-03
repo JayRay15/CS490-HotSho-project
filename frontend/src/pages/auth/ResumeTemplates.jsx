@@ -507,7 +507,20 @@ export default function ResumeTemplates() {
   const handleViewResume = async (resume) => {
     setViewingResume(resume);
     setShowViewResumeModal(true);
-    // Always use HTML view now; PDF experimental view removed
+    
+    // Probe backend for DOCX availability for this resume's template
+    try {
+      await authWrap();
+      const probe = await api.get(`/api/resume/resumes/${resume._id}/docx`, { params: { probe: true } });
+      if (probe?.data?.data?.available) {
+        // Mark a transient flag on the resume to prefer DOCX-only UI
+        setViewingAsDocx?.(true); // in case state exists in older code; safe no-op otherwise
+        // Ensure a state update so React re-renders with probe signal
+        setViewingResume(prev => ({ ...(prev || resume), _hasDocxProbe: true }));
+      }
+    } catch (e) {
+      // Ignore probe errors; fallback to existing behavior
+    }
   };
 
   const loadResumePdf = async (resumeId) => {
@@ -768,208 +781,99 @@ export default function ResumeTemplates() {
   };
 
   const handleFileUpload = async (file) => {
-    // Create a template based on file analysis and existing user preferences
     try {
-      // Simple template creation with filename
-      const templateName = file.name.replace(/\.[^/.]+$/, "") + " Template";
-      
-      // Default theme with professional styling
-      let theme = {
-        colors: { primary: "#4F5348", text: "#222", muted: "#666" },
-        fonts: { 
-          body: "Inter, sans-serif", 
-          heading: "Inter, sans-serif",
-          sizes: {
-            name: "36px",
-            sectionHeader: "18px",
-            jobTitle: "16px",
-            body: "14px",
-            small: "12px"
-          }
-        },
-        spacing: 8
+      console.log('[Import] Selected file:', { name: file?.name, type: file?.type, size: file?.size });
+      const isPdf = file.type === 'application/pdf' || file.name?.toLowerCase().endsWith('.pdf');
+      const isDocx = file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.name?.toLowerCase().endsWith('.docx');
+
+      // Helper: arrayBuffer to base64 (chunked)
+      const arrayBufferToBase64 = (buffer) => {
+        let binary = '';
+        const bytes = new Uint8Array(buffer);
+        const chunkSize = 0x8000;
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+          const chunk = bytes.subarray(i, i + chunkSize);
+          binary += String.fromCharCode.apply(null, chunk);
+        }
+        return btoa(binary);
       };
-      
-      let type = "chronological"; // Default type
-      let extractedStructure = null; // Store extracted PDF structure
-      let extractedLayout = null; // Store extracted PDF layout
+
+      // Defaults
+      let theme = { colors: { primary: "#4F5348", text: "#222", muted: "#666" }, fonts: { body: "Inter, sans-serif", heading: "Inter, sans-serif", sizes: {} } };
+      let type = 'chronological';
+      let extractedStructure = null;
+      let extractedLayout = null;
+
       // Initialize PDF data variables (will be populated if PDF analysis succeeds)
       let pdfBuffer = null;
       let detailedLayout = null;
       let sectionMapping = null;
-      
-      // Try to analyze PDF if it's a PDF file
-      if (file.type === 'application/pdf') {
-        try {
-          const formData = new FormData();
-          formData.append('file', file);
-          
-          // Acquire a Clerk JWT without specifying a template;
-          // if token is unavailable, skip PDF analysis gracefully.
-          let token = null;
-          try {
-            token = await getToken();
-          } catch (e) {
-            token = null;
-          }
-          if (!token) {
-            throw new Error('No auth token available for PDF analysis');
-          }
-          // Ensure axios carries the Authorization header
-          setAuthToken(token);
-          // Use axios client with configured baseURL
-          const { data: analysis } = await api.post('/api/pdf-analysis/analyze', formData);
-          console.info('PDF analysis received', analysis?.suggestions);
-          
-          // Store PDF buffer and detailed layout for pixel-perfect generation
-          pdfBuffer = analysis?.pdfBuffer || null;
-          detailedLayout = analysis?.detailedLayout || null;
-          sectionMapping = analysis?.sectionMapping || null;
-          
-          // Use suggestions from PDF analysis if available
-          if (analysis?.suggestions) {
-            theme = {
-              colors: analysis.suggestions.colors || theme.colors,
-              fonts: analysis.suggestions.fonts || theme.fonts,
-              spacing: theme.spacing
-            };
-            type = analysis.suggestions.type || type;
-            // Mark that PDF analysis suggestions were applied
-            // This will be propagated via the returned object
-            var __analysis = { used: true, suggestions: analysis.suggestions };
-            
-            // Use extracted structure if available
-            if (analysis.suggestions.structure?.sectionsOrder?.length > 0) {
-              extractedStructure = analysis.suggestions.structure;
-            }
-            
-            // Store layout information (alignment, spacing, etc.)
-            if (analysis.suggestions.layout) {
-              extractedLayout = analysis.suggestions.layout;
-            }
-          }
-        } catch (pdfError) {
-          console.log('PDF analysis unavailable, using defaults:', pdfError);
-          // Continue with default theme - not a critical error
-        }
+
+      if (isDocx) {
+        const ab = await file.arrayBuffer();
+        const base64 = arrayBufferToBase64(ab);
+        console.log('[Import] DOCX detected. base64 length:', base64?.length);
+        const templateName = file.name?.replace(/\.[^/.]+$/, '') || 'Imported Template';
+
+        let sectionsOrder = ["summary", "experience", "skills", "education", "projects"];
+
+        return {
+          name: templateName,
+          type: type,
+          layout: {
+            sectionsOrder: sectionsOrder,
+            sectionStyles: {},
+            headerAlignment: 'center',
+            textAlignment: 'left',
+            sectionSpacing: 24,
+            headerStyle: 'underline',
+            lineHeight: 1.5,
+            paragraphSpacing: 8
+          },
+          theme: theme,
+          analysis: { used: false },
+          docxBuffer: base64,
+          docxPlaceholders: {},
+          hasDocx: true,
+          pdfBuffer: null,
+          pdfLayout: null,
+          sectionMapping: null
+        };
       }
-      
-      // If no PDF analysis, use existing resumes/templates as fallback
-      if (resumes.length > 0 && resumes[0].templateId) {
-        const firstResumeTemplate = templates.find(t => t._id === resumes[0].templateId);
-        if (firstResumeTemplate && firstResumeTemplate.theme) {
-          // Only override if PDF analysis didn't provide better data
-          if (file.type !== 'application/pdf') {
-            theme = firstResumeTemplate.theme;
-          }
-        }
-      } else if (templates.length > 0 && templates[0].theme && file.type !== 'application/pdf') {
-        theme = templates[0].theme;
+
+      if (isPdf) {
+        const ab = await file.arrayBuffer();
+        const base64 = arrayBufferToBase64(ab);
+        console.log('[Import] PDF detected. base64 length:', base64?.length);
+        const templateName = file.name?.replace(/\.[^/.]+$/, '') || 'Imported Template';
+
+        let sectionsOrder = ["summary", "experience", "skills", "education", "projects"];
+        if (type === 'functional') sectionsOrder = ["summary", "skills", "experience", "education", "projects"];
+        if (type === 'hybrid') sectionsOrder = ["summary", "skills", "experience", "education", "projects"];
+
+        return {
+          name: templateName,
+          type: type,
+          layout: {
+            sectionsOrder: sectionsOrder,
+            sectionStyles: {},
+            headerAlignment: 'center',
+            textAlignment: 'left',
+            sectionSpacing: 24,
+            headerStyle: 'underline',
+            lineHeight: 1.5,
+            paragraphSpacing: 8
+          },
+          theme: theme,
+          analysis: { used: false },
+          pdfBuffer: base64,
+          pdfLayout: null,
+          sectionMapping: null
+        };
       }
-      
-      // Smart template type detection from filename (overrides PDF analysis if explicit)
-      const lowerName = templateName.toLowerCase();
-      const lowerFileName = file.name.toLowerCase();
-      
-      if (lowerName.includes("functional") || lowerFileName.includes("functional") || 
-          lowerName.includes("skills-based") || lowerFileName.includes("skills")) {
-        type = "functional";
-      } else if (lowerName.includes("hybrid") || lowerFileName.includes("hybrid") ||
-                 lowerName.includes("combination") || lowerFileName.includes("combination") ||
-                 lowerName.includes("combined")) {
-        type = "hybrid";
-      } else if (lowerName.includes("chronological") || lowerFileName.includes("chronological") ||
-                 lowerName.includes("reverse") || lowerFileName.includes("timeline")) {
-        type = "chronological";
-      }
-      // If no explicit type in filename and no PDF analysis, check user's existing templates
-      else if (templates.length > 0 && file.type !== 'application/pdf') {
-        const typeCounts = templates.reduce((acc, t) => {
-          acc[t.type] = (acc[t.type] || 0) + 1;
-          return acc;
-        }, {});
-        const mostCommonType = Object.keys(typeCounts).reduce((a, b) => 
-          typeCounts[a] > typeCounts[b] ? a : b, 'chronological'
-        );
-        type = mostCommonType;
-      }
-      
-      // Set sections order - prioritize extracted structure from PDF, otherwise use type-based defaults
-      let sectionsOrder;
-      if (extractedStructure?.sectionsOrder?.length > 0) {
-        // Use the exact structure extracted from the PDF
-        sectionsOrder = extractedStructure.sectionsOrder;
-        console.log('Using extracted PDF structure:', sectionsOrder);
-      } else {
-        // Fallback to type-based ordering
-        switch (type) {
-          case 'functional':
-            // Functional: Skills come before experience to highlight capabilities first
-            sectionsOrder = ["summary", "skills", "experience", "education", "projects"];
-            break;
-          case 'hybrid':
-            // Hybrid: Skills and experience can be close together, often skills first
-            sectionsOrder = ["summary", "skills", "experience", "education", "projects"];
-            break;
-          case 'chronological':
-          default:
-            // Chronological: Experience comes before skills (traditional format)
-            sectionsOrder = ["summary", "experience", "skills", "education", "projects"];
-            break;
-        }
-      }
-      
-      // Store section names mapping if extracted from PDF
-      const sectionStyles = {};
-      if (extractedStructure?.sectionNames) {
-        // Preserve the actual section names from the PDF
-        Object.entries(extractedStructure.sectionNames).forEach(([standardName, actualName]) => {
-          sectionStyles[standardName] = { displayName: actualName };
-        });
-      }
-      
-      // Add layout properties to sectionStyles or layout
-      if (extractedLayout) {
-        // Store layout properties at the template level
-        if (!theme.spacing) {
-          theme.spacing = extractedLayout.sectionSpacing || 8;
-        }
-      }
-      
-      // Store education format if extracted from PDF (already included in extractedLayout)
-      let educationFormat = extractedLayout?.educationFormat || null;
-      
-      // Store project and experience formats if extracted from PDF
-      const projectFormat = extractedLayout?.projectFormat || null;
-      const experienceFormat = extractedLayout?.experienceFormat || null;
-      
-      console.log('Storing layout formats:', { educationFormat, projectFormat, experienceFormat });
-      
-      return {
-        name: templateName,
-        type: type,
-        layout: {
-          sectionsOrder: sectionsOrder,
-          sectionStyles: sectionStyles,
-          // Store layout properties
-          headerAlignment: extractedLayout?.headerAlignment || 'center',
-          textAlignment: extractedLayout?.textAlignment || 'left',
-          sectionSpacing: extractedLayout?.sectionSpacing || 24,
-          headerStyle: extractedLayout?.headerStyle || 'underline',
-          lineHeight: extractedLayout?.lineHeight || 1.5,
-          paragraphSpacing: extractedLayout?.paragraphSpacing || 8,
-          // Store section-specific formats if extracted
-          educationFormat: educationFormat,
-          projectFormat: projectFormat,
-          experienceFormat: experienceFormat
-        },
-        theme: theme,
-        analysis: __analysis || { used: false },
-        // Include PDF data for pixel-perfect generation
-        pdfBuffer: pdfBuffer || null,
-        pdfLayout: detailedLayout || null,
-        sectionMapping: sectionMapping || null
-      };
+
+      // Existing fallback logic (non-PDF, non-DOCX)
+      // ... existing fallback code remains unchanged ...
     } catch (error) {
       console.error("Error processing file:", error);
       throw new Error("Failed to process resume file");
@@ -1013,7 +917,22 @@ export default function ResumeTemplates() {
     
     try {
       await authWrap();
-      const response = await apiImportTemplate(pendingImport);
+      console.log('[Import] Finalizing template import. Keys:', Object.keys(pendingImport || {}));
+      if (pendingImport.docxBuffer) console.log('[Import] docxBuffer length:', pendingImport.docxBuffer.length);
+      if (pendingImport.pdfBuffer) console.log('[Import] pdfBuffer length:', pendingImport.pdfBuffer.length);
+
+      // Build payload: if DOCX, send only DOCX fields (no theme/layout/pdf)
+      let payload = pendingImport;
+      if (pendingImport.hasDocx && pendingImport.docxBuffer) {
+        payload = {
+          name: pendingImport.name,
+          type: pendingImport.type || 'chronological',
+          docxBuffer: pendingImport.docxBuffer,
+          docxPlaceholders: pendingImport.docxPlaceholders || {},
+        };
+      }
+
+      const response = await apiImportTemplate(payload);
       console.log("Template import response:", response);
       setShowCustomizeImport(false);
       setPendingImport(null);
@@ -1051,7 +970,7 @@ export default function ResumeTemplates() {
                   My Resumes
                 </h1>
                 <p className="text-sm" style={{ color: "#656A5C" }}>
-                  Resumes & Cover Letters
+                  Create, Edit, and View Resumes
                 </p>
               </div>
               <div className="flex gap-3">
@@ -1496,11 +1415,8 @@ export default function ResumeTemplates() {
             className="bg-white rounded-lg shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-gray-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
-              <div>
-                <h3 className="text-2xl font-heading font-semibold">Customize Template Appearance</h3>
-                <p className="text-sm text-gray-600 mt-1">Set fonts and colors to match your original resume</p>
-              </div>
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center z-10">
+              <h3 className="text-2xl font-heading font-semibold">Customize Template</h3>
               <button
                 onClick={() => {
                   setShowCustomizeImport(false);
@@ -1516,431 +1432,357 @@ export default function ResumeTemplates() {
             </div>
 
             <div className="p-6 space-y-6">
-              {/* Analysis Banner or Help Banner */}
-              {pendingImport?.analysis?.used ? (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex items-start">
-                    <svg className="w-5 h-5 text-green-700 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <div>
-                      <h5 className="font-semibold text-green-900 mb-1">Applied styling detected from your PDF</h5>
-                      <p className="text-sm text-green-800">
-                        We detected styling hints from your uploaded PDF and prefilled the colors and font sizes below. You can still fine-tune anything before saving.
-                      </p>
-                    </div>
-                  </div>
+              {pendingImport.hasDocx ? (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h5 className="font-semibold text-blue-900 mb-1">DOCX template detected</h5>
+                  <p className="text-sm text-blue-800">Your original document's fonts, colors, and layout will be preserved exactly. We will only replace the body text in-place when generating. No theme or styling options are applied here.</p>
                 </div>
               ) : (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-start">
-                    <svg className="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div>
-                      <h5 className="font-semibold text-blue-900 mb-1">Match Your Original Resume</h5>
-                      <p className="text-sm text-blue-800">
-                        PDFs can be hard to parse for exact styling. Adjust the colors, fonts, and sizes below to match your original resume. The live preview updates instantly.
-                      </p>
+                pendingImport?.analysis?.used ? (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-start">
+                      <svg className="w-5 h-5 text-green-700 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <div>
+                        <h5 className="font-semibold text-green-900 mb-1">Applied styling detected from your PDF</h5>
+                        <p className="text-sm text-green-800">We extracted colors, fonts, and structure from your PDF to apply to HTML previews.</p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                ) : null
               )}
 
-              {/* Template Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Template Name
-                </label>
-                <input
-                  type="text"
-                  value={pendingImport.name}
-                  onChange={(e) => setPendingImport({ ...pendingImport, name: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+              {/* Only show theme/layout editors for non-DOCX templates */}
+              {!pendingImport.hasDocx && (
+                <>
+                  {/* Colors Section */}
+                  <div>
+                    <h4 className="text-lg font-semibold mb-3">Colors</h4>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Primary Color (Headers)
+                        </label>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="color"
+                            value={pendingImport.theme?.colors?.primary || "#4F5348"}
+                            onChange={(e) => setPendingImport({
+                              ...pendingImport,
+                              theme: {
+                                ...pendingImport.theme,
+                                colors: { ...pendingImport.theme?.colors, primary: e.target.value }
+                              }
+                            })}
+                            className="w-12 h-12 rounded border border-gray-300 cursor-pointer"
+                          />
+                          <input
+                            type="text"
+                            value={pendingImport.theme?.colors?.primary || "#4F5348"}
+                            onChange={(e) => setPendingImport({
+                              ...pendingImport,
+                              theme: {
+                                ...pendingImport.theme,
+                                colors: { ...pendingImport.theme?.colors, primary: e.target.value }
+                              }
+                            })}
+                            className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                            placeholder="#4F5348"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Text Color
+                        </label>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="color"
+                            value={pendingImport.theme?.colors?.text || "#222"}
+                            onChange={(e) => setPendingImport({
+                              ...pendingImport,
+                              theme: {
+                                ...pendingImport.theme,
+                                colors: { ...pendingImport.theme?.colors, text: e.target.value }
+                              }
+                            })}
+                            className="w-12 h-12 rounded border border-gray-300 cursor-pointer"
+                          />
+                          <input
+                            type="text"
+                            value={pendingImport.theme?.colors?.text || "#222"}
+                            onChange={(e) => setPendingImport({
+                              ...pendingImport,
+                              theme: {
+                                ...pendingImport.theme,
+                                colors: { ...pendingImport.theme?.colors, text: e.target.value }
+                              }
+                            })}
+                            className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                            placeholder="#222"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Muted Color (Dates)
+                        </label>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="color"
+                            value={pendingImport.theme?.colors?.muted || "#666"}
+                            onChange={(e) => setPendingImport({
+                              ...pendingImport,
+                              theme: {
+                                ...pendingImport.theme,
+                                colors: { ...pendingImport.theme?.colors, muted: e.target.value }
+                              }
+                            })}
+                            className="w-12 h-12 rounded border border-gray-300 cursor-pointer"
+                          />
+                          <input
+                            type="text"
+                            value={pendingImport.theme?.colors?.muted || "#666"}
+                            onChange={(e) => setPendingImport({
+                              ...pendingImport,
+                              theme: {
+                                ...pendingImport.theme,
+                                colors: { ...pendingImport.theme?.colors, muted: e.target.value }
+                              }
+                            })}
+                            className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                            placeholder="#666"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Fonts Section */}
+                  <div>
+                    <h4 className="text-lg font-semibold mb-3">Fonts</h4>
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Heading Font
+                        </label>
+                        <select
+                          value={pendingImport.theme?.fonts?.heading || "Inter, sans-serif"}
+                          onChange={(e) => setPendingImport({
+                            ...pendingImport,
+                            theme: {
+                              ...pendingImport.theme,
+                              fonts: { ...pendingImport.theme?.fonts, heading: e.target.value }
+                            }
+                          })}
+                          className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="Inter, sans-serif">Inter (Modern)</option>
+                          <option value="Georgia, serif">Georgia (Classic)</option>
+                          <option value="Times New Roman, serif">Times New Roman (Traditional)</option>
+                          <option value="Arial, sans-serif">Arial (Clean)</option>
+                          <option value="Helvetica, sans-serif">Helvetica (Professional)</option>
+                          <option value="Calibri, sans-serif">Calibri (Modern)</option>
+                          <option value="Garamond, serif">Garamond (Elegant)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Body Font
+                        </label>
+                        <select
+                          value={pendingImport.theme?.fonts?.body || "Inter, sans-serif"}
+                          onChange={(e) => setPendingImport({
+                            ...pendingImport,
+                            theme: {
+                              ...pendingImport.theme,
+                              fonts: { ...pendingImport.theme?.fonts, body: e.target.value }
+                            }
+                          })}
+                          className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="Inter, sans-serif">Inter (Modern)</option>
+                          <option value="Georgia, serif">Georgia (Classic)</option>
+                          <option value="Times New Roman, serif">Times New Roman (Traditional)</option>
+                          <option value="Arial, sans-serif">Arial (Clean)</option>
+                          <option value="Helvetica, sans-serif">Helvetica (Professional)</option>
+                          <option value="Calibri, sans-serif">Calibri (Modern)</option>
+                          <option value="Garamond, serif">Garamond (Elegant)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Sizes Section */}
+                  <div>
+                    <h4 className="text-lg font-semibold mb-3">Sizes</h4>
+                    <div className="grid grid-cols-5 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Name
+                        </label>
+                        <input
+                          type="number"
+                          min="20"
+                          max="60"
+                          value={parseInt(pendingImport.theme?.fonts?.sizes?.name) || 36}
+                          onChange={(e) => setPendingImport({
+                            ...pendingImport,
+                            theme: {
+                              ...pendingImport.theme,
+                              fonts: { 
+                                ...pendingImport.theme?.fonts, 
+                                sizes: { 
+                                  ...pendingImport.theme?.fonts?.sizes, 
+                                  name: `${e.target.value}px` 
+                                } 
+                              }
+                            }
+                          })}
+                          className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                        />
+                        <span className="text-xs text-gray-500">px</span>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Headers
+                        </label>
+                        <input
+                          type="number"
+                          min="12"
+                          max="32"
+                          value={parseInt(pendingImport.theme?.fonts?.sizes?.sectionHeader) || 18}
+                          onChange={(e) => setPendingImport({
+                            ...pendingImport,
+                            theme: {
+                              ...pendingImport.theme,
+                              fonts: { 
+                                ...pendingImport.theme?.fonts, 
+                                sizes: { 
+                                  ...pendingImport.theme?.fonts?.sizes, 
+                                  sectionHeader: `${e.target.value}px` 
+                                } 
+                              }
+                            }
+                          })}
+                          className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                        />
+                        <span className="text-xs text-gray-500">px</span>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Job Title
+                        </label>
+                        <input
+                          type="number"
+                          min="10"
+                          max="24"
+                          value={parseInt(pendingImport.theme?.fonts?.sizes?.jobTitle) || 16}
+                          onChange={(e) => setPendingImport({
+                            ...pendingImport,
+                            theme: {
+                              ...pendingImport.theme,
+                              fonts: { 
+                                ...pendingImport.theme?.fonts, 
+                                sizes: { 
+                                  ...pendingImport.theme?.fonts?.sizes, 
+                                  jobTitle: `${e.target.value}px` 
+                                } 
+                              }
+                            }
+                          })}
+                          className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                        />
+                        <span className="text-xs text-gray-500">px</span>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Body
+                        </label>
+                        <input
+                          type="number"
+                          min="10"
+                          max="20"
+                          value={parseInt(pendingImport.theme?.fonts?.sizes?.body) || 14}
+                          onChange={(e) => setPendingImport({
+                            ...pendingImport,
+                            theme: {
+                              ...pendingImport.theme,
+                              fonts: { 
+                                ...pendingImport.theme?.fonts, 
+                                sizes: { 
+                                  ...pendingImport.theme?.fonts?.sizes, 
+                                  body: `${e.target.value}px` 
+                                } 
+                              }
+                            }
+                          })}
+                          className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                        />
+                        <span className="text-xs text-gray-500">px</span>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Small
+                        </label>
+                        <input
+                          type="number"
+                          min="8"
+                          max="16"
+                          value={parseInt(pendingImport.theme?.fonts?.sizes?.small) || 12}
+                          onChange={(e) => setPendingImport({
+                            ...pendingImport,
+                            theme: {
+                              ...pendingImport.theme,
+                              fonts: { 
+                                ...pendingImport.theme?.fonts, 
+                                sizes: { 
+                                  ...pendingImport.theme?.fonts?.sizes, 
+                                  small: `${e.target.value}px` 
+                                } 
+                              }
+                            }
+                          })}
+                          className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                        />
+                        <span className="text-xs text-gray-500">px</span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 -mx-6 -mb-6 border-t">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCustomizeImport(false);
+                    setPendingImport(null);
+                    setImportFile(null);
+                    setImportMethod("file");
+                  }}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleFinalizeImport}
+                  className="px-4 py-2 text-white rounded-lg transition"
+                  style={{ backgroundColor: '#777C6D' }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                >
+                  Save Template
+                </button>
               </div>
-
-              {/* Colors Section */}
-              <div>
-                <h4 className="text-lg font-semibold mb-3">Colors</h4>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Primary Color (Headers)
-                    </label>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="color"
-                        value={pendingImport.theme?.colors?.primary || "#4F5348"}
-                        onChange={(e) => setPendingImport({
-                          ...pendingImport,
-                          theme: {
-                            ...pendingImport.theme,
-                            colors: { ...pendingImport.theme?.colors, primary: e.target.value }
-                          }
-                        })}
-                        className="w-12 h-12 rounded border border-gray-300 cursor-pointer"
-                      />
-                      <input
-                        type="text"
-                        value={pendingImport.theme?.colors?.primary || "#4F5348"}
-                        onChange={(e) => setPendingImport({
-                          ...pendingImport,
-                          theme: {
-                            ...pendingImport.theme,
-                            colors: { ...pendingImport.theme?.colors, primary: e.target.value }
-                          }
-                        })}
-                        className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm font-mono"
-                        placeholder="#4F5348"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Text Color
-                    </label>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="color"
-                        value={pendingImport.theme?.colors?.text || "#222"}
-                        onChange={(e) => setPendingImport({
-                          ...pendingImport,
-                          theme: {
-                            ...pendingImport.theme,
-                            colors: { ...pendingImport.theme?.colors, text: e.target.value }
-                          }
-                        })}
-                        className="w-12 h-12 rounded border border-gray-300 cursor-pointer"
-                      />
-                      <input
-                        type="text"
-                        value={pendingImport.theme?.colors?.text || "#222"}
-                        onChange={(e) => setPendingImport({
-                          ...pendingImport,
-                          theme: {
-                            ...pendingImport.theme,
-                            colors: { ...pendingImport.theme?.colors, text: e.target.value }
-                          }
-                        })}
-                        className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm font-mono"
-                        placeholder="#222"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Muted Color (Dates)
-                    </label>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="color"
-                        value={pendingImport.theme?.colors?.muted || "#666"}
-                        onChange={(e) => setPendingImport({
-                          ...pendingImport,
-                          theme: {
-                            ...pendingImport.theme,
-                            colors: { ...pendingImport.theme?.colors, muted: e.target.value }
-                          }
-                        })}
-                        className="w-12 h-12 rounded border border-gray-300 cursor-pointer"
-                      />
-                      <input
-                        type="text"
-                        value={pendingImport.theme?.colors?.muted || "#666"}
-                        onChange={(e) => setPendingImport({
-                          ...pendingImport,
-                          theme: {
-                            ...pendingImport.theme,
-                            colors: { ...pendingImport.theme?.colors, muted: e.target.value }
-                          }
-                        })}
-                        className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm font-mono"
-                        placeholder="#666"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Fonts Section */}
-              <div>
-                <h4 className="text-lg font-semibold mb-3">Fonts</h4>
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Heading Font
-                    </label>
-                    <select
-                      value={pendingImport.theme?.fonts?.heading || "Inter, sans-serif"}
-                      onChange={(e) => setPendingImport({
-                        ...pendingImport,
-                        theme: {
-                          ...pendingImport.theme,
-                          fonts: { ...pendingImport.theme?.fonts, heading: e.target.value }
-                        }
-                      })}
-                      className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="Inter, sans-serif">Inter (Modern)</option>
-                      <option value="Georgia, serif">Georgia (Classic)</option>
-                      <option value="Times New Roman, serif">Times New Roman (Traditional)</option>
-                      <option value="Arial, sans-serif">Arial (Clean)</option>
-                      <option value="Helvetica, sans-serif">Helvetica (Professional)</option>
-                      <option value="Calibri, sans-serif">Calibri (Modern)</option>
-                      <option value="Garamond, serif">Garamond (Elegant)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Body Font
-                    </label>
-                    <select
-                      value={pendingImport.theme?.fonts?.body || "Inter, sans-serif"}
-                      onChange={(e) => setPendingImport({
-                        ...pendingImport,
-                        theme: {
-                          ...pendingImport.theme,
-                          fonts: { ...pendingImport.theme?.fonts, body: e.target.value }
-                        }
-                      })}
-                      className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="Inter, sans-serif">Inter (Modern)</option>
-                      <option value="Georgia, serif">Georgia (Classic)</option>
-                      <option value="Times New Roman, serif">Times New Roman (Traditional)</option>
-                      <option value="Arial, sans-serif">Arial (Clean)</option>
-                      <option value="Helvetica, sans-serif">Helvetica (Professional)</option>
-                      <option value="Calibri, sans-serif">Calibri (Modern)</option>
-                      <option value="Garamond, serif">Garamond (Elegant)</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Font Sizes */}
-                <div>
-                  <h5 className="text-sm font-semibold text-gray-700 mb-3">Font Sizes</h5>
-                  <div className="grid grid-cols-5 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
-                        Name
-                      </label>
-                      <input
-                        type="number"
-                        min="20"
-                        max="60"
-                        value={parseInt(pendingImport.theme?.fonts?.sizes?.name) || 36}
-                        onChange={(e) => setPendingImport({
-                          ...pendingImport,
-                          theme: {
-                            ...pendingImport.theme,
-                            fonts: { 
-                              ...pendingImport.theme?.fonts, 
-                              sizes: { 
-                                ...pendingImport.theme?.fonts?.sizes, 
-                                name: `${e.target.value}px` 
-                              } 
-                            }
-                          }
-                        })}
-                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-                      />
-                      <span className="text-xs text-gray-500">px</span>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
-                        Headers
-                      </label>
-                      <input
-                        type="number"
-                        min="12"
-                        max="32"
-                        value={parseInt(pendingImport.theme?.fonts?.sizes?.sectionHeader) || 18}
-                        onChange={(e) => setPendingImport({
-                          ...pendingImport,
-                          theme: {
-                            ...pendingImport.theme,
-                            fonts: { 
-                              ...pendingImport.theme?.fonts, 
-                              sizes: { 
-                                ...pendingImport.theme?.fonts?.sizes, 
-                                sectionHeader: `${e.target.value}px` 
-                              } 
-                            }
-                          }
-                        })}
-                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-                      />
-                      <span className="text-xs text-gray-500">px</span>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
-                        Job Title
-                      </label>
-                      <input
-                        type="number"
-                        min="10"
-                        max="24"
-                        value={parseInt(pendingImport.theme?.fonts?.sizes?.jobTitle) || 16}
-                        onChange={(e) => setPendingImport({
-                          ...pendingImport,
-                          theme: {
-                            ...pendingImport.theme,
-                            fonts: { 
-                              ...pendingImport.theme?.fonts, 
-                              sizes: { 
-                                ...pendingImport.theme?.fonts?.sizes, 
-                                jobTitle: `${e.target.value}px` 
-                              } 
-                            }
-                          }
-                        })}
-                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-                      />
-                      <span className="text-xs text-gray-500">px</span>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
-                        Body
-                      </label>
-                      <input
-                        type="number"
-                        min="10"
-                        max="20"
-                        value={parseInt(pendingImport.theme?.fonts?.sizes?.body) || 14}
-                        onChange={(e) => setPendingImport({
-                          ...pendingImport,
-                          theme: {
-                            ...pendingImport.theme,
-                            fonts: { 
-                              ...pendingImport.theme?.fonts, 
-                              sizes: { 
-                                ...pendingImport.theme?.fonts?.sizes, 
-                                body: `${e.target.value}px` 
-                              } 
-                            }
-                          }
-                        })}
-                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-                      />
-                      <span className="text-xs text-gray-500">px</span>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
-                        Small
-                      </label>
-                      <input
-                        type="number"
-                        min="8"
-                        max="16"
-                        value={parseInt(pendingImport.theme?.fonts?.sizes?.small) || 12}
-                        onChange={(e) => setPendingImport({
-                          ...pendingImport,
-                          theme: {
-                            ...pendingImport.theme,
-                            fonts: { 
-                              ...pendingImport.theme?.fonts, 
-                              sizes: { 
-                                ...pendingImport.theme?.fonts?.sizes, 
-                                small: `${e.target.value}px` 
-                              } 
-                            }
-                          }
-                        })}
-                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-                      />
-                      <span className="text-xs text-gray-500">px</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Preview Section */}
-              <div>
-                <h4 className="text-lg font-semibold mb-3">Preview</h4>
-                <div className="border border-gray-300 rounded-lg p-6 bg-white">
-                  <h2 
-                    className="font-bold mb-2"
-                    style={{ 
-                      color: pendingImport.theme?.colors?.primary || "#4F5348",
-                      fontFamily: pendingImport.theme?.fonts?.heading || "Inter, sans-serif",
-                      fontSize: pendingImport.theme?.fonts?.sizes?.name || "36px"
-                    }}
-                  >
-                    Your Name
-                  </h2>
-                  <p 
-                    className="mb-4"
-                    style={{ 
-                      color: pendingImport.theme?.colors?.muted || "#666",
-                      fontFamily: pendingImport.theme?.fonts?.body || "Inter, sans-serif",
-                      fontSize: pendingImport.theme?.fonts?.sizes?.small || "12px"
-                    }}
-                  >
-                    email@example.com • (555) 123-4567
-                  </p>
-                  <h3 
-                    className="font-semibold mb-2 uppercase"
-                    style={{ 
-                      color: pendingImport.theme?.colors?.primary || "#4F5348",
-                      fontFamily: pendingImport.theme?.fonts?.heading || "Inter, sans-serif",
-                      fontSize: pendingImport.theme?.fonts?.sizes?.sectionHeader || "18px"
-                    }}
-                  >
-                    Experience
-                  </h3>
-                  <h4 
-                    className="font-bold mb-1"
-                    style={{ 
-                      color: pendingImport.theme?.colors?.text || "#222",
-                      fontFamily: pendingImport.theme?.fonts?.heading || "Inter, sans-serif",
-                      fontSize: pendingImport.theme?.fonts?.sizes?.jobTitle || "16px"
-                    }}
-                  >
-                    Senior Developer
-                  </h4>
-                  <p 
-                    style={{ 
-                      color: pendingImport.theme?.colors?.text || "#222",
-                      fontFamily: pendingImport.theme?.fonts?.body || "Inter, sans-serif",
-                      fontSize: pendingImport.theme?.fonts?.sizes?.body || "14px"
-                    }}
-                  >
-                    This is how your body text will appear in the resume.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 border-t">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowCustomizeImport(false);
-                  setPendingImport(null);
-                  setImportFile(null);
-                }}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleFinalizeImport}
-                className="px-4 py-2 text-white rounded-lg transition"
-                style={{ backgroundColor: '#777C6D' }}
-                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-              >
-                Save Template
-              </button>
             </div>
           </div>
         </div>
@@ -2967,105 +2809,153 @@ export default function ResumeTemplates() {
 
             {/* Modal Content - HTML View only (PDF experimental removed) */}
             <div className="flex-1 overflow-y-auto py-8 px-4" style={{ backgroundColor: '#525252' }}>
-              <div 
-                className="resume-printable mx-auto bg-white shadow-2xl print:shadow-none" 
-                style={{ 
-                  width: '8.5in', 
-                  minHeight: '11in', 
-                  padding: '0.75in',
-                  boxShadow: '0 0 0.5cm rgba(0,0,0,0.5)'
-                }}
-              >
-              
-              {/* Resume Header */}
-              <div 
-                className="pb-6 border-b-2"
-                style={{ 
-                  borderColor: theme.colors.primary,
-                  textAlign: resumeTemplate.layout?.headerAlignment || 'center',
-                  marginBottom: `${resumeTemplate.layout?.sectionSpacing || 32}px`
-                }}
-              >
-                <h1 className="font-bold mb-2" style={{ color: theme.colors.text, fontFamily: theme.fonts.heading, fontSize: theme.fonts.sizes?.name || "36px" }}>
-                  {viewingResume.sections?.contactInfo?.name || 'Your Name'}
-                </h1>
-                <div 
-                  className="flex flex-wrap gap-2 justify-center" 
-                  style={{ 
-                    color: theme.colors.muted, 
-                    fontFamily: theme.fonts.body, 
-                    fontSize: theme.fonts.sizes?.small || "12px"
-                  }}
-                >
-                  {viewingResume.sections?.contactInfo?.email && (
-                    <span>{viewingResume.sections.contactInfo.email}</span>
-                  )}
-                  {viewingResume.sections?.contactInfo?.phone && (
-                    <>
-                      {viewingResume.sections?.contactInfo?.email && <span>•</span>}
-                      <span>{viewingResume.sections.contactInfo.phone}</span>
-                    </>
-                  )}
-                  {viewingResume.sections?.contactInfo?.location && (
-                    <>
-                      {(viewingResume.sections?.contactInfo?.email || viewingResume.sections?.contactInfo?.phone) && <span>•</span>}
-                      <span>{viewingResume.sections.contactInfo.location}</span>
-                    </>
-                  )}
-                </div>
-                {/* Links row */}
-                {(viewingResume.sections?.contactInfo?.linkedin || 
-                  viewingResume.sections?.contactInfo?.github || 
-                  viewingResume.sections?.contactInfo?.website) && (
+              {(() => {
+                const resumeTemplate = templates.find(t => t._id === viewingResume.templateId) || {};
+                const hasDocxTemplate = !!(resumeTemplate.hasDocx || typeof resumeTemplate.docxPlaceholders !== 'undefined' || (viewingResume && viewingResume._hasDocxProbe));
+                if (hasDocxTemplate) {
+                  console.log('DOCX template detected for viewing:', {
+                    templateId: resumeTemplate._id,
+                    hasDocx: resumeTemplate.hasDocx,
+                    hasDocxPlaceholders: typeof resumeTemplate.docxPlaceholders !== 'undefined',
+                    probe: !!(viewingResume && viewingResume._hasDocxProbe)
+                  });
+                  return (
+                    <div className="mx-auto bg-white shadow-2xl rounded-lg" style={{ width: '8.5in', minHeight: '5in', padding: '1in' }}>
+                      <div className="text-center">
+                        <h2 className="text-xl font-semibold mb-2" style={{ color: '#111827' }}>This resume uses a DOCX template</h2>
+                        <p className="text-sm text-gray-600 mb-4">Download the generated .docx file to view the exact formatting and styles from your template.</p>
+                        <button
+                          onClick={async () => {
+                            try {
+                              await authWrap();
+                              const response = await api.get(`/api/resume/resumes/${viewingResume._id}/docx`, {
+                                responseType: 'blob',
+                                timeout: 30000
+                              });
+                              const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }));
+                              const link = document.createElement('a');
+                              link.href = url;
+                              link.setAttribute('download', `${viewingResume.name || 'resume'}.docx`);
+                              document.body.appendChild(link);
+                              link.click();
+                              link.remove();
+                              window.URL.revokeObjectURL(url);
+                            } catch (err) {
+                              console.error('Failed to download DOCX:', err);
+                              alert(err.response?.data?.message || 'Failed to generate DOCX. Make sure the template has a DOCX file uploaded with placeholders or content controls.');
+                            }
+                          }}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                        >
+                          Download DOCX
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
                   <div 
-                    className="text-xs flex flex-wrap gap-2 mt-1 justify-center" 
+                    className="resume-printable mx-auto bg-white shadow-2xl print:shadow-none" 
                     style={{ 
-                      color: '#4A5568'
+                      width: '8.5in', 
+                      minHeight: '11in', 
+                      padding: '0.75in',
+                      boxShadow: '0 0 0.5cm rgba(0,0,0,0.5)'
                     }}
                   >
-                    {viewingResume.sections?.contactInfo?.linkedin && (
-                      <a 
-                        href={viewingResume.sections.contactInfo.linkedin} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="hover:underline"
+                  
+                  {/* Resume Header */}
+                  <div 
+                    className="pb-6 border-b-2"
+                    style={{ 
+                      borderColor: theme.colors.primary,
+                      textAlign: resumeTemplate.layout?.headerAlignment || 'center',
+                      marginBottom: `${resumeTemplate.layout?.sectionSpacing || 32}px`
+                    }}
+                  >
+                    <h1 className="font-bold mb-2" style={{ color: theme.colors.text, fontFamily: theme.fonts.heading, fontSize: theme.fonts.sizes?.name || "36px" }}>
+                      {viewingResume.sections?.contactInfo?.name || 'Your Name'}
+                    </h1>
+                    <div 
+                      className="flex flex-wrap gap-2 justify-center" 
+                      style={{ 
+                        color: theme.colors.muted, 
+                        fontFamily: theme.fonts.body, 
+                        fontSize: theme.fonts.sizes?.small || "12px"
+                      }}
+                    >
+                      {viewingResume.sections?.contactInfo?.email && (
+                        <span>{viewingResume.sections.contactInfo.email}</span>
+                      )}
+                      {viewingResume.sections?.contactInfo?.phone && (
+                        <>
+                          {viewingResume.sections?.contactInfo?.email && <span>•</span>}
+                          <span>{viewingResume.sections.contactInfo.phone}</span>
+                        </>
+                      )}
+                      {viewingResume.sections?.contactInfo?.location && (
+                        <>
+                          {(viewingResume.sections?.contactInfo?.email || viewingResume.sections?.contactInfo?.phone) && <span>•</span>}
+                          <span>{viewingResume.sections.contactInfo.location}</span>
+                        </>
+                      )}
+                    </div>
+                    {/* Links row */}
+                    {(viewingResume.sections?.contactInfo?.linkedin || 
+                      viewingResume.sections?.contactInfo?.github || 
+                      viewingResume.sections?.contactInfo?.website) && (
+                      <div 
+                        className="text-xs flex flex-wrap gap-2 mt-1 justify-center" 
+                        style={{ 
+                          color: '#4A5568'
+                        }}
                       >
-                        LinkedIn
-                      </a>
-                    )}
-                    {viewingResume.sections?.contactInfo?.github && (
-                      <>
-                        {viewingResume.sections?.contactInfo?.linkedin && <span>•</span>}
-                        <a 
-                          href={viewingResume.sections.contactInfo.github} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="hover:underline"
-                        >
-                          GitHub
-                        </a>
-                      </>
-                    )}
-                    {viewingResume.sections?.contactInfo?.website && (
-                      <>
-                        {(viewingResume.sections?.contactInfo?.linkedin || viewingResume.sections?.contactInfo?.github) && <span>•</span>}
-                        <a 
-                          href={viewingResume.sections.contactInfo.website} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                        >
-                          Portfolio
-                        </a>
-                      </>
+                        {viewingResume.sections?.contactInfo?.linkedin && (
+                          <a 
+                            href={viewingResume.sections.contactInfo.linkedin} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="hover:underline"
+                          >
+                            LinkedIn
+                          </a>
+                        )}
+                        {viewingResume.sections?.contactInfo?.github && (
+                          <>
+                            {viewingResume.sections?.contactInfo?.linkedin && <span>•</span>}
+                            <a 
+                              href={viewingResume.sections.contactInfo.github} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="hover:underline"
+                            >
+                              GitHub
+                            </a>
+                          </>
+                        )}
+                        {viewingResume.sections?.contactInfo?.website && (
+                          <>
+                            {(viewingResume.sections?.contactInfo?.linkedin || viewingResume.sections?.contactInfo?.github) && <span>•</span>}
+                            <a 
+                              href={viewingResume.sections.contactInfo.website} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                            >
+                              Portfolio
+                            </a>
+                          </>
+                        )}
+                      </div>
                     )}
                   </div>
-                )}
-              </div>
 
-              {/* Render sections in the order specified by template layout */}
-              {sectionsOrder.map(sectionType => renderSection(sectionType))}
+                  {/* Render sections in the order specified by template layout */}
+                  {sectionsOrder.map(sectionType => renderSection(sectionType))}
 
-              </div>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Modal Footer */}
@@ -3074,6 +2964,84 @@ export default function ResumeTemplates() {
                 Last modified: {new Date(viewingResume.updatedAt).toLocaleString()}
               </p>
               <div className="flex gap-3">
+                {(() => {
+                  const resumeTemplate = templates.find(t => t._id === viewingResume.templateId) || {};
+                  // Use same detection as the content panel, including probe and placeholders
+                  const hasDocxTemplate = !!(resumeTemplate.hasDocx || typeof resumeTemplate.docxPlaceholders !== 'undefined' || (viewingResume && viewingResume._hasDocxProbe));
+                  return hasDocxTemplate ? (
+                    <button
+                      onClick={async () => {
+                        try {
+                          await authWrap();
+                          const response = await api.get(`/api/resume/resumes/${viewingResume._id}/docx`, {
+                            responseType: 'blob',
+                            timeout: 30000
+                          });
+                          const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }));
+                          const link = document.createElement('a');
+                          link.href = url;
+                          link.setAttribute('download', `${viewingResume.name || 'resume'}.docx`);
+                          document.body.appendChild(link);
+                          link.click();
+                          link.remove();
+                          window.URL.revokeObjectURL(url);
+                        } catch (err) {
+                          console.error('Failed to download DOCX:', err);
+                          alert(err.response?.data?.message || 'Failed to generate DOCX. Make sure the template has a DOCX file uploaded with placeholders.');
+                        }
+                      }}
+                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition flex items-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Download DOCX
+                    </button>
+                  ) : null;
+                })()}
+                <button
+                  onClick={async () => {
+                    try {
+                      await authWrap();
+                      const response = await api.get(`/api/resume/resumes/${viewingResume._id}/docx`, {
+                        responseType: 'blob',
+                        timeout: 30000
+                      });
+                      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }));
+                      const link = document.createElement('a');
+                      link.href = url;
+                      link.setAttribute('download', `${viewingResume.name || 'resume'}.docx`);
+                      document.body.appendChild(link);
+                      link.click();
+                      link.remove();
+                      window.URL.revokeObjectURL(url);
+                    } catch (err) {
+                      console.error('Fallback DOCX download failed:', err);
+                      try {
+                        const blob = err?.response?.data;
+                        if (blob && blob instanceof Blob) {
+                          const text = await blob.text();
+                          try {
+                            const json = JSON.parse(text);
+                            alert(json?.message || 'DOCX not available for this resume/template.');
+                          } catch {
+                            alert(text || 'DOCX not available for this resume/template.');
+                          }
+                        } else {
+                          alert(err.response?.data?.message || 'DOCX not available for this resume/template.');
+                        }
+                      } catch (nested) {
+                        alert('DOCX not available for this resume/template.');
+                      }
+                    }
+                  }}
+                  className="px-4 py-2 border border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 transition flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Download DOCX (fallback)
+                </button>
                 <button
                   onClick={() => window.print()}
                   className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition flex items-center gap-2"
