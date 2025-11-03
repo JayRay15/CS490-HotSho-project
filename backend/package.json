@@ -29,6 +29,8 @@
     "mongoose": "^8.19.2",
     "multer": "^2.0.2",
     "nodemailer": "^7.0.10",
+    "pdf-parse": "^2.4.5",
+    "pdfjs-dist": "^4.6.82",
     "uuid": "^13.0.0"
   },
   "devDependencies": {

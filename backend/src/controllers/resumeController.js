@@ -5,7 +5,10 @@ import { generateResumeContent, regenerateSection, analyzeATSCompatibility } fro
 import { User } from "../models/User.js";
 import { Job } from "../models/Job.js";
 
-const getUserId = (req) => req.auth?.userId || req.auth?.payload?.sub;
+const getUserId = (req) => {
+  const auth = typeof req.auth === 'function' ? req.auth() : req.auth;
+  return auth?.userId || auth?.payload?.sub;
+};
 
 // Helper to seed default templates for a new user
 const defaultTemplates = [
@@ -58,7 +61,32 @@ export const createTemplate = async (req, res) => {
       await ResumeTemplate.updateMany({ userId }, { $set: { isDefault: false } });
     }
 
-    const tpl = await ResumeTemplate.create({ userId, name, type, layout, theme, isDefault: !!isDefault });
+    // Set default layout sections order based on template type if not provided
+    let finalLayout = layout;
+    if (!finalLayout || !finalLayout.sectionsOrder) {
+      let sectionsOrder;
+      switch (type) {
+        case 'functional':
+          // Functional: Skills come before experience to highlight capabilities first
+          sectionsOrder = ["summary", "skills", "experience", "education", "projects"];
+          break;
+        case 'hybrid':
+          // Hybrid: Skills and experience can be close together, often skills first
+          sectionsOrder = ["summary", "skills", "experience", "education", "projects"];
+          break;
+        case 'chronological':
+        default:
+          // Chronological: Experience comes before skills (traditional format)
+          sectionsOrder = ["summary", "experience", "skills", "education", "projects"];
+          break;
+      }
+      finalLayout = {
+        sectionsOrder: sectionsOrder,
+        sectionStyles: layout?.sectionStyles || {}
+      };
+    }
+
+    const tpl = await ResumeTemplate.create({ userId, name, type, layout: finalLayout, theme, isDefault: !!isDefault });
     const { response, statusCode } = successResponse("Template created", { template: tpl }, 201);
     return sendResponse(res, response, statusCode);
   } catch (err) {

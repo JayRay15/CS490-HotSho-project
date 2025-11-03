@@ -29,7 +29,8 @@ export const upload = multer({
 
 // GET /api/users/me - Get current user profile
 export const getCurrentUser = asyncHandler(async (req, res) => {
-  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const _auth = typeof req.auth === 'function' ? req.auth() : req.auth;
+  const userId = _auth?.userId || _auth?.payload?.sub;
   
   if (!userId) {
     const { response, statusCode } = errorResponse(
@@ -57,7 +58,8 @@ export const getCurrentUser = asyncHandler(async (req, res) => {
 
 // PUT /api/users/me - Update current user profile
 export const updateCurrentUser = asyncHandler(async (req, res) => {
-  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const _auth2 = typeof req.auth === 'function' ? req.auth() : req.auth;
+  const userId = _auth2?.userId || _auth2?.payload?.sub;
   const updateData = req.body;
 
   if (!userId) {

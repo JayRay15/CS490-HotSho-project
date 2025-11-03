@@ -8,10 +8,13 @@ import api from "./axios";
  * @returns {Promise} API response with generated resume
  */
 export const generateAIResume = async (jobId, templateId, name) => {
+  // AI generation can take longer, so increase timeout to 60 seconds
   return await api.post("/api/resume/resumes/generate", {
     jobId,
     templateId,
     name,
+  }, {
+    timeout: 60000 // 60 seconds
   });
 };
 
@@ -22,8 +25,11 @@ export const generateAIResume = async (jobId, templateId, name) => {
  * @returns {Promise} API response with updated resume
  */
 export const regenerateResumeSection = async (resumeId, section) => {
+  // Section regeneration can also take time, use 45 second timeout
   return await api.post(`/api/resume/resumes/${resumeId}/regenerate`, {
     section,
+  }, {
+    timeout: 45000 // 45 seconds
   });
 };
 

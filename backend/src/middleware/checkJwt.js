@@ -17,8 +17,11 @@ const checkJwt = (req, res, next) => {
       return sendResponse(res, response, statusCode);
     }
     
+    // Support both req.auth object and req.auth() function
+    const auth = typeof req.auth === 'function' ? req.auth() : req.auth;
+
     // Verify userId is present
-    if (!req.auth?.userId && !req.auth?.payload?.sub) {
+    if (!auth?.userId && !auth?.payload?.sub) {
       const { response, statusCode } = errorResponse(
         "Unauthorized: Unable to identify user",
         401,

@@ -17,6 +17,28 @@ const TEMPLATE_TYPES = [
   { value: "hybrid", label: "Hybrid" },
 ];
 
+// Helper function to format dates
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  
+  // If it's already in a good format (e.g., "Jan 2020"), return as-is
+  if (dateString.match(/^[A-Za-z]{3,9}\s\d{4}$/)) {
+    return dateString;
+  }
+  
+  // If it's an ISO string or Date object, format it
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString; // Invalid date, return as-is
+    
+    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    const year = date.getFullYear();
+    return `${month} ${year}`;
+  } catch (e) {
+    return dateString; // Return as-is if parsing fails
+  }
+};
+
 // Simple resume preview tile (Google Docs style)
 function ResumeTile({ resume, onView, onDelete }) {
   const theme = { primary: "#4F5348", text: "#222", bg: "#FFF" };
@@ -343,6 +365,10 @@ export default function ResumeTemplates() {
   const [customizeTemplate, setCustomizeTemplate] = useState(null);
   const [showImport, setShowImport] = useState(false);
   const [importJson, setImportJson] = useState("");
+  const [importFile, setImportFile] = useState(null);
+  const [importMethod, setImportMethod] = useState("file"); // "file" or "json"
+  const [pendingImport, setPendingImport] = useState(null); // Template pending customization
+  const [showCustomizeImport, setShowCustomizeImport] = useState(false);
   const [previewTemplate, setPreviewTemplate] = useState(null);
   
   // Delete confirmation modal state
@@ -577,18 +603,241 @@ export default function ResumeTemplates() {
     }
   };
 
+  const handleFileUpload = async (file) => {
+    // Create a template based on file analysis and existing user preferences
+    try {
+      // Simple template creation with filename
+      const templateName = file.name.replace(/\.[^/.]+$/, "") + " Template";
+      
+      // Default theme with professional styling
+      let theme = {
+        colors: { primary: "#4F5348", text: "#222", muted: "#666" },
+        fonts: { 
+          body: "Inter, sans-serif", 
+          heading: "Inter, sans-serif",
+          sizes: {
+            name: "36px",
+            sectionHeader: "18px",
+            jobTitle: "16px",
+            body: "14px",
+            small: "12px"
+          }
+        },
+        spacing: 8
+      };
+      
+      let type = "chronological"; // Default type
+      let extractedStructure = null; // Store extracted PDF structure
+      let extractedLayout = null; // Store extracted PDF layout
+      
+      // Try to analyze PDF if it's a PDF file
+      if (file.type === 'application/pdf') {
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
+          
+          // Acquire a Clerk JWT without specifying a template;
+          // if token is unavailable, skip PDF analysis gracefully.
+          let token = null;
+          try {
+            token = await getToken();
+          } catch (e) {
+            token = null;
+          }
+          if (!token) {
+            throw new Error('No auth token available for PDF analysis');
+          }
+          // Ensure axios carries the Authorization header
+          setAuthToken(token);
+          // Use axios client with configured baseURL
+          const { data: analysis } = await api.post('/api/pdf-analysis/analyze', formData);
+          console.info('PDF analysis received', analysis?.suggestions);
+          // Use suggestions from PDF analysis if available
+          if (analysis?.suggestions) {
+            theme = {
+              colors: analysis.suggestions.colors || theme.colors,
+              fonts: analysis.suggestions.fonts || theme.fonts,
+              spacing: theme.spacing
+            };
+            type = analysis.suggestions.type || type;
+            // Mark that PDF analysis suggestions were applied
+            // This will be propagated via the returned object
+            var __analysis = { used: true, suggestions: analysis.suggestions };
+            
+            // Use extracted structure if available
+            if (analysis.suggestions.structure?.sectionsOrder?.length > 0) {
+              extractedStructure = analysis.suggestions.structure;
+            }
+            
+            // Store layout information (alignment, spacing, etc.)
+            if (analysis.suggestions.layout) {
+              extractedLayout = analysis.suggestions.layout;
+            }
+          }
+        } catch (pdfError) {
+          console.log('PDF analysis unavailable, using defaults:', pdfError);
+          // Continue with default theme - not a critical error
+        }
+      }
+      
+      // If no PDF analysis, use existing resumes/templates as fallback
+      if (resumes.length > 0 && resumes[0].templateId) {
+        const firstResumeTemplate = templates.find(t => t._id === resumes[0].templateId);
+        if (firstResumeTemplate && firstResumeTemplate.theme) {
+          // Only override if PDF analysis didn't provide better data
+          if (file.type !== 'application/pdf') {
+            theme = firstResumeTemplate.theme;
+          }
+        }
+      } else if (templates.length > 0 && templates[0].theme && file.type !== 'application/pdf') {
+        theme = templates[0].theme;
+      }
+      
+      // Smart template type detection from filename (overrides PDF analysis if explicit)
+      const lowerName = templateName.toLowerCase();
+      const lowerFileName = file.name.toLowerCase();
+      
+      if (lowerName.includes("functional") || lowerFileName.includes("functional") || 
+          lowerName.includes("skills-based") || lowerFileName.includes("skills")) {
+        type = "functional";
+      } else if (lowerName.includes("hybrid") || lowerFileName.includes("hybrid") ||
+                 lowerName.includes("combination") || lowerFileName.includes("combination") ||
+                 lowerName.includes("combined")) {
+        type = "hybrid";
+      } else if (lowerName.includes("chronological") || lowerFileName.includes("chronological") ||
+                 lowerName.includes("reverse") || lowerFileName.includes("timeline")) {
+        type = "chronological";
+      }
+      // If no explicit type in filename and no PDF analysis, check user's existing templates
+      else if (templates.length > 0 && file.type !== 'application/pdf') {
+        const typeCounts = templates.reduce((acc, t) => {
+          acc[t.type] = (acc[t.type] || 0) + 1;
+          return acc;
+        }, {});
+        const mostCommonType = Object.keys(typeCounts).reduce((a, b) => 
+          typeCounts[a] > typeCounts[b] ? a : b, 'chronological'
+        );
+        type = mostCommonType;
+      }
+      
+      // Set sections order - prioritize extracted structure from PDF, otherwise use type-based defaults
+      let sectionsOrder;
+      if (extractedStructure?.sectionsOrder?.length > 0) {
+        // Use the exact structure extracted from the PDF
+        sectionsOrder = extractedStructure.sectionsOrder;
+        console.log('Using extracted PDF structure:', sectionsOrder);
+      } else {
+        // Fallback to type-based ordering
+        switch (type) {
+          case 'functional':
+            // Functional: Skills come before experience to highlight capabilities first
+            sectionsOrder = ["summary", "skills", "experience", "education", "projects"];
+            break;
+          case 'hybrid':
+            // Hybrid: Skills and experience can be close together, often skills first
+            sectionsOrder = ["summary", "skills", "experience", "education", "projects"];
+            break;
+          case 'chronological':
+          default:
+            // Chronological: Experience comes before skills (traditional format)
+            sectionsOrder = ["summary", "experience", "skills", "education", "projects"];
+            break;
+        }
+      }
+      
+      // Store section names mapping if extracted from PDF
+      const sectionStyles = {};
+      if (extractedStructure?.sectionNames) {
+        // Preserve the actual section names from the PDF
+        Object.entries(extractedStructure.sectionNames).forEach(([standardName, actualName]) => {
+          sectionStyles[standardName] = { displayName: actualName };
+        });
+      }
+      
+      // Add layout properties to sectionStyles or layout
+      if (extractedLayout) {
+        // Store layout properties at the template level
+        if (!theme.spacing) {
+          theme.spacing = extractedLayout.sectionSpacing || 8;
+        }
+      }
+      
+      // Store education format if extracted from PDF (already included in extractedLayout)
+      let educationFormat = extractedLayout?.educationFormat || null;
+      
+      return {
+        name: templateName,
+        type: type,
+        layout: {
+          sectionsOrder: sectionsOrder,
+          sectionStyles: sectionStyles,
+          // Store layout properties
+          headerAlignment: extractedLayout?.headerAlignment || 'center',
+          textAlignment: extractedLayout?.textAlignment || 'left',
+          sectionSpacing: extractedLayout?.sectionSpacing || 24,
+          headerStyle: extractedLayout?.headerStyle || 'underline',
+          lineHeight: extractedLayout?.lineHeight || 1.5,
+          paragraphSpacing: extractedLayout?.paragraphSpacing || 8,
+          // Store education format if extracted
+          educationFormat: educationFormat
+        },
+        theme: theme,
+        analysis: __analysis || { used: false }
+      };
+    } catch (error) {
+      console.error("Error processing file:", error);
+      throw new Error("Failed to process resume file");
+    }
+  };
+
   const handleImport = async (e) => {
     e.preventDefault();
     try {
-      const parsed = JSON.parse(importJson);
-      await authWrap();
-      await apiImportTemplate(parsed);
-      setShowImport(false);
-      setImportJson("");
-      await loadAll();
+      let templateData;
+      
+      if (importMethod === "file" && importFile) {
+        // Handle file upload
+        templateData = await handleFileUpload(importFile);
+        // For file uploads, show customization modal first
+        setPendingImport(templateData);
+        setShowImport(false);
+        setShowCustomizeImport(true);
+      } else if (importMethod === "json" && importJson) {
+        // Handle JSON import - import directly
+        templateData = JSON.parse(importJson);
+        await authWrap();
+        await apiImportTemplate(templateData);
+        setShowImport(false);
+        setImportJson("");
+        await loadAll();
+        setSuccessMessage("Template imported successfully!");
+        setTimeout(() => setSuccessMessage(null), 5000);
+      } else {
+        alert("Please select a file or paste JSON");
+        return;
+      }
     } catch (err) {
       console.error(err);
-      alert("Invalid JSON for import");
+      alert(importMethod === "file" ? "Failed to import resume file" : "Invalid JSON for import");
+    }
+  };
+
+  const handleFinalizeImport = async () => {
+    if (!pendingImport) return;
+    
+    try {
+      await authWrap();
+      await apiImportTemplate(pendingImport);
+      setShowCustomizeImport(false);
+      setPendingImport(null);
+      setImportFile(null);
+      setImportMethod("file");
+      await loadAll();
+      setSuccessMessage("Template imported successfully!");
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to finalize template import");
     }
   };
 
@@ -680,6 +929,13 @@ export default function ResumeTemplates() {
             className="bg-white rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto border border-gray-200"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Success Banner in Modal */}
+            {successMessage && (
+              <div className="mx-6 mt-6 p-4 border rounded-lg" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }}>
+                <p className="font-medium" style={{ color: '#166534' }}>{successMessage}</p>
+              </div>
+            )}
+            
             <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
               <h3 className="text-2xl font-heading font-semibold">Manage Templates</h3>
               <div className="flex gap-3 items-center">
@@ -1007,24 +1263,96 @@ export default function ResumeTemplates() {
 
             <div className="p-6">
               <form onSubmit={handleImport} className="space-y-6">
+                {/* Import Method Selection */}
                 <div>
-                  <label htmlFor="importJson" className="block text-sm font-medium text-gray-700 mb-2">
-                    Paste Template JSON <span className="text-red-500">*</span>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Import Method
                   </label>
-                  <textarea 
-                    id="importJson"
-                    className="w-full border border-gray-300 rounded-lg p-4 h-64 font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                    placeholder='{"name":"My Template","type":"hybrid","layout":{"sectionsOrder":["summary","skills","experience"]},"theme":{"colors":{"primary":"#2a7"}}}' 
-                    value={importJson} 
-                    onChange={(e) => setImportJson(e.target.value)} 
-                    required
-                  />
+                  <div className="flex space-x-4">
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="importMethod"
+                        value="file"
+                        checked={importMethod === "file"}
+                        onChange={(e) => setImportMethod(e.target.value)}
+                        className="mr-2"
+                      />
+                      <span className="text-sm text-gray-700">Upload Resume File</span>
+                    </label>
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="importMethod"
+                        value="json"
+                        checked={importMethod === "json"}
+                        onChange={(e) => setImportMethod(e.target.value)}
+                        className="mr-2"
+                      />
+                      <span className="text-sm text-gray-700">Paste JSON</span>
+                    </label>
+                  </div>
                 </div>
+
+                {/* File Upload Section */}
+                {importMethod === "file" && (
+                  <div>
+                    <label htmlFor="importFile" className="block text-sm font-medium text-gray-700 mb-2">
+                      Upload Resume File <span className="text-red-500">*</span>
+                    </label>
+                    <div className="mt-2">
+                      <input
+                        type="file"
+                        id="importFile"
+                        accept=".pdf,.doc,.docx,.txt"
+                        onChange={(e) => setImportFile(e.target.files[0])}
+                        className="block w-full text-sm text-gray-500
+                          file:mr-4 file:py-2 file:px-4
+                          file:rounded-lg file:border-0
+                          file:text-sm file:font-medium
+                          file:bg-gray-100 file:text-gray-700
+                          hover:file:bg-gray-200 file:cursor-pointer
+                          cursor-pointer"
+                        required
+                      />
+                      <p className="mt-2 text-xs text-gray-500">
+                        Supported formats: PDF, DOC, DOCX, TXT (Max 5MB)
+                      </p>
+                      {importFile && (
+                        <p className="mt-2 text-sm text-green-600">
+                          Selected: {importFile.name}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* JSON Input Section */}
+                {importMethod === "json" && (
+                  <div>
+                    <label htmlFor="importJson" className="block text-sm font-medium text-gray-700 mb-2">
+                      Paste Template JSON <span className="text-red-500">*</span>
+                    </label>
+                    <textarea 
+                      id="importJson"
+                      className="w-full border border-gray-300 rounded-lg p-4 h-64 font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                      placeholder='{"name":"My Template","type":"hybrid","layout":{"sectionsOrder":["summary","skills","experience"]},"theme":{"colors":{"primary":"#2a7"}}}' 
+                      value={importJson} 
+                      onChange={(e) => setImportJson(e.target.value)} 
+                      required
+                    />
+                  </div>
+                )}
 
                 <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 -mx-6 -mb-6 border-t">
                   <button
                     type="button"
-                    onClick={() => setShowImport(false)}
+                    onClick={() => {
+                      setShowImport(false);
+                      setImportFile(null);
+                      setImportJson("");
+                      setImportMethod("file");
+                    }}
                     className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
                   >
                     Cancel
@@ -1040,6 +1368,471 @@ export default function ResumeTemplates() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Customize Import Modal */}
+      {showCustomizeImport && pendingImport && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={() => {
+            setShowCustomizeImport(false);
+            setPendingImport(null);
+            setImportFile(null);
+          }}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-gray-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
+              <div>
+                <h3 className="text-2xl font-heading font-semibold">Customize Template Appearance</h3>
+                <p className="text-sm text-gray-600 mt-1">Set fonts and colors to match your original resume</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowCustomizeImport(false);
+                  setPendingImport(null);
+                  setImportFile(null);
+                }}
+                className="text-gray-400 hover:text-gray-600 transition"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Analysis Banner or Help Banner */}
+              {pendingImport?.analysis?.used ? (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-start">
+                    <svg className="w-5 h-5 text-green-700 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <div>
+                      <h5 className="font-semibold text-green-900 mb-1">Applied styling detected from your PDF</h5>
+                      <p className="text-sm text-green-800">
+                        We detected styling hints from your uploaded PDF and prefilled the colors and font sizes below. You can still fine-tune anything before saving.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start">
+                    <svg className="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <h5 className="font-semibold text-blue-900 mb-1">Match Your Original Resume</h5>
+                      <p className="text-sm text-blue-800">
+                        PDFs can be hard to parse for exact styling. Adjust the colors, fonts, and sizes below to match your original resume. The live preview updates instantly.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Template Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Template Name
+                </label>
+                <input
+                  type="text"
+                  value={pendingImport.name}
+                  onChange={(e) => setPendingImport({ ...pendingImport, name: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Colors Section */}
+              <div>
+                <h4 className="text-lg font-semibold mb-3">Colors</h4>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Primary Color (Headers)
+                    </label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="color"
+                        value={pendingImport.theme?.colors?.primary || "#4F5348"}
+                        onChange={(e) => setPendingImport({
+                          ...pendingImport,
+                          theme: {
+                            ...pendingImport.theme,
+                            colors: { ...pendingImport.theme?.colors, primary: e.target.value }
+                          }
+                        })}
+                        className="w-12 h-12 rounded border border-gray-300 cursor-pointer"
+                      />
+                      <input
+                        type="text"
+                        value={pendingImport.theme?.colors?.primary || "#4F5348"}
+                        onChange={(e) => setPendingImport({
+                          ...pendingImport,
+                          theme: {
+                            ...pendingImport.theme,
+                            colors: { ...pendingImport.theme?.colors, primary: e.target.value }
+                          }
+                        })}
+                        className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                        placeholder="#4F5348"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Text Color
+                    </label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="color"
+                        value={pendingImport.theme?.colors?.text || "#222"}
+                        onChange={(e) => setPendingImport({
+                          ...pendingImport,
+                          theme: {
+                            ...pendingImport.theme,
+                            colors: { ...pendingImport.theme?.colors, text: e.target.value }
+                          }
+                        })}
+                        className="w-12 h-12 rounded border border-gray-300 cursor-pointer"
+                      />
+                      <input
+                        type="text"
+                        value={pendingImport.theme?.colors?.text || "#222"}
+                        onChange={(e) => setPendingImport({
+                          ...pendingImport,
+                          theme: {
+                            ...pendingImport.theme,
+                            colors: { ...pendingImport.theme?.colors, text: e.target.value }
+                          }
+                        })}
+                        className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                        placeholder="#222"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Muted Color (Dates)
+                    </label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="color"
+                        value={pendingImport.theme?.colors?.muted || "#666"}
+                        onChange={(e) => setPendingImport({
+                          ...pendingImport,
+                          theme: {
+                            ...pendingImport.theme,
+                            colors: { ...pendingImport.theme?.colors, muted: e.target.value }
+                          }
+                        })}
+                        className="w-12 h-12 rounded border border-gray-300 cursor-pointer"
+                      />
+                      <input
+                        type="text"
+                        value={pendingImport.theme?.colors?.muted || "#666"}
+                        onChange={(e) => setPendingImport({
+                          ...pendingImport,
+                          theme: {
+                            ...pendingImport.theme,
+                            colors: { ...pendingImport.theme?.colors, muted: e.target.value }
+                          }
+                        })}
+                        className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm font-mono"
+                        placeholder="#666"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Fonts Section */}
+              <div>
+                <h4 className="text-lg font-semibold mb-3">Fonts</h4>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Heading Font
+                    </label>
+                    <select
+                      value={pendingImport.theme?.fonts?.heading || "Inter, sans-serif"}
+                      onChange={(e) => setPendingImport({
+                        ...pendingImport,
+                        theme: {
+                          ...pendingImport.theme,
+                          fonts: { ...pendingImport.theme?.fonts, heading: e.target.value }
+                        }
+                      })}
+                      className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="Inter, sans-serif">Inter (Modern)</option>
+                      <option value="Georgia, serif">Georgia (Classic)</option>
+                      <option value="Times New Roman, serif">Times New Roman (Traditional)</option>
+                      <option value="Arial, sans-serif">Arial (Clean)</option>
+                      <option value="Helvetica, sans-serif">Helvetica (Professional)</option>
+                      <option value="Calibri, sans-serif">Calibri (Modern)</option>
+                      <option value="Garamond, serif">Garamond (Elegant)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Body Font
+                    </label>
+                    <select
+                      value={pendingImport.theme?.fonts?.body || "Inter, sans-serif"}
+                      onChange={(e) => setPendingImport({
+                        ...pendingImport,
+                        theme: {
+                          ...pendingImport.theme,
+                          fonts: { ...pendingImport.theme?.fonts, body: e.target.value }
+                        }
+                      })}
+                      className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="Inter, sans-serif">Inter (Modern)</option>
+                      <option value="Georgia, serif">Georgia (Classic)</option>
+                      <option value="Times New Roman, serif">Times New Roman (Traditional)</option>
+                      <option value="Arial, sans-serif">Arial (Clean)</option>
+                      <option value="Helvetica, sans-serif">Helvetica (Professional)</option>
+                      <option value="Calibri, sans-serif">Calibri (Modern)</option>
+                      <option value="Garamond, serif">Garamond (Elegant)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Font Sizes */}
+                <div>
+                  <h5 className="text-sm font-semibold text-gray-700 mb-3">Font Sizes</h5>
+                  <div className="grid grid-cols-5 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Name
+                      </label>
+                      <input
+                        type="number"
+                        min="20"
+                        max="60"
+                        value={parseInt(pendingImport.theme?.fonts?.sizes?.name) || 36}
+                        onChange={(e) => setPendingImport({
+                          ...pendingImport,
+                          theme: {
+                            ...pendingImport.theme,
+                            fonts: { 
+                              ...pendingImport.theme?.fonts, 
+                              sizes: { 
+                                ...pendingImport.theme?.fonts?.sizes, 
+                                name: `${e.target.value}px` 
+                              } 
+                            }
+                          }
+                        })}
+                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                      />
+                      <span className="text-xs text-gray-500">px</span>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Headers
+                      </label>
+                      <input
+                        type="number"
+                        min="12"
+                        max="32"
+                        value={parseInt(pendingImport.theme?.fonts?.sizes?.sectionHeader) || 18}
+                        onChange={(e) => setPendingImport({
+                          ...pendingImport,
+                          theme: {
+                            ...pendingImport.theme,
+                            fonts: { 
+                              ...pendingImport.theme?.fonts, 
+                              sizes: { 
+                                ...pendingImport.theme?.fonts?.sizes, 
+                                sectionHeader: `${e.target.value}px` 
+                              } 
+                            }
+                          }
+                        })}
+                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                      />
+                      <span className="text-xs text-gray-500">px</span>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Job Title
+                      </label>
+                      <input
+                        type="number"
+                        min="10"
+                        max="24"
+                        value={parseInt(pendingImport.theme?.fonts?.sizes?.jobTitle) || 16}
+                        onChange={(e) => setPendingImport({
+                          ...pendingImport,
+                          theme: {
+                            ...pendingImport.theme,
+                            fonts: { 
+                              ...pendingImport.theme?.fonts, 
+                              sizes: { 
+                                ...pendingImport.theme?.fonts?.sizes, 
+                                jobTitle: `${e.target.value}px` 
+                              } 
+                            }
+                          }
+                        })}
+                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                      />
+                      <span className="text-xs text-gray-500">px</span>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Body
+                      </label>
+                      <input
+                        type="number"
+                        min="10"
+                        max="20"
+                        value={parseInt(pendingImport.theme?.fonts?.sizes?.body) || 14}
+                        onChange={(e) => setPendingImport({
+                          ...pendingImport,
+                          theme: {
+                            ...pendingImport.theme,
+                            fonts: { 
+                              ...pendingImport.theme?.fonts, 
+                              sizes: { 
+                                ...pendingImport.theme?.fonts?.sizes, 
+                                body: `${e.target.value}px` 
+                              } 
+                            }
+                          }
+                        })}
+                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                      />
+                      <span className="text-xs text-gray-500">px</span>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Small
+                      </label>
+                      <input
+                        type="number"
+                        min="8"
+                        max="16"
+                        value={parseInt(pendingImport.theme?.fonts?.sizes?.small) || 12}
+                        onChange={(e) => setPendingImport({
+                          ...pendingImport,
+                          theme: {
+                            ...pendingImport.theme,
+                            fonts: { 
+                              ...pendingImport.theme?.fonts, 
+                              sizes: { 
+                                ...pendingImport.theme?.fonts?.sizes, 
+                                small: `${e.target.value}px` 
+                              } 
+                            }
+                          }
+                        })}
+                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                      />
+                      <span className="text-xs text-gray-500">px</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Preview Section */}
+              <div>
+                <h4 className="text-lg font-semibold mb-3">Preview</h4>
+                <div className="border border-gray-300 rounded-lg p-6 bg-white">
+                  <h2 
+                    className="font-bold mb-2"
+                    style={{ 
+                      color: pendingImport.theme?.colors?.primary || "#4F5348",
+                      fontFamily: pendingImport.theme?.fonts?.heading || "Inter, sans-serif",
+                      fontSize: pendingImport.theme?.fonts?.sizes?.name || "36px"
+                    }}
+                  >
+                    Your Name
+                  </h2>
+                  <p 
+                    className="mb-4"
+                    style={{ 
+                      color: pendingImport.theme?.colors?.muted || "#666",
+                      fontFamily: pendingImport.theme?.fonts?.body || "Inter, sans-serif",
+                      fontSize: pendingImport.theme?.fonts?.sizes?.small || "12px"
+                    }}
+                  >
+                    email@example.com • (555) 123-4567
+                  </p>
+                  <h3 
+                    className="font-semibold mb-2 uppercase"
+                    style={{ 
+                      color: pendingImport.theme?.colors?.primary || "#4F5348",
+                      fontFamily: pendingImport.theme?.fonts?.heading || "Inter, sans-serif",
+                      fontSize: pendingImport.theme?.fonts?.sizes?.sectionHeader || "18px"
+                    }}
+                  >
+                    Experience
+                  </h3>
+                  <h4 
+                    className="font-bold mb-1"
+                    style={{ 
+                      color: pendingImport.theme?.colors?.text || "#222",
+                      fontFamily: pendingImport.theme?.fonts?.heading || "Inter, sans-serif",
+                      fontSize: pendingImport.theme?.fonts?.sizes?.jobTitle || "16px"
+                    }}
+                  >
+                    Senior Developer
+                  </h4>
+                  <p 
+                    style={{ 
+                      color: pendingImport.theme?.colors?.text || "#222",
+                      fontFamily: pendingImport.theme?.fonts?.body || "Inter, sans-serif",
+                      fontSize: pendingImport.theme?.fonts?.sizes?.body || "14px"
+                    }}
+                  >
+                    This is how your body text will appear in the resume.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 border-t">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCustomizeImport(false);
+                  setPendingImport(null);
+                  setImportFile(null);
+                }}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleFinalizeImport}
+                className="px-4 py-2 text-white rounded-lg transition"
+                style={{ backgroundColor: '#777C6D' }}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+              >
+                Save Template
+              </button>
             </div>
           </div>
         </div>
@@ -1295,14 +2088,549 @@ export default function ResumeTemplates() {
       )}
 
       {/* View Resume Modal */}
-      {showViewResumeModal && viewingResume && (
+      {showViewResumeModal && viewingResume && (() => {
+        // Get the template for this resume to use its theme and layout
+        const resumeTemplate = templates.find(t => t._id === viewingResume.templateId) || {};
+        const theme = resumeTemplate.theme || {
+          colors: { primary: "#4F5348", text: "#222", muted: "#666" },
+          fonts: { 
+            body: "Inter, sans-serif", 
+            heading: "Inter, sans-serif",
+            sizes: {
+              name: "36px",
+              sectionHeader: "18px",
+              jobTitle: "16px",
+              body: "14px",
+              small: "12px"
+            }
+          }
+        };
+        
+        // Get section order from template layout, fallback to default order
+        const sectionsOrder = resumeTemplate.layout?.sectionsOrder || ["summary", "experience", "skills", "education", "projects"];
+        
+        // Get section display names from template (preserved from PDF)
+        const sectionStyles = resumeTemplate.layout?.sectionStyles || {};
+        const getSectionName = (sectionType) => {
+          return sectionStyles[sectionType]?.displayName || 
+                 (sectionType === 'summary' ? 'Professional Summary' :
+                  sectionType === 'experience' ? 'Professional Experience' :
+                  sectionType === 'skills' ? 'Technical Skills' :
+                  sectionType === 'education' ? 'Education' :
+                  sectionType === 'projects' ? 'Projects' :
+                  sectionType === 'awards' ? 'Awards' :
+                  sectionType === 'certifications' ? 'Certifications' :
+                  sectionType.charAt(0).toUpperCase() + sectionType.slice(1)); // Capitalize first letter as fallback
+        };
+        
+        // Helper function to render a section by type
+        const renderSection = (sectionType) => {
+          switch (sectionType) {
+            case 'summary':
+              if (!viewingResume.sections?.summary) return null;
+              const sectionSpacing = resumeTemplate.layout?.sectionSpacing || 24;
+              const headerStyle = resumeTemplate.layout?.headerStyle || 'underline';
+              return (
+                <div key="summary" style={{ marginBottom: `${sectionSpacing}px` }}>
+                  <div className="flex justify-between items-center mb-3">
+                    <h2 
+                      className="font-bold uppercase tracking-wide" 
+                      style={{ 
+                        color: theme.colors.primary, 
+                        fontFamily: theme.fonts.heading, 
+                        fontSize: theme.fonts.sizes?.sectionHeader || "18px",
+                        borderBottom: headerStyle === 'underline' ? `2px solid ${theme.colors.primary}` : 'none',
+                        paddingBottom: headerStyle === 'underline' ? '4px' : '0'
+                      }}
+                    >
+                      {getSectionName('summary')}
+                    </h2>
+                    {viewingResume.metadata?.generatedAt && (
+                      <button
+                        onClick={() => handleRegenerateSection('summary')}
+                        disabled={regeneratingSection === 'summary'}
+                        className="print:hidden text-xs px-3 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100 transition disabled:opacity-50"
+                      >
+                        {regeneratingSection === 'summary' ? '⟳ Regenerating...' : '⟳ Regenerate'}
+                      </button>
+                    )}
+                  </div>
+                  <p 
+                    className="leading-relaxed" 
+                    style={{ 
+                      color: theme.colors.text, 
+                      textAlign: resumeTemplate.layout?.textAlignment || 'justify', 
+                      fontFamily: theme.fonts.body, 
+                      fontSize: theme.fonts.sizes?.body || "14px",
+                      lineHeight: resumeTemplate.layout?.lineHeight || 1.5
+                    }}
+                  >
+                    {viewingResume.sections.summary}
+                  </p>
+                </div>
+              );
+            
+            case 'experience':
+              if (!viewingResume.sections?.experience || viewingResume.sections.experience.length === 0) return null;
+              const expSectionSpacing = resumeTemplate.layout?.sectionSpacing || 24;
+              const expHeaderStyle = resumeTemplate.layout?.headerStyle || 'underline';
+              return (
+                <div key="experience" style={{ marginBottom: `${expSectionSpacing}px` }}>
+                  <div className="flex justify-between items-center mb-3">
+                    <h2 
+                      className="font-bold uppercase tracking-wide" 
+                      style={{ 
+                        color: theme.colors.primary, 
+                        fontFamily: theme.fonts.heading, 
+                        fontSize: theme.fonts.sizes?.sectionHeader || "18px",
+                        borderBottom: expHeaderStyle === 'underline' ? `2px solid ${theme.colors.primary}` : 'none',
+                        paddingBottom: expHeaderStyle === 'underline' ? '4px' : '0'
+                      }}
+                    >
+                      {getSectionName('experience')}
+                    </h2>
+                    {viewingResume.metadata?.generatedAt && (
+                      <button
+                        onClick={() => handleRegenerateSection('experience')}
+                        disabled={regeneratingSection === 'experience'}
+                        className="print:hidden text-xs px-3 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100 transition disabled:opacity-50"
+                      >
+                        {regeneratingSection === 'experience' ? '⟳ Regenerating...' : '⟳ Regenerate'}
+                      </button>
+                    )}
+                  </div>
+                  <div className="space-y-5">
+                    {viewingResume.sections.experience.map((job, idx) => (
+                      <div key={idx}>
+                        <div className="flex justify-between items-baseline mb-1">
+                          <h3 className="font-bold" style={{ color: theme.colors.text, fontFamily: theme.fonts.heading, fontSize: theme.fonts.sizes?.jobTitle || "16px" }}>
+                            {job.jobTitle}
+                          </h3>
+                          <span className="font-semibold" style={{ color: theme.colors.muted, fontFamily: theme.fonts.body, fontSize: theme.fonts.sizes?.small || "12px" }}>
+                            {formatDate(job.startDate)} - {job.isCurrentPosition ? 'Present' : formatDate(job.endDate)}
+                          </span>
+                        </div>
+                        <p className="italic mb-2" style={{ color: theme.colors.muted, fontFamily: theme.fonts.heading, fontSize: theme.fonts.sizes?.body || "14px" }}>
+                          {job.company}
+                        </p>
+                        {job.bullets && job.bullets.length > 0 && (
+                          <ul className="space-y-1 ml-5" style={{ listStyleType: 'disc' }}>
+                            {job.bullets.map((bullet, bulletIdx) => (
+                              <li 
+                                key={bulletIdx} 
+                                className="leading-relaxed" 
+                                style={{ 
+                                  color: theme.colors.text, 
+                                  fontFamily: theme.fonts.body, 
+                                  fontSize: theme.fonts.sizes?.body || "14px",
+                                  lineHeight: resumeTemplate.layout?.lineHeight || 1.5,
+                                  marginBottom: `${(resumeTemplate.layout?.paragraphSpacing || 8) / 2}px`
+                                }}
+                              >
+                                {bullet}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            
+            case 'skills':
+              if (!viewingResume.sections?.skills || viewingResume.sections.skills.length === 0) return null;
+              const skillsSectionSpacing = resumeTemplate.layout?.sectionSpacing || 24;
+              const skillsHeaderStyle = resumeTemplate.layout?.headerStyle || 'underline';
+              return (
+                <div key="skills" style={{ marginBottom: `${skillsSectionSpacing}px` }}>
+                  <div className="flex justify-between items-center mb-3">
+                    <h2 
+                      className="font-bold uppercase tracking-wide" 
+                      style={{ 
+                        color: theme.colors.primary, 
+                        fontFamily: theme.fonts.heading, 
+                        fontSize: theme.fonts.sizes?.sectionHeader || "18px",
+                        borderBottom: skillsHeaderStyle === 'underline' ? `2px solid ${theme.colors.primary}` : 'none',
+                        paddingBottom: skillsHeaderStyle === 'underline' ? '4px' : '0'
+                      }}
+                    >
+                      {getSectionName('skills')}
+                    </h2>
+                    {viewingResume.metadata?.generatedAt && (
+                      <button
+                        onClick={() => handleRegenerateSection('skills')}
+                        disabled={regeneratingSection === 'skills'}
+                        className="print:hidden text-xs px-3 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100 transition disabled:opacity-50"
+                      >
+                        {regeneratingSection === 'skills' ? '⟳ Regenerating...' : '⟳ Regenerate'}
+                      </button>
+                    )}
+                  </div>
+                  <p 
+                    className="leading-relaxed" 
+                    style={{ 
+                      color: theme.colors.text, 
+                      fontFamily: theme.fonts.body, 
+                      fontSize: theme.fonts.sizes?.body || "14px",
+                      textAlign: resumeTemplate.layout?.textAlignment || 'left',
+                      lineHeight: resumeTemplate.layout?.lineHeight || 1.5
+                    }}
+                  >
+                    {viewingResume.sections.skills.map((skill, idx) => (
+                      typeof skill === 'string' ? skill : skill.name || skill
+                    )).join(' • ')}
+                  </p>
+                </div>
+              );
+            
+            case 'education':
+              if (!viewingResume.sections?.education || viewingResume.sections.education.length === 0) return null;
+              const eduSectionSpacing = resumeTemplate.layout?.sectionSpacing || 24;
+              const eduHeaderStyle = resumeTemplate.layout?.headerStyle || 'underline';
+              return (
+                <div key="education" style={{ marginBottom: `${eduSectionSpacing}px` }}>
+                  <h2 
+                    className="font-bold mb-3 uppercase tracking-wide" 
+                    style={{ 
+                      color: theme.colors.primary, 
+                      fontFamily: theme.fonts.heading, 
+                      fontSize: theme.fonts.sizes?.sectionHeader || "18px",
+                      borderBottom: eduHeaderStyle === 'underline' ? `2px solid ${theme.colors.primary}` : 'none',
+                      paddingBottom: eduHeaderStyle === 'underline' ? '4px' : '0'
+                    }}
+                  >
+                    {getSectionName('education')}
+                  </h2>
+                  <div className="space-y-3">
+                    {viewingResume.sections.education.map((edu, idx) => {
+                      const eduFormat = resumeTemplate.layout?.educationFormat || {
+                        order: ['degree', 'institution', 'location', 'dates', 'gpa'],
+                        datesOnRight: true,
+                        locationAfterInstitution: true,
+                        gpaSeparateLine: true
+                      };
+                      
+                      // Render fields based on template format
+                      const renderEducationField = (fieldType) => {
+                        switch (fieldType) {
+                          case 'degree':
+                            return (
+                              <h3 
+                                key="degree"
+                                className="font-bold" 
+                                style={{ 
+                                  color: theme.colors.text, 
+                                  fontFamily: theme.fonts.heading, 
+                                  fontSize: theme.fonts.sizes?.jobTitle || "16px"
+                                }}
+                              >
+                                {edu.degree} in {edu.fieldOfStudy}
+                              </h3>
+                            );
+                          case 'institution':
+                            return (
+                              <div 
+                                key="institution"
+                                className="italic"
+                                style={{ 
+                                  color: theme.colors.muted, 
+                                  fontFamily: theme.fonts.heading, 
+                                  fontSize: theme.fonts.sizes?.body || "14px",
+                                  lineHeight: resumeTemplate.layout?.lineHeight || 1.5
+                                }}
+                              >
+                                {edu.institution}
+                                {eduFormat.locationAfterInstitution && edu.location && (
+                                  <span>, {edu.location}</span>
+                                )}
+                              </div>
+                            );
+                          case 'location':
+                            if (!eduFormat.locationAfterInstitution && edu.location) {
+                              return (
+                                <div 
+                                  key="location"
+                                  className="italic"
+                                  style={{ 
+                                    color: theme.colors.muted, 
+                                    fontFamily: theme.fonts.heading, 
+                                    fontSize: theme.fonts.sizes?.body || "14px",
+                                    lineHeight: resumeTemplate.layout?.lineHeight || 1.5
+                                  }}
+                                >
+                                  {edu.location}
+                                </div>
+                              );
+                            }
+                            return null;
+                          case 'dates':
+                            const datesText = `${formatDate(edu.startDate)} - ${edu.current ? 'Present' : formatDate(edu.endDate)}`;
+                            return (
+                              <span 
+                                key="dates"
+                                className="font-semibold" 
+                                style={{ 
+                                  color: theme.colors.muted, 
+                                  fontFamily: theme.fonts.body, 
+                                  fontSize: theme.fonts.sizes?.small || "12px"
+                                }}
+                              >
+                                {datesText}
+                              </span>
+                            );
+                          case 'gpa':
+                            if (edu.gpa && (!edu.gpaPrivate)) {
+                              return (
+                                <p 
+                                  key="gpa"
+                                  className={eduFormat.gpaSeparateLine ? "mt-1" : ""}
+                                  style={{ 
+                                    color: theme.colors.text, 
+                                    fontFamily: theme.fonts.body, 
+                                    fontSize: theme.fonts.sizes?.small || "12px",
+                                    lineHeight: resumeTemplate.layout?.lineHeight || 1.5
+                                  }}
+                                >
+                                  GPA: {edu.gpa}
+                                </p>
+                              );
+                            }
+                            return null;
+                          default:
+                            return null;
+                        }
+                      };
+                      
+                      // Determine if dates should be on same line (right-aligned) with degree/institution
+                      const datesIndex = eduFormat.order.indexOf('dates');
+                      const degreeIndex = eduFormat.order.indexOf('degree');
+                      const institutionIndex = eduFormat.order.indexOf('institution');
+                      
+                      // Find first field (degree or institution)
+                      let firstFieldType = null;
+                      let firstFieldIndex = Infinity;
+                      if (degreeIndex !== -1 && degreeIndex < firstFieldIndex) {
+                        firstFieldIndex = degreeIndex;
+                        firstFieldType = 'degree';
+                      }
+                      if (institutionIndex !== -1 && institutionIndex < firstFieldIndex) {
+                        firstFieldIndex = institutionIndex;
+                        firstFieldType = 'institution';
+                      }
+                      
+                      // Dates on right if flag is set AND dates come right after first field
+                      const hasDatesOnRight = eduFormat.datesOnRight && 
+                        datesIndex !== -1 && 
+                        firstFieldIndex !== Infinity &&
+                        datesIndex === firstFieldIndex + 1;
+                      
+                      // Render all fields in order
+                      const renderedFields = [];
+                      let datesField = null;
+                      
+                      for (let i = 0; i < eduFormat.order.length; i++) {
+                        const field = eduFormat.order[i];
+                        
+                        if (field === 'dates') {
+                          if (hasDatesOnRight) {
+                            datesField = renderEducationField('dates');
+                          } else {
+                            // Dates not on right - render normally
+                            const rendered = renderEducationField('dates');
+                            if (rendered) {
+                              renderedFields.push({ type: 'normal', element: rendered });
+                            }
+                          }
+                        } else {
+                          const rendered = renderEducationField(field);
+                          if (rendered) {
+                            if (field === firstFieldType) {
+                              // First field - may be on same line as dates
+                              renderedFields.unshift({ type: 'first', element: rendered });
+                            } else {
+                              renderedFields.push({ type: 'normal', element: rendered });
+                            }
+                          }
+                        }
+                      }
+                      
+                      // Separate first field from rest
+                      const firstField = renderedFields.find(f => f.type === 'first');
+                      const otherFields = renderedFields.filter(f => f.type !== 'first');
+                      
+                      return (
+                        <div key={idx}>
+                          {firstField && (
+                            <div className={hasDatesOnRight && datesField ? "flex justify-between items-baseline" : ""}>
+                              <div>
+                                {firstField.element}
+                              </div>
+                              {hasDatesOnRight && datesField && (
+                                <div>
+                                  {datesField}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {otherFields.map((field, fIdx) => (
+                            <div key={fIdx}>
+                              {field.element}
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            
+            case 'projects':
+              if (!viewingResume.sections?.projects || viewingResume.sections.projects.length === 0) return null;
+              const projSectionSpacing = resumeTemplate.layout?.sectionSpacing || 24;
+              const projHeaderStyle = resumeTemplate.layout?.headerStyle || 'underline';
+              return (
+                <div key="projects" style={{ marginBottom: `${projSectionSpacing}px` }}>
+                  <h2 
+                    className="font-bold mb-3 uppercase tracking-wide" 
+                    style={{ 
+                      color: theme.colors.primary, 
+                      fontFamily: theme.fonts.heading, 
+                      fontSize: theme.fonts.sizes?.sectionHeader || "18px",
+                      borderBottom: projHeaderStyle === 'underline' ? `2px solid ${theme.colors.primary}` : 'none',
+                      paddingBottom: projHeaderStyle === 'underline' ? '4px' : '0'
+                    }}
+                  >
+                    {getSectionName('projects')}
+                  </h2>
+                  <div className="space-y-3">
+                    {viewingResume.sections.projects.map((proj, idx) => (
+                      <div key={idx}>
+                        <h3 className="font-bold" style={{ color: theme.colors.text, fontFamily: theme.fonts.heading, fontSize: theme.fonts.sizes?.jobTitle || "16px" }}>
+                          {proj.name}
+                        </h3>
+                        <p 
+                          className="leading-relaxed mb-1" 
+                          style={{ 
+                            color: theme.colors.text, 
+                            fontFamily: theme.fonts.body, 
+                            fontSize: theme.fonts.sizes?.body || "14px",
+                            textAlign: resumeTemplate.layout?.textAlignment || 'left',
+                            lineHeight: resumeTemplate.layout?.lineHeight || 1.5
+                          }}
+                        >
+                          {proj.description}
+                        </p>
+                          {proj.technologies && proj.technologies.length > 0 && (
+                            <p 
+                              className="italic" 
+                              style={{ 
+                                color: theme.colors.muted, 
+                                fontFamily: theme.fonts.body, 
+                                fontSize: theme.fonts.sizes?.small || "12px",
+                                lineHeight: resumeTemplate.layout?.lineHeight || 1.5
+                              }}
+                            >
+                              Technologies: {proj.technologies.join(', ')}
+                            </p>
+                          )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            
+            case 'awards':
+              if (!viewingResume.sections?.awards || viewingResume.sections.awards.length === 0) return null;
+              const awardsSectionSpacing = resumeTemplate.layout?.sectionSpacing || 24;
+              const awardsHeaderStyle = resumeTemplate.layout?.headerStyle || 'underline';
+              return (
+                <div key="awards" style={{ marginBottom: `${awardsSectionSpacing}px` }}>
+                  <h2 
+                    className="font-bold mb-3 uppercase tracking-wide" 
+                    style={{ 
+                      color: theme.colors.primary, 
+                      fontFamily: theme.fonts.heading, 
+                      fontSize: theme.fonts.sizes?.sectionHeader || "18px",
+                      borderBottom: awardsHeaderStyle === 'underline' ? `2px solid ${theme.colors.primary}` : 'none',
+                      paddingBottom: awardsHeaderStyle === 'underline' ? '4px' : '0'
+                    }}
+                  >
+                    {getSectionName('awards')}
+                  </h2>
+                  <div className="space-y-2">
+                    {viewingResume.sections.awards.map((award, idx) => (
+                      <div 
+                        key={idx} 
+                        style={{ 
+                          color: theme.colors.text, 
+                          fontFamily: theme.fonts.body, 
+                          fontSize: theme.fonts.sizes?.body || "14px",
+                          textAlign: resumeTemplate.layout?.textAlignment || 'left',
+                          lineHeight: resumeTemplate.layout?.lineHeight || 1.5,
+                          marginBottom: `${(resumeTemplate.layout?.paragraphSpacing || 8) / 2}px`
+                        }}
+                      >
+                        {typeof award === 'string' ? award : `${award.name || award.title || ''}${award.date ? ` (${award.date})` : ''}${award.issuer ? ` - ${award.issuer}` : ''}`}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            
+            case 'certifications':
+              if (!viewingResume.sections?.certifications || viewingResume.sections.certifications.length === 0) return null;
+              const certSectionSpacing = resumeTemplate.layout?.sectionSpacing || 24;
+              const certHeaderStyle = resumeTemplate.layout?.headerStyle || 'underline';
+              return (
+                <div key="certifications" style={{ marginBottom: `${certSectionSpacing}px` }}>
+                  <h2 
+                    className="font-bold mb-3 uppercase tracking-wide" 
+                    style={{ 
+                      color: theme.colors.primary, 
+                      fontFamily: theme.fonts.heading, 
+                      fontSize: theme.fonts.sizes?.sectionHeader || "18px",
+                      borderBottom: certHeaderStyle === 'underline' ? `2px solid ${theme.colors.primary}` : 'none',
+                      paddingBottom: certHeaderStyle === 'underline' ? '4px' : '0'
+                    }}
+                  >
+                    {getSectionName('certifications')}
+                  </h2>
+                  <div className="space-y-2">
+                    {viewingResume.sections.certifications.map((cert, idx) => (
+                      <div 
+                        key={idx} 
+                        style={{ 
+                          color: theme.colors.text, 
+                          fontFamily: theme.fonts.body, 
+                          fontSize: theme.fonts.sizes?.body || "14px",
+                          textAlign: resumeTemplate.layout?.textAlignment || 'left',
+                          lineHeight: resumeTemplate.layout?.lineHeight || 1.5,
+                          marginBottom: `${(resumeTemplate.layout?.paragraphSpacing || 8) / 2}px`
+                        }}
+                      >
+                        {typeof cert === 'string' ? cert : `${cert.name || cert.title || ''}${cert.date ? ` (${cert.date})` : ''}${cert.issuer ? ` - ${cert.issuer || cert.issuingOrganization}` : ''}`}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            
+            default:
+              return null;
+          }
+        };
+        
+        return (
+        <>
         <div 
-          className="fixed inset-0 flex items-center justify-center z-50" 
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          className="fixed inset-0 flex items-center justify-center z-50 print:hidden" 
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
           onClick={() => setShowViewResumeModal(false)}
         >
           <div 
-            className="bg-white rounded-lg shadow-2xl max-w-4xl w-full mx-4 border border-gray-200 max-h-[90vh] overflow-hidden flex flex-col" 
+            className="bg-white rounded-lg shadow-2xl w-full mx-4 border border-gray-200 overflow-hidden flex flex-col" 
+            style={{ maxWidth: '960px', height: '95vh' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -1323,17 +2651,42 @@ export default function ResumeTemplates() {
               </button>
             </div>
 
-            {/* Modal Content - Document Style */}
-            <div className="flex-1 overflow-y-auto bg-gray-100 p-8">
-              {/* Paper-like Resume Document */}
-              <div className="max-w-[8.5in] mx-auto bg-white shadow-lg" style={{ minHeight: '11in', padding: '0.75in' }}>
+            {/* Modal Content - Print Preview Style */}
+            <div className="flex-1 overflow-y-auto" style={{ backgroundColor: '#525252' }}>
+              {/* Paper-like Resume Document - Looks like print preview */}
+              <div className="py-8 px-4">
+                <div 
+                  className="resume-printable mx-auto bg-white shadow-2xl print:shadow-none" 
+                  style={{ 
+                    width: '8.5in', 
+                    minHeight: '11in', 
+                    padding: '0.75in',
+                    boxShadow: '0 0 0.5cm rgba(0,0,0,0.5)'
+                  }}
+                >
                 
                 {/* Resume Header */}
-                <div className="text-center mb-8 pb-6 border-b-2" style={{ borderColor: '#4F5348' }}>
-                  <h1 className="text-3xl font-bold mb-2" style={{ color: '#2C2C2C', fontFamily: 'Georgia, serif' }}>
+                <div 
+                  className="pb-6 border-b-2"
+                  style={{ 
+                    borderColor: theme.colors.primary,
+                    textAlign: resumeTemplate.layout?.headerAlignment || 'center',
+                    marginBottom: `${resumeTemplate.layout?.sectionSpacing || 32}px`
+                  }}
+                >
+                  <h1 className="font-bold mb-2" style={{ color: theme.colors.text, fontFamily: theme.fonts.heading, fontSize: theme.fonts.sizes?.name || "36px" }}>
                     {viewingResume.sections?.contactInfo?.name || 'Your Name'}
                   </h1>
-                  <div className="text-sm flex flex-wrap justify-center gap-2" style={{ color: '#666', fontFamily: 'Times New Roman, serif' }}>
+                  <div 
+                    className="flex flex-wrap gap-2" 
+                    style={{ 
+                      color: theme.colors.muted, 
+                      fontFamily: theme.fonts.body, 
+                      fontSize: theme.fonts.sizes?.small || "12px",
+                      justifyContent: resumeTemplate.layout?.headerAlignment === 'center' ? 'center' : 
+                                     resumeTemplate.layout?.headerAlignment === 'right' ? 'flex-end' : 'flex-start'
+                    }}
+                  >
                     {viewingResume.sections?.contactInfo?.email && (
                       <span>{viewingResume.sections.contactInfo.email}</span>
                     )}
@@ -1354,7 +2707,14 @@ export default function ResumeTemplates() {
                   {(viewingResume.sections?.contactInfo?.linkedin || 
                     viewingResume.sections?.contactInfo?.github || 
                     viewingResume.sections?.contactInfo?.website) && (
-                    <div className="text-xs flex flex-wrap justify-center gap-2 mt-1" style={{ color: '#4A5568' }}>
+                    <div 
+                      className="text-xs flex flex-wrap gap-2 mt-1" 
+                      style={{ 
+                        color: '#4A5568',
+                        justifyContent: resumeTemplate.layout?.headerAlignment === 'center' ? 'center' : 
+                                       resumeTemplate.layout?.headerAlignment === 'right' ? 'flex-end' : 'flex-start'
+                      }}
+                    >
                       {viewingResume.sections?.contactInfo?.linkedin && (
                         <a 
                           href={viewingResume.sections.contactInfo.linkedin} 
@@ -1395,159 +2755,17 @@ export default function ResumeTemplates() {
                   )}
                 </div>
 
-                {/* Professional Summary */}
-                {viewingResume.sections?.summary && (
-                  <div className="mb-6">
-                    <div className="flex justify-between items-center mb-3">
-                      <h2 className="text-lg font-bold uppercase tracking-wide" style={{ color: '#4F5348', fontFamily: 'Georgia, serif' }}>
-                        Professional Summary
-                      </h2>
-                      {viewingResume.metadata?.generatedAt && (
-                        <button
-                          onClick={() => handleRegenerateSection('summary')}
-                          disabled={regeneratingSection === 'summary'}
-                          className="print:hidden text-xs px-3 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100 transition disabled:opacity-50"
-                        >
-                          {regeneratingSection === 'summary' ? '⟳ Regenerating...' : '⟳ Regenerate'}
-                        </button>
-                      )}
-                    </div>
-                    <p className="text-sm leading-relaxed" style={{ color: '#2C2C2C', textAlign: 'justify', fontFamily: 'Times New Roman, serif' }}>
-                      {viewingResume.sections.summary}
-                    </p>
-                  </div>
-                )}
-
-                {/* Experience Section */}
-                {viewingResume.sections?.experience && viewingResume.sections.experience.length > 0 && (
-                  <div className="mb-6">
-                    <div className="flex justify-between items-center mb-3">
-                      <h2 className="text-lg font-bold uppercase tracking-wide" style={{ color: '#4F5348', fontFamily: 'Georgia, serif' }}>
-                        Professional Experience
-                      </h2>
-                      {viewingResume.metadata?.generatedAt && (
-                        <button
-                          onClick={() => handleRegenerateSection('experience')}
-                          disabled={regeneratingSection === 'experience'}
-                          className="print:hidden text-xs px-3 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100 transition disabled:opacity-50"
-                        >
-                          {regeneratingSection === 'experience' ? '⟳ Regenerating...' : '⟳ Regenerate'}
-                        </button>
-                      )}
-                    </div>
-                    <div className="space-y-5">
-                      {viewingResume.sections.experience.map((job, idx) => (
-                        <div key={idx}>
-                          <div className="flex justify-between items-baseline mb-1">
-                            <h3 className="text-base font-bold" style={{ color: '#2C2C2C', fontFamily: 'Georgia, serif' }}>
-                              {job.jobTitle}
-                            </h3>
-                            <span className="text-xs font-semibold" style={{ color: '#666', fontFamily: 'Times New Roman, serif' }}>
-                              {job.startDate} - {job.isCurrentPosition ? 'Present' : job.endDate}
-                            </span>
-                          </div>
-                          <p className="text-sm italic mb-2" style={{ color: '#555', fontFamily: 'Georgia, serif' }}>
-                            {job.company}
-                          </p>
-                          {job.bullets && job.bullets.length > 0 && (
-                            <ul className="space-y-1 ml-5" style={{ listStyleType: 'disc' }}>
-                              {job.bullets.map((bullet, bulletIdx) => (
-                                <li key={bulletIdx} className="text-sm leading-relaxed" style={{ color: '#2C2C2C', fontFamily: 'Times New Roman, serif' }}>
-                                  {bullet}
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Skills Section */}
-                {viewingResume.sections?.skills && viewingResume.sections.skills.length > 0 && (
-                  <div className="mb-6">
-                    <div className="flex justify-between items-center mb-3">
-                      <h2 className="text-lg font-bold uppercase tracking-wide" style={{ color: '#4F5348', fontFamily: 'Georgia, serif' }}>
-                        Technical Skills
-                      </h2>
-                      {viewingResume.metadata?.generatedAt && (
-                        <button
-                          onClick={() => handleRegenerateSection('skills')}
-                          disabled={regeneratingSection === 'skills'}
-                          className="print:hidden text-xs px-3 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded hover:bg-blue-100 transition disabled:opacity-50"
-                        >
-                          {regeneratingSection === 'skills' ? '⟳ Regenerating...' : '⟳ Regenerate'}
-                        </button>
-                      )}
-                    </div>
-                    <p className="text-sm leading-relaxed" style={{ color: '#2C2C2C', fontFamily: 'Times New Roman, serif' }}>
-                      {viewingResume.sections.skills.map((skill, idx) => (
-                        typeof skill === 'string' ? skill : skill.name || skill
-                      )).join(' • ')}
-                    </p>
-                  </div>
-                )}
-
-                {/* Education Section */}
-                {viewingResume.sections?.education && viewingResume.sections.education.length > 0 && (
-                  <div className="mb-6">
-                    <h2 className="text-lg font-bold mb-3 uppercase tracking-wide" style={{ color: '#4F5348', fontFamily: 'Georgia, serif' }}>
-                      Education
-                    </h2>
-                    <div className="space-y-3">
-                      {viewingResume.sections.education.map((edu, idx) => (
-                        <div key={idx}>
-                          <div className="flex justify-between items-baseline">
-                            <h3 className="text-base font-bold" style={{ color: '#2C2C2C', fontFamily: 'Georgia, serif' }}>
-                              {edu.degree} in {edu.fieldOfStudy}
-                            </h3>
-                            <span className="text-xs font-semibold" style={{ color: '#666', fontFamily: 'Times New Roman, serif' }}>
-                              {edu.graduationYear}
-                            </span>
-                          </div>
-                          <p className="text-sm italic" style={{ color: '#555', fontFamily: 'Georgia, serif' }}>
-                            {edu.institution}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Projects Section */}
-                {viewingResume.sections?.projects && viewingResume.sections.projects.length > 0 && (
-                  <div className="mb-6">
-                    <h2 className="text-lg font-bold mb-3 uppercase tracking-wide" style={{ color: '#4F5348', fontFamily: 'Georgia, serif' }}>
-                      Projects
-                    </h2>
-                    <div className="space-y-3">
-                      {viewingResume.sections.projects.map((proj, idx) => (
-                        <div key={idx}>
-                          <h3 className="text-base font-bold" style={{ color: '#2C2C2C', fontFamily: 'Georgia, serif' }}>
-                            {proj.name}
-                          </h3>
-                          <p className="text-sm leading-relaxed mb-1" style={{ color: '#2C2C2C', fontFamily: 'Times New Roman, serif' }}>
-                            {proj.description}
-                          </p>
-                          {proj.technologies && proj.technologies.length > 0 && (
-                            <p className="text-xs italic" style={{ color: '#666', fontFamily: 'Times New Roman, serif' }}>
-                              Technologies: {proj.technologies.join(', ')}
-                            </p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                {/* Render sections in the order specified by template layout */}
+                {sectionsOrder.map(sectionType => renderSection(sectionType))}
 
                 {/* Optional: ATS Keywords - hidden by default, only visible in metadata view */}
                 {/* These keywords are embedded in the content above for ATS scanning */}
+                </div>
               </div>
             </div>
 
             {/* Modal Footer */}
-            <div className="bg-gray-50 px-6 py-4 flex justify-between items-center border-t">
+            <div className="bg-gray-50 px-6 py-4 flex justify-between items-center border-t print:hidden">
               <p className="text-sm text-gray-500">
                 Last modified: {new Date(viewingResume.updatedAt).toLocaleString()}
               </p>
@@ -1571,7 +2789,9 @@ export default function ResumeTemplates() {
             </div>
           </div>
         </div>
-      )}
+        </>
+        );
+      })()}
     </div>
   );
 }
