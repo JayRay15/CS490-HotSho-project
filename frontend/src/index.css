@@ -356,3 +356,68 @@ select {
     max-width: 100%;
     box-sizing: border-box;
 }
+
+/* ============================================
+   Print Styles - Resume Print Preview
+   ============================================ */
+
+/* Print styles for resume viewer */
+@media print {
+    /* Hide everything by default */
+    body * {
+        visibility: hidden;
+        display: none;
+    }
+
+    /* Only show the resume content */
+    .resume-printable,
+    .resume-printable * {
+        visibility: visible;
+        display: block;
+    }
+
+    /* Make sure list items display correctly */
+    .resume-printable ul,
+    .resume-printable li {
+        display: list-item;
+    }
+
+    /* Flex containers need special handling */
+    .resume-printable .flex,
+    .resume-printable [class*="flex"] {
+        display: flex !important;
+    }
+
+    /* Position resume at top left for printing */
+    .resume-printable {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0 !important;
+        padding: 0.5in !important;
+        box-shadow: none !important;
+    }
+
+    /* Remove background colors */
+    body {
+        background: white !important;
+    }
+
+    /* Ensure page breaks don't split content awkwardly */
+    h1, h2, h3, h4, h5, h6 {
+        page-break-after: avoid;
+        page-break-inside: avoid;
+    }
+
+    /* Keep experience items together */
+    .resume-printable > div {
+        page-break-inside: avoid;
+    }
+
+    /* Optimize for letter size paper */
+    @page {
+        size: letter;
+        margin: 0.5in;
+    }
+}

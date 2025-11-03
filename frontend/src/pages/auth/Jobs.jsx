@@ -46,6 +46,9 @@ export default function Jobs() {
   const [sortOrder, setSortOrder] = useState("desc");
   const [showFilters, setShowFilters] = useState(false);
   const [successMessage, setSuccessMessage] = useState(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importStatus, setImportStatus] = useState(null);
+  const [importMessage, setImportMessage] = useState("");
 
   // Form state for adding/editing jobs
   const [formData, setFormData] = useState({
@@ -265,6 +268,48 @@ export default function Jobs() {
     }
   };
 
+  const handleImportFromURL = async () => {
+    if (!formData.url || !formData.url.trim()) {
+      setImportStatus('failed');
+      setImportMessage('Please enter a URL first');
+      return;
+    }
+
+    setIsImporting(true);
+    setImportStatus(null);
+    setImportMessage('');
+
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+
+      const response = await api.post('/api/jobs/scrape', { url: formData.url.trim() });
+      const jobData = response.data.data.jobData;
+
+      // Populate form with scraped data
+      if (jobData.title) setFormData(prev => ({ ...prev, title: jobData.title }));
+      if (jobData.company) setFormData(prev => ({ ...prev, company: jobData.company }));
+      if (jobData.location) setFormData(prev => ({ ...prev, location: jobData.location }));
+      if (jobData.description) setFormData(prev => ({ ...prev, description: jobData.description }));
+      
+      // Set status based on import result
+      setImportStatus(jobData.importStatus || 'partial');
+      setImportMessage(jobData.importNotes || 'Job details imported. Please review and complete.');
+
+      // Clear status message after 10 seconds
+      setTimeout(() => {
+        setImportStatus(null);
+        setImportMessage('');
+      }, 10000);
+    } catch (error) {
+      console.error('Failed to import job:', error);
+      setImportStatus('failed');
+      setImportMessage(error.response?.data?.message || 'Failed to import job details. Please enter manually.');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   const handleAddJob = async (e) => {
     e.preventDefault();
 
@@ -302,6 +347,8 @@ export default function Jobs() {
       await fetchStats();
       setShowAddModal(false);
       resetForm();
+      setImportStatus(null);
+      setImportMessage('');
       
       // Show success message
       setSuccessMessage("Job successfully added!");
@@ -1138,12 +1185,52 @@ export default function Jobs() {
                   />
                 </div>
 
-                <InputField
-                  label="Job URL"
-                  type="url"
-                  value={formData.url}
-                  onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-                />
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm font-medium text-gray-700">Job URL</label>
+                    {formData.url && (
+                      <button
+                        type="button"
+                        onClick={handleImportFromURL}
+                        disabled={!formData.url || isImporting}
+                        className="text-sm px-3 py-1 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+                      >
+                        {isImporting ? (
+                          <>
+                            <svg className="animate-spin h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span>Importing...</span>
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            <span>Import Details</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="url"
+                    value={formData.url}
+                    onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="https://linkedin.com/jobs/view/..."
+                  />
+                  {importStatus && (
+                    <div className={`mt-2 p-3 rounded-lg text-sm ${
+                      importStatus === 'success' ? 'bg-green-50 text-green-800 border border-green-200' :
+                      importStatus === 'partial' ? 'bg-yellow-50 text-yellow-800 border border-yellow-200' :
+                      'bg-red-50 text-red-800 border border-red-200'
+                    }`}>
+                      {importMessage}
+                    </div>
+                  )}
+                </div>
 
                 <InputField
                   label="Tags (comma-separated)"
@@ -1322,12 +1409,52 @@ export default function Jobs() {
                   />
                 </div>
 
-                <InputField
-                  label="Job URL"
-                  type="url"
-                  value={formData.url}
-                  onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-                />
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm font-medium text-gray-700">Job URL</label>
+                    {formData.url && (
+                      <button
+                        type="button"
+                        onClick={handleImportFromURL}
+                        disabled={!formData.url || isImporting}
+                        className="text-sm px-3 py-1 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+                      >
+                        {isImporting ? (
+                          <>
+                            <svg className="animate-spin h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span>Importing...</span>
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            <span>Import Details</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="url"
+                    value={formData.url}
+                    onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="https://linkedin.com/jobs/view/..."
+                  />
+                  {importStatus && (
+                    <div className={`mt-2 p-3 rounded-lg text-sm ${
+                      importStatus === 'success' ? 'bg-green-50 text-green-800 border border-green-200' :
+                      importStatus === 'partial' ? 'bg-yellow-50 text-yellow-800 border border-yellow-200' :
+                      'bg-red-50 text-red-800 border border-red-200'
+                    }`}>
+                      {importMessage}
+                    </div>
+                  )}
+                </div>
 
                 <InputField
                   label="Tags (comma-separated)"

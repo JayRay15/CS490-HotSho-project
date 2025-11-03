@@ -2730,6 +2730,11 @@ function EducationModal({ isOpen, onClose, onSuccess, getToken, editingEducation
               </div>
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Location (optional)</label>
+              <input name="location" value={formData.location} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="City, State" />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Start Date (MM/YYYY) <span className="text-red-500">*</span></label>

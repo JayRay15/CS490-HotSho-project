@@ -1,0 +1,27 @@
+import express from 'express';
+import multer from 'multer';
+import { analyzePDF } from '../controllers/pdfAnalysisController.js';
+import { checkJwt } from '../middleware/checkJwt.js';
+
+const router = express.Router();
+
+// Configure multer for memory storage
+// Increased limit to 10MB to accommodate larger PDF templates
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF files are allowed'));
+    }
+  }
+});
+
+// POST /api/pdf-analysis/analyze - Analyze a PDF for styling hints
+router.post('/analyze', checkJwt, upload.single('file'), analyzePDF);
+
+export default router;

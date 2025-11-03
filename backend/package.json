@@ -18,6 +18,8 @@
   "description": "",
   "dependencies": {
     "@clerk/express": "^1.7.42",
+    "@google/genai": "^1.28.0",
+    "@google/generative-ai": "^0.24.1",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
@@ -27,6 +29,9 @@
     "mongoose": "^8.19.2",
     "multer": "^2.0.2",
     "nodemailer": "^7.0.10",
+    "pdf-lib": "^1.17.1",
+    "pdf-parse": "^2.4.5",
+    "pdfjs-dist": "^4.6.82",
     "uuid": "^13.0.0"
   },
   "devDependencies": {

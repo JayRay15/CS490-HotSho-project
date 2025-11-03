@@ -11,6 +11,7 @@ import {
   deleteJob,
   getJobStats,
 } from "../controllers/jobController.js";
+import { scrapeJobFromURL } from "../controllers/jobScraperController.js";
 
 const router = express.Router();
 
@@ -19,6 +20,9 @@ router.get("/stats", checkJwt, getJobStats);
 
 // GET /api/jobs - Get all jobs for current user
 router.get("/", checkJwt, getJobs);
+
+// POST /api/jobs/scrape - Scrape job details from URL
+router.post("/scrape", checkJwt, scrapeJobFromURL);
 
 // POST /api/jobs - Create a new job
 router.post("/", checkJwt, addJob);

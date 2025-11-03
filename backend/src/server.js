@@ -6,6 +6,8 @@ import userRoutes from "./routes/userRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
 import jobRoutes from "./routes/jobRoutes.js";
+import resumeRoutes from "./routes/resumeRoutes.js";
+import pdfAnalysisRoutes from "./routes/pdfAnalysisRoutes.js";
 import { getPublicProject } from "./controllers/profileController.js";
 import { startDeadlineReminderSchedule } from "./utils/deadlineReminders.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
@@ -28,12 +30,17 @@ app.use(cors({
   credentials: false
 }));
 
-app.use(express.json());
+// Increase JSON body size limit to handle PDF buffers (base64 encoded PDFs can be large)
+// Default is 100kb, we need at least 15MB for PDF files (5MB PDF * 1.33 base64 overhead + other data)
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
 // API Routes
 app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/jobs", jobRoutes);
+app.use("/api/resume", resumeRoutes);
+app.use("/api/pdf-analysis", pdfAnalysisRoutes);
 // Mount profile routes under /api/profile (existing) and also under /api/users
 // so frontend requests to /api/users/... (used elsewhere in the app) resolve correctly.
 app.use("/api/profile", profileRoutes);
