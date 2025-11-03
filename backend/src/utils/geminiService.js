@@ -344,13 +344,13 @@ Job Target: ${jobPosting.title} at ${jobPosting.company}
 Requirements: ${jobPosting.requirements || jobPosting.description}
 
 User's Experience:
-${userProfile.employment?.map(job => `
-${job.jobTitle} at ${job.company}:
+${userProfile.employment?.map((job, index) => `
+Job ${index} (job${index}): ${job.jobTitle} at ${job.company}
 ${job.description || 'No description'}
 `).join('\n')}
 
 Generate 3-5 DIFFERENT bullet points for each job that emphasize different aspects relevant to the target role.
-Return as JSON: {"jobId": ["bullet1", "bullet2", ...]}`;
+Return as JSON with keys "job0", "job1", etc.: {"job0": ["bullet1", "bullet2", ...], "job1": ["bullet1", "bullet2", ...]}`;
       break;
       
     case 'skills':
@@ -360,7 +360,7 @@ Job: ${jobPosting.title}
 Requirements: ${jobPosting.requirements || jobPosting.description}
 
 Available Skills: ${userProfile.skills?.map(s => s.name).join(', ')}
-Previous Selection: ${currentContent.relevantSkills?.join(', ')}
+Previous Selection: ${Array.isArray(currentContent.skills) ? currentContent.skills.map(s => typeof s === 'string' ? s : s.name).join(', ') : currentContent.relevantSkills?.join(', ') || 'None'}
 
 Return only a JSON array of skill names: ["skill1", "skill2", ...]`;
       break;

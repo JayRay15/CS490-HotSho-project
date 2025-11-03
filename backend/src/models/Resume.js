@@ -7,6 +7,10 @@ const resumeSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     sections: { type: Object, default: {} }, // { summary, experience, skills, education, projects }
     metadata: { type: Object, default: {} }, // { versionTag? }
+    sectionCustomization: { 
+      type: Object, 
+      default: {} 
+    }, // { order: [], visible: [], formatting: {}, jobType: 'general' }
   },
   { timestamps: true }
 );
