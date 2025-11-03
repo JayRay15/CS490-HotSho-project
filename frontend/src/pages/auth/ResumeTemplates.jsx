@@ -1215,7 +1215,7 @@ export default function ResumeTemplates() {
                   My Resumes
                 </h1>
                 <p className="text-sm" style={{ color: "#656A5C" }}>
-                  Resumes & Cover Letters
+                  View, create, and manage your resumes and templates.
                 </p>
               </div>
               <div className="flex gap-3">
