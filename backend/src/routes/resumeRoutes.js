@@ -11,6 +11,7 @@ import {
   updateResume,
   deleteResume,
   generateAIResume,
+  generateResumeVariations,
   regenerateResumeSection,
   analyzeATS,
 } from "../controllers/resumeController.js";
@@ -32,6 +33,7 @@ router.delete("/resumes/:id", checkJwt, deleteResume);
 
 // AI-powered resume generation routes
 router.post("/resumes/generate", checkJwt, generateAIResume);
+router.post("/resumes/generate-variations", checkJwt, generateResumeVariations);
 router.post("/resumes/:id/regenerate", checkJwt, regenerateResumeSection);
 router.get("/resumes/:id/ats-analysis", checkJwt, analyzeATS);
 

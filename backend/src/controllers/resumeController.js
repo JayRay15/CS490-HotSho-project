@@ -1,7 +1,7 @@
 import { ResumeTemplate } from "../models/ResumeTemplate.js";
 import { Resume } from "../models/Resume.js";
 import { errorResponse, sendResponse, successResponse, ERROR_CODES } from "../utils/responseFormat.js";
-import { generateResumeContent, regenerateSection, analyzeATSCompatibility } from "../utils/geminiService.js";
+import { generateResumeContent, generateResumeContentVariations, regenerateSection, analyzeATSCompatibility } from "../utils/geminiService.js";
 import { User } from "../models/User.js";
 import { Job } from "../models/Job.js";
 
@@ -239,7 +239,7 @@ export const deleteResume = async (req, res) => {
 export const generateAIResume = async (req, res) => {
   try {
     const userId = getUserId(req);
-    const { jobId, templateId, name } = req.body;
+    const { jobId, templateId, name, variation } = req.body;
 
     if (!jobId || !templateId || !name) {
       const { response, statusCode } = errorResponse(
@@ -291,8 +291,15 @@ export const generateAIResume = async (req, res) => {
       requirements: job.requirements || job.description,
     };
 
-    // Generate content with AI
-    const aiContent = await generateResumeContent(jobPosting, userProfile, template);
+    // Generate content with AI - use provided variation if available, otherwise generate new
+    let aiContent;
+    if (variation) {
+      // Use provided variation
+      aiContent = variation;
+    } else {
+      // Generate new content (single variation)
+      aiContent = await generateResumeContent(jobPosting, userProfile, template);
+    }
 
     // Map experience bullets to actual employment records
     const experienceSection = user.employment?.map((job, index) => {
@@ -360,6 +367,81 @@ export const generateAIResume = async (req, res) => {
     console.error("AI resume generation error:", err);
     const { response, statusCode } = errorResponse(
       `Failed to generate AI resume: ${err.message}`,
+      500,
+      ERROR_CODES.EXTERNAL_SERVICE_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+};
+
+// Generate multiple variations of resume content (for user to choose from)
+export const generateResumeVariations = async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { jobId, templateId } = req.body;
+
+    if (!jobId || !templateId) {
+      const { response, statusCode } = errorResponse(
+        "jobId and templateId are required",
+        400,
+        ERROR_CODES.MISSING_REQUIRED_FIELD
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Fetch job posting
+    const job = await Job.findOne({ _id: jobId, userId }).lean();
+    if (!job) {
+      const { response, statusCode } = errorResponse("Job not found", 404, ERROR_CODES.NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Fetch user profile
+    const user = await User.findOne({ auth0Id: userId }).lean();
+    if (!user) {
+      const { response, statusCode } = errorResponse("User profile not found", 404, ERROR_CODES.NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Verify template exists
+    const template = await ResumeTemplate.findOne({
+      _id: templateId,
+      $or: [{ userId }, { isShared: true }],
+    }).lean();
+    if (!template) {
+      const { response, statusCode } = errorResponse("Template not found", 404, ERROR_CODES.NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Prepare data
+    const userProfile = {
+      employment: user.employment || [],
+      skills: user.skills || [],
+      education: user.education || [],
+      projects: user.projects || [],
+      certifications: user.certifications || [],
+    };
+
+    const jobPosting = {
+      title: job.title,
+      company: job.company,
+      description: job.description,
+      requirements: job.requirements || job.description,
+    };
+
+    // Generate multiple variations
+    const variations = await generateResumeContentVariations(jobPosting, userProfile, template, 3);
+
+    const { response, statusCode } = successResponse(
+      "Resume variations generated",
+      { variations },
+      200
+    );
+    return sendResponse(res, response, statusCode);
+  } catch (err) {
+    console.error("Resume variations generation error:", err);
+    const { response, statusCode } = errorResponse(
+      `Failed to generate resume variations: ${err.message}`,
       500,
       ERROR_CODES.EXTERNAL_SERVICE_ERROR
     );

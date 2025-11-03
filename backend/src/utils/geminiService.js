@@ -3,6 +3,122 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 /**
+ * Generate multiple variations of tailored resume content
+ * @param {Object} jobPosting - The job posting to tailor for
+ * @param {Object} userProfile - The user's profile data
+ * @param {Object} template - The resume template being used
+ * @param {number} numVariations - Number of variations to generate (default: 3)
+ * @returns {Array} Array of generated resume content variations
+ */
+export async function generateResumeContentVariations(jobPosting, userProfile, template, numVariations = 3) {
+  const model = genAI.getGenerativeModel({ model: "models/gemini-2.5-flash" });
+
+  const prompt = `You are an expert resume writer and career coach. Generate ${numVariations} DIFFERENT variations of tailored resume content based on the job posting and user's profile. Each variation should approach the content from a different angle or emphasis.
+
+**JOB POSTING:**
+Title: ${jobPosting.title}
+Company: ${jobPosting.company}
+Description: ${jobPosting.description || 'Not provided'}
+Requirements: ${jobPosting.requirements || 'Not provided'}
+
+**USER PROFILE:**
+Employment History:
+${userProfile.employment?.map(job => `
+- ${job.jobTitle} at ${job.company} (${job.startDate} - ${job.isCurrentPosition ? 'Present' : job.endDate})
+  ${job.description || 'No description'}
+`).join('\n') || 'No employment history'}
+
+Skills:
+${userProfile.skills?.map(skill => `- ${skill.name} (${skill.level})`).join('\n') || 'No skills listed'}
+
+Education:
+${userProfile.education?.map(edu => `
+- ${edu.degree} in ${edu.fieldOfStudy} from ${edu.institution} (${edu.graduationYear || edu.endDate})
+`).join('\n') || 'No education listed'}
+
+Projects:
+${userProfile.projects?.map(proj => `
+- ${proj.name}: ${proj.description}
+  Technologies: ${proj.technologies?.join(', ') || 'Not specified'}
+`).join('\n') || 'No projects listed'}
+
+Certifications:
+${userProfile.certifications?.map(cert => `- ${cert.name} (${cert.issuingOrganization})`).join('\n') || 'No certifications'}
+
+**TASK:**
+Generate ${numVariations} professional resume content variations, each with a different approach:
+- Variation 1: Focus on technical skills and achievements
+- Variation 2: Focus on leadership and impact
+- Variation 3: Focus on problem-solving and innovation (or different emphasis based on job requirements)
+
+IMPORTANT RULES:
+- Use ONLY factual information from the user's profile
+- DO NOT fabricate dates, companies, or specific achievements
+- Each variation should be distinctly different in tone or emphasis
+- Make bullet points achievement-oriented using action verbs
+- Focus on impact and results when possible
+- Ensure all content is ready for a professional resume
+
+For EACH variation, generate:
+1. **Professional Summary** (3-4 compelling sentences)
+2. **Experience Bullets** (For EACH job, create 3-5 strong bullet points)
+3. **Relevant Skills** (10-15 skills most relevant to this job)
+4. **ATS Keywords** (10-15 important keywords from the job posting)
+
+**OUTPUT FORMAT (JSON):**
+{
+  "variations": [
+    {
+      "variationNumber": 1,
+      "emphasis": "Technical skills and achievements",
+      "summary": "...",
+      "experienceBullets": {
+        "job0": ["Bullet 1", "Bullet 2", ...],
+        "job1": [...]
+      },
+      "relevantSkills": ["skill1", "skill2", ...],
+      "atsKeywords": ["keyword1", "keyword2", ...],
+      "tailoringNotes": "Focus on technical expertise..."
+    },
+    {
+      "variationNumber": 2,
+      "emphasis": "Leadership and impact",
+      ...
+    },
+    {
+      "variationNumber": 3,
+      "emphasis": "Problem-solving and innovation",
+      ...
+    }
+  ]
+}
+
+Return ONLY valid JSON, no markdown formatting.`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
+    let cleanedText = text.trim();
+    if (cleanedText.startsWith('```json')) {
+      cleanedText = cleanedText.slice(7);
+    } else if (cleanedText.startsWith('```')) {
+      cleanedText = cleanedText.slice(3);
+    }
+    if (cleanedText.endsWith('```')) {
+      cleanedText = cleanedText.slice(0, -3);
+    }
+    
+    const generatedVariations = JSON.parse(cleanedText.trim());
+    return generatedVariations.variations || [];
+  } catch (error) {
+    console.error('Error generating resume content variations with Gemini:', error);
+    throw new Error(`Failed to generate resume content variations: ${error.message}`);
+  }
+}
+
+/**
  * Generate tailored resume content based on job posting and user profile
  * @param {Object} jobPosting - The job posting to tailor for
  * @param {Object} userProfile - The user's profile data

@@ -3,7 +3,7 @@ import { useAuth } from "@clerk/clerk-react";
 import { setAuthToken } from "../../api/axios";
 import { fetchTemplates, createTemplate as apiCreateTemplate, updateTemplate as apiUpdateTemplate, deleteTemplate as apiDeleteTemplate, importTemplate as apiImportTemplate } from "../../api/resumeTemplates";
 import { fetchResumes, updateResume as apiUpdateResume, deleteResume as apiDeleteResume } from "../../api/resumes";
-import { generateAIResume, regenerateResumeSection } from "../../api/aiResume";
+import { generateAIResume, generateResumeVariations, regenerateResumeSection } from "../../api/aiResume";
 import api from "../../api/axios";
 import Container from "../../components/Container";
 import Card from "../../components/Card";
@@ -40,11 +40,11 @@ const formatDate = (dateString) => {
 };
 
 // Simple resume preview tile (Google Docs style)
-function ResumeTile({ resume, onView, onDelete }) {
+function ResumeTile({ resume, onView, onDelete, onRename }) {
   const theme = { primary: "#4F5348", text: "#222", bg: "#FFF" };
   
   return (
-    <Card variant="outlined" interactive className="overflow-hidden">
+    <Card variant="outlined" interactive className="overflow-hidden !p-0">
       {/* Preview Area */}
       <div 
         className="h-64 p-4 flex flex-col justify-start border-b cursor-pointer"
@@ -92,24 +92,67 @@ function ResumeTile({ resume, onView, onDelete }) {
       </div>
       
       {/* Info & Actions */}
-      <div className="p-3">
+      <div className="px-2 pt-2 pb-2">
+        <div className="flex items-center gap-2 mb-1.5">
+          <p className="text-sm font-medium text-gray-900 line-clamp-2 flex-1 min-w-0">{resume.name}</p>
+          <button
+            onClick={(e) => { e.stopPropagation(); onRename(); }}
+            className="p-1 rounded-lg transition flex-shrink-0"
+            style={{ color: '#6B7280' }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.color = '#777C6D';
+              e.currentTarget.style.backgroundColor = '#F5F6F4';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.color = '#6B7280';
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }}
+            title="Rename resume"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          </button>
+        </div>
         <div className="flex items-center justify-between">
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">{resume.name}</p>
-            <p className="text-xs text-gray-500">Modified {new Date(resume.updatedAt).toLocaleDateString()}</p>
-          </div>
-          <div className="flex gap-2 ml-2">
+          <p className="text-xs text-gray-500">Modified {new Date(resume.updatedAt).toLocaleDateString()}</p>
+          <div className="flex items-center gap-1">
             <button
               onClick={(e) => { e.stopPropagation(); onView(); }}
-              className="text-xs px-3 py-1 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+              className="p-1 rounded-lg transition flex-shrink-0"
+              style={{ color: '#6B7280' }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.color = '#777C6D';
+                e.currentTarget.style.backgroundColor = '#F5F6F4';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.color = '#6B7280';
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+              title="View resume"
             >
-              View
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              className="text-xs px-3 py-1 text-red-600 hover:bg-red-50 rounded-lg transition"
+              className="p-1 rounded-lg transition flex-shrink-0"
+              style={{ color: '#6B7280' }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.color = '#EF4444';
+                e.currentTarget.style.backgroundColor = '#FEF2F2';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.color = '#6B7280';
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+              title="Delete resume"
             >
-              Delete
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
             </button>
           </div>
         </div>
@@ -376,6 +419,12 @@ export default function ResumeTemplates() {
   const [deletingResume, setDeletingResume] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   
+  // Rename resume modal state
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [renamingResume, setRenamingResume] = useState(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [isRenaming, setIsRenaming] = useState(false);
+  
   // AI Resume Creation Modal State
   const [showAIResumeModal, setShowAIResumeModal] = useState(false);
   const [jobs, setJobs] = useState([]);
@@ -386,6 +435,10 @@ export default function ResumeTemplates() {
   });
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationError, setGenerationError] = useState(null);
+  const [variations, setVariations] = useState([]);
+  const [selectedVariation, setSelectedVariation] = useState(null);
+  const [showVariations, setShowVariations] = useState(false);
+  const [isGeneratingVariations, setIsGeneratingVariations] = useState(false);
   
   // View Resume Modal State
   const [showViewResumeModal, setShowViewResumeModal] = useState(false);
@@ -472,7 +525,37 @@ export default function ResumeTemplates() {
     setShowAIResumeModal(true);
     setGenerationError(null);
     setAIFormData({ name: "", jobId: "", templateId: "" });
+    setVariations([]);
+    setSelectedVariation(null);
+    setShowVariations(false);
     await loadJobs();
+  };
+
+  const handleGenerateVariations = async () => {
+    if (!aiFormData.jobId || !aiFormData.templateId) {
+      setGenerationError("Please select a job and template first");
+      return;
+    }
+
+    setIsGeneratingVariations(true);
+    setGenerationError(null);
+    try {
+      await authWrap();
+      const response = await generateResumeVariations(
+        aiFormData.jobId,
+        aiFormData.templateId
+      );
+      
+      setVariations(response.data.data.variations || []);
+      setShowVariations(true);
+    } catch (err) {
+      console.error("Variations generation error:", err);
+      setGenerationError(
+        err.response?.data?.message || "Failed to generate variations. Please try again."
+      );
+    } finally {
+      setIsGeneratingVariations(false);
+    }
   };
 
   const handleGenerateAIResume = async (e) => {
@@ -484,18 +567,28 @@ export default function ResumeTemplates() {
       return;
     }
 
+    // If variations are shown but none selected, require selection
+    if (showVariations && !selectedVariation) {
+      setGenerationError("Please select a variation or generate without variations");
+      return;
+    }
+
     setIsGenerating(true);
     try {
       await authWrap();
       const response = await generateAIResume(
         aiFormData.jobId,
         aiFormData.templateId,
-        aiFormData.name
+        aiFormData.name,
+        selectedVariation || null // Pass selected variation if available
       );
       
       // Success!
       setShowAIResumeModal(false);
       setAIFormData({ name: "", jobId: "", templateId: "" });
+      setVariations([]);
+      setSelectedVariation(null);
+      setShowVariations(false);
       await loadAll();
       
       // Show success banner
@@ -531,6 +624,27 @@ export default function ResumeTemplates() {
       alert("Failed to delete resume");
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleRenameResume = async () => {
+    if (!renamingResume || !renameValue.trim()) return;
+    
+    setIsRenaming(true);
+    try {
+      await authWrap();
+      await apiUpdateResume(renamingResume._id, { name: renameValue.trim() });
+      setShowRenameModal(false);
+      setRenamingResume(null);
+      setRenameValue("");
+      await loadAll();
+      setSuccessMessage(`Resume renamed to "${renameValue.trim()}" successfully!`);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to rename resume");
+    } finally {
+      setIsRenaming(false);
     }
   };
 
@@ -910,6 +1024,11 @@ export default function ResumeTemplates() {
                   key={resume._id}
                   resume={resume}
                   onView={() => handleViewResume(resume)}
+                  onRename={() => {
+                    setRenamingResume(resume);
+                    setRenameValue(resume.name);
+                    setShowRenameModal(true);
+                  }}
                   onDelete={() => handleDeleteResumeClick(resume)}
                 />
               ))}
@@ -1945,6 +2064,100 @@ export default function ResumeTemplates() {
                   </select>
                 </div>
 
+                {/* Generate Variations Button */}
+                {!showVariations && (
+                  <div className="flex justify-between items-center">
+                    <button
+                      type="button"
+                      onClick={handleGenerateVariations}
+                      disabled={!aiFormData.jobId || !aiFormData.templateId || isGeneratingVariations}
+                      className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                    >
+                      {isGeneratingVariations ? (
+                        <>
+                          <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <span>Generating Variations...</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                          <span>Generate Multiple Variations (Recommended)</span>
+                        </>
+                      )}
+                    </button>
+                    <span className="text-sm text-gray-500">or proceed to generate single version</span>
+                  </div>
+                )}
+
+                {/* Variations Display */}
+                {showVariations && variations.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h4 className="text-lg font-semibold text-gray-900">Choose a Variation:</h4>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowVariations(false);
+                          setSelectedVariation(null);
+                          setVariations([]);
+                        }}
+                        className="text-sm text-gray-600 hover:text-gray-800"
+                      >
+                        Generate new variations
+                      </button>
+                    </div>
+                    <div className="space-y-3">
+                      {variations.map((variation, idx) => (
+                        <div
+                          key={idx}
+                          onClick={() => setSelectedVariation(variation)}
+                          className={`border-2 rounded-lg p-4 cursor-pointer transition ${
+                            selectedVariation?.variationNumber === variation.variationNumber
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <div>
+                              <h5 className="font-semibold text-gray-900">
+                                Variation {variation.variationNumber}: {variation.emphasis}
+                              </h5>
+                              {variation.tailoringNotes && (
+                                <p className="text-sm text-gray-600 mt-1">{variation.tailoringNotes}</p>
+                              )}
+                            </div>
+                            {selectedVariation?.variationNumber === variation.variationNumber && (
+                              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            )}
+                          </div>
+                          <div className="text-sm text-gray-700">
+                            <p className="line-clamp-2 mb-2">{variation.summary}</p>
+                            <div className="flex flex-wrap gap-2">
+                              {variation.relevantSkills?.slice(0, 5).map((skill, skillIdx) => (
+                                <span key={skillIdx} className="px-2 py-1 bg-gray-100 rounded text-xs">
+                                  {skill}
+                                </span>
+                              ))}
+                              {variation.relevantSkills?.length > 5 && (
+                                <span className="px-2 py-1 bg-gray-100 rounded text-xs">
+                                  +{variation.relevantSkills.length - 5} more
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* AI Features Info */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <div className="flex items-start space-x-3">
@@ -2081,6 +2294,72 @@ export default function ResumeTemplates() {
                     <span>Delete</span>
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rename Resume Modal */}
+      {showRenameModal && renamingResume && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50" 
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={() => !isRenaming && setShowRenameModal(false)}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 border border-gray-200" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="bg-blue-50 border-b border-blue-100 px-6 py-4">
+              <div className="flex items-center space-x-3">
+                <div className="flex-shrink-0">
+                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-heading font-semibold text-gray-900">Rename Resume</h3>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6">
+              <label htmlFor="renameInput" className="block text-sm font-medium text-gray-700 mb-2">
+                Resume Name
+              </label>
+              <input
+                id="renameInput"
+                type="text"
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && !isRenaming && renameValue.trim()) {
+                    handleRenameResume();
+                  }
+                }}
+                disabled={isRenaming}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                placeholder="Enter resume name"
+                autoFocus
+              />
+            </div>
+
+            {/* Modal Actions */}
+            <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t">
+              <button
+                onClick={() => !isRenaming && setShowRenameModal(false)}
+                disabled={isRenaming}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRenameResume}
+                disabled={isRenaming || !renameValue.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+              >
+                {isRenaming ? "Renaming..." : "Rename"}
               </button>
             </div>
           </div>
