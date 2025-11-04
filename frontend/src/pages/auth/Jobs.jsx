@@ -10,6 +10,7 @@ import InputField from "../../components/InputField";
 import Button from "../../components/Button";
 import ArchiveModal from "../../components/ArchiveModal";
 import AutoArchiveModal from "../../components/AutoArchiveModal";
+import JobStatistics from "../../components/JobStatistics";
 
 const PIPELINE_STAGES = ["Interested", "Applied", "Phone Screen", "Interview", "Offer", "Rejected"];
 
@@ -58,6 +59,9 @@ export default function Jobs() {
   const [showAutoArchiveModal, setShowAutoArchiveModal] = useState(false);
   const [archivingJob, setArchivingJob] = useState(null);
   const [archiveNotification, setArchiveNotification] = useState(null);
+  
+  // Statistics modal state
+  const [showStatistics, setShowStatistics] = useState(false);
 
   // Form state for adding/editing jobs
   const [formData, setFormData] = useState({
@@ -1012,6 +1016,9 @@ export default function Jobs() {
                 </Button>
                 <Button onClick={() => setShowCalendar(!showCalendar)} variant="secondary">
                   {showCalendar ? "Pipeline View" : "Calendar View"}
+                </Button>
+                <Button onClick={() => setShowStatistics(true)} variant="secondary">
+                  Statistics
                 </Button>
                 <Button 
                   onClick={() => setShowArchived(!showArchived)} 
@@ -2197,6 +2204,11 @@ export default function Jobs() {
         onClose={() => setShowAutoArchiveModal(false)}
         onAutoArchive={handleAutoArchive}
       />
+
+      {/* Job Statistics Modal */}
+      {showStatistics && (
+        <JobStatistics onClose={() => setShowStatistics(false)} />
+      )}
     </div>
   );
 }
