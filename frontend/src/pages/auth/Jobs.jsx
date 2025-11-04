@@ -291,10 +291,28 @@ export default function Jobs() {
       if (jobData.company) setFormData(prev => ({ ...prev, company: jobData.company }));
       if (jobData.location) setFormData(prev => ({ ...prev, location: jobData.location }));
       if (jobData.description) setFormData(prev => ({ ...prev, description: jobData.description }));
+      if (jobData.jobType) setFormData(prev => ({ ...prev, jobType: jobData.jobType }));
+      if (jobData.workMode) setFormData(prev => ({ ...prev, workMode: jobData.workMode }));
+      if (jobData.salary) {
+        const { min, max } = jobData.salary || {};
+        setFormData(prev => ({
+          ...prev,
+          salaryMin: min ? String(min) : prev.salaryMin,
+          salaryMax: max ? String(max) : prev.salaryMax,
+        }));
+      }
       
       // Set status based on import result
       setImportStatus(jobData.importStatus || 'partial');
-      setImportMessage(jobData.importNotes || 'Job details imported. Please review and complete.');
+      // If backend provided field-level confidences, append a compact summary for transparency
+      const info = jobData.extractionInfo || {};
+      const summaryParts = [];
+      ['title','company','location','jobType','workMode','salary'].forEach(k => {
+        const m = info[k];
+        if (m && typeof m.confidence === 'number') summaryParts.push(`${k}: ${(m.confidence*100).toFixed(0)}%`);
+      });
+      const summary = summaryParts.length ? `\nFields: ${summaryParts.join(', ')}` : '';
+      setImportMessage((jobData.importNotes || 'Job details imported. Please review and complete.') + summary);
 
       // Clear status message after 10 seconds
       setTimeout(() => {
