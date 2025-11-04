@@ -128,7 +128,9 @@ describe("Job Analytics Controller", () => {
       expect(res.json).toHaveBeenCalled();
 
       const response = res.json.mock.calls[0][0];
+      expect(response).toBeDefined();
       expect(response.success).toBe(true);
+      expect(response).toHaveProperty("data");
       expect(response.data).toHaveProperty("overview");
       expect(response.data).toHaveProperty("statusCounts");
       expect(response.data).toHaveProperty("statusDistribution");
@@ -143,7 +145,11 @@ describe("Job Analytics Controller", () => {
 
       await getJobAnalytics(req, res);
 
+      expect(res.json).toHaveBeenCalled();
       const response = res.json.mock.calls[0][0];
+      expect(response).toBeDefined();
+      expect(response.data).toBeDefined();
+      expect(response.data.overview).toBeDefined();
       expect(response.data.overview.totalApplications).toBe(5);
     });
 
@@ -152,7 +158,11 @@ describe("Job Analytics Controller", () => {
 
       await getJobAnalytics(req, res);
 
+      expect(res.json).toHaveBeenCalled();
       const response = res.json.mock.calls[0][0];
+      expect(response).toBeDefined();
+      expect(response.data).toBeDefined();
+      expect(response.data.overview).toBeDefined();
       expect(response.data.overview.activeApplications).toBe(4);
       expect(response.data.overview.archivedApplications).toBe(1);
     });
@@ -162,7 +172,11 @@ describe("Job Analytics Controller", () => {
 
       await getJobAnalytics(req, res);
 
+      expect(res.json).toHaveBeenCalled();
       const response = res.json.mock.calls[0][0];
+      expect(response).toBeDefined();
+      expect(response.data).toBeDefined();
+      expect(response.data.overview).toBeDefined();
       // 3 responded (Interview, Offer, Rejected) out of 4 applied jobs
       expect(response.data.overview.responseRate).toBeGreaterThan(0);
     });
@@ -172,7 +186,10 @@ describe("Job Analytics Controller", () => {
 
       await getJobAnalytics(req, res);
 
+      expect(res.json).toHaveBeenCalled();
       const response = res.json.mock.calls[0][0];
+      expect(response).toBeDefined();
+      expect(response.data).toBeDefined();
       expect(response.data.statusDistribution).toBeInstanceOf(Array);
       expect(response.data.statusDistribution.length).toBe(6); // 6 statuses
       
@@ -186,10 +203,15 @@ describe("Job Analytics Controller", () => {
 
       await getJobAnalytics(req, res);
 
+      expect(res.json).toHaveBeenCalled();
       const response = res.json.mock.calls[0][0];
+      expect(response).toBeDefined();
+      expect(response.data).toBeDefined();
       expect(response.data.avgTimeByStage).toBeDefined();
-      expect(typeof response.data.avgTimeByStage.Applied).toBe("string");
-      expect(parseFloat(response.data.avgTimeByStage.Applied)).toBeGreaterThanOrEqual(0);
+      // avgTimeByStage can be a string or number (converted to string with .toFixed)
+      const appliedTime = response.data.avgTimeByStage.Applied;
+      expect(appliedTime).toBeDefined();
+      expect(parseFloat(appliedTime)).toBeGreaterThanOrEqual(0);
     });
 
     it("should provide monthly volume for last 12 months", async () => {
@@ -197,7 +219,10 @@ describe("Job Analytics Controller", () => {
 
       await getJobAnalytics(req, res);
 
+      expect(res.json).toHaveBeenCalled();
       const response = res.json.mock.calls[0][0];
+      expect(response).toBeDefined();
+      expect(response.data).toBeDefined();
       expect(response.data.monthlyVolume).toBeInstanceOf(Array);
       expect(response.data.monthlyVolume.length).toBe(12);
       expect(response.data.monthlyVolume[0]).toHaveProperty("month");
@@ -210,7 +235,10 @@ describe("Job Analytics Controller", () => {
 
       await getJobAnalytics(req, res);
 
+      expect(res.json).toHaveBeenCalled();
       const response = res.json.mock.calls[0][0];
+      expect(response).toBeDefined();
+      expect(response.data).toBeDefined();
       expect(response.data.deadlineTracking).toBeDefined();
       expect(response.data.deadlineTracking.total).toBeGreaterThan(0);
       expect(response.data.deadlineTracking).toHaveProperty("met");
@@ -224,7 +252,10 @@ describe("Job Analytics Controller", () => {
 
       await getJobAnalytics(req, res);
 
+      expect(res.json).toHaveBeenCalled();
       const response = res.json.mock.calls[0][0];
+      expect(response).toBeDefined();
+      expect(response.data).toBeDefined();
       expect(response.data.timeToOffer).toBeDefined();
       expect(response.data.timeToOffer.count).toBe(1); // One offer job
       expect(parseFloat(response.data.timeToOffer.average)).toBeGreaterThan(0);
@@ -247,7 +278,11 @@ describe("Job Analytics Controller", () => {
       await getJobAnalytics(req, res);
 
       expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalled();
       const response = res.json.mock.calls[0][0];
+      expect(response).toBeDefined();
+      expect(response.data).toBeDefined();
+      expect(response.data.overview).toBeDefined();
       expect(response.data.overview.totalApplications).toBe(0);
       expect(response.data.overview.responseRate).toBe(0);
     });
@@ -257,7 +292,11 @@ describe("Job Analytics Controller", () => {
 
       await getJobAnalytics(req, res);
 
+      expect(res.json).toHaveBeenCalled();
       const response = res.json.mock.calls[0][0];
+      expect(response).toBeDefined();
+      expect(response.data).toBeDefined();
+      expect(response.data.overview).toBeDefined();
       expect(response.data.overview.offerRate).toBeGreaterThan(0);
       // 1 offer out of 4 applied jobs = 25%
       expect(parseFloat(response.data.overview.offerRate)).toBeCloseTo(25, 0);
@@ -268,7 +307,11 @@ describe("Job Analytics Controller", () => {
 
       await getJobAnalytics(req, res);
 
+      expect(res.json).toHaveBeenCalled();
       const response = res.json.mock.calls[0][0];
+      expect(response).toBeDefined();
+      expect(response.data).toBeDefined();
+      expect(response.data.overview).toBeDefined();
       expect(response.data.overview.interviewRate).toBeGreaterThan(0);
       // 2 (Interview + Offer) out of 4 applied = 50%
       expect(parseFloat(response.data.overview.interviewRate)).toBeCloseTo(50, 0);

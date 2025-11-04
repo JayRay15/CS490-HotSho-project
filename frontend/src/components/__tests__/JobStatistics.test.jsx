@@ -22,64 +22,67 @@ vi.mock("../../api/axios", async () => {
 
 describe("JobStatistics", () => {
   const mockAnalyticsData = {
-    success: true,
     data: {
-      overview: {
-        totalApplications: 25,
-        activeApplications: 20,
-        archivedApplications: 5,
-        responseRate: 60.0,
-        offerRate: 20.0,
-        interviewRate: 40.0,
-      },
-      statusCounts: {
-        Interested: 5,
-        Applied: 8,
-        "Phone Screen": 4,
-        Interview: 3,
-        Offer: 2,
-        Rejected: 3,
-      },
-      statusDistribution: [
-        { status: "Interested", count: 5, percentage: "20.0" },
-        { status: "Applied", count: 8, percentage: "32.0" },
-        { status: "Phone Screen", count: 4, percentage: "16.0" },
-        { status: "Interview", count: 3, percentage: "12.0" },
-        { status: "Offer", count: 2, percentage: "8.0" },
-        { status: "Rejected", count: 3, percentage: "12.0" },
-      ],
-      avgTimeByStage: {
-        Interested: "5.5",
-        Applied: "10.2",
-        "Phone Screen": "7.8",
-        Interview: "14.3",
-        Offer: "3.1",
-        Rejected: "8.9",
-      },
-      monthlyVolume: [
-        { month: "Jan 2025", count: 2, timestamp: 1704096000000 },
-        { month: "Feb 2025", count: 3, timestamp: 1706774400000 },
-        { month: "Mar 2025", count: 5, timestamp: 1709280000000 },
-        { month: "Apr 2025", count: 4, timestamp: 1711958400000 },
-        { month: "May 2025", count: 3, timestamp: 1714550400000 },
-        { month: "Jun 2025", count: 2, timestamp: 1717228800000 },
-        { month: "Jul 2025", count: 1, timestamp: 1719820800000 },
-        { month: "Aug 2025", count: 0, timestamp: 1722499200000 },
-        { month: "Sep 2025", count: 2, timestamp: 1725177600000 },
-        { month: "Oct 2025", count: 1, timestamp: 1727769600000 },
-        { month: "Nov 2025", count: 2, timestamp: 1730448000000 },
-        { month: "Dec 2025", count: 0, timestamp: 1733040000000 },
-      ],
-      deadlineTracking: {
-        total: 15,
-        met: 12,
-        missed: 2,
-        upcoming: 1,
-        adherenceRate: 80.0,
-      },
-      timeToOffer: {
-        average: 45.5,
-        count: 2,
+      success: true,
+      message: "Job analytics retrieved successfully",
+      data: {
+        overview: {
+          totalApplications: 25,
+          activeApplications: 20,
+          archivedApplications: 5,
+          responseRate: 60.0,
+          offerRate: 20.0,
+          interviewRate: 40.0,
+        },
+        statusCounts: {
+          Interested: 5,
+          Applied: 8,
+          "Phone Screen": 4,
+          Interview: 3,
+          Offer: 2,
+          Rejected: 3,
+        },
+        statusDistribution: [
+          { status: "Interested", count: 5, percentage: "20.0" },
+          { status: "Applied", count: 8, percentage: "32.0" },
+          { status: "Phone Screen", count: 4, percentage: "16.0" },
+          { status: "Interview", count: 3, percentage: "12.0" },
+          { status: "Offer", count: 2, percentage: "8.0" },
+          { status: "Rejected", count: 3, percentage: "12.0" },
+        ],
+        avgTimeByStage: {
+          Interested: "5.5",
+          Applied: "10.2",
+          "Phone Screen": "7.8",
+          Interview: "14.3",
+          Offer: "3.1",
+          Rejected: "8.9",
+        },
+        monthlyVolume: [
+          { month: "Jan 2025", count: 2, timestamp: 1704096000000 },
+          { month: "Feb 2025", count: 3, timestamp: 1706774400000 },
+          { month: "Mar 2025", count: 5, timestamp: 1709280000000 },
+          { month: "Apr 2025", count: 4, timestamp: 1711958400000 },
+          { month: "May 2025", count: 3, timestamp: 1714550400000 },
+          { month: "Jun 2025", count: 2, timestamp: 1717228800000 },
+          { month: "Jul 2025", count: 1, timestamp: 1719820800000 },
+          { month: "Aug 2025", count: 0, timestamp: 1722499200000 },
+          { month: "Sep 2025", count: 2, timestamp: 1725177600000 },
+          { month: "Oct 2025", count: 1, timestamp: 1727769600000 },
+          { month: "Nov 2025", count: 2, timestamp: 1730448000000 },
+          { month: "Dec 2025", count: 0, timestamp: 1733040000000 },
+        ],
+        deadlineTracking: {
+          total: 15,
+          met: 12,
+          missed: 2,
+          upcoming: 1,
+          adherenceRate: 80.0,
+        },
+        timeToOffer: {
+          average: 45.5,
+          count: 2,
+        },
       },
     },
   };
@@ -106,12 +109,21 @@ describe("JobStatistics", () => {
 
     render(<JobStatistics onClose={mockOnClose} />);
 
+    // Wait for the analytics to load
     await waitFor(() => {
-      expect(screen.getByText("Job Search Analytics")).toBeInTheDocument();
-    });
+      expect(api.get).toHaveBeenCalledWith("/api/jobs/analytics");
+    }, { timeout: 3000 });
+
+    // Wait for the heading to appear
+    await waitFor(() => {
+      const heading = screen.queryByText("Job Search Analytics");
+      expect(heading).toBeInTheDocument();
+    }, { timeout: 3000 });
 
     // Check overview metrics
-    expect(screen.getByText("25")).toBeInTheDocument(); // Total apps
+    await waitFor(() => {
+      expect(screen.getByText("25")).toBeInTheDocument(); // Total apps
+    });
     expect(screen.getByText("20")).toBeInTheDocument(); // Active apps
     expect(screen.getByText("60%")).toBeInTheDocument(); // Response rate
   });
@@ -275,12 +287,14 @@ describe("JobStatistics", () => {
 
   it("shows appropriate message when no offers received", async () => {
     const noOffersData = {
-      ...mockAnalyticsData,
       data: {
         ...mockAnalyticsData.data,
-        timeToOffer: {
-          average: 0,
-          count: 0,
+        data: {
+          ...mockAnalyticsData.data.data,
+          timeToOffer: {
+            average: 0,
+            count: 0,
+          },
         },
       },
     };
