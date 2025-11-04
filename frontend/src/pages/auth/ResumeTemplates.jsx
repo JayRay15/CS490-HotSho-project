@@ -4,14 +4,34 @@ import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { setAuthToken } from "../../api/axios";
 import { fetchTemplates, createTemplate as apiCreateTemplate, updateTemplate as apiUpdateTemplate, deleteTemplate as apiDeleteTemplate, importTemplate as apiImportTemplate } from "../../api/resumeTemplates";
-import { fetchResumes, updateResume as apiUpdateResume, deleteResume as apiDeleteResume } from "../../api/resumes";
-import { generateAIResume, generateResumeVariations, regenerateResumeSection } from "../../api/aiResume";
+import { 
+  fetchResumes, 
+  updateResume as apiUpdateResume, 
+  deleteResume as apiDeleteResume,
+  exportResumePDF,
+  exportResumeDOCX,
+  exportResumeHTML,
+  exportResumeText,
+  cloneResume as apiCloneResume,
+  compareResumes as apiCompareResumes,
+  setDefaultResume as apiSetDefaultResume,
+  archiveResume as apiArchiveResume,
+  unarchiveResume as apiUnarchiveResume
+} from "../../api/resumes";
+import { 
+  generateAIResume, 
+  generateResumeVariations, 
+  regenerateResumeSection,
+  optimizeResumeSkills,
+  tailorExperienceForJob
+} from "../../api/aiResume";
 import api from "../../api/axios";
 import Container from "../../components/Container";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import InputField from "../../components/InputField";
 import LoadingSpinner from "../../components/LoadingSpinner";
+import { THEME_PRESETS, getThemePresetNames, getThemePreset } from "../../utils/themePresets";
 
 const TEMPLATE_TYPES = [
   { value: "chronological", label: "Chronological" },
@@ -87,7 +107,7 @@ function ResumeTile({ resume, template, onView, onDelete, onRename }) {
 
 
   return (
-    <Card variant="outlined" interactive className="overflow-hidden !p-0">
+    <Card variant="outlined" interactive className={`overflow-hidden !p-0 ${resume.isArchived ? 'opacity-60' : ''}`}>
       {/* Preview Area */}
       <div 
         className="h-64 p-4 flex flex-col justify-start border-b cursor-pointer"
@@ -136,6 +156,12 @@ function ResumeTile({ resume, template, onView, onDelete, onRename }) {
       <div className="px-2 pt-2 pb-2">
         <div className="flex items-center gap-2 mb-1.5">
           <p className="text-sm font-medium text-gray-900 line-clamp-2 flex-1 min-w-0" style={{ fontFamily: fonts.heading }}>{resume.name}</p>
+          {/* UC-52: Archived badge */}
+          {resume.isArchived && (
+            <span className="px-2 py-0.5 text-xs font-medium bg-gray-200 text-gray-600 rounded">
+              ARCHIVED
+            </span>
+          )}
           <button
             onClick={(e) => { e.stopPropagation(); onRename(); }}
             className="p-1 rounded-lg transition flex-shrink-0"
@@ -155,8 +181,22 @@ function ResumeTile({ resume, template, onView, onDelete, onRename }) {
             </svg>
           </button>
         </div>
+        {/* UC-52: Version description */}
+        {resume.metadata?.description && (
+          <p className="text-xs text-gray-600 mb-1 line-clamp-2 italic" style={{ fontFamily: fonts.body }}>
+            {resume.metadata.description}
+          </p>
+        )}
         <div className="flex items-center justify-between">
-          <p className="text-xs text-gray-500">Modified {new Date(resume.updatedAt).toLocaleDateString()}</p>
+          <div className="flex flex-col">
+            <p className="text-xs text-gray-500">Modified {new Date(resume.updatedAt).toLocaleDateString()}</p>
+            {/* UC-52: Job usage badge */}
+            {resume.linkedJobCount > 0 && (
+              <p className="text-xs text-blue-600 font-medium">
+                Used in {resume.linkedJobCount} application{resume.linkedJobCount !== 1 ? 's' : ''}
+              </p>
+            )}
+          </div>
           <div className="flex items-center gap-1">
             <button
               onClick={(e) => { e.stopPropagation(); onView(); }}
@@ -496,6 +536,49 @@ export default function ResumeTemplates() {
   
   // Resume Display State
   const [showAllResumes, setShowAllResumes] = useState(false);
+  const [showArchivedResumes, setShowArchivedResumes] = useState(false); // UC-52: Archive filter
+  
+  // UC-49: Skills Optimization State
+  const [showSkillsOptimization, setShowSkillsOptimization] = useState(false);
+  const [skillsOptimizationData, setSkillsOptimizationData] = useState(null);
+  const [isOptimizingSkills, setIsOptimizingSkills] = useState(false);
+  const [selectedJobForSkills, setSelectedJobForSkills] = useState(''); // Store "title|company" string
+  const [selectedSkillsToAdd, setSelectedSkillsToAdd] = useState([]); // Skills user wants to add
+  const [currentResumeSkills, setCurrentResumeSkills] = useState([]); // Current skills in resume
+  const [isApplyingSkills, setIsApplyingSkills] = useState(false);
+  const [showSkillsSuccessBanner, setShowSkillsSuccessBanner] = useState(false);
+  
+  // UC-50: Experience Tailoring State
+  const [showExperienceTailoring, setShowExperienceTailoring] = useState(false);
+  const [experienceTailoringData, setExperienceTailoringData] = useState(null);
+  const [isTailoringExperience, setIsTailoringExperience] = useState(false);
+  const [selectedJobForExperience, setSelectedJobForExperience] = useState(''); // Store "title|company" string
+  const [selectedExperienceVariations, setSelectedExperienceVariations] = useState({}); // { "expIdx-bulletIdx": "achievement" | "technical" | "impact" | "original" }
+  const [isApplyingExperience, setIsApplyingExperience] = useState(false);
+  const [showExperienceSuccessBanner, setShowExperienceSuccessBanner] = useState(false);
+  
+  // UC-51: Export State
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportFormat, setExportFormat] = useState(null);
+  // Custom "Save As" modal for exports (replaces window.prompt)
+  const [showSaveAsModal, setShowSaveAsModal] = useState(false);
+  const [saveAsFilename, setSaveAsFilename] = useState('');
+  const [pendingExportFormat, setPendingExportFormat] = useState(null);
+  
+  // UC-51: Watermark options
+  const [watermarkEnabled, setWatermarkEnabled] = useState(false);
+  const [watermarkText, setWatermarkText] = useState('CONFIDENTIAL');
+  const [showWatermarkModal, setShowWatermarkModal] = useState(false);
+  
+  // UC-52: Version Management State
+  const [showCloneModal, setShowCloneModal] = useState(false);
+  const [cloneName, setCloneName] = useState('');
+  const [cloneDescription, setCloneDescription] = useState('');
+  const [isCloning, setIsCloning] = useState(false);
+  const [showCompareModal, setShowCompareModal] = useState(false);
+  const [compareResumeId, setCompareResumeId] = useState(null);
+  const [comparisonData, setComparisonData] = useState(null);
   
     // Section Customization State (UC-048)
     const [visibleSections, setVisibleSections] = useState(DEFAULT_SECTIONS.map(s => s.key));
@@ -639,6 +722,7 @@ export default function ResumeTemplates() {
       const savedAppliedJobs = response.data.data.jobs.filter(
         job => job.status === "Interested" || job.status === "Applied"
       );
+      console.log('Loaded jobs:', savedAppliedJobs); // Debug: check job structure
       setJobs(savedAppliedJobs);
     } catch (err) {
       console.error("Failed to load jobs:", err);
@@ -670,10 +754,451 @@ export default function ResumeTemplates() {
     }
   };
 
+  // UC-51: Export handlers
+  // When user clicks an export option, open a themed "Save As" modal first.
+  // After they confirm filename, performExport will run the request and download.
+  const handleExport = async (format) => {
+    if (!viewingResume) return;
+    setShowExportMenu(false);
+    const filenameBase = `${viewingResume.name.replace(/[^a-z0-9-_]/gi, '_')}`;
+    const extMap = { pdf: '.pdf', docx: '.docx', html: '.html', txt: '.txt' };
+    const ext = extMap[format] || '';
+    const suggested = `${filenameBase}${ext}`;
+    setSaveAsFilename(suggested);
+    setPendingExportFormat(format);
+    setShowSaveAsModal(true);
+  };
+
+  // Perform the server request and trigger file download
+  const performExport = async (format, filename) => {
+    if (!viewingResume) return;
+    setIsExporting(true);
+    setExportFormat(format);
+    setShowSaveAsModal(false);
+    try {
+      await authWrap();
+      // Ensure filename has proper extension
+      const extMap = { pdf: '.pdf', docx: '.docx', html: '.html', txt: '.txt' };
+      const ext = extMap[format] || '';
+      if (ext && filename && !filename.toLowerCase().endsWith(ext)) {
+        filename = filename + ext;
+      }
+      
+      // UC-51: Prepare watermark options
+      const watermarkOptions = watermarkEnabled ? { enabled: true, text: watermarkText } : null;
+      
+      let response;
+      switch (format) {
+        case 'pdf':
+          response = await exportResumePDF(viewingResume._id, watermarkOptions);
+          break;
+        case 'docx':
+          response = await exportResumeDOCX(viewingResume._id, watermarkOptions);
+          break;
+        case 'html':
+          response = await exportResumeHTML(viewingResume._id);
+          break;
+        case 'txt':
+          response = await exportResumeText(viewingResume._id);
+          break;
+        default:
+          throw new Error('Invalid export format');
+      }
+
+      const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/octet-stream' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      setSuccessMessage(`Resume exported as ${format.toUpperCase()} successfully!`);
+      setTimeout(() => setSuccessMessage(null), 4000);
+    } catch (err) {
+      console.error('Export failed:', err);
+      let errorMsg = `Failed to export resume as ${format.toUpperCase()}. Please try again.`;
+      try {
+        const data = err?.response?.data;
+        if (data instanceof Blob) {
+          const text = await data.text();
+          try {
+            const json = JSON.parse(text);
+            if (json?.message) errorMsg = json.message;
+          } catch {
+            if (text) errorMsg = text;
+          }
+        } else if (typeof err?.response?.data === 'object' && err.response.data?.message) {
+          errorMsg = err.response.data.message;
+        }
+      } catch {}
+      alert(errorMsg);
+    } finally {
+      setIsExporting(false);
+      setExportFormat(null);
+      setPendingExportFormat(null);
+    }
+  };
+
+  // UC-52: Version management handlers
+  const handleCloneResume = async () => {
+    if (!viewingResume || !cloneName.trim()) return;
+    
+    setIsCloning(true);
+    try {
+      await authWrap();
+      const response = await apiCloneResume(viewingResume._id, cloneName.trim(), cloneDescription.trim());
+      const clonedResume = response.data.data.resume;
+      
+      setResumes(prev => [clonedResume, ...prev]);
+      setShowCloneModal(false);
+      setCloneName('');
+      setCloneDescription('');
+      setSuccessMessage(`Resume cloned successfully as "${clonedResume.name}"!`);
+      setTimeout(() => setSuccessMessage(null), 4000);
+    } catch (err) {
+      console.error('Clone failed:', err);
+      alert('Failed to clone resume. Please try again.');
+    } finally {
+      setIsCloning(false);
+    }
+  };
+
+  const handleSetDefaultResume = async (resumeId) => {
+    try {
+      await authWrap();
+      await apiSetDefaultResume(resumeId);
+      
+      // Update resumes list
+      setResumes(prev => prev.map(r => ({
+        ...r,
+        isDefault: r._id === resumeId
+      })));
+      
+      // Update viewing resume if it's the one being set as default
+      if (viewingResume?._id === resumeId) {
+        setViewingResume(prev => ({ ...prev, isDefault: true }));
+      }
+      
+      setSuccessMessage('Default resume updated successfully!');
+      setTimeout(() => setSuccessMessage(null), 4000);
+    } catch (err) {
+      console.error('Set default failed:', err);
+      alert('Failed to set default resume. Please try again.');
+    }
+  };
+
+  const handleCompareResumes = async (resumeId2) => {
+    if (!viewingResume || !resumeId2) return;
+    
+    try {
+      await authWrap();
+      const response = await apiCompareResumes(viewingResume._id, resumeId2);
+      setComparisonData(response.data.data.comparison);
+      setCompareResumeId(resumeId2);
+      setShowCompareModal(true);
+    } catch (err) {
+      console.error('Compare failed:', err);
+      alert('Failed to compare resumes. Please try again.');
+    }
+  };
+
+  // UC-52: Archive/Unarchive handlers
+  const handleArchiveResume = async (resumeId) => {
+    try {
+      await authWrap();
+      await apiArchiveResume(resumeId);
+      
+      setResumes(prev => prev.map(r => 
+        r._id === resumeId ? { ...r, isArchived: true } : r
+      ));
+      
+      if (viewingResume?._id === resumeId) {
+        setViewingResume(prev => ({ ...prev, isArchived: true }));
+      }
+      
+      // If not showing all resumes and not showing archived, expand view to show 4 active resumes
+      if (!showAllResumes && !showArchivedResumes) {
+        const nonArchivedCount = resumes.filter(r => !r.isArchived && r._id !== resumeId).length;
+        // If we had exactly 4 showing and now will have less, keep showing 4 if possible
+        if (nonArchivedCount >= 4) {
+          // Keep current collapsed view - filter will handle showing 4
+        }
+      }
+      
+      setSuccessMessage('Resume archived successfully!');
+      setTimeout(() => setSuccessMessage(null), 4000);
+    } catch (err) {
+      console.error('Archive failed:', err);
+      alert('Failed to archive resume. Please try again.');
+    }
+  };
+
+  const handleUnarchiveResume = async (resumeId) => {
+    try {
+      await authWrap();
+      await apiUnarchiveResume(resumeId);
+      
+      setResumes(prev => prev.map(r => 
+        r._id === resumeId ? { ...r, isArchived: false } : r
+      ));
+      
+      if (viewingResume?._id === resumeId) {
+        setViewingResume(prev => ({ ...prev, isArchived: false }));
+      }
+      
+      setSuccessMessage('Resume unarchived successfully!');
+      setTimeout(() => setSuccessMessage(null), 4000);
+    } catch (err) {
+      console.error('Unarchive failed:', err);
+      alert('Failed to unarchive resume. Please try again.');
+    }
+  };
+
+  // UC-49: Skills optimization handler
+  const handleOptimizeSkills = async () => {
+    if (!viewingResume) return;
+    
+    // Parse selected job (format: "title|company")
+    const jobSelector = selectedJobForSkills || selectedJobForExperience;
+    
+    if (!jobSelector) {
+      alert('Please select a job posting to optimize skills against.');
+      return;
+    }
+
+    const [title, company] = jobSelector.split('|');
+    if (!title || !company) {
+      alert('Invalid job selection. Please select a valid job from the dropdown.');
+      console.error('Invalid job selector:', jobSelector);
+      return;
+    }
+    
+    setIsOptimizingSkills(true);
+    try {
+      await authWrap();
+      const response = await optimizeResumeSkills(viewingResume._id, { title, company });
+      setSkillsOptimizationData(response.data.data);
+      
+      // Initialize current resume skills
+      const currentSkills = viewingResume.sections?.skills || [];
+      setCurrentResumeSkills(currentSkills.map(s => typeof s === 'string' ? s : s.name));
+      setSelectedSkillsToAdd([]);
+      
+      setShowSkillsOptimization(true);
+    } catch (err) {
+      console.error('Skills optimization failed:', err);
+      const errorMsg = err.response?.data?.message || 'Failed to optimize skills. Please try again.';
+      alert(errorMsg);
+    } finally {
+      setIsOptimizingSkills(false);
+    }
+  };
+
+  // UC-49: Apply skill changes to resume
+  const handleApplySkillChanges = async () => {
+    if (!viewingResume) return;
+    
+    setIsApplyingSkills(true);
+    try {
+      await authWrap();
+      
+      // Combine current skills with selected new skills (avoiding duplicates)
+      const newSkillsSet = new Set([...currentResumeSkills, ...selectedSkillsToAdd]);
+      const updatedSkills = Array.from(newSkillsSet).map(skillName => ({
+        name: skillName,
+        level: 'Intermediate' // Default level, user can adjust in resume editor
+      }));
+      
+      // Update resume with new skills
+      const updatedResume = {
+        ...viewingResume,
+        sections: {
+          ...viewingResume.sections,
+          skills: updatedSkills
+        }
+      };
+      
+      await apiUpdateResume(viewingResume._id, updatedResume);
+      
+      // Refresh the resume data
+      setViewingResume(updatedResume);
+      
+      // Update current skills list
+      setCurrentResumeSkills(Array.from(newSkillsSet));
+      setSelectedSkillsToAdd([]);
+      
+      // Show success banner
+      setShowSkillsSuccessBanner(true);
+      
+      // Auto-close modal after 2 seconds
+      setTimeout(() => {
+        setShowSkillsOptimization(false);
+        setShowSkillsSuccessBanner(false);
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to apply skill changes:', err);
+      alert('Failed to update skills. Please try again.');
+    } finally {
+      setIsApplyingSkills(false);
+    }
+  };
+
+  // UC-49: Toggle skill selection
+  const toggleSkillSelection = (skillName) => {
+    setSelectedSkillsToAdd(prev => {
+      if (prev.includes(skillName)) {
+        return prev.filter(s => s !== skillName);
+      } else {
+        return [...prev, skillName];
+      }
+    });
+  };
+
+  // UC-49: Remove skill from resume
+  const handleRemoveSkill = (skillName) => {
+    setCurrentResumeSkills(prev => prev.filter(s => s !== skillName));
+  };
+
+  // UC-50: Experience tailoring handler
+  const handleTailorExperience = async () => {
+    if (!viewingResume) return;
+    
+    // Parse selected job (format: "title|company")
+    const jobSelector = selectedJobForExperience || selectedJobForSkills;
+    
+    if (!jobSelector) {
+      alert('Please select a job posting to tailor experience for.');
+      return;
+    }
+
+    const [title, company] = jobSelector.split('|');
+    if (!title || !company) {
+      alert('Invalid job selection. Please select a valid job from the dropdown.');
+      console.error('Invalid job selector:', jobSelector);
+      return;
+    }
+    
+    setIsTailoringExperience(true);
+    try {
+      await authWrap();
+      const response = await tailorExperienceForJob(viewingResume._id, { title, company });
+      setExperienceTailoringData(response.data.data);
+      setSelectedExperienceVariations({}); // Reset selections
+      setShowExperienceTailoring(true);
+    } catch (err) {
+      console.error('Experience tailoring failed:', err);
+      const errorMsg = err.response?.data?.message || 'Failed to tailor experience. Please try again.';
+      alert(errorMsg);
+    } finally {
+      setIsTailoringExperience(false);
+    }
+  };
+
+  // UC-50: Toggle experience variation selection
+  const toggleExperienceVariation = (expIdx, bulletIdx, variationType) => {
+    const key = `${expIdx}-${bulletIdx}`;
+    setSelectedExperienceVariations(prev => {
+      const newSelections = { ...prev };
+      // If clicking the same variation, deselect it (go back to original)
+      if (newSelections[key] === variationType) {
+        delete newSelections[key];
+      } else {
+        newSelections[key] = variationType;
+      }
+      return newSelections;
+    });
+  };
+
+  // UC-50: Apply selected experience variations to resume
+  const handleApplyExperienceChanges = async () => {
+    if (!viewingResume || !experienceTailoringData) return;
+    
+    setIsApplyingExperience(true);
+    try {
+      await authWrap();
+      
+      // Build updated experience array with selected variations
+      const updatedExperience = viewingResume.sections?.experience?.map((job, expIdx) => {
+        const aiExperience = experienceTailoringData.tailoring?.experiences?.find(
+          exp => exp.experienceIndex === expIdx
+        );
+        
+        if (!aiExperience || !aiExperience.bullets) {
+          return job; // No AI suggestions for this experience, keep original
+        }
+        
+        // Map bullets with selected variations
+        const updatedBullets = job.bullets?.map((originalBullet, bulletIdx) => {
+          const key = `${expIdx}-${bulletIdx}`;
+          const selectedVariation = selectedExperienceVariations[key];
+          
+          if (!selectedVariation || selectedVariation === 'original') {
+            return originalBullet; // Keep original
+          }
+          
+          // Find the AI bullet suggestion
+          const aiBullet = aiExperience.bullets?.find(b => {
+            // Match by comparing original text (after cleaning)
+            const cleanOriginal = (b.originalBullet || '').trim().toLowerCase();
+            const cleanCurrent = originalBullet.trim().toLowerCase();
+            return cleanOriginal.includes(cleanCurrent) || cleanCurrent.includes(cleanOriginal);
+          });
+          
+          if (aiBullet && aiBullet.variations && aiBullet.variations[selectedVariation]) {
+            return aiBullet.variations[selectedVariation]; // Use selected variation
+          }
+          
+          return originalBullet; // Fallback to original
+        });
+        
+        return {
+          ...job,
+          bullets: updatedBullets || job.bullets
+        };
+      });
+      
+      // Update resume with new experience
+      const updatedResume = {
+        ...viewingResume,
+        sections: {
+          ...viewingResume.sections,
+          experience: updatedExperience
+        }
+      };
+      
+      await apiUpdateResume(viewingResume._id, updatedResume);
+      
+      // Refresh the resume data
+      setViewingResume(updatedResume);
+      
+      // Show success banner
+      setShowExperienceSuccessBanner(true);
+      
+      // Auto-close modal after 2 seconds
+      setTimeout(() => {
+        setShowExperienceTailoring(false);
+        setShowExperienceSuccessBanner(false);
+        setSelectedExperienceVariations({});
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to apply experience changes:', err);
+      alert('Failed to update experience. Please try again.');
+    } finally {
+      setIsApplyingExperience(false);
+    }
+  };
+
   // Resume handlers
   const handleViewResume = async (resume) => {
     setViewingResume(resume);
     setShowViewResumeModal(true);
+    // Load jobs for AI optimization features
+    if (jobs.length === 0) {
+      await loadJobs();
+    }
     // Always use HTML view now; PDF experimental view removed
   };
 
@@ -1230,9 +1755,21 @@ export default function ResumeTemplates() {
           {/* Resumes Section */}
           <div className="mb-12">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-heading font-bold" style={{ color: "#4F5348" }}>
-                My Resumes
-              </h2>
+              <div className="flex items-center gap-4">
+                <h2 className="text-2xl font-heading font-bold" style={{ color: "#4F5348" }}>
+                  My Resumes
+                </h2>
+                {/* UC-52: Show Archived Toggle */}
+                <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-600">
+                  <input
+                    type="checkbox"
+                    checked={showArchivedResumes}
+                    onChange={(e) => setShowArchivedResumes(e.target.checked)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span>Show Archived</span>
+                </label>
+              </div>
               <div className="flex gap-3">
                 <button
                   onClick={handleOpenAIResumeModal}
@@ -1274,7 +1811,10 @@ export default function ResumeTemplates() {
             ) : (
               <>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {(showAllResumes ? resumes : resumes.slice(0, 4)).map((resume) => (
+                  {/* UC-52: Filter by archived status */}
+                  {(showAllResumes ? resumes : resumes.slice(0, 4))
+                    .filter(r => showArchivedResumes ? true : !r.isArchived)
+                    .map((resume) => (
                     <ResumeTile
                       key={resume._id}
                       resume={resume}
@@ -1442,8 +1982,68 @@ export default function ResumeTemplates() {
                   </div>
                 </div>
 
+                {/* UC-051: Theme Preset Selector */}
                 <div className="border-t pt-4">
-                  <h4 className="text-lg font-heading font-semibold mb-3">Theme Colors</h4>
+                  <h4 className="text-lg font-heading font-semibold mb-3">Theme Preset</h4>
+                  <p className="text-sm text-gray-600 mb-4">Choose a pre-designed theme or customize colors manually below</p>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {getThemePresetNames().map(presetName => {
+                      const preset = getThemePreset(presetName);
+                      const isSelected = customizeTemplate.theme?.presetName === presetName;
+                      return (
+                        <button
+                          key={presetName}
+                          onClick={() => {
+                            const themeData = getThemePreset(presetName);
+                            setCustomizeTemplate({
+                              ...customizeTemplate,
+                              theme: {
+                                ...themeData,
+                                presetName
+                              }
+                            });
+                          }}
+                          className={`p-4 rounded-lg border-2 transition text-left ${
+                            isSelected 
+                              ? 'border-blue-600 bg-blue-50' 
+                              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="font-medium text-gray-900">{preset.name}</div>
+                            {isSelected && (
+                              <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-600 mb-3">{preset.description}</div>
+                          <div className="flex gap-1">
+                            <div 
+                              className="w-6 h-6 rounded border border-gray-300" 
+                              style={{ backgroundColor: preset.colors.primary }}
+                              title="Primary"
+                            />
+                            <div 
+                              className="w-6 h-6 rounded border border-gray-300" 
+                              style={{ backgroundColor: preset.colors.accent }}
+                              title="Accent"
+                            />
+                            <div 
+                              className="w-6 h-6 rounded border border-gray-300" 
+                              style={{ backgroundColor: preset.colors.text }}
+                              title="Text"
+                            />
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="border-t pt-4">
+                  <h4 className="text-lg font-heading font-semibold mb-3">Custom Theme Colors</h4>
+                  <p className="text-sm text-gray-600 mb-3">Fine-tune the selected theme or create your own color scheme</p>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label htmlFor="primaryColor" className="block text-sm font-medium text-gray-700 mb-2">Primary Color</label>
@@ -2610,6 +3210,164 @@ export default function ResumeTemplates() {
         </div>
       )}
 
+      {/* Save As (Export filename) Modal - replaces window.prompt */}
+      {showSaveAsModal && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-60"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={() => !isExporting && setShowSaveAsModal(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 border border-gray-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-gray-50 border-b px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <h3 className="text-lg font-heading font-semibold text-gray-900">Download Resume</h3>
+                </div>
+                <button
+                  onClick={() => !isExporting && setShowSaveAsModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition"
+                  aria-label="Close"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <label htmlFor="saveAsInput" className="block text-sm font-medium text-gray-700 mb-2">Filename</label>
+              <input
+                id="saveAsInput"
+                type="text"
+                value={saveAsFilename}
+                onChange={(e) => setSaveAsFilename(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && !isExporting && saveAsFilename.trim()) {
+                    performExport(pendingExportFormat, saveAsFilename.trim());
+                  }
+                }}
+                disabled={isExporting}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                placeholder="Enter filename"
+                autoFocus
+              />
+              <p className="text-xs text-gray-500 mt-2">Enter a filename for the exported file. The appropriate extension will be kept if included.</p>
+            </div>
+
+            <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t">
+              <button
+                onClick={() => !isExporting && setShowSaveAsModal(false)}
+                disabled={isExporting}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => performExport(pendingExportFormat, saveAsFilename.trim() || saveAsFilename)}
+                disabled={isExporting || !saveAsFilename.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+                style={{ backgroundColor: '#777C6D' }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+              >
+                {isExporting ? 'Exporting...' : 'Download'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* UC-51: Watermark Configuration Modal */}
+      {showWatermarkModal && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-60"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={() => setShowWatermarkModal(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 border border-gray-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-purple-50 border-b border-purple-100 px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                  </svg>
+                  <h3 className="text-lg font-heading font-semibold text-gray-900">Watermark Settings</h3>
+                </div>
+                <button
+                  onClick={() => setShowWatermarkModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition"
+                  aria-label="Close"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <p className="text-sm text-gray-600 mb-4">
+                Configure the watermark text that will appear on exported PDF and DOCX files.
+              </p>
+              
+              <label htmlFor="watermarkTextInput" className="block text-sm font-medium text-gray-700 mb-2">
+                Watermark Text
+              </label>
+              <input
+                id="watermarkTextInput"
+                type="text"
+                value={watermarkText}
+                onChange={(e) => setWatermarkText(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && watermarkText.trim()) {
+                    setShowWatermarkModal(false);
+                  }
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="e.g., CONFIDENTIAL, DRAFT, Property of..."
+                autoFocus
+              />
+              
+              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div className="text-xs text-blue-800">
+                    <p className="font-medium mb-1">Preview</p>
+                    <p className="text-gray-600 opacity-30 font-semibold text-2xl tracking-wide transform -rotate-45">
+                      {watermarkText || 'CONFIDENTIAL'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t">
+              <button
+                onClick={() => setShowWatermarkModal(false)}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => setShowWatermarkModal(false)}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+              >
+                Save Settings
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* View Resume Modal */}
       {showViewResumeModal && viewingResume && (() => {
         // Get the template for this resume to use its theme and layout
@@ -3367,6 +4125,108 @@ export default function ResumeTemplates() {
                         </div>
                       </DndProvider>
                     </div>
+
+                    {/* AI Optimization Section (UC-49 & UC-50) */}
+                    <div className="mt-6 pt-6 border-t border-gray-200">
+                      <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </svg>
+                        AI Optimization
+                      </h4>
+                      
+                      {/* Job Selector */}
+                      {jobs.length > 0 && (
+                        <div className="mb-4">
+                          <label className="text-xs font-medium text-gray-700 mb-2 block">Select Job for Optimization:</label>
+                          <select
+                            value={selectedJobForSkills || selectedJobForExperience || ''}
+                            onChange={(e) => {
+                              const selectedValue = e.target.value;
+                              console.log('Selected job:', selectedValue); // Debug
+                              setSelectedJobForSkills(selectedValue);
+                              setSelectedJobForExperience(selectedValue);
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+                          >
+                            <option value="">Select a job...</option>
+                            {jobs.map((job, idx) => {
+                              // Ensure we have a valid job object
+                              if (!job || !job.title || !job.company) {
+                                console.warn('Invalid job object:', job);
+                                return null;
+                              }
+                              
+                              // Use title|company as the value (pipe separator)
+                              const jobValue = `${job.title}|${job.company}`;
+                              const displayText = `${job.title} at ${job.company}`;
+                              
+                              return (
+                                <option key={idx} value={jobValue}>
+                                  {displayText}
+                                </option>
+                              );
+                            }).filter(Boolean)}
+                          </select>
+                        </div>
+                      )}
+                      
+                      <div className="flex gap-2">
+                        {/* UC-49: Skills Optimization Button */}
+                        <button
+                          onClick={handleOptimizeSkills}
+                          disabled={isOptimizingSkills || (!selectedJobForSkills && !viewingResume.metadata?.tailoredForJob)}
+                          className="flex-1 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isOptimizingSkills ? (
+                            <>
+                              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Optimizing...
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                              </svg>
+                              Optimize Skills
+                            </>
+                          )}
+                        </button>
+
+                        {/* UC-50: Experience Tailoring Button */}
+                        <button
+                          onClick={handleTailorExperience}
+                          disabled={isTailoringExperience || (!selectedJobForExperience && !viewingResume.metadata?.tailoredForJob)}
+                          className="flex-1 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isTailoringExperience ? (
+                            <>
+                              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Tailoring...
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                              Tailor Experience
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {jobs.length === 0 && (
+                        <p className="text-xs text-gray-500 mt-2 italic">
+                          Save or apply to jobs to use AI optimization features.
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -3673,10 +4533,161 @@ export default function ResumeTemplates() {
 
             {/* Modal Footer */}
             <div className="bg-gray-50 px-6 py-4 flex justify-between items-center border-t print:hidden">
-              <p className="text-sm text-gray-500">
-                Last modified: {new Date(viewingResume.updatedAt).toLocaleString()}
-              </p>
+              <div className="flex items-center gap-3">
+                <p className="text-sm text-gray-500">
+                  Last modified: {new Date(viewingResume.updatedAt).toLocaleString()}
+                </p>
+                {viewingResume.isDefault && (
+                  <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">
+                    Default
+                  </span>
+                )}
+              </div>
               <div className="flex gap-3">
+                {/* UC-52: Clone Button */}
+                <button
+                  onClick={() => {
+                    setCloneName(`${viewingResume.name} (Copy)`);
+                    setShowCloneModal(true);
+                  }}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition flex items-center gap-2"
+                  title="Clone this resume"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  Clone
+                </button>
+                
+                {/* UC-52: Set Default Button */}
+                {!viewingResume.isDefault && (
+                  <button
+                    onClick={() => handleSetDefaultResume(viewingResume._id)}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition flex items-center gap-2"
+                    title="Set as default resume"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Set Default
+                  </button>
+                )}
+                
+                {/* UC-52: Archive/Unarchive Button */}
+                <button
+                  onClick={() => viewingResume.isArchived 
+                    ? handleUnarchiveResume(viewingResume._id) 
+                    : handleArchiveResume(viewingResume._id)
+                  }
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition flex items-center gap-2"
+                  title={viewingResume.isArchived ? "Unarchive resume" : "Archive resume"}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                  </svg>
+                  {viewingResume.isArchived ? 'Unarchive' : 'Archive'}
+                </button>
+                
+                {/* UC-51: Export Dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowExportMenu(!showExportMenu)}
+                    disabled={isExporting}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {isExporting ? (
+                      <>
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Exporting...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Export
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </>
+                    )}
+                  </button>
+                  
+                  {showExportMenu && !isExporting && (
+                    <div className="absolute right-0 bottom-full mb-2 w-56 bg-white border border-gray-200 rounded-lg shadow-xl z-10">
+                      <div className="py-1">
+                        {/* UC-51: Watermark Toggle */}
+                        <div className="px-4 py-2 border-b border-gray-200">
+                          <label className="flex items-center justify-between cursor-pointer">
+                            <span className="text-xs font-medium text-gray-700">Watermark</span>
+                            <div className="relative">
+                              <input
+                                type="checkbox"
+                                checked={watermarkEnabled}
+                                onChange={(e) => setWatermarkEnabled(e.target.checked)}
+                                className="sr-only peer"
+                              />
+                              <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                            </div>
+                          </label>
+                          {watermarkEnabled && (
+                            <button
+                              onClick={() => { setShowExportMenu(false); setShowWatermarkModal(true); }}
+                              className="mt-2 w-full text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                              Configure: "{watermarkText}"
+                            </button>
+                          )}
+                        </div>
+                        
+                        <button
+                          onClick={() => handleExport('pdf')}
+                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                          </svg>
+                          Export as PDF
+                        </button>
+                        <button
+                          onClick={() => handleExport('docx')}
+                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          Export as DOCX
+                        </button>
+                        <button
+                          onClick={() => handleExport('html')}
+                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                          </svg>
+                          Export as HTML
+                        </button>
+                        <button
+                          onClick={() => handleExport('txt')}
+                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          Export as Text
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
                 <button
                   onClick={() => window.print()}
                   className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition flex items-center gap-2"
@@ -3702,6 +4713,719 @@ export default function ResumeTemplates() {
         </>
         );
       })()}
+
+      {/* UC-52: Clone Resume Modal */}
+      {showCloneModal && viewingResume && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50" 
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={() => !isCloning && setShowCloneModal(false)}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 border border-gray-200" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="bg-blue-50 border-b border-blue-100 px-6 py-4">
+              <div className="flex items-center space-x-3">
+                <div className="flex-shrink-0">
+                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-heading font-semibold text-gray-900">Clone Resume</h3>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6">
+              <p className="text-sm text-gray-600 mb-4">
+                Create a copy of "{viewingResume.name}" with a new name.
+              </p>
+              <label htmlFor="cloneNameInput" className="block text-sm font-medium text-gray-700 mb-2">
+                New Resume Name
+              </label>
+              <input
+                id="cloneNameInput"
+                type="text"
+                value={cloneName}
+                onChange={(e) => setCloneName(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && cloneName.trim()) {
+                    handleCloneResume();
+                  }
+                }}
+                placeholder="Enter name for cloned resume"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                autoFocus
+                disabled={isCloning}
+              />
+              
+              <label htmlFor="cloneDescriptionInput" className="block text-sm font-medium text-gray-700 mb-2 mt-4">
+                Version Description (Optional)
+              </label>
+              <textarea
+                id="cloneDescriptionInput"
+                value={cloneDescription}
+                onChange={(e) => setCloneDescription(e.target.value)}
+                placeholder="Describe this version (e.g., 'Tailored for software engineering roles')"
+                rows={3}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                disabled={isCloning}
+              />
+            </div>
+
+            {/* Modal Actions */}
+            <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t">
+              <button
+                onClick={() => setShowCloneModal(false)}
+                disabled={isCloning}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCloneResume}
+                disabled={isCloning || !cloneName.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+              >
+                {isCloning ? 'Cloning...' : 'Clone Resume'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* UC-49: Skills Optimization Modal */}
+      {showSkillsOptimization && skillsOptimizationData && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+          onClick={() => setShowSkillsOptimization(false)}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 sticky top-0 z-10">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <h3 className="text-xl font-heading font-bold text-white">AI Skills Optimization</h3>
+                </div>
+                <button
+                  onClick={() => setShowSkillsOptimization(false)}
+                  className="text-white hover:text-gray-200 transition"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Success Banner */}
+            {showSkillsSuccessBanner && (
+              <div className="bg-green-50 border-l-4 border-green-500 px-6 py-4 mx-6 mt-4 rounded-r-lg animate-fade-in">
+                <div className="flex items-center gap-3">
+                  <svg className="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <div>
+                    <p className="font-semibold text-green-900">Skills Updated Successfully!</p>
+                    <p className="text-sm text-green-700">Your resume has been updated with the selected skills. Returning to resume view...</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Modal Content */}
+            <div className="p-6 space-y-6">
+              {/* Match Score */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-900 mb-1">Skills Match Score</h4>
+                    <p className="text-sm text-gray-600">{skillsOptimizationData.optimization?.summary || 'Your skills alignment with this job'}</p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-4xl font-bold text-blue-600">
+                      {skillsOptimizationData.optimization?.matchScore || 0}%
+                    </div>
+                    <div className="text-sm text-gray-600 mt-1">Match Rate</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Current Resume Skills */}
+              <div className="bg-white rounded-lg border-2 border-gray-300 p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-md font-semibold text-gray-900 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Current Skills in Resume
+                  </h4>
+                  <span className="text-sm text-gray-500">{currentResumeSkills.length} skills</span>
+                </div>
+                {currentResumeSkills.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {currentResumeSkills.map((skill, idx) => (
+                      <div
+                        key={idx}
+                        className="group px-3 py-1.5 bg-gray-100 text-gray-800 rounded-full text-sm border border-gray-300 flex items-center gap-2"
+                      >
+                        <span>{skill}</span>
+                        <button
+                          onClick={() => handleRemoveSkill(skill)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-red-600 hover:text-red-800"
+                          title="Remove skill"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 italic">No skills in resume yet. Add skills from recommendations below.</p>
+                )}
+              </div>
+
+              {/* Technical Skills */}
+              {skillsOptimizationData.optimization?.technicalSkills?.length > 0 && (
+                <div className="bg-white rounded-lg border border-gray-200 p-5">
+                  <h4 className="text-md font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">Technical</span>
+                    Recommended Technical Skills
+                  </h4>
+                  <p className="text-xs text-gray-600 mb-3">Click to select skills to add to your resume</p>
+                  <div className="flex flex-wrap gap-2">
+                    {skillsOptimizationData.optimization.technicalSkills.map((skill, idx) => {
+                      const isInResume = currentResumeSkills.includes(skill);
+                      const isSelected = selectedSkillsToAdd.includes(skill);
+                      
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => !isInResume && toggleSkillSelection(skill)}
+                          disabled={isInResume}
+                          className={`px-3 py-1.5 rounded-full text-sm border transition-all flex items-center gap-2 ${
+                            isInResume 
+                              ? 'bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed' 
+                              : isSelected
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                              : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 cursor-pointer'
+                          }`}
+                        >
+                          {isSelected && (
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                          <span>{skill}</span>
+                          {isInResume && <span className="text-xs">✓ In Resume</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Soft Skills */}
+              {skillsOptimizationData.optimization?.softSkills?.length > 0 && (
+                <div className="bg-white rounded-lg border border-gray-200 p-5">
+                  <h4 className="text-md font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs">Soft Skills</span>
+                    Recommended Soft Skills
+                  </h4>
+                  <p className="text-xs text-gray-600 mb-3">Click to select skills to add to your resume</p>
+                  <div className="flex flex-wrap gap-2">
+                    {skillsOptimizationData.optimization.softSkills.map((skill, idx) => {
+                      const isInResume = currentResumeSkills.includes(skill);
+                      const isSelected = selectedSkillsToAdd.includes(skill);
+                      
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => !isInResume && toggleSkillSelection(skill)}
+                          disabled={isInResume}
+                          className={`px-3 py-1.5 rounded-full text-sm border transition-all flex items-center gap-2 ${
+                            isInResume 
+                              ? 'bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed' 
+                              : isSelected
+                              ? 'bg-purple-600 text-white border-purple-600 shadow-md'
+                              : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 cursor-pointer'
+                          }`}
+                        >
+                          {isSelected && (
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                          <span>{skill}</span>
+                          {isInResume && <span className="text-xs">✓ In Resume</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Missing Skills */}
+              {skillsOptimizationData.optimization?.missingSkills?.length > 0 && (
+                <div className="bg-yellow-50 rounded-lg border border-yellow-200 p-5">
+                  <h4 className="text-md font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    Skill Gaps Detected
+                  </h4>
+                  <p className="text-sm text-gray-700 mb-3">
+                    These skills are mentioned in the job posting but missing from your resume:
+                  </p>
+                  <div className="space-y-2">
+                    {skillsOptimizationData.optimization.missingSkills.map((skill, idx) => {
+                      // Handle both string and object formats
+                      const skillName = typeof skill === 'string' ? skill : skill.name;
+                      const importance = skill.importance || null;
+                      const suggestion = skill.suggestion || null;
+                      
+                      return (
+                        <div
+                          key={idx}
+                          className="bg-white rounded-lg p-3 border border-yellow-300"
+                        >
+                          <div className="flex items-start gap-2">
+                            <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-medium uppercase">
+                              {importance || 'Important'}
+                            </span>
+                            <div className="flex-1">
+                              <div className="font-semibold text-gray-900">{skillName}</div>
+                              {suggestion && (
+                                <p className="text-sm text-gray-600 mt-1">{suggestion}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Skills to Emphasize */}
+              {skillsOptimizationData.optimization?.skillsToEmphasize?.length > 0 && (
+                <div className="bg-green-50 rounded-lg border border-green-200 p-5">
+                  <h4 className="text-md font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    Skills to Emphasize
+                  </h4>
+                  <p className="text-sm text-gray-700 mb-3">
+                    You already have these skills - make sure they're prominent in your resume:
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {skillsOptimizationData.optimization.skillsToEmphasize.map((skill, idx) => (
+                      <span
+                        key={idx}
+                        className="px-3 py-1.5 bg-white text-green-800 rounded-full text-sm border border-green-300 font-medium"
+                      >
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Industry Recommendations */}
+              {skillsOptimizationData.optimization?.industryRecommendations?.length > 0 && (
+                <div className="bg-gray-50 rounded-lg border border-gray-200 p-5">
+                  <h4 className="text-md font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z" />
+                    </svg>
+                    Industry-Specific Recommendations
+                  </h4>
+                  <div className="space-y-2">
+                    {skillsOptimizationData.optimization.industryRecommendations.map((rec, idx) => {
+                      // Handle both string and object formats
+                      const skillName = typeof rec === 'string' ? rec : (rec.skill || rec.name);
+                      const reason = rec.reason || null;
+                      
+                      return (
+                        <div key={idx} className="bg-white rounded-lg p-3 border border-gray-200">
+                          <div className="flex items-start gap-2">
+                            <span className="text-blue-500 mt-1 text-lg">💡</span>
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-900">{skillName}</div>
+                              {reason && (
+                                <p className="text-sm text-gray-600 mt-1">{reason}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Actions */}
+            <div className="bg-gray-50 px-6 py-4 border-t sticky bottom-0">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="text-sm">
+                    <span className="font-medium text-gray-900">{selectedSkillsToAdd.length}</span>
+                    <span className="text-gray-600"> skills selected</span>
+                  </div>
+                  {selectedSkillsToAdd.length > 0 && (
+                    <button
+                      onClick={() => setSelectedSkillsToAdd([])}
+                      className="text-xs text-blue-600 hover:text-blue-800 underline"
+                    >
+                      Clear selection
+                    </button>
+                  )}
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowSkillsOptimization(false)}
+                    disabled={isApplyingSkills}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition disabled:opacity-50"
+                  >
+                    Close
+                  </button>
+                  <button
+                    onClick={handleApplySkillChanges}
+                    disabled={isApplyingSkills || (selectedSkillsToAdd.length === 0 && currentResumeSkills.length === (viewingResume?.sections?.skills?.length || 0))}
+                    className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {isApplyingSkills ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>Applying...</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span>Apply Changes to Resume</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500">
+                💡 Click skills to select, then click "Apply Changes" to update your resume
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* UC-50: Experience Tailoring Modal - Coming in next update */}
+      {showExperienceTailoring && experienceTailoringData && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+          onClick={() => setShowExperienceTailoring(false)}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4 sticky top-0 z-10">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  <h3 className="text-xl font-heading font-bold text-white">AI Experience Tailoring</h3>
+                </div>
+                <button
+                  onClick={() => setShowExperienceTailoring(false)}
+                  className="text-white hover:text-gray-200 transition"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Success Banner */}
+            {showExperienceSuccessBanner && (
+              <div className="bg-green-50 border-l-4 border-green-500 px-6 py-4 mx-6 mt-4 rounded-r-lg animate-fade-in">
+                <div className="flex items-center gap-3">
+                  <svg className="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <div>
+                    <p className="font-semibold text-green-900">Experience Updated Successfully!</p>
+                    <p className="text-sm text-green-700">Your resume has been updated with the selected variations. Returning to resume view...</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Modal Content */}
+            <div className="p-6 space-y-6">
+              {/* Summary */}
+              {experienceTailoringData.tailoring?.summary && (
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-5 border border-purple-200">
+                  <p className="text-gray-800">{experienceTailoringData.tailoring.summary}</p>
+                </div>
+              )}
+
+              {/* Experience Suggestions */}
+              {experienceTailoringData.tailoring?.experiences?.map((exp, expIdx) => (
+                <div key={expIdx} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                  <div className="bg-gray-50 px-5 py-3 border-b border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-md font-semibold text-gray-900">
+                        Experience #{exp.experienceIndex + 1}
+                      </h4>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        exp.relevanceScore >= 80 ? 'bg-green-100 text-green-800' :
+                        exp.relevanceScore >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {exp.relevanceScore}% Relevant
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="p-5 space-y-4">
+                    {exp.bullets?.map((bullet, bulletIdx) => (
+                      <div key={bulletIdx} className="border-l-4 border-purple-300 pl-4 space-y-3">
+                        {/* Original */}
+                        <div>
+                          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Original</div>
+                          <p className="text-sm text-gray-700">{bullet.originalBullet}</p>
+                        </div>
+
+                        {/* Variations */}
+                        {bullet.variations && (
+                          <div className="space-y-2">
+                            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                              AI-Generated Variations (Click to Select)
+                            </div>
+                            
+                            {/* Original Option */}
+                            <button
+                              onClick={() => {
+                                const key = `${expIdx}-${bulletIdx}`;
+                                if (selectedExperienceVariations[key]) {
+                                  const newSelections = { ...selectedExperienceVariations };
+                                  delete newSelections[key];
+                                  setSelectedExperienceVariations(newSelections);
+                                } else {
+                                  setSelectedExperienceVariations(prev => ({ ...prev, [key]: 'original' }));
+                                }
+                              }}
+                              className={`w-full text-left bg-gray-50 rounded p-3 border-2 transition cursor-pointer ${
+                                !selectedExperienceVariations[`${expIdx}-${bulletIdx}`] || selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'original'
+                                  ? 'border-gray-400 bg-gray-100'
+                                  : 'border-gray-200 hover:border-gray-300'
+                              }`}
+                            >
+                              <div className="flex items-start gap-2">
+                                <input
+                                  type="radio"
+                                  name={`variation-${expIdx}-${bulletIdx}`}
+                                  checked={!selectedExperienceVariations[`${expIdx}-${bulletIdx}`] || selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'original'}
+                                  onChange={() => {}}
+                                  className="mt-1"
+                                />
+                                <div className="flex-1">
+                                  <div className="text-xs font-medium text-gray-700 mb-1">✨ Keep Original</div>
+                                  <p className="text-sm text-gray-700">{bullet.originalBullet}</p>
+                                </div>
+                              </div>
+                            </button>
+                            
+                            {bullet.variations.achievement && (
+                              <button
+                                onClick={() => toggleExperienceVariation(expIdx, bulletIdx, 'achievement')}
+                                className={`w-full text-left bg-blue-50 rounded p-3 border-2 transition cursor-pointer ${
+                                  selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'achievement'
+                                    ? 'border-blue-600 bg-blue-100 shadow-md'
+                                    : 'border-blue-200 hover:border-blue-400'
+                                }`}
+                              >
+                                <div className="flex items-start gap-2">
+                                  <input
+                                    type="radio"
+                                    name={`variation-${expIdx}-${bulletIdx}`}
+                                    checked={selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'achievement'}
+                                    onChange={() => {}}
+                                    className="mt-1"
+                                  />
+                                  <div className="flex-1">
+                                    <div className="text-xs font-medium text-blue-800 mb-1">🏆 Achievement-Focused</div>
+                                    <p className="text-sm text-gray-800">{bullet.variations.achievement}</p>
+                                  </div>
+                                </div>
+                              </button>
+                            )}
+                            
+                            {bullet.variations.technical && (
+                              <button
+                                onClick={() => toggleExperienceVariation(expIdx, bulletIdx, 'technical')}
+                                className={`w-full text-left bg-green-50 rounded p-3 border-2 transition cursor-pointer ${
+                                  selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'technical'
+                                    ? 'border-green-600 bg-green-100 shadow-md'
+                                    : 'border-green-200 hover:border-green-400'
+                                }`}
+                              >
+                                <div className="flex items-start gap-2">
+                                  <input
+                                    type="radio"
+                                    name={`variation-${expIdx}-${bulletIdx}`}
+                                    checked={selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'technical'}
+                                    onChange={() => {}}
+                                    className="mt-1"
+                                  />
+                                  <div className="flex-1">
+                                    <div className="text-xs font-medium text-green-800 mb-1">⚙️ Technical-Focused</div>
+                                    <p className="text-sm text-gray-800">{bullet.variations.technical}</p>
+                                  </div>
+                                </div>
+                              </button>
+                            )}
+                            
+                            {bullet.variations.impact && (
+                              <button
+                                onClick={() => toggleExperienceVariation(expIdx, bulletIdx, 'impact')}
+                                className={`w-full text-left bg-purple-50 rounded p-3 border-2 transition cursor-pointer ${
+                                  selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'impact'
+                                    ? 'border-purple-600 bg-purple-100 shadow-md'
+                                    : 'border-purple-200 hover:border-purple-400'
+                                }`}
+                              >
+                                <div className="flex items-start gap-2">
+                                  <input
+                                    type="radio"
+                                    name={`variation-${expIdx}-${bulletIdx}`}
+                                    checked={selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'impact'}
+                                    onChange={() => {}}
+                                    className="mt-1"
+                                  />
+                                  <div className="flex-1">
+                                    <div className="text-xs font-medium text-purple-800 mb-1">📈 Impact-Focused</div>
+                                    <p className="text-sm text-gray-800">{bullet.variations.impact}</p>
+                                  </div>
+                                </div>
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Suggestions */}
+                        {(bullet.suggestedActionVerbs?.length > 0 || bullet.keywordsToAdd?.length > 0) && (
+                          <div className="flex gap-4 pt-2">
+                            {bullet.suggestedActionVerbs?.length > 0 && (
+                              <div>
+                                <div className="text-xs font-medium text-gray-600 mb-1">Suggested Verbs:</div>
+                                <div className="flex flex-wrap gap-1">
+                                  {bullet.suggestedActionVerbs.map((verb, vIdx) => (
+                                    <span key={vIdx} className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded text-xs">
+                                      {verb}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {bullet.keywordsToAdd?.length > 0 && (
+                              <div>
+                                <div className="text-xs font-medium text-gray-600 mb-1">Keywords to Add:</div>
+                                <div className="flex flex-wrap gap-1">
+                                  {bullet.keywordsToAdd.map((keyword, kIdx) => (
+                                    <span key={kIdx} className="px-2 py-0.5 bg-pink-100 text-pink-700 rounded text-xs">
+                                      {keyword}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Modal Actions */}
+            <div className="bg-gray-50 px-6 py-4 border-t sticky bottom-0">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="text-sm">
+                    <span className="font-medium text-gray-900">{Object.keys(selectedExperienceVariations).length}</span>
+                    <span className="text-gray-600"> bullets selected for update</span>
+                  </div>
+                  {Object.keys(selectedExperienceVariations).length > 0 && (
+                    <button
+                      onClick={() => setSelectedExperienceVariations({})}
+                      className="text-xs text-purple-600 hover:text-purple-800 underline"
+                    >
+                      Clear selections
+                    </button>
+                  )}
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowExperienceTailoring(false)}
+                    disabled={isApplyingExperience}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition disabled:opacity-50"
+                  >
+                    Close
+                  </button>
+                  <button
+                    onClick={handleApplyExperienceChanges}
+                    disabled={isApplyingExperience || Object.keys(selectedExperienceVariations).length === 0}
+                    className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {isApplyingExperience ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>Applying...</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span>Apply Changes to Resume</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500">
+                💡 Select your preferred variation for each bullet, then click "Apply Changes" to update your resume
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -452,3 +452,179 @@ Return as JSON:
     throw new Error(`Failed to analyze ATS compatibility: ${error.message}`);
   }
 }
+
+/**
+ * Optimize resume skills based on job requirements (UC-49)
+ * @param {Object} resume - The resume to optimize
+ * @param {Object} jobPosting - The job posting to optimize for
+ * @param {Object} userProfile - User's complete skill profile
+ * @returns {Object} Skills optimization with reordering, gaps, and matching score
+ */
+export async function optimizeResumeSkills(resume, jobPosting, userProfile) {
+  const model = genAI.getGenerativeModel({ model: "models/gemini-2.5-flash" });
+
+  const prompt = `You are an expert resume optimization specialist. Analyze the job requirements and optimize the skills section for maximum impact.
+
+**JOB POSTING:**
+Title: ${jobPosting.title}
+Company: ${jobPosting.company}
+Description: ${jobPosting.description || 'Not provided'}
+Requirements: ${jobPosting.requirements || 'Not provided'}
+
+**CURRENT RESUME SKILLS:**
+${resume.sections?.skills?.map(skill => `- ${skill.name || skill} (${skill.level || 'Not specified'})`).join('\n') || 'No skills listed'}
+
+**USER'S COMPLETE SKILL PROFILE:**
+${userProfile.skills?.map(skill => `- ${skill.name} (${skill.level}, ${skill.yearsOfExperience || 0} years)`).join('\n') || 'No additional skills'}
+
+**ANALYSIS REQUIRED:**
+1. **Match Score** (0-100): How well current skills match the job
+2. **Optimized Skills List**: Reorder and select the most relevant 10-15 skills from user's profile for this specific job
+3. **Technical Skills**: Category with most relevant technical skills
+4. **Soft Skills**: Category with most relevant soft skills  
+5. **Missing Skills**: Important skills from job requirements that user doesn't have
+6. **Skills to Add**: Skills from user's profile that should be added to resume for this job
+7. **Skills to Emphasize**: Which skills should be highlighted or moved to top
+8. **Industry Recommendations**: Industry-specific skills that would strengthen the application
+
+**OUTPUT FORMAT (JSON):**
+{
+  "matchScore": 85,
+  "optimizedSkills": [
+    {"name": "Skill name", "level": "Expert/Advanced/Intermediate/Beginner", "relevance": "high/medium/low", "reason": "Why this skill matters for this job"}
+  ],
+  "technicalSkills": ["skill1", "skill2", ...],
+  "softSkills": ["skill1", "skill2", ...],
+  "missingSkills": [
+    {"name": "Skill name", "importance": "critical/important/nice-to-have", "suggestion": "How to acquire or demonstrate"}
+  ],
+  "skillsToAdd": ["skill1 from user profile", "skill2 from user profile", ...],
+  "skillsToEmphasize": ["skill1", "skill2", ...],
+  "industryRecommendations": [
+    {"skill": "Skill name", "reason": "Why it's valuable in this industry"}
+  ],
+  "summary": "2-3 sentence summary of the skills optimization strategy"
+}
+
+Return ONLY valid JSON, no markdown formatting. Focus on actionable, specific recommendations.`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
+    let cleanedText = text.trim();
+    if (cleanedText.startsWith('```json')) {
+      cleanedText = cleanedText.slice(7);
+    } else if (cleanedText.startsWith('```')) {
+      cleanedText = cleanedText.slice(3);
+    }
+    if (cleanedText.endsWith('```')) {
+      cleanedText = cleanedText.slice(0, -3);
+    }
+    
+    const optimization = JSON.parse(cleanedText.trim());
+    return optimization;
+  } catch (error) {
+    console.error('Error optimizing skills:', error);
+    throw new Error(`Failed to optimize skills: ${error.message}`);
+  }
+}
+
+/**
+ * Tailor experience descriptions based on job requirements (UC-50)
+ * @param {Object} resume - The resume to tailor
+ * @param {Object} jobPosting - The job posting
+ * @param {Object} userProfile - User's complete employment history
+ * @returns {Object} Experience tailoring with suggestions and variations
+ */
+export async function tailorExperience(resume, jobPosting, userProfile) {
+  const model = genAI.getGenerativeModel({ model: "models/gemini-2.5-flash" });
+
+  const currentExperience = resume.sections?.experience || [];
+  
+  const prompt = `You are an expert resume writer specializing in experience optimization. Analyze the job requirements and suggest how to tailor each experience entry.
+
+**JOB POSTING:**
+Title: ${jobPosting.title}
+Company: ${jobPosting.company}
+Description: ${jobPosting.description || 'Not provided'}
+Requirements: ${jobPosting.requirements || 'Not provided'}
+
+**CURRENT RESUME EXPERIENCE:**
+${currentExperience.map((exp, idx) => `
+Experience ${idx + 1}:
+- Job Title: ${exp.jobTitle}
+- Company: ${exp.company}
+- Duration: ${exp.startDate} - ${exp.endDate || 'Present'}
+- Current Bullets:
+${exp.bullets?.map(b => `  • ${b}`).join('\n') || '  (No bullets)'}
+`).join('\n---\n')}
+
+**USER'S FULL EMPLOYMENT HISTORY:**
+${userProfile.employment?.map(job => `
+- ${job.jobTitle} at ${job.company}
+- ${job.startDate} - ${job.isCurrentPosition ? 'Present' : job.endDate}
+- Description: ${job.description || 'No description'}
+`).join('\n')}
+
+**TASK:**
+For each experience entry, provide:
+1. **Relevance Score** (0-100): How relevant this experience is to the job
+2. **Modification Suggestions**: Specific changes to make bullets more impactful
+3. **3 Bullet Variations**: Different ways to phrase each bullet (achievement-focused, technical-focused, impact-focused)
+4. **Action Verbs**: Better action verbs to use
+5. **Quantification Opportunities**: Where to add metrics/numbers
+6. **Keyword Integration**: Which job keywords to naturally incorporate
+
+**OUTPUT FORMAT (JSON):**
+{
+  "experiences": [
+    {
+      "experienceIndex": 0,
+      "jobTitle": "Job title",
+      "relevanceScore": 85,
+      "overallSuggestion": "Brief suggestion for this experience",
+      "bullets": [
+        {
+          "originalBullet": "Current bullet text",
+          "suggestions": "Specific improvements for this bullet",
+          "variations": [
+            {"type": "achievement", "text": "Achievement-focused version", "reason": "Why this angle works"},
+            {"type": "technical", "text": "Technical skills version", "reason": "Highlights technical expertise"},
+            {"type": "impact", "text": "Business impact version", "reason": "Shows measurable results"}
+          ],
+          "suggestedActionVerbs": ["verb1", "verb2", "verb3"],
+          "quantificationIdeas": ["Add: number of X", "Include: % improvement"],
+          "keywordsToAdd": ["keyword1", "keyword2"]
+        }
+      ]
+    }
+  ],
+  "summary": "Overall strategy for experience tailoring"
+}
+
+Return ONLY valid JSON, no markdown formatting. Focus on maintaining factual accuracy while optimizing for impact.`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
+    let cleanedText = text.trim();
+    if (cleanedText.startsWith('```json')) {
+      cleanedText = cleanedText.slice(7);
+    } else if (cleanedText.startsWith('```')) {
+      cleanedText = cleanedText.slice(3);
+    }
+    if (cleanedText.endsWith('```')) {
+      cleanedText = cleanedText.slice(0, -3);
+    }
+    
+    const tailoring = JSON.parse(cleanedText.trim());
+    return tailoring;
+  } catch (error) {
+    console.error('Error tailoring experience:', error);
+    throw new Error(`Failed to tailor experience: ${error.message}`);
+  }
+}

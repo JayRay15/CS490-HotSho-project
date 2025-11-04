@@ -1,7 +1,9 @@
 import { ResumeTemplate } from "../models/ResumeTemplate.js";
 import { Resume } from "../models/Resume.js";
-import { generateResumeContent, generateResumeContentVariations, regenerateSection, analyzeATSCompatibility } from "../utils/geminiService.js";
+import { generateResumeContent, generateResumeContentVariations, regenerateSection, analyzeATSCompatibility, optimizeResumeSkills, tailorExperience } from "../utils/geminiService.js";
 import { generatePdfFromTemplate } from "../utils/pdfGenerator.js";
+import { exportToDocx, exportToHtml, exportToPlainText } from "../utils/resumeExporter.js";
+import { htmlToPdf } from "../utils/htmlToPdf.js";
 import { errorResponse, sendResponse, successResponse, ERROR_CODES } from "../utils/responseFormat.js";
 import { User } from "../models/User.js";
 import { Job } from "../models/Job.js";
@@ -300,7 +302,19 @@ export const listResumes = async (req, res) => {
   try {
     const userId = getUserId(req);
     const resumes = await Resume.find({ userId }).sort({ updatedAt: -1 }).lean();
-    const { response, statusCode } = successResponse("Resumes fetched", { resumes });
+    
+    // UC-52: Add job usage count for each resume
+    const resumesWithJobCount = await Promise.all(
+      resumes.map(async (resume) => {
+        const jobCount = await Job.countDocuments({ 
+          userId, 
+          linkedResumeId: resume._id 
+        });
+        return { ...resume, linkedJobCount: jobCount };
+      })
+    );
+    
+    const { response, statusCode } = successResponse("Resumes fetched", { resumes: resumesWithJobCount });
     return sendResponse(res, response, statusCode);
   } catch (err) {
     const { response, statusCode } = errorResponse("Failed to fetch resumes", 500, ERROR_CODES.DATABASE_ERROR);
@@ -787,6 +801,12 @@ export const generateResumePDF = async (req, res) => {
   try {
     const userId = getUserId(req);
     const { id } = req.params;
+    
+    // UC-51: Extract watermark options from query params
+    const { watermark, watermarkEnabled } = req.query;
+    const watermarkOptions = watermarkEnabled === 'true' && watermark 
+      ? { enabled: true, text: watermark } 
+      : null;
 
     // Fetch resume
     const resume = await Resume.findOne({ _id: id, userId }).lean();
@@ -797,15 +817,39 @@ export const generateResumePDF = async (req, res) => {
 
     // Fetch template with PDF data - explicitly select originalPdf (normally excluded with select: false)
     // CRITICAL: Do NOT use .lean() - we need the actual Buffer object, not serialized
-    const template = await ResumeTemplate.findOne({
+    let template = await ResumeTemplate.findOne({
       _id: resume.templateId,
       $or: [{ userId }, { isShared: true }],
     })
     .select('+originalPdf'); // Explicitly include originalPdf field
-    
+
     if (!template) {
-      const { response, statusCode } = errorResponse("Template not found", 404, ERROR_CODES.NOT_FOUND);
-      return sendResponse(res, response, statusCode);
+      console.warn(`PDF: Template ${resume.templateId} not found for user ${userId}. Attempting fallbacks...`);
+      // Check if template exists at all (ownership mismatch)
+      const existsButNotAccessible = await ResumeTemplate.findById(resume.templateId).select('_id userId isShared');
+      if (existsButNotAccessible) {
+        console.warn(`PDF: Template exists but not accessible. Owner=${existsButNotAccessible.userId}, isShared=${existsButNotAccessible.isShared}`);
+      }
+      // Fallback 1: Use user's default template
+      const defaultTpl = await ResumeTemplate.findOne({ userId, isDefault: true }).select('+originalPdf');
+      if (defaultTpl) {
+        console.info(`PDF: Using user's default template ${defaultTpl._id} as fallback`);
+        template = defaultTpl;
+      } else {
+        // Fallback 2: Any template for user
+        const anyTpl = await ResumeTemplate.findOne({ userId }).select('+originalPdf');
+        if (anyTpl) {
+          console.info(`PDF: Using user's template ${anyTpl._id} as fallback`);
+          template = anyTpl;
+        } else {
+          const { response, statusCode } = errorResponse(
+            "Template not found for this resume and no fallback templates exist. Please create/import a template and try again.",
+            404,
+            ERROR_CODES.NOT_FOUND
+          );
+          return sendResponse(res, response, statusCode);
+        }
+      }
     }
     
     // Get the actual Buffer from Mongoose document (not serialized)
@@ -840,12 +884,28 @@ export const generateResumePDF = async (req, res) => {
     }
     
     if (!templateObj.originalPdf || !templateObj.pdfLayout) {
-      const { response, statusCode } = errorResponse(
-        "Template does not support PDF generation. Please re-upload the template PDF.",
-        400,
-        ERROR_CODES.INVALID_INPUT
-      );
-      return sendResponse(res, response, statusCode);
+      // Fallback: Render HTML then convert to PDF using headless Chrome
+      console.warn('PDF: Pixel-perfect template missing. Falling back to HTML->PDF rendering.');
+      try {
+        // For HTML export we can use a lean object of template for theme/layout
+        const templateForHtml = (typeof template.toObject === 'function') ? template.toObject() : templateObj;
+        const html = exportToHtml(resume, templateForHtml);
+        // UC-51: Pass watermark options to HTML->PDF fallback
+        const pdfBuffer = await htmlToPdf(html, { watermark: watermarkOptions });
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${resume.name || 'resume'}.pdf"`);
+        res.setHeader('Content-Length', pdfBuffer.length);
+        return res.send(pdfBuffer);
+      } catch (fallbackErr) {
+        console.error('HTML->PDF fallback failed:', fallbackErr);
+        const { response, statusCode } = errorResponse(
+          `Template does not support pixel-perfect PDF and HTML->PDF fallback failed: ${fallbackErr.message}. If possible, import a PDF-based template for best results.`,
+          500,
+          ERROR_CODES.EXTERNAL_SERVICE_ERROR
+        );
+        return sendResponse(res, response, statusCode);
+      }
     }
 
     // Generate PDF - pass templateObj which has the proper Buffer from Mongoose document
@@ -856,12 +916,14 @@ export const generateResumePDF = async (req, res) => {
         projectFormat: templateObj.layout?.projectFormat,
         experienceFormat: templateObj.layout?.experienceFormat,
         educationFormat: templateObj.layout?.educationFormat
-      }
+      },
+      // UC-51: Pass watermark options
+      watermark: watermarkOptions
     });
 
     // Set response headers for PDF download
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${resume.name || 'resume'}.pdf"`);
+  res.setHeader('Content-Disposition', `attachment; filename="${resume.name || 'resume'}.pdf"`);
     res.setHeader('Content-Length', pdfBuffer.length);
 
     // Send PDF
@@ -870,6 +932,562 @@ export const generateResumePDF = async (req, res) => {
     console.error("PDF generation error:", err);
     const { response, statusCode } = errorResponse(
       `Failed to generate PDF: ${err.message}`,
+      500,
+      ERROR_CODES.EXTERNAL_SERVICE_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+};
+
+// UC-49: Optimize resume skills based on job requirements
+export const optimizeSkills = async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { id: resumeId } = req.params;
+    const { jobPostingId, jobTitle, jobCompany } = req.query;
+
+    console.log('🔍 Optimize Skills - UserId:', userId);
+    console.log('🔍 Optimize Skills - Params:', { resumeId, jobPostingId, jobTitle, jobCompany });
+
+    // Fetch resume
+    const resume = await Resume.findOne({ _id: resumeId, userId }).lean();
+    if (!resume) {
+      const { response, statusCode } = errorResponse("Resume not found", 404, ERROR_CODES.RESOURCE_NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Get job posting - support both ID-based and title/company-based lookup
+    let jobPosting = null;
+    let targetJobId = jobPostingId || resume.metadata?.tailoredForJob;
+    
+    // If title and company provided, find job by those fields
+    if (jobTitle && jobCompany) {
+      console.log('🔍 Looking for job with title/company:', { title: jobTitle, company: jobCompany, userId });
+      const job = await Job.findOne({ 
+        title: jobTitle, 
+        company: jobCompany, 
+        userId 
+      }).lean();
+      
+      console.log('🔍 Found job:', job ? `Yes (ID: ${job._id})` : 'No');
+      
+      if (job) {
+        targetJobId = job._id;
+      }
+    }
+    
+    if (!targetJobId) {
+      const { response, statusCode } = errorResponse(
+        "Job posting is required. Provide jobPostingId, or jobTitle+jobCompany query parameters.",
+        400,
+        ERROR_CODES.MISSING_REQUIRED_FIELD
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Fetch and enrich job data (will scrape URL if data is incomplete)
+    const { fetchEnrichedJobData } = await import("../utils/jobDataFetcher.js");
+    jobPosting = await fetchEnrichedJobData(targetJobId, userId);
+    
+    if (!jobPosting) {
+      console.log('❌ Job posting not found after enrichment');
+      const { response, statusCode } = errorResponse("Job posting not found", 404, ERROR_CODES.RESOURCE_NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    console.log('✅ Job posting enriched successfully');
+
+    // Get user profile with complete skills
+    console.log('🔍 Looking for user with auth0Id:', userId);
+    const user = await User.findOne({ auth0Id: userId }).lean();
+    console.log('🔍 Found user:', user ? `Yes (ID: ${user._id})` : 'No');
+    
+    if (!user) {
+      console.log('❌ User profile not found for auth0Id:', userId);
+      const { response, statusCode } = errorResponse("User profile not found", 404, ERROR_CODES.RESOURCE_NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    console.log('✅ User found, calling AI optimization...');
+
+    // Optimize skills using AI with enriched job data
+    const optimization = await optimizeResumeSkills(resume, jobPosting, user);
+
+    console.log('✅ AI optimization complete');
+
+    const { response, statusCode } = successResponse("Skills optimized", { optimization });
+    return sendResponse(res, response, statusCode);
+  } catch (err) {
+    console.error("Skills optimization error:", err);
+    const { response, statusCode } = errorResponse(
+      `Failed to optimize skills: ${err.message}`,
+      500,
+      ERROR_CODES.EXTERNAL_SERVICE_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+};
+
+// UC-50: Tailor experience descriptions based on job requirements
+export const tailorExperienceForJob = async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { id: resumeId } = req.params;
+    const { jobPostingId, jobTitle, jobCompany } = req.query;
+
+    console.log('🔍 Tailor Experience - UserId:', userId);
+    console.log('🔍 Tailor Experience - Params:', { resumeId, jobPostingId, jobTitle, jobCompany });
+
+    // Fetch resume
+    const resume = await Resume.findOne({ _id: resumeId, userId }).lean();
+    if (!resume) {
+      const { response, statusCode } = errorResponse("Resume not found", 404, ERROR_CODES.RESOURCE_NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Get job posting - support both ID-based and title/company-based lookup
+    let jobPosting = null;
+    let targetJobId = jobPostingId || resume.metadata?.tailoredForJob;
+    
+    // If title and company provided, find job by those fields
+    if (jobTitle && jobCompany) {
+      console.log('🔍 Looking for job with title/company:', { title: jobTitle, company: jobCompany, userId });
+      const job = await Job.findOne({ 
+        title: jobTitle, 
+        company: jobCompany, 
+        userId 
+      }).lean();
+      
+      console.log('🔍 Found job:', job ? `Yes (ID: ${job._id})` : 'No');
+      
+      if (job) {
+        targetJobId = job._id;
+      }
+    }
+    
+    if (!targetJobId) {
+      const { response, statusCode } = errorResponse(
+        "Job posting is required. Provide jobPostingId, or jobTitle+jobCompany query parameters.",
+        400,
+        ERROR_CODES.MISSING_REQUIRED_FIELD
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Fetch and enrich job data (will scrape URL if data is incomplete)
+    const { fetchEnrichedJobData } = await import("../utils/jobDataFetcher.js");
+    jobPosting = await fetchEnrichedJobData(targetJobId, userId);
+
+    if (!jobPosting) {
+      const { response, statusCode } = errorResponse("Job posting not found", 404, ERROR_CODES.RESOURCE_NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Get user profile with complete employment history
+    const user = await User.findOne({ auth0Id: userId }).lean();
+    if (!user) {
+      const { response, statusCode } = errorResponse("User profile not found", 404, ERROR_CODES.RESOURCE_NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Tailor experience using AI
+    const tailoring = await tailorExperience(resume, jobPosting, user);
+
+    const { response, statusCode } = successResponse("Experience tailored", { tailoring });
+    return sendResponse(res, response, statusCode);
+  } catch (err) {
+    console.error("Experience tailoring error:", err);
+    const { response, statusCode } = errorResponse(
+      `Failed to tailor experience: ${err.message}`,
+      500,
+      ERROR_CODES.EXTERNAL_SERVICE_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+};
+
+// UC-52: Clone/duplicate a resume
+export const cloneResume = async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { id: resumeId } = req.params;
+    const { name, description } = req.body;
+
+    // Fetch original resume
+    const originalResume = await Resume.findOne({ _id: resumeId, userId }).lean();
+    if (!originalResume) {
+      const { response, statusCode } = errorResponse("Resume not found", 404, ERROR_CODES.RESOURCE_NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Create clone with new name and description
+    const clonedResume = await Resume.create({
+      ...originalResume,
+      _id: undefined, // Let MongoDB generate new ID
+      name: name || `${originalResume.name} (Copy)`,
+      metadata: {
+        ...originalResume.metadata,
+        clonedFrom: resumeId,
+        clonedAt: new Date(),
+        description: description || '' // UC-52: Version description
+      }
+    });
+
+    const { response, statusCode } = successResponse("Resume cloned successfully", { resume: clonedResume }, 201);
+    return sendResponse(res, response, statusCode);
+  } catch (err) {
+    console.error("Resume cloning error:", err);
+    const { response, statusCode } = errorResponse(
+      `Failed to clone resume: ${err.message}`,
+      500,
+      ERROR_CODES.DATABASE_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+};
+
+// UC-52: Compare two resume versions
+export const compareResumes = async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { id: resumeId1 } = req.params;
+    const { resumeId2 } = req.query;
+
+    if (!resumeId2) {
+      const { response, statusCode } = errorResponse(
+        "resumeId2 query parameter is required",
+        400,
+        ERROR_CODES.MISSING_REQUIRED_FIELD
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Fetch both resumes
+    const [resume1, resume2] = await Promise.all([
+      Resume.findOne({ _id: resumeId1, userId }).lean(),
+      Resume.findOne({ _id: resumeId2, userId }).lean()
+    ]);
+
+    if (!resume1 || !resume2) {
+      const { response, statusCode } = errorResponse("One or both resumes not found", 404, ERROR_CODES.RESOURCE_NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Build comparison
+    const comparison = {
+      resume1: {
+        id: resume1._id,
+        name: resume1.name,
+        createdAt: resume1.createdAt,
+        updatedAt: resume1.updatedAt
+      },
+      resume2: {
+        id: resume2._id,
+        name: resume2.name,
+        createdAt: resume2.createdAt,
+        updatedAt: resume2.updatedAt
+      },
+      differences: {
+        summary: resume1.sections?.summary !== resume2.sections?.summary,
+        experienceCount: {
+          resume1: resume1.sections?.experience?.length || 0,
+          resume2: resume2.sections?.experience?.length || 0
+        },
+        skillsCount: {
+          resume1: resume1.sections?.skills?.length || 0,
+          resume2: resume2.sections?.skills?.length || 0
+        },
+        educationCount: {
+          resume1: resume1.sections?.education?.length || 0,
+          resume2: resume2.sections?.education?.length || 0
+        },
+        projectsCount: {
+          resume1: resume1.sections?.projects?.length || 0,
+          resume2: resume2.sections?.projects?.length || 0
+        },
+        sectionCustomization: JSON.stringify(resume1.sectionCustomization) !== JSON.stringify(resume2.sectionCustomization)
+      },
+      fullData: {
+        resume1: resume1.sections,
+        resume2: resume2.sections
+      }
+    };
+
+    const { response, statusCode } = successResponse("Resumes compared", { comparison });
+    return sendResponse(res, response, statusCode);
+  } catch (err) {
+    console.error("Resume comparison error:", err);
+    const { response, statusCode } = errorResponse(
+      `Failed to compare resumes: ${err.message}`,
+      500,
+      ERROR_CODES.DATABASE_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+};
+
+// UC-52: Merge changes from one resume to another
+export const mergeResumes = async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { id: targetResumeId } = req.params;
+    const { sourceId, selectedChanges } = req.body;
+
+    if (!sourceId || !selectedChanges || !Array.isArray(selectedChanges)) {
+      const { response, statusCode } = errorResponse(
+        "sourceId and selectedChanges array are required",
+        400,
+        ERROR_CODES.MISSING_REQUIRED_FIELD
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Fetch both resumes
+    const [targetResume, sourceResume] = await Promise.all([
+      Resume.findOne({ _id: targetResumeId, userId }),
+      Resume.findOne({ _id: sourceId, userId }).lean()
+    ]);
+
+    if (!targetResume || !sourceResume) {
+      const { response, statusCode } = errorResponse("One or both resumes not found", 404, ERROR_CODES.RESOURCE_NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Apply selected changes
+    selectedChanges.forEach(path => {
+      const pathParts = path.split('.');
+      
+      if (pathParts[0] === 'summary') {
+        targetResume.sections.summary = sourceResume.sections.summary;
+      } else if (pathParts[0] === 'experience') {
+        if (pathParts.length === 1) {
+          // Replace entire experience array
+          targetResume.sections.experience = sourceResume.sections.experience;
+        } else {
+          // Replace specific experience item
+          const index = parseInt(pathParts[1]);
+          if (sourceResume.sections.experience && sourceResume.sections.experience[index]) {
+            if (!targetResume.sections.experience) targetResume.sections.experience = [];
+            targetResume.sections.experience[index] = sourceResume.sections.experience[index];
+          }
+        }
+      } else if (pathParts[0] === 'skills') {
+        targetResume.sections.skills = sourceResume.sections.skills;
+      } else if (pathParts[0] === 'education') {
+        if (pathParts.length === 1) {
+          targetResume.sections.education = sourceResume.sections.education;
+        } else {
+          const index = parseInt(pathParts[1]);
+          if (sourceResume.sections.education && sourceResume.sections.education[index]) {
+            if (!targetResume.sections.education) targetResume.sections.education = [];
+            targetResume.sections.education[index] = sourceResume.sections.education[index];
+          }
+        }
+      } else if (pathParts[0] === 'projects') {
+        if (pathParts.length === 1) {
+          targetResume.sections.projects = sourceResume.sections.projects;
+        } else {
+          const index = parseInt(pathParts[1]);
+          if (sourceResume.sections.projects && sourceResume.sections.projects[index]) {
+            if (!targetResume.sections.projects) targetResume.sections.projects = [];
+            targetResume.sections.projects[index] = sourceResume.sections.projects[index];
+          }
+        }
+      }
+    });
+
+    await targetResume.save();
+
+    const { response, statusCode } = successResponse("Resumes merged successfully", { resume: targetResume });
+    return sendResponse(res, response, statusCode);
+  } catch (err) {
+    console.error("Resume merge error:", err);
+    const { response, statusCode } = errorResponse(
+      `Failed to merge resumes: ${err.message}`,
+      500,
+      ERROR_CODES.DATABASE_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+};
+
+// UC-52: Set default resume
+export const setDefaultResume = async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { id: resumeId } = req.params;
+
+    // Verify resume exists and belongs to user
+    const resume = await Resume.findOne({ _id: resumeId, userId });
+    if (!resume) {
+      const { response, statusCode } = errorResponse("Resume not found", 404, ERROR_CODES.RESOURCE_NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Unset any existing default for this user
+    await Resume.updateMany({ userId, isDefault: true }, { $set: { isDefault: false } });
+
+    // Set this resume as default
+    resume.isDefault = true;
+    await resume.save();
+
+    const { response, statusCode } = successResponse("Default resume set", { resume });
+    return sendResponse(res, response, statusCode);
+  } catch (err) {
+    console.error("Set default resume error:", err);
+    const { response, statusCode } = errorResponse(
+      `Failed to set default resume: ${err.message}`,
+      500,
+      ERROR_CODES.DATABASE_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+};
+
+// UC-52: Archive resume
+export const archiveResume = async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { id: resumeId } = req.params;
+
+    const resume = await Resume.findOne({ _id: resumeId, userId });
+    if (!resume) {
+      const { response, statusCode } = errorResponse("Resume not found", 404, ERROR_CODES.RESOURCE_NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    resume.isArchived = true;
+    await resume.save();
+
+    const { response, statusCode } = successResponse("Resume archived successfully", { resume });
+    return sendResponse(res, response, statusCode);
+  } catch (err) {
+    console.error("Archive resume error:", err);
+    const { response, statusCode } = errorResponse(
+      `Failed to archive resume: ${err.message}`,
+      500,
+      ERROR_CODES.DATABASE_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+};
+
+// UC-52: Unarchive resume
+export const unarchiveResume = async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { id: resumeId } = req.params;
+
+    const resume = await Resume.findOne({ _id: resumeId, userId });
+    if (!resume) {
+      const { response, statusCode } = errorResponse("Resume not found", 404, ERROR_CODES.RESOURCE_NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    resume.isArchived = false;
+    await resume.save();
+
+    const { response, statusCode } = successResponse("Resume unarchived successfully", { resume });
+    return sendResponse(res, response, statusCode);
+  } catch (err) {
+    console.error("Unarchive resume error:", err);
+    const { response, statusCode } = errorResponse(
+      `Failed to unarchive resume: ${err.message}`,
+      500,
+      ERROR_CODES.DATABASE_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+};
+
+// UC-51: Export resume to DOCX
+export const exportResumeDocx = async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { id: resumeId } = req.params;
+    
+    // UC-51: Extract watermark options from query params
+    const { watermark, watermarkEnabled } = req.query;
+    const watermarkOptions = watermarkEnabled === 'true' && watermark 
+      ? { enabled: true, text: watermark } 
+      : null;
+
+    const resume = await Resume.findOne({ _id: resumeId, userId }).lean();
+    if (!resume) {
+      const { response, statusCode } = errorResponse("Resume not found", 404, ERROR_CODES.RESOURCE_NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    const template = await ResumeTemplate.findById(resume.templateId).lean();
+
+    const docxBuffer = await exportToDocx(resume, template, watermarkOptions);
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.setHeader('Content-Disposition', `attachment; filename="${resume.name || 'resume'}.docx"`);
+    res.setHeader('Content-Length', docxBuffer.length);
+    res.send(docxBuffer);
+  } catch (err) {
+    console.error("DOCX export error:", err);
+    const { response, statusCode } = errorResponse(
+      `Failed to export DOCX: ${err.message}`,
+      500,
+      ERROR_CODES.EXTERNAL_SERVICE_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+};
+
+// UC-51: Export resume to HTML
+export const exportResumeHtml = async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { id: resumeId } = req.params;
+
+    const resume = await Resume.findOne({ _id: resumeId, userId }).lean();
+    if (!resume) {
+      const { response, statusCode } = errorResponse("Resume not found", 404, ERROR_CODES.RESOURCE_NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    const template = await ResumeTemplate.findById(resume.templateId).lean();
+
+    const html = exportToHtml(resume, template);
+
+    res.setHeader('Content-Type', 'text/html');
+    res.setHeader('Content-Disposition', `attachment; filename="${resume.name || 'resume'}.html"`);
+    res.send(html);
+  } catch (err) {
+    console.error("HTML export error:", err);
+    const { response, statusCode } = errorResponse(
+      `Failed to export HTML: ${err.message}`,
+      500,
+      ERROR_CODES.EXTERNAL_SERVICE_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+};
+
+// UC-51: Export resume to plain text
+export const exportResumeText = async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { id: resumeId } = req.params;
+
+    const resume = await Resume.findOne({ _id: resumeId, userId }).lean();
+    if (!resume) {
+      const { response, statusCode } = errorResponse("Resume not found", 404, ERROR_CODES.RESOURCE_NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    const text = exportToPlainText(resume);
+
+    res.setHeader('Content-Type', 'text/plain');
+    res.setHeader('Content-Disposition', `attachment; filename="${resume.name || 'resume'}.txt"`);
+    res.send(text);
+  } catch (err) {
+    console.error("Text export error:", err);
+    const { response, statusCode } = errorResponse(
+      `Failed to export text: ${err.message}`,
       500,
       ERROR_CODES.EXTERNAL_SERVICE_ERROR
     );

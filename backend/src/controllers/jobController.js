@@ -455,3 +455,46 @@ export const getJobStats = asyncHandler(async (req, res) => {
   });
   return sendResponse(res, response, statusCode);
 });
+
+// UC-52: PUT /api/jobs/:jobId/link-resume - Link a resume to a job application
+export const linkResumeToJob = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { jobId } = req.params;
+  const { resumeId } = req.body;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  if (!jobId || !resumeId) {
+    const { response, statusCode } = errorResponse(
+      "Job ID and Resume ID are required",
+      400,
+      ERROR_CODES.VALIDATION_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Find job and verify ownership
+  const job = await Job.findOne({ _id: jobId, userId });
+  if (!job) {
+    const { response, statusCode } = errorResponse(
+      "Job not found or you don't have permission to update it",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Update job with linked resume
+  job.linkedResumeId = resumeId;
+  await job.save();
+
+  const { response, statusCode} = successResponse("Resume linked to job successfully", { job });
+  return sendResponse(res, response, statusCode);
+});
