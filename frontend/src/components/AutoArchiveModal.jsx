@@ -72,7 +72,15 @@ export default function AutoArchiveModal({ isOpen, onClose, onAutoArchive }) {
               type="number"
               min="1"
               value={daysInactive}
-              onChange={(e) => setDaysInactive(parseInt(e.target.value) || 1)}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "") {
+                  setDaysInactive("");
+                } else {
+                  const num = parseInt(val, 10);
+                  setDaysInactive(Number.isNaN(num) ? "" : Math.max(1, num));
+                }
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               disabled={isSubmitting}
             />
