@@ -8,6 +8,8 @@ import JobPipeline from "../../components/JobPipeline";
 import DeadlineCalendar from "../../components/DeadlineCalendar";
 import InputField from "../../components/InputField";
 import Button from "../../components/Button";
+import ArchiveModal from "../../components/ArchiveModal";
+import AutoArchiveModal from "../../components/AutoArchiveModal";
 
 const PIPELINE_STAGES = ["Interested", "Applied", "Phone Screen", "Interview", "Offer", "Rejected"];
 
@@ -49,6 +51,13 @@ export default function Jobs() {
   const [isImporting, setIsImporting] = useState(false);
   const [importStatus, setImportStatus] = useState(null);
   const [importMessage, setImportMessage] = useState("");
+  
+  // Archive-related state
+  const [showArchived, setShowArchived] = useState(false);
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [showAutoArchiveModal, setShowAutoArchiveModal] = useState(false);
+  const [archivingJob, setArchivingJob] = useState(null);
+  const [archiveNotification, setArchiveNotification] = useState(null);
 
   // Form state for adding/editing jobs
   const [formData, setFormData] = useState({
@@ -82,6 +91,15 @@ export default function Jobs() {
   // Filter jobs when search or filter changes
   useEffect(() => {
     let filtered = [...jobs];
+
+    console.log('🔍 Total jobs:', jobs.length);
+    console.log('📦 Archived jobs in data:', jobs.filter(j => j.archived).length);
+    console.log('🎯 Show archived?', showArchived);
+
+    // Apply archived filter
+    filtered = filtered.filter((job) => job.archived === showArchived);
+    
+    console.log('✅ After archive filter:', filtered.length);
 
     // Apply status filter
     if (filterStatus !== "all") {
@@ -240,15 +258,23 @@ export default function Jobs() {
     });
 
     setFilteredJobs(filtered);
-  }, [jobs, searchTerm, filterStatus, filters, sortBy, sortOrder]);
+  }, [jobs, searchTerm, filterStatus, filters, sortBy, sortOrder, showArchived]);
 
   const fetchJobs = async () => {
     try {
       setLoading(true);
       const token = await getToken();
       setAuthToken(token);
-      const response = await api.get("/api/jobs");
-      setJobs(response.data.data.jobs);
+      // Fetch ALL jobs (both active and archived) - filtering happens on frontend
+      const [activeResponse, archivedResponse] = await Promise.all([
+        api.get("/api/jobs?archived=false"),
+        api.get("/api/jobs?archived=true")
+      ]);
+      const allJobs = [
+        ...activeResponse.data.data.jobs,
+        ...archivedResponse.data.data.jobs
+      ];
+      setJobs(allJobs);
     } catch (error) {
       console.error("Failed to fetch jobs:", error);
       alert("Failed to load jobs. Please try again.");
@@ -655,6 +681,166 @@ export default function Jobs() {
     setShowDetailModal(true);
   };
 
+  // Archive handlers
+  const handleArchiveJob = (job) => {
+    setArchivingJob(job);
+    setShowArchiveModal(true);
+  };
+
+  const handleArchiveConfirm = async (reason, notes) => {
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      
+      if (archivingJob) {
+        // Single job archive
+        await api.post(`/api/jobs/${archivingJob._id}/archive`, { reason, notes });
+        setArchiveNotification({
+          message: `"${archivingJob.title}" archived successfully`,
+          jobId: archivingJob._id,
+          type: 'single'
+        });
+      } else if (selectedJobs.length > 0) {
+        // Bulk archive
+        await api.post('/api/jobs/bulk-archive', { 
+          jobIds: selectedJobs, 
+          reason, 
+          notes 
+        });
+        setArchiveNotification({
+          message: `${selectedJobs.length} job(s) archived successfully`,
+          jobIds: [...selectedJobs],
+          type: 'bulk'
+        });
+        setSelectedJobs([]);
+      }
+      
+      await fetchJobs();
+      await fetchStats();
+      setArchivingJob(null);
+      
+      // Clear notification after 10 seconds
+      setTimeout(() => setArchiveNotification(null), 10000);
+    } catch (error) {
+      console.error("Failed to archive job:", error);
+      alert(error.response?.data?.message || "Failed to archive job. Please try again.");
+    }
+  };
+
+  const handleBulkArchive = () => {
+    if (selectedJobs.length === 0) {
+      alert("Please select jobs to archive");
+      return;
+    }
+    setArchivingJob(null);
+    setShowArchiveModal(true);
+  };
+
+  const handleRestoreJob = async (jobId) => {
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      await api.post(`/api/jobs/${jobId}/restore`);
+      await fetchJobs();
+      await fetchStats();
+      setSuccessMessage("Job restored successfully!");
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (error) {
+      console.error("Failed to restore job:", error);
+      alert(error.response?.data?.message || "Failed to restore job. Please try again.");
+    }
+  };
+
+  const handleBulkRestore = async () => {
+    if (selectedJobs.length === 0) {
+      alert("Please select jobs to restore");
+      return;
+    }
+
+    if (!window.confirm(`Restore ${selectedJobs.length} job(s)?`)) {
+      return;
+    }
+
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      await api.post('/api/jobs/bulk-restore', { jobIds: selectedJobs });
+      await fetchJobs();
+      await fetchStats();
+      setSelectedJobs([]);
+      setSuccessMessage(`${selectedJobs.length} job(s) restored successfully!`);
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (error) {
+      console.error("Failed to restore jobs:", error);
+      alert(error.response?.data?.message || "Failed to restore jobs. Please try again.");
+    }
+  };
+
+  const handleUndoArchive = async () => {
+    if (!archiveNotification) return;
+
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+
+      if (archiveNotification.type === 'single') {
+        await api.post(`/api/jobs/${archiveNotification.jobId}/restore`);
+      } else if (archiveNotification.type === 'bulk') {
+        await api.post('/api/jobs/bulk-restore', { jobIds: archiveNotification.jobIds });
+      }
+
+      await fetchJobs();
+      await fetchStats();
+      setArchiveNotification(null);
+      setSuccessMessage("Archive undone successfully!");
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (error) {
+      console.error("Failed to undo archive:", error);
+      alert("Failed to undo archive. Please try again.");
+    }
+  };
+
+  const handleAutoArchive = async (daysInactive, statuses) => {
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      const response = await api.post('/api/jobs/auto-archive', { 
+        daysInactive, 
+        statuses 
+      });
+      
+      const count = response.data.data.count;
+      await fetchJobs();
+      await fetchStats();
+      
+      if (count > 0) {
+        setSuccessMessage(`${count} job(s) auto-archived successfully!`);
+      } else {
+        setSuccessMessage("No jobs matched the auto-archive criteria.");
+      }
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (error) {
+      console.error("Failed to auto-archive jobs:", error);
+      alert(error.response?.data?.message || "Failed to auto-archive jobs. Please try again.");
+    }
+  };
+
+  const handleDeleteJobWithConfirm = async (jobId, jobTitle) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to permanently delete "${jobTitle}"?\n\nThis action cannot be undone. Consider archiving instead.`
+    );
+    
+    if (!confirmed) return;
+
+    const doubleConfirm = window.confirm(
+      "This is your final warning. The job will be permanently deleted. Continue?"
+    );
+
+    if (!doubleConfirm) return;
+
+    await handleDeleteJob(jobId);
+  };
+
   if (loading) {
     return <LoadingSpinner fullScreen={true} size="lg" text="Loading jobs..." />;
   }
@@ -688,6 +874,33 @@ export default function Jobs() {
               >
                 ×
               </button>
+            </div>
+          )}
+
+          {/* Archive Notification with Undo */}
+          {archiveNotification && (
+            <div className="mb-4 p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700 rounded-lg flex items-center justify-between">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z" />
+                  <path fillRule="evenodd" d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clipRule="evenodd" />
+                </svg>
+                <span className="font-medium">{archiveNotification.message}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleUndoArchive}
+                  className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm"
+                >
+                  Undo
+                </button>
+                <button
+                  onClick={() => setArchiveNotification(null)}
+                  className="ml-2 text-blue-700 hover:text-blue-900 font-bold"
+                >
+                  ×
+                </button>
+              </div>
             </div>
           )}
 
@@ -735,16 +948,20 @@ export default function Jobs() {
 
           {/* Controls */}
           <Card variant="primary" className="mb-6">
+            {/* Search Bar - Full Width */}
+            <div className="mb-4">
+              <label className="block text-base font-medium text-gray-700 mb-2">Search Jobs</label>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by title, company, location, keywords..."
+                className="w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+              />
+            </div>
+
+            {/* Filters Row */}
             <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
-                <InputField
-                  label="Search"
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search by title, company, location, keywords..."
-                />
-              </div>
               <div className="w-full md:w-48">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Status</label>
                 <select
@@ -785,7 +1002,7 @@ export default function Jobs() {
                   <option value="asc">↑ Asc</option>
                 </select>
               </div>
-              <div className="flex items-end gap-2">
+              <div className="flex items-end gap-2 flex-wrap">
                 <Button 
                   onClick={() => setShowFilters(!showFilters)} 
                   variant={showFilters || hasActiveFilters() ? "primary" : "secondary"}
@@ -796,6 +1013,18 @@ export default function Jobs() {
                 <Button onClick={() => setShowCalendar(!showCalendar)} variant="secondary">
                   {showCalendar ? "Pipeline View" : "Calendar View"}
                 </Button>
+                <Button 
+                  onClick={() => setShowArchived(!showArchived)} 
+                  variant={showArchived ? "primary" : "secondary"}
+                >
+                  {showArchived ? "Show Active" : "Show Archived"}
+                  {stats?.totalArchived > 0 && ` (${stats.totalArchived})`}
+                </Button>
+                {!showArchived && (
+                  <Button onClick={() => setShowAutoArchiveModal(true)} variant="secondary">
+                    Auto-Archive
+                  </Button>
+                )}
                 <Button onClick={() => setShowAddModal(true)} variant="primary">
                   Add Job
                 </Button>
@@ -992,15 +1221,32 @@ export default function Jobs() {
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <p className="text-sm text-gray-600 mb-2">{selectedJobs.length} job(s) selected</p>
                 <div className="flex flex-wrap gap-2 items-center">
-                  {PIPELINE_STAGES.map((stage) => (
+                  {!showArchived ? (
+                    <>
+                      {PIPELINE_STAGES.map((stage) => (
+                        <button
+                          key={stage}
+                          onClick={() => handleBulkStatusUpdate(stage)}
+                          className="text-xs px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-gray-700"
+                        >
+                          Move to {stage}
+                        </button>
+                      ))}
+                      <button
+                        onClick={handleBulkArchive}
+                        className="text-xs px-3 py-1 rounded bg-blue-100 hover:bg-blue-200 text-blue-700 font-medium"
+                      >
+                        📦 Archive Selected
+                      </button>
+                    </>
+                  ) : (
                     <button
-                      key={stage}
-                      onClick={() => handleBulkStatusUpdate(stage)}
-                      className="text-xs px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-gray-700"
+                      onClick={handleBulkRestore}
+                      className="text-xs px-3 py-1 rounded bg-green-100 hover:bg-green-200 text-green-700 font-medium"
                     >
-                      Move to {stage}
+                      ↩️ Restore Selected
                     </button>
-                  ))}
+                  )}
                   <button
                     onClick={() => setSelectedJobs([])}
                     className="text-xs px-3 py-1 rounded bg-red-100 hover:bg-red-200 text-red-700"
@@ -1057,10 +1303,12 @@ export default function Jobs() {
               jobs={filteredJobs}
               onJobStatusChange={handleJobStatusChange}
               onJobEdit={handleEditJob}
-              onJobDelete={handleDeleteJob}
+              onJobDelete={showArchived ? handleDeleteJobWithConfirm : handleDeleteJob}
               onJobView={handleViewJob}
               selectedJobs={selectedJobs}
               onToggleSelect={toggleSelectJob}
+              onJobArchive={handleArchiveJob}
+              onJobRestore={handleRestoreJob}
               highlightTerms={[
                 searchTerm?.trim(),
                 filters.location?.trim(),
@@ -1073,7 +1321,7 @@ export default function Jobs() {
 
       {/* Add Job Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <h2 className="text-2xl font-bold mb-4">Add New Job</h2>
@@ -1307,7 +1555,7 @@ export default function Jobs() {
 
       {/* Edit Job Modal */}
       {showEditModal && editingJob && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <h2 className="text-2xl font-bold mb-4">Edit Job</h2>
@@ -1548,7 +1796,7 @@ export default function Jobs() {
 
       {/* Detailed Job View Modal */}
       {showDetailModal && viewingJob && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               {/* Header */}
@@ -1588,7 +1836,7 @@ export default function Jobs() {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-2 mb-6">
+              <div className="flex flex-wrap gap-2 mb-6">
                 <Button
                   onClick={() => {
                     setShowDetailModal(false);
@@ -1598,18 +1846,40 @@ export default function Jobs() {
                 >
                   Edit Job
                 </Button>
-                <Button
-                  onClick={() => {
-                    if (window.confirm(`Delete "${viewingJob.title}" at ${viewingJob.company}?`)) {
-                      handleDeleteJob(viewingJob._id);
+                {viewingJob.archived ? (
+                  <Button
+                    onClick={() => {
+                      handleRestoreJob(viewingJob._id);
                       setShowDetailModal(false);
                       setViewingJob(null);
-                    }
+                    }}
+                    variant="secondary"
+                    className="bg-green-100 hover:bg-green-200 text-green-700"
+                  >
+                    ↩️ Restore Job
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => {
+                      setShowDetailModal(false);
+                      handleArchiveJob(viewingJob);
+                    }}
+                    variant="secondary"
+                    className="bg-blue-100 hover:bg-blue-200 text-blue-700"
+                  >
+                    📦 Archive Job
+                  </Button>
+                )}
+                <Button
+                  onClick={() => {
+                    handleDeleteJobWithConfirm(viewingJob._id, viewingJob.title);
+                    setShowDetailModal(false);
+                    setViewingJob(null);
                   }}
                   variant="secondary"
                   className="bg-red-100 hover:bg-red-200 text-red-700"
                 >
-                  Delete
+                  Delete Permanently
                 </Button>
               </div>
 
@@ -1787,7 +2057,7 @@ export default function Jobs() {
                     <div className="space-y-3">
                       {[...viewingJob.statusHistory].reverse().map((history, idx) => (
                         <div key={idx} className="flex items-start gap-3 pb-3 border-b border-gray-200 last:border-0">
-                          <div className="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-blue-500"></div>
+                          <div className="shrink-0 w-2 h-2 mt-2 rounded-full bg-blue-500"></div>
                           <div className="flex-1">
                             <div className="flex items-center justify-between">
                               <span className="font-medium text-gray-900">{history.status}</span>
@@ -1838,6 +2108,39 @@ export default function Jobs() {
                   </Card>
                 )}
 
+                {/* Archive Information */}
+                {viewingJob.archived && (
+                  <Card title="Archive Information" variant="elevated">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="font-medium text-gray-500">Archived Date</p>
+                        <p className="text-gray-900">
+                          {new Date(viewingJob.archivedAt).toLocaleDateString()} at{" "}
+                          {new Date(viewingJob.archivedAt).toLocaleTimeString()}
+                        </p>
+                      </div>
+                      {viewingJob.archiveReason && (
+                        <div>
+                          <p className="font-medium text-gray-500">Archive Reason</p>
+                          <p className="text-gray-900">{viewingJob.archiveReason}</p>
+                        </div>
+                      )}
+                      {viewingJob.autoArchived && (
+                        <div>
+                          <p className="font-medium text-gray-500">Archive Type</p>
+                          <p className="text-gray-900">Auto-archived</p>
+                        </div>
+                      )}
+                    </div>
+                    {viewingJob.archiveNotes && (
+                      <div className="mt-4">
+                        <p className="font-medium text-gray-500 mb-1">Archive Notes</p>
+                        <p className="text-gray-700 text-sm">{viewingJob.archiveNotes}</p>
+                      </div>
+                    )}
+                  </Card>
+                )}
+
                 {/* Metadata */}
                 <Card title="Tracking Information" variant="elevated">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -1875,6 +2178,25 @@ export default function Jobs() {
           </div>
         </div>
       )}
+
+      {/* Archive Modal */}
+      <ArchiveModal
+        isOpen={showArchiveModal}
+        onClose={() => {
+          setShowArchiveModal(false);
+          setArchivingJob(null);
+        }}
+        onArchive={handleArchiveConfirm}
+        jobCount={archivingJob ? 1 : selectedJobs.length}
+        jobTitle={archivingJob ? `${archivingJob.title} at ${archivingJob.company}` : null}
+      />
+
+      {/* Auto-Archive Modal */}
+      <AutoArchiveModal
+        isOpen={showAutoArchiveModal}
+        onClose={() => setShowAutoArchiveModal(false)}
+        onAutoArchive={handleAutoArchive}
+      />
     </div>
   );
 }

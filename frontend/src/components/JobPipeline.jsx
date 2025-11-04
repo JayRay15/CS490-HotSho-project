@@ -11,7 +11,7 @@ const PIPELINE_STAGES = [
   { id: "Rejected", label: "Rejected", color: "bg-red-100 border-red-300" },
 ];
 
-export default function JobPipeline({ jobs, onJobStatusChange, onJobEdit, onJobDelete, onJobView, highlightTerms, selectedJobs = [], onToggleSelect }) {
+export default function JobPipeline({ jobs, onJobStatusChange, onJobEdit, onJobDelete, onJobView, highlightTerms, selectedJobs = [], onToggleSelect, onJobArchive, onJobRestore }) {
   const [draggedJob, setDraggedJob] = useState(null);
   const [dragOverStage, setDragOverStage] = useState(null);
 
@@ -65,7 +65,7 @@ export default function JobPipeline({ jobs, onJobStatusChange, onJobEdit, onJobD
         return (
           <div
             key={stage.id}
-            className={`flex-shrink-0 w-80 rounded-lg border-2 ${stage.color} ${
+            className={`shrink-0 w-80 rounded-lg border-2 ${stage.color} ${
               isDropTarget ? "ring-4 ring-blue-400 ring-opacity-50" : ""
             }`}
             onDragOver={(e) => handleDragOver(e, stage.id)}
@@ -142,6 +142,8 @@ export default function JobPipeline({ jobs, onJobStatusChange, onJobEdit, onJobD
                       onToggleSelect={onToggleSelect ? () => onToggleSelect(job._id) : undefined}
                       isDragging={draggedJob?._id === job._id}
                       highlightTerms={highlightTerms}
+                      onArchive={onJobArchive}
+                      onRestore={onJobRestore}
                     />
                   </div>
                 ))
@@ -170,4 +172,6 @@ JobPipeline.propTypes = {
   highlightTerms: PropTypes.arrayOf(PropTypes.string),
   selectedJobs: PropTypes.arrayOf(PropTypes.string),
   onToggleSelect: PropTypes.func,
+  onJobArchive: PropTypes.func,
+  onJobRestore: PropTypes.func,
 };
