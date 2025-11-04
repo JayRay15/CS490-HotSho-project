@@ -10,6 +10,7 @@ import {
   sendDeadlineReminders,
   deleteJob,
   getJobStats,
+  getJobAnalytics,
   linkResumeToJob,
   archiveJob,
   restoreJob,
@@ -23,6 +24,9 @@ const router = express.Router();
 
 // GET /api/jobs/stats - Get job statistics (must be before /:jobId route)
 router.get("/stats", checkJwt, getJobStats);
+
+// GET /api/jobs/analytics - Get detailed job analytics (must be before /:jobId route)
+router.get("/analytics", checkJwt, getJobAnalytics);
 
 // GET /api/jobs - Get all jobs for current user
 router.get("/", checkJwt, getJobs);

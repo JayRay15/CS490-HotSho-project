@@ -456,6 +456,170 @@ export const getJobStats = asyncHandler(async (req, res) => {
   return sendResponse(res, response, statusCode);
 });
 
+// GET /api/jobs/analytics - Get detailed job analytics
+export const getJobAnalytics = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Fetch all jobs (both active and archived) for comprehensive analytics
+  const allJobs = await Job.find({ userId });
+  const activeJobs = allJobs.filter(job => !job.archived);
+  
+  // 1. Total jobs tracked by status
+  const statuses = ["Interested", "Applied", "Phone Screen", "Interview", "Offer", "Rejected"];
+  const statusCounts = {};
+  statuses.forEach(status => {
+    statusCounts[status] = activeJobs.filter(job => job.status === status).length;
+  });
+
+  // 2. Application response rate percentage
+  const appliedJobs = activeJobs.filter(job => job.status === "Applied" || 
+    ["Phone Screen", "Interview", "Offer", "Rejected"].includes(job.status));
+  const respondedJobs = activeJobs.filter(job => 
+    ["Phone Screen", "Interview", "Offer", "Rejected"].includes(job.status));
+  const responseRate = appliedJobs.length > 0 
+    ? ((respondedJobs.length / appliedJobs.length) * 100).toFixed(1)
+    : 0;
+
+  // 3. Average time in each pipeline stage
+  const avgTimeByStage = {};
+  for (const status of statuses) {
+    const jobsInStage = allJobs.filter(job => 
+      job.statusHistory.some(h => h.status === status)
+    );
+    
+    if (jobsInStage.length > 0) {
+      let totalDays = 0;
+      jobsInStage.forEach(job => {
+        const statusEntries = job.statusHistory.filter(h => h.status === status);
+        statusEntries.forEach((entry, idx) => {
+          const startTime = new Date(entry.timestamp);
+          const endTime = idx < statusEntries.length - 1
+            ? new Date(statusEntries[idx + 1].timestamp)
+            : job.statusHistory.find(h => h.timestamp > entry.timestamp)
+            ? new Date(job.statusHistory.find(h => new Date(h.timestamp) > startTime).timestamp)
+            : new Date();
+          const days = Math.floor((endTime - startTime) / (1000 * 60 * 60 * 24));
+          totalDays += days;
+        });
+      });
+      avgTimeByStage[status] = (totalDays / jobsInStage.length).toFixed(1);
+    } else {
+      avgTimeByStage[status] = 0;
+    }
+  }
+
+  // 4. Monthly application volume chart (last 12 months)
+  const now = new Date();
+  const monthlyVolume = [];
+  for (let i = 11; i >= 0; i--) {
+    const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59);
+    
+    const count = allJobs.filter(job => {
+      const createdDate = new Date(job.createdAt);
+      return createdDate >= monthStart && createdDate <= monthEnd;
+    }).length;
+
+    monthlyVolume.push({
+      month: monthStart.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+      count,
+      timestamp: monthStart.getTime()
+    });
+  }
+
+  // 5. Application deadline adherence tracking
+  const jobsWithDeadlines = activeJobs.filter(job => job.deadline);
+  const metDeadlines = jobsWithDeadlines.filter(job => {
+    if (!job.applicationDate) return false;
+    return new Date(job.applicationDate) <= new Date(job.deadline);
+  }).length;
+  const missedDeadlines = jobsWithDeadlines.filter(job => {
+    if (!job.applicationDate) {
+      return new Date() > new Date(job.deadline);
+    }
+    return new Date(job.applicationDate) > new Date(job.deadline);
+  }).length;
+  const upcomingDeadlines = jobsWithDeadlines.filter(job => {
+    const deadlineDate = new Date(job.deadline);
+    const daysUntil = Math.floor((deadlineDate - new Date()) / (1000 * 60 * 60 * 24));
+    return !job.applicationDate && daysUntil >= 0;
+  }).length;
+
+  const deadlineAdherence = jobsWithDeadlines.length > 0
+    ? ((metDeadlines / jobsWithDeadlines.length) * 100).toFixed(1)
+    : 0;
+
+  // 6. Time-to-offer analytics
+  const offerJobs = allJobs.filter(job => job.status === "Offer" || 
+    job.statusHistory.some(h => h.status === "Offer"));
+  
+  let avgTimeToOffer = 0;
+  if (offerJobs.length > 0) {
+    let totalDays = 0;
+    offerJobs.forEach(job => {
+      const firstEntry = job.statusHistory[0];
+      const offerEntry = job.statusHistory.find(h => h.status === "Offer");
+      if (firstEntry && offerEntry) {
+        const days = Math.floor((new Date(offerEntry.timestamp) - new Date(firstEntry.timestamp)) / (1000 * 60 * 60 * 24));
+        totalDays += days;
+      }
+    });
+    avgTimeToOffer = (totalDays / offerJobs.length).toFixed(1);
+  }
+
+  // Additional metrics
+  const totalApplications = allJobs.length;
+  const offerRate = appliedJobs.length > 0
+    ? ((allJobs.filter(job => job.status === "Offer").length / appliedJobs.length) * 100).toFixed(1)
+    : 0;
+  const interviewRate = appliedJobs.length > 0
+    ? ((activeJobs.filter(job => ["Interview", "Offer"].includes(job.status)).length / appliedJobs.length) * 100).toFixed(1)
+    : 0;
+
+  // Status distribution for charts
+  const statusDistribution = statuses.map(status => ({
+    status,
+    count: statusCounts[status],
+    percentage: totalApplications > 0 ? ((statusCounts[status] / totalApplications) * 100).toFixed(1) : 0
+  }));
+
+  const { response, statusCode } = successResponse("Job analytics retrieved successfully", {
+    overview: {
+      totalApplications,
+      activeApplications: activeJobs.length,
+      archivedApplications: allJobs.length - activeJobs.length,
+      responseRate: parseFloat(responseRate),
+      offerRate: parseFloat(offerRate),
+      interviewRate: parseFloat(interviewRate),
+    },
+    statusCounts,
+    statusDistribution,
+    avgTimeByStage,
+    monthlyVolume,
+    deadlineTracking: {
+      total: jobsWithDeadlines.length,
+      met: metDeadlines,
+      missed: missedDeadlines,
+      upcoming: upcomingDeadlines,
+      adherenceRate: parseFloat(deadlineAdherence),
+    },
+    timeToOffer: {
+      average: parseFloat(avgTimeToOffer),
+      count: offerJobs.length,
+    },
+  });
+  return sendResponse(res, response, statusCode);
+});
+
 // UC-52: PUT /api/jobs/:jobId/link-resume - Link a resume to a job application
 export const linkResumeToJob = asyncHandler(async (req, res) => {
   const userId = req.auth?.userId || req.auth?.payload?.sub;
