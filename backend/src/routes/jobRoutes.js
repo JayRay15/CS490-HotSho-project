@@ -10,6 +10,7 @@ import {
   sendDeadlineReminders,
   deleteJob,
   getJobStats,
+  linkResumeToJob,
 } from "../controllers/jobController.js";
 import { scrapeJobFromURL } from "../controllers/jobScraperController.js";
 
@@ -41,6 +42,9 @@ router.put("/:jobId", checkJwt, updateJob);
 
 // PUT /api/jobs/:jobId/status - Update job status
 router.put("/:jobId/status", checkJwt, updateJobStatus);
+
+// UC-52: PUT /api/jobs/:jobId/link-resume - Link resume to job
+router.put("/:jobId/link-resume", checkJwt, linkResumeToJob);
 
 // DELETE /api/jobs/:jobId - Delete a job
 router.delete("/:jobId", checkJwt, deleteJob);

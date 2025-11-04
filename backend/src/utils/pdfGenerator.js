@@ -4,7 +4,7 @@
  * Only text content is replaced, all graphics, positioning, and styling are preserved
  */
 
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts, degrees } from 'pdf-lib';
 
 /**
  * Generate a PDF resume from a template with new content
@@ -147,6 +147,12 @@ export async function generatePdfFromTemplate(template, resumeData, options = {}
         
         console.log(`✅ Page ${pageIndex + 1} processed.`);
       }
+
+  // UC-51: Add watermark if enabled
+  if (options.watermark && options.watermark.enabled && options.watermark.text) {
+    console.log(`🏷️ Adding watermark: "${options.watermark.text}"`);
+    await addWatermarkToPdf(pdfDoc, options.watermark.text);
+  }
 
   // Save the modified PDF
   console.log('💾 Saving generated PDF...');
@@ -1225,5 +1231,37 @@ function formatDateRange(startDate, endDate, isCurrent) {
   const end = isCurrent ? 'Present' : formatDate(endDate);
   
   return start && end ? `${start} - ${end}` : start || end || '';
+}
+
+/**
+ * UC-51: Add watermark to all pages of a PDF
+ * @param {PDFDocument} pdfDoc - The PDF document
+ * @param {string} text - Watermark text
+ */
+async function addWatermarkToPdf(pdfDoc, text) {
+  const pages = pdfDoc.getPages();
+  const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  
+  for (const page of pages) {
+    const { width, height } = page.getSize();
+    const fontSize = 60;
+    const textWidth = font.widthOfTextAtSize(text, fontSize);
+    const textHeight = fontSize;
+    
+    // Calculate position for diagonal watermark (center of page)
+    const x = (width - textWidth) / 2;
+    const y = (height - textHeight) / 2;
+    
+    // Draw watermark with transparency and rotation
+    page.drawText(text, {
+      x,
+      y,
+      size: fontSize,
+      font,
+      color: rgb(0.7, 0.7, 0.7),
+      opacity: 0.3,
+      rotate: degrees(-45),
+    });
+  }
 }
 

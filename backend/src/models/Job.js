@@ -108,6 +108,12 @@ const jobSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // UC-52: Link resume to job application
+    linkedResumeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Resume',
+      default: null,
+    },
   },
   {
     timestamps: true,

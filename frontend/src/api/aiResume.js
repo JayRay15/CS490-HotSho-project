@@ -58,3 +58,37 @@ export const regenerateResumeSection = async (resumeId, section) => {
 export const analyzeATSCompatibility = async (resumeId) => {
   return await api.get(`/api/resume/resumes/${resumeId}/ats-analysis`);
 };
+
+/**
+ * UC-49: Optimize resume skills based on job posting
+ * @param {string} resumeId - Resume ID
+ * @param {string|Object} jobIdentifier - Job ID string, or object with {title, company}
+ * @returns {Promise} API response with skill optimization suggestions
+ */
+export const optimizeResumeSkills = async (resumeId, jobIdentifier) => {
+  const params = typeof jobIdentifier === 'string' 
+    ? { jobPostingId: jobIdentifier }
+    : { jobTitle: jobIdentifier.title, jobCompany: jobIdentifier.company };
+    
+  return await api.get(`/api/resume/resumes/${resumeId}/optimize-skills`, {
+    params,
+    timeout: 45000 // 45 seconds for AI analysis
+  });
+};
+
+/**
+ * UC-50: Tailor experience section for a job posting
+ * @param {string} resumeId - Resume ID
+ * @param {string|Object} jobIdentifier - Job ID string, or object with {title, company}
+ * @returns {Promise} API response with experience tailoring suggestions
+ */
+export const tailorExperienceForJob = async (resumeId, jobIdentifier) => {
+  const params = typeof jobIdentifier === 'string' 
+    ? { jobPostingId: jobIdentifier }
+    : { jobTitle: jobIdentifier.title, jobCompany: jobIdentifier.company };
+    
+  return await api.get(`/api/resume/resumes/${resumeId}/tailor-experience`, {
+    params,
+    timeout: 120000 // 120 seconds (2 minutes) for detailed analysis with URL scraping
+  });
+};
