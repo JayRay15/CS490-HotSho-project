@@ -13,6 +13,7 @@ import Portfolio from "./pages/auth/Portfolio";
 import ProjectPublic from "./pages/auth/ProjectPublic";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ResumeTemplates from "./pages/auth/ResumeTemplates";
+import MaterialsAnalytics from "./components/MaterialsAnalytics";
 
 function App() {
   return (
@@ -34,6 +35,7 @@ function App() {
           <Route path="/portfolio/project/:id" element={<ProtectedRoute><Portfolio /></ProtectedRoute>} />
           <Route path="/projects/:id" element={<ProjectPublic />} />
           <Route path="/resumes" element={<ProtectedRoute><ResumeTemplates /></ProtectedRoute>} />
+          <Route path="/materials-analytics" element={<ProtectedRoute><MaterialsAnalytics /></ProtectedRoute>} />
         </Routes>
       </Router>
     </ErrorBoundary>

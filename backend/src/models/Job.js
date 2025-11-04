@@ -93,11 +93,35 @@ const jobSchema = new mongoose.Schema(
       },
     ],
     materials: {
-      resume: String,
-      coverLetter: String,
+      resume: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Resume",
+      },
+      coverLetter: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "CoverLetter",
+      },
       portfolio: String,
       other: [String],
     },
+    materialsHistory: [
+      {
+        resume: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Resume",
+        },
+        coverLetter: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "CoverLetter",
+        },
+        changedAt: {
+          type: Date,
+          default: Date.now,
+        },
+        changedBy: String, // 'user' or 'system'
+        reason: String, // e.g., 'Initial application', 'Updated for interview', 'Tailored version'
+      },
+    ],
     priority: {
       type: String,
       enum: ["Low", "Medium", "High"],
@@ -107,12 +131,6 @@ const jobSchema = new mongoose.Schema(
     archived: {
       type: Boolean,
       default: false,
-    },
-    // UC-52: Link resume to job application
-    linkedResumeId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Resume',
-      default: null,
     },
   },
   {
@@ -146,6 +164,18 @@ jobSchema.pre("save", function (next) {
       timestamp: new Date(),
     });
   }
+  
+  // Track materials changes
+  if (this.isModified("materials.resume") || this.isModified("materials.coverLetter")) {
+    this.materialsHistory.push({
+      resume: this.materials.resume,
+      coverLetter: this.materials.coverLetter,
+      changedAt: new Date(),
+      changedBy: "user",
+      reason: this.isNew ? "Initial application" : "Materials updated",
+    });
+  }
+  
   next();
 });
 

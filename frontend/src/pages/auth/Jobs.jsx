@@ -8,6 +8,7 @@ import JobPipeline from "../../components/JobPipeline";
 import DeadlineCalendar from "../../components/DeadlineCalendar";
 import InputField from "../../components/InputField";
 import Button from "../../components/Button";
+import MaterialsHistory from "../../components/MaterialsHistory";
 
 const PIPELINE_STAGES = ["Interested", "Applied", "Phone Screen", "Interview", "Offer", "Rejected"];
 
@@ -23,6 +24,8 @@ export default function Jobs() {
   const [showCalendar, setShowCalendar] = useState(false);
   const [editingJob, setEditingJob] = useState(null);
   const [viewingJob, setViewingJob] = useState(null);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [historyJobId, setHistoryJobId] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedJobs, setSelectedJobs] = useState([]);
@@ -50,6 +53,12 @@ export default function Jobs() {
   const [importStatus, setImportStatus] = useState(null);
   const [importMessage, setImportMessage] = useState("");
 
+  // Materials state
+  const [resumes, setResumes] = useState([]);
+  const [coverLetters, setCoverLetters] = useState([]);
+  const [selectedResume, setSelectedResume] = useState("");
+  const [selectedCoverLetter, setSelectedCoverLetter] = useState("");
+
   // Form state for adding/editing jobs
   const [formData, setFormData] = useState({
     title: "",
@@ -73,11 +82,30 @@ export default function Jobs() {
     salaryNegotiationNotes: "",
   });
 
-  // Load jobs on mount
+  // Load jobs and materials on mount
   useEffect(() => {
     fetchJobs();
     fetchStats();
+    fetchMaterials();
   }, []);
+
+  const fetchMaterials = async () => {
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      
+      // Fetch resumes and cover letters
+      const [resumesRes, coverLettersRes] = await Promise.all([
+        api.get("/api/materials/resumes"),
+        api.get("/api/materials/cover-letters")
+      ]);
+      
+      setResumes(resumesRes.data.data.resumes || []);
+      setCoverLetters(coverLettersRes.data.data.coverLetters || []);
+    } catch (error) {
+      console.error("Failed to fetch materials:", error);
+    }
+  };
 
   // Filter jobs when search or filter changes
   useEffect(() => {
@@ -360,7 +388,23 @@ export default function Jobs() {
         deadline: formData.deadline || undefined,
       };
 
-      await api.post("/api/jobs", jobData);
+      const response = await api.post("/api/jobs", jobData);
+      const createdJob = response.data.data.job;
+      
+      // Link materials if selected
+      if (selectedResume || selectedCoverLetter) {
+        try {
+          await api.post("/api/materials/link", {
+            jobId: createdJob._id,
+            resumeId: selectedResume || undefined,
+            coverLetterId: selectedCoverLetter || undefined,
+          });
+        } catch (materialError) {
+          console.error("Failed to link materials:", materialError);
+          // Don't fail the entire job creation if material linking fails
+        }
+      }
+      
       await fetchJobs();
       await fetchStats();
       setShowAddModal(false);
@@ -415,6 +459,22 @@ export default function Jobs() {
       console.log("UPDATE JOB - Industry value:", formData.industry, "->", jobData.industry);
 
       await api.put(`/api/jobs/${editingJob._id}`, jobData);
+      
+      // Update materials if changed
+      const currentResumeId = editingJob.materials?.resume?._id || editingJob.materials?.resume;
+      const currentCoverLetterId = editingJob.materials?.coverLetter?._id || editingJob.materials?.coverLetter;
+      
+      if (selectedResume !== currentResumeId || selectedCoverLetter !== currentCoverLetterId) {
+        try {
+          await api.put(`/api/materials/${editingJob._id}`, {
+            resumeId: selectedResume || null,
+            coverLetterId: selectedCoverLetter || null,
+          });
+        } catch (materialError) {
+          console.error("Failed to update materials:", materialError);
+        }
+      }
+      
       await fetchJobs();
       setShowEditModal(false);
       setEditingJob(null);
@@ -483,6 +543,11 @@ export default function Jobs() {
       interviewNotes: job.interviewNotes || "",
       salaryNegotiationNotes: job.salaryNegotiationNotes || "",
     });
+    
+    // Set selected materials
+    setSelectedResume(job.materials?.resume?._id || job.materials?.resume || "");
+    setSelectedCoverLetter(job.materials?.coverLetter?._id || job.materials?.coverLetter || "");
+    
     console.log("EDIT JOB - Form data set with industry:", job.industry || "");
     setShowEditModal(true);
   };
@@ -582,6 +647,8 @@ export default function Jobs() {
       interviewNotes: "",
       salaryNegotiationNotes: "",
     });
+    setSelectedResume("");
+    setSelectedCoverLetter("");
   };
 
   const clearFilters = () => {
@@ -1265,6 +1332,43 @@ export default function Jobs() {
                   placeholder="e.g., JavaScript, Remote, Senior"
                 />
 
+                {/* Application Materials Section */}
+                <div className="border-t border-gray-200 pt-4 mt-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Application Materials</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Resume</label>
+                      <select
+                        value={selectedResume}
+                        onChange={(e) => setSelectedResume(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">None</option>
+                        {resumes.map((resume) => (
+                          <option key={resume._id} value={resume._id}>
+                            {resume.name} {resume.isDefault ? "(Default)" : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Cover Letter</label>
+                      <select
+                        value={selectedCoverLetter}
+                        onChange={(e) => setSelectedCoverLetter(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">None</option>
+                        {coverLetters.map((cl) => (
+                          <option key={cl._id} value={cl._id}>
+                            {cl.name} {cl.isDefault ? "(Default)" : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
                 <InputField
                   label="Description"
                   as="textarea"
@@ -1489,6 +1593,55 @@ export default function Jobs() {
                   placeholder="e.g., JavaScript, Remote, Senior"
                 />
 
+                {/* Application Materials Section */}
+                <div className="border-t border-gray-200 pt-4 mt-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Application Materials</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Resume</label>
+                      <select
+                        value={selectedResume}
+                        onChange={(e) => setSelectedResume(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">None</option>
+                        {resumes.map((resume) => (
+                          <option key={resume._id} value={resume._id}>
+                            {resume.name} {resume.isDefault ? "(Default)" : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Cover Letter</label>
+                      <select
+                        value={selectedCoverLetter}
+                        onChange={(e) => setSelectedCoverLetter(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">None</option>
+                        {coverLetters.map((cl) => (
+                          <option key={cl._id} value={cl._id}>
+                            {cl.name} {cl.isDefault ? "(Default)" : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  {/* Show currently linked materials */}
+                  {editingJob && (editingJob.materials?.resume || editingJob.materials?.coverLetter) && (
+                    <div className="mt-3 text-sm text-gray-600">
+                      <p className="font-medium mb-1">Currently Linked:</p>
+                      {editingJob.materials?.resume && (
+                        <p>• Resume: {editingJob.materials.resume.name || 'Untitled'}</p>
+                      )}
+                      {editingJob.materials?.coverLetter && (
+                        <p>• Cover Letter: {editingJob.materials.coverLetter.name || 'Untitled'}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <InputField
                   label="Description"
                   as="textarea"
@@ -1588,7 +1741,7 @@ export default function Jobs() {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-2 mb-6">
+              <div className="flex flex-wrap gap-2 mb-6">
                 <Button
                   onClick={() => {
                     setShowDetailModal(false);
@@ -1597,6 +1750,15 @@ export default function Jobs() {
                   variant="primary"
                 >
                   Edit Job
+                </Button>
+                <Button
+                  onClick={() => {
+                    setHistoryJobId(viewingJob._id);
+                    setShowHistoryModal(true);
+                  }}
+                  variant="secondary"
+                >
+                  📋 Materials History
                 </Button>
                 <Button
                   onClick={() => {
@@ -1807,28 +1969,54 @@ export default function Jobs() {
                 )}
 
                 {/* Materials */}
-                {viewingJob.materials && (
+                {viewingJob.materials && (viewingJob.materials.resume || viewingJob.materials.coverLetter || viewingJob.materials.portfolio) && (
                   <Card title="Application Materials" variant="elevated">
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {viewingJob.materials.resume && (
-                        <div>
-                          <span className="text-sm font-medium text-gray-500">Resume: </span>
-                          <a href={viewingJob.materials.resume} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                            {viewingJob.materials.resume}
-                          </a>
+                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div>
+                            <span className="text-sm font-medium text-gray-900">Resume:</span>
+                            <p className="text-base text-gray-700 mt-1">
+                              {typeof viewingJob.materials.resume === 'object' 
+                                ? viewingJob.materials.resume.name 
+                                : viewingJob.materials.resume}
+                            </p>
+                            {typeof viewingJob.materials.resume === 'object' && viewingJob.materials.resume.isDefault && (
+                              <span className="text-xs text-green-600 font-medium">Default</span>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => alert('View resume functionality - UC-042 Task #9')}
+                            className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                          >
+                            View
+                          </button>
                         </div>
                       )}
                       {viewingJob.materials.coverLetter && (
-                        <div>
-                          <span className="text-sm font-medium text-gray-500">Cover Letter: </span>
-                          <a href={viewingJob.materials.coverLetter} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                            {viewingJob.materials.coverLetter}
-                          </a>
+                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div>
+                            <span className="text-sm font-medium text-gray-900">Cover Letter:</span>
+                            <p className="text-base text-gray-700 mt-1">
+                              {typeof viewingJob.materials.coverLetter === 'object' 
+                                ? viewingJob.materials.coverLetter.name 
+                                : viewingJob.materials.coverLetter}
+                            </p>
+                            {typeof viewingJob.materials.coverLetter === 'object' && viewingJob.materials.coverLetter.isDefault && (
+                              <span className="text-xs text-green-600 font-medium">Default</span>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => alert('View cover letter functionality - UC-042 Task #9')}
+                            className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                          >
+                            View
+                          </button>
                         </div>
                       )}
                       {viewingJob.materials.portfolio && (
-                        <div>
-                          <span className="text-sm font-medium text-gray-500">Portfolio: </span>
+                        <div className="p-3 bg-gray-50 rounded-lg">
+                          <span className="text-sm font-medium text-gray-900">Portfolio: </span>
                           <a href={viewingJob.materials.portfolio} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                             {viewingJob.materials.portfolio}
                           </a>
@@ -1874,6 +2062,17 @@ export default function Jobs() {
             </div>
           </div>
         </div>
+      )}
+      
+      {/* Materials History Modal */}
+      {showHistoryModal && historyJobId && (
+        <MaterialsHistory
+          jobId={historyJobId}
+          onClose={() => {
+            setShowHistoryModal(false);
+            setHistoryJobId(null);
+          }}
+        />
       )}
     </div>
   );

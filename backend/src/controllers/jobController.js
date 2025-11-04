@@ -37,7 +37,10 @@ export const getJobs = asyncHandler(async (req, res) => {
     ];
   }
 
-  const jobs = await Job.find(filter).sort({ createdAt: -1 });
+  const jobs = await Job.find(filter)
+    .populate('materials.resume', 'name isDefault metadata')
+    .populate('materials.coverLetter', 'name isDefault metadata')
+    .sort({ createdAt: -1 });
 
   const { response, statusCode } = successResponse("Jobs retrieved successfully", {
     jobs,
@@ -147,7 +150,9 @@ export const updateJob = asyncHandler(async (req, res) => {
   }
 
   // Find job and verify ownership
-  const job = await Job.findOne({ _id: jobId, userId });
+  const job = await Job.findOne({ _id: jobId, userId })
+    .populate('materials.resume', 'name isDefault metadata')
+    .populate('materials.coverLetter', 'name isDefault metadata');
 
   if (!job) {
     const { response, statusCode } = errorResponse(
@@ -234,7 +239,9 @@ export const updateJobStatus = asyncHandler(async (req, res) => {
   }
 
   // Find job and verify ownership
-  const job = await Job.findOne({ _id: jobId, userId });
+  const job = await Job.findOne({ _id: jobId, userId })
+    .populate('materials.resume', 'name isDefault metadata')
+    .populate('materials.coverLetter', 'name isDefault metadata');
 
   if (!job) {
     const { response, statusCode } = errorResponse(
@@ -289,7 +296,9 @@ export const bulkUpdateDeadline = asyncHandler(async (req, res) => {
 
   const updates = [];
   for (const id of jobIds) {
-    const job = await Job.findOne({ _id: id, userId });
+    const job = await Job.findOne({ _id: id, userId })
+      .populate('materials.resume', 'name isDefault metadata')
+      .populate('materials.coverLetter', 'name isDefault metadata');
     if (!job) continue;
     if (setDate) {
       job.deadline = new Date(setDate);
@@ -349,7 +358,9 @@ export const bulkUpdateStatus = asyncHandler(async (req, res) => {
   }
 
   // Find all jobs and verify ownership
-  const jobs = await Job.find({ _id: { $in: jobIds }, userId });
+  const jobs = await Job.find({ _id: { $in: jobIds }, userId })
+    .populate('materials.resume', 'name isDefault metadata')
+    .populate('materials.coverLetter', 'name isDefault metadata');
 
   if (jobs.length === 0) {
     const { response, statusCode } = errorResponse(
@@ -453,48 +464,5 @@ export const getJobStats = asyncHandler(async (req, res) => {
     totalActive,
     totalArchived,
   });
-  return sendResponse(res, response, statusCode);
-});
-
-// UC-52: PUT /api/jobs/:jobId/link-resume - Link a resume to a job application
-export const linkResumeToJob = asyncHandler(async (req, res) => {
-  const userId = req.auth?.userId || req.auth?.payload?.sub;
-  const { jobId } = req.params;
-  const { resumeId } = req.body;
-
-  if (!userId) {
-    const { response, statusCode } = errorResponse(
-      "Unauthorized: missing authentication credentials",
-      401,
-      ERROR_CODES.UNAUTHORIZED
-    );
-    return sendResponse(res, response, statusCode);
-  }
-
-  if (!jobId || !resumeId) {
-    const { response, statusCode } = errorResponse(
-      "Job ID and Resume ID are required",
-      400,
-      ERROR_CODES.VALIDATION_ERROR
-    );
-    return sendResponse(res, response, statusCode);
-  }
-
-  // Find job and verify ownership
-  const job = await Job.findOne({ _id: jobId, userId });
-  if (!job) {
-    const { response, statusCode } = errorResponse(
-      "Job not found or you don't have permission to update it",
-      404,
-      ERROR_CODES.NOT_FOUND
-    );
-    return sendResponse(res, response, statusCode);
-  }
-
-  // Update job with linked resume
-  job.linkedResumeId = resumeId;
-  await job.save();
-
-  const { response, statusCode} = successResponse("Resume linked to job successfully", { job });
   return sendResponse(res, response, statusCode);
 });
