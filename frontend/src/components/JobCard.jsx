@@ -17,7 +17,7 @@ const PRIORITY_COLORS = {
   "High": "text-red-600",
 };
 
-export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange, isDragging, highlightTerms, isSelected, onToggleSelect }) {
+export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange, isDragging, highlightTerms, isSelected, onToggleSelect, onArchive, onRestore }) {
   const [showDetails, setShowDetails] = useState(false);
 
   const formatDate = (date) => {
@@ -231,6 +231,25 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
               Edit
             </button>
           )}
+          {job.archived ? (
+            onRestore && (
+              <button
+                onClick={() => onRestore(job._id)}
+                className="text-xs px-2 py-1 rounded bg-green-100 hover:bg-green-200 text-green-700 font-medium"
+              >
+                ↩️ Restore
+              </button>
+            )
+          ) : (
+            onArchive && (
+              <button
+                onClick={() => onArchive(job)}
+                className="text-xs px-2 py-1 rounded bg-blue-100 hover:bg-blue-200 text-blue-700 font-medium"
+              >
+                📦 Archive
+              </button>
+            )
+          )}
           {onDelete && (
             <button
               onClick={() => {
@@ -339,6 +358,9 @@ JobCard.propTypes = {
     tags: PropTypes.arrayOf(PropTypes.string),
     priority: PropTypes.string,
     daysInStage: PropTypes.number,
+    archived: PropTypes.bool,
+    archiveReason: PropTypes.string,
+    archivedAt: PropTypes.string,
   }).isRequired,
   onEdit: PropTypes.func,
   onDelete: PropTypes.func,
@@ -348,4 +370,6 @@ JobCard.propTypes = {
   highlightTerms: PropTypes.arrayOf(PropTypes.string),
   isSelected: PropTypes.bool,
   onToggleSelect: PropTypes.func,
+  onArchive: PropTypes.func,
+  onRestore: PropTypes.func,
 };

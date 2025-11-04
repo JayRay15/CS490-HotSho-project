@@ -498,3 +498,244 @@ export const linkResumeToJob = asyncHandler(async (req, res) => {
   const { response, statusCode} = successResponse("Resume linked to job successfully", { job });
   return sendResponse(res, response, statusCode);
 });
+
+// POST /api/jobs/:jobId/archive - Archive a single job
+export const archiveJob = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { jobId } = req.params;
+  const { reason, notes } = req.body;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const job = await Job.findOne({ _id: jobId, userId });
+  if (!job) {
+    const { response, statusCode } = errorResponse(
+      "Job not found or you don't have permission to archive it",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  if (job.archived) {
+    const { response, statusCode } = errorResponse(
+      "Job is already archived",
+      400,
+      ERROR_CODES.VALIDATION_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  job.archived = true;
+  job.archivedAt = new Date();
+  job.archiveReason = reason;
+  job.archiveNotes = notes;
+  job.autoArchived = false;
+  await job.save();
+
+  const { response, statusCode } = successResponse("Job archived successfully", { job });
+  return sendResponse(res, response, statusCode);
+});
+
+// POST /api/jobs/:jobId/restore - Restore an archived job
+export const restoreJob = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { jobId } = req.params;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const job = await Job.findOne({ _id: jobId, userId });
+  if (!job) {
+    const { response, statusCode } = errorResponse(
+      "Job not found or you don't have permission to restore it",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  if (!job.archived) {
+    const { response, statusCode } = errorResponse(
+      "Job is not archived",
+      400,
+      ERROR_CODES.VALIDATION_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  job.archived = false;
+  job.archivedAt = undefined;
+  job.archiveReason = undefined;
+  job.archiveNotes = undefined;
+  job.autoArchived = false;
+  await job.save();
+
+  const { response, statusCode } = successResponse("Job restored successfully", { job });
+  return sendResponse(res, response, statusCode);
+});
+
+// POST /api/jobs/bulk-archive - Bulk archive jobs
+export const bulkArchiveJobs = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { jobIds, reason, notes } = req.body;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  if (!jobIds || !Array.isArray(jobIds) || jobIds.length === 0) {
+    const { response, statusCode } = errorResponse(
+      "Job IDs array is required",
+      400,
+      ERROR_CODES.VALIDATION_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const jobs = await Job.find({ _id: { $in: jobIds }, userId, archived: false });
+
+  if (jobs.length === 0) {
+    const { response, statusCode } = errorResponse(
+      "No active jobs found to archive",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const archivedJobs = [];
+  for (const job of jobs) {
+    job.archived = true;
+    job.archivedAt = new Date();
+    job.archiveReason = reason;
+    job.archiveNotes = notes;
+    job.autoArchived = false;
+    await job.save();
+    archivedJobs.push(job);
+  }
+
+  const { response, statusCode } = successResponse(
+    `${archivedJobs.length} job(s) archived successfully`,
+    { jobs: archivedJobs, count: archivedJobs.length }
+  );
+  return sendResponse(res, response, statusCode);
+});
+
+// POST /api/jobs/bulk-restore - Bulk restore archived jobs
+export const bulkRestoreJobs = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { jobIds } = req.body;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  if (!jobIds || !Array.isArray(jobIds) || jobIds.length === 0) {
+    const { response, statusCode } = errorResponse(
+      "Job IDs array is required",
+      400,
+      ERROR_CODES.VALIDATION_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const jobs = await Job.find({ _id: { $in: jobIds }, userId, archived: true });
+
+  if (jobs.length === 0) {
+    const { response, statusCode } = errorResponse(
+      "No archived jobs found to restore",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const restoredJobs = [];
+  for (const job of jobs) {
+    job.archived = false;
+    job.archivedAt = undefined;
+    job.archiveReason = undefined;
+    job.archiveNotes = undefined;
+    job.autoArchived = false;
+    await job.save();
+    restoredJobs.push(job);
+  }
+
+  const { response, statusCode } = successResponse(
+    `${restoredJobs.length} job(s) restored successfully`,
+    { jobs: restoredJobs, count: restoredJobs.length }
+  );
+  return sendResponse(res, response, statusCode);
+});
+
+// POST /api/jobs/auto-archive - Auto-archive old jobs based on criteria
+export const autoArchiveJobs = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { daysInactive, statuses } = req.body;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const daysThreshold = daysInactive || 90; // Default 90 days
+  const targetStatuses = statuses || ["Rejected", "Offer"];
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - daysThreshold);
+
+  const jobs = await Job.find({
+    userId,
+    archived: false,
+    status: { $in: targetStatuses },
+    updatedAt: { $lt: cutoffDate },
+  });
+
+  const archivedJobs = [];
+  for (const job of jobs) {
+    job.archived = true;
+    job.archivedAt = new Date();
+    job.archiveReason = "Other";
+    job.archiveNotes = `Auto-archived after ${daysThreshold} days of inactivity`;
+    job.autoArchived = true;
+    await job.save();
+    archivedJobs.push(job);
+  }
+
+  const { response, statusCode } = successResponse(
+    `${archivedJobs.length} job(s) auto-archived`,
+    { 
+      jobs: archivedJobs, 
+      count: archivedJobs.length,
+      criteria: { daysInactive: daysThreshold, statuses: targetStatuses }
+    }
+  );
+  return sendResponse(res, response, statusCode);
+});

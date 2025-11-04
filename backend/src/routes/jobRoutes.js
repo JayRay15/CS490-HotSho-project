@@ -11,6 +11,11 @@ import {
   deleteJob,
   getJobStats,
   linkResumeToJob,
+  archiveJob,
+  restoreJob,
+  bulkArchiveJobs,
+  bulkRestoreJobs,
+  autoArchiveJobs,
 } from "../controllers/jobController.js";
 import { scrapeJobFromURL } from "../controllers/jobScraperController.js";
 
@@ -36,6 +41,21 @@ router.post("/bulk-update-deadline", checkJwt, bulkUpdateDeadline);
 
 // POST /api/jobs/send-deadline-reminders - Trigger reminders manually (auth required)
 router.post("/send-deadline-reminders", checkJwt, sendDeadlineReminders);
+
+// POST /api/jobs/bulk-archive - Bulk archive jobs
+router.post("/bulk-archive", checkJwt, bulkArchiveJobs);
+
+// POST /api/jobs/bulk-restore - Bulk restore archived jobs
+router.post("/bulk-restore", checkJwt, bulkRestoreJobs);
+
+// POST /api/jobs/auto-archive - Auto-archive old jobs
+router.post("/auto-archive", checkJwt, autoArchiveJobs);
+
+// POST /api/jobs/:jobId/archive - Archive a single job
+router.post("/:jobId/archive", checkJwt, archiveJob);
+
+// POST /api/jobs/:jobId/restore - Restore an archived job
+router.post("/:jobId/restore", checkJwt, restoreJob);
 
 // PUT /api/jobs/:jobId - Update a job
 router.put("/:jobId", checkJwt, updateJob);

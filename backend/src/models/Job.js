@@ -108,6 +108,20 @@ const jobSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    archivedAt: {
+      type: Date,
+    },
+    archiveReason: {
+      type: String,
+      enum: ["Completed", "Rejected", "Not Interested", "Position Filled", "Company Issue", "Timing", "Other"],
+    },
+    archiveNotes: {
+      type: String,
+    },
+    autoArchived: {
+      type: Boolean,
+      default: false,
+    },
     // UC-52: Link resume to job application
     linkedResumeId: {
       type: mongoose.Schema.Types.ObjectId,
