@@ -458,19 +458,20 @@ export const getJobStats = asyncHandler(async (req, res) => {
 
 // GET /api/jobs/analytics - Get detailed job analytics
 export const getJobAnalytics = asyncHandler(async (req, res) => {
-  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  try {
+    const userId = req.auth?.userId || req.auth?.payload?.sub;
 
-  if (!userId) {
-    const { response, statusCode } = errorResponse(
-      "Unauthorized: missing authentication credentials",
-      401,
-      ERROR_CODES.UNAUTHORIZED
-    );
-    return sendResponse(res, response, statusCode);
-  }
+    if (!userId) {
+      const { response, statusCode } = errorResponse(
+        "Unauthorized: missing authentication credentials",
+        401,
+        ERROR_CODES.UNAUTHORIZED
+      );
+      return sendResponse(res, response, statusCode);
+    }
 
-  // Fetch all jobs (both active and archived) for comprehensive analytics
-  const allJobs = await Job.find({ userId });
+    // Fetch all jobs (both active and archived) for comprehensive analytics
+    const allJobs = await Job.find({ userId });
   const activeJobs = allJobs.filter(job => !job.archived);
   
   // 1. Total jobs tracked by status
@@ -618,6 +619,15 @@ export const getJobAnalytics = asyncHandler(async (req, res) => {
     },
   });
   return sendResponse(res, response, statusCode);
+  } catch (err) {
+    console.error("Error in getJobAnalytics:", err);
+    const { response, statusCode } = errorResponse(
+      err.message || "Failed to retrieve job analytics",
+      500,
+      ERROR_CODES.INTERNAL_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
 });
 
 // UC-52: PUT /api/jobs/:jobId/link-resume - Link a resume to a job application

@@ -1,9 +1,15 @@
 import { jest } from "@jest/globals";
 import { getJobAnalytics } from "../jobController.js";
+import { errorHandler } from "../../middleware/errorHandler.js";
 import { Job } from "../../models/Job.js";
 
-// Mock the Job model
-jest.mock("../../models/Job.js");
+// Mock the Job model (ensure __esModule to support named exports in ESM)
+jest.mock("../../models/Job.js", () => ({
+  __esModule: true,
+  Job: {
+    find: jest.fn(),
+  },
+}));
 
 describe("Job Analytics Controller", () => {
   let req, res, mockJobs;
@@ -11,6 +17,8 @@ describe("Job Analytics Controller", () => {
   beforeEach(() => {
     // Reset mocks
     jest.clearAllMocks();
+    // Ensure Job.find is a mock function in case module mocking didn't replace it
+    Job.find = jest.fn();
 
     // Mock request with userId
     req = {
@@ -121,7 +129,7 @@ describe("Job Analytics Controller", () => {
     it("should return comprehensive analytics for user jobs", async () => {
       Job.find.mockResolvedValue(mockJobs);
 
-      await getJobAnalytics(req, res);
+  await getJobAnalytics(req, res, (err) => { if (err) errorHandler(err, req, res, () => {}); });
 
       expect(Job.find).toHaveBeenCalledWith({ userId: "test-user-123" });
       expect(res.status).toHaveBeenCalledWith(200);
@@ -143,7 +151,7 @@ describe("Job Analytics Controller", () => {
     it("should calculate correct total applications", async () => {
       Job.find.mockResolvedValue(mockJobs);
 
-      await getJobAnalytics(req, res);
+  await getJobAnalytics(req, res, (err) => { if (err) errorHandler(err, req, res, () => {}); });
 
       expect(res.json).toHaveBeenCalled();
       const response = res.json.mock.calls[0][0];
@@ -156,7 +164,7 @@ describe("Job Analytics Controller", () => {
     it("should calculate correct active vs archived applications", async () => {
       Job.find.mockResolvedValue(mockJobs);
 
-      await getJobAnalytics(req, res);
+  await getJobAnalytics(req, res, (err) => { if (err) errorHandler(err, req, res, () => {}); });
 
       expect(res.json).toHaveBeenCalled();
       const response = res.json.mock.calls[0][0];
@@ -170,7 +178,7 @@ describe("Job Analytics Controller", () => {
     it("should calculate response rate correctly", async () => {
       Job.find.mockResolvedValue(mockJobs);
 
-      await getJobAnalytics(req, res);
+  await getJobAnalytics(req, res, (err) => { if (err) errorHandler(err, req, res, () => {}); });
 
       expect(res.json).toHaveBeenCalled();
       const response = res.json.mock.calls[0][0];
@@ -184,7 +192,7 @@ describe("Job Analytics Controller", () => {
     it("should track status distribution", async () => {
       Job.find.mockResolvedValue(mockJobs);
 
-      await getJobAnalytics(req, res);
+  await getJobAnalytics(req, res, (err) => { if (err) errorHandler(err, req, res, () => {}); });
 
       expect(res.json).toHaveBeenCalled();
       const response = res.json.mock.calls[0][0];
@@ -201,7 +209,7 @@ describe("Job Analytics Controller", () => {
     it("should calculate average time by stage", async () => {
       Job.find.mockResolvedValue(mockJobs);
 
-      await getJobAnalytics(req, res);
+  await getJobAnalytics(req, res, (err) => { if (err) errorHandler(err, req, res, () => {}); });
 
       expect(res.json).toHaveBeenCalled();
       const response = res.json.mock.calls[0][0];
@@ -217,7 +225,7 @@ describe("Job Analytics Controller", () => {
     it("should provide monthly volume for last 12 months", async () => {
       Job.find.mockResolvedValue(mockJobs);
 
-      await getJobAnalytics(req, res);
+  await getJobAnalytics(req, res, (err) => { if (err) errorHandler(err, req, res, () => {}); });
 
       expect(res.json).toHaveBeenCalled();
       const response = res.json.mock.calls[0][0];
@@ -233,7 +241,7 @@ describe("Job Analytics Controller", () => {
     it("should track deadline adherence", async () => {
       Job.find.mockResolvedValue(mockJobs);
 
-      await getJobAnalytics(req, res);
+  await getJobAnalytics(req, res, (err) => { if (err) errorHandler(err, req, res, () => {}); });
 
       expect(res.json).toHaveBeenCalled();
       const response = res.json.mock.calls[0][0];
@@ -250,7 +258,7 @@ describe("Job Analytics Controller", () => {
     it("should calculate time to offer", async () => {
       Job.find.mockResolvedValue(mockJobs);
 
-      await getJobAnalytics(req, res);
+  await getJobAnalytics(req, res, (err) => { if (err) errorHandler(err, req, res, () => {}); });
 
       expect(res.json).toHaveBeenCalled();
       const response = res.json.mock.calls[0][0];
