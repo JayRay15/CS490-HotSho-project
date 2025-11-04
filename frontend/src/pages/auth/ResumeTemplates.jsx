@@ -1215,7 +1215,7 @@ export default function ResumeTemplates() {
             <div className="flex items-start justify-between mb-3">
               <div>
                 <h1 className="text-3xl font-heading font-bold mb-2" style={{ color: "#4F5348" }}>
-                  My Resumes & Cover Letters
+                  Resumes & Cover Letters
                 </h1>
                 <p className="text-sm" style={{ color: "#656A5C" }}>
                   View, create, and manage your resumes, cover letters, and templates.
