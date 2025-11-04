@@ -17,10 +17,15 @@ export default function Breadcrumb() {
             currentPath += `/${path}`;
             
             // Format the label (capitalize, remove hyphens)
-            const label = path
+            let label = path
                 .split('-')
                 .map(word => word.charAt(0).toUpperCase() + word.slice(1))
                 .join(' ');
+            
+            // Custom label for resumes page
+            if (path === 'resumes') {
+                label = 'Resumes & Cover Letters';
+            }
 
             crumbs.push({
                 label,
