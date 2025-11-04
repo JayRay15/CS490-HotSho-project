@@ -11,7 +11,7 @@ const PIPELINE_STAGES = [
   { id: "Rejected", label: "Rejected", color: "bg-red-100 border-red-300" },
 ];
 
-export default function JobPipeline({ jobs, onJobStatusChange, onJobEdit, onJobDelete, onJobView, highlightTerms }) {
+export default function JobPipeline({ jobs, onJobStatusChange, onJobEdit, onJobDelete, onJobView, highlightTerms, selectedJobs = [], onToggleSelect }) {
   const [draggedJob, setDraggedJob] = useState(null);
   const [dragOverStage, setDragOverStage] = useState(null);
 
@@ -74,11 +74,43 @@ export default function JobPipeline({ jobs, onJobStatusChange, onJobEdit, onJobD
           >
             {/* Stage Header */}
             <div className="p-4 border-b-2 border-gray-300">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <h3 className="font-semibold text-gray-800">{stage.label}</h3>
-                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-white text-gray-700">
-                  {stageJobs.length}
-                </span>
+                <div className="flex items-center gap-2">
+                  {Array.isArray(selectedJobs) && typeof onToggleSelect === 'function' && (
+                    (() => {
+                      const allSelected = stageJobs.length > 0 && stageJobs.every(j => selectedJobs.includes(j._id));
+                      const handleStageSelect = (e) => {
+                        e.stopPropagation();
+                        if (!stageJobs.length) return;
+                        if (allSelected) {
+                          // Clear all in stage
+                          stageJobs.forEach(j => {
+                            if (selectedJobs.includes(j._id)) onToggleSelect(j._id);
+                          });
+                        } else {
+                          // Select all in stage
+                          stageJobs.forEach(j => {
+                            if (!selectedJobs.includes(j._id)) onToggleSelect(j._id);
+                          });
+                        }
+                      };
+                      return (
+                        <button
+                          type="button"
+                          onClick={handleStageSelect}
+                          className="text-xs px-2 py-1 rounded bg-white hover:bg-gray-100 border border-gray-300 text-gray-700"
+                          title={allSelected ? 'Clear selection for this stage' : 'Select all in this stage'}
+                        >
+                          {allSelected ? 'Clear' : 'Select all'}
+                        </button>
+                      );
+                    })()
+                  )}
+                  <span className="px-2 py-1 text-xs font-semibold rounded-full bg-white text-gray-700">
+                    {stageJobs.length}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -105,7 +137,9 @@ export default function JobPipeline({ jobs, onJobStatusChange, onJobEdit, onJobD
                       onEdit={onJobEdit}
                       onDelete={onJobDelete}
                       onView={onJobView}
-                        onStatusChange={onJobStatusChange}
+                      onStatusChange={onJobStatusChange}
+                      isSelected={Array.isArray(selectedJobs) && selectedJobs.includes(job._id)}
+                      onToggleSelect={onToggleSelect ? () => onToggleSelect(job._id) : undefined}
                       isDragging={draggedJob?._id === job._id}
                       highlightTerms={highlightTerms}
                     />
@@ -134,4 +168,6 @@ JobPipeline.propTypes = {
   onJobDelete: PropTypes.func,
   onJobView: PropTypes.func,
   highlightTerms: PropTypes.arrayOf(PropTypes.string),
+  selectedJobs: PropTypes.arrayOf(PropTypes.string),
+  onToggleSelect: PropTypes.func,
 };

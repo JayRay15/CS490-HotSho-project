@@ -17,7 +17,7 @@ const PRIORITY_COLORS = {
   "High": "text-red-600",
 };
 
-export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange, isDragging, highlightTerms }) {
+export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange, isDragging, highlightTerms, isSelected, onToggleSelect }) {
   const [showDetails, setShowDetails] = useState(false);
 
   const formatDate = (date) => {
@@ -105,17 +105,30 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
     <div
       className={`rounded-lg border-2 p-4 mb-3 transition-all ${cardColorClass} ${
         isDragging ? "opacity-50 rotate-2 shadow-lg" : "hover:shadow-md"
-      }`}
+      } ${isSelected ? 'ring-2 ring-blue-400' : ''}`}
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-2">
-        <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-lg text-gray-900 truncate">
-            {highlightText(job.title, highlightTerms)}
-          </h3>
-          <p className="text-sm text-gray-600 truncate">
-            {highlightText(job.company, highlightTerms)}
-          </p>
+        <div className="flex items-start gap-2 flex-1 min-w-0">
+          {onToggleSelect && (
+            <input
+              type="checkbox"
+              checked={!!isSelected}
+              onChange={onToggleSelect}
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              className="mt-1"
+              title="Select for bulk actions"
+            />
+          )}
+          <div className="min-w-0 flex-1">
+            <h3 className="font-semibold text-lg text-gray-900 truncate">
+              {highlightText(job.title, highlightTerms)}
+            </h3>
+            <p className="text-sm text-gray-600 truncate">
+              {highlightText(job.company, highlightTerms)}
+            </p>
+          </div>
         </div>
         {deadlineDays != null && (
           <span className={`ml-2 text-xs font-medium px-2 py-1 rounded ${deadlineColor}`} title={new Date(job.deadline).toLocaleDateString()}>
@@ -333,4 +346,6 @@ JobCard.propTypes = {
   onStatusChange: PropTypes.func,
   isDragging: PropTypes.bool,
   highlightTerms: PropTypes.arrayOf(PropTypes.string),
+  isSelected: PropTypes.bool,
+  onToggleSelect: PropTypes.func,
 };

@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import { connectDB } from "./utils/db.js";
 import userRoutes from "./routes/userRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
@@ -14,7 +16,12 @@ import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 // Cleanup schedule no longer needed - accounts are deleted immediately
 // import { startCleanupSchedule } from "./utils/cleanupDeletedUsers.js";
 
-dotenv.config();
+// Get the directory name of the current module
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load .env from backend root, not src/
+dotenv.config({ path: join(__dirname, '..', '.env') });
 
 // Connect to MongoDB before starting the server
 await connectDB();

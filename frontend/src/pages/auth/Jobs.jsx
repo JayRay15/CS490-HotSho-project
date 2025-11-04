@@ -516,6 +516,11 @@ export default function Jobs() {
     }
   };
 
+  // Toggle selection for a single job ID
+  const toggleSelectJob = (id) => {
+    setSelectedJobs((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
   const handleBulkDeadlineSet = async (dateStr) => {
     if (selectedJobs.length === 0) {
       alert("Please select jobs to update");
@@ -1036,6 +1041,8 @@ export default function Jobs() {
               onJobEdit={handleEditJob}
               onJobDelete={handleDeleteJob}
               onJobView={handleViewJob}
+              selectedJobs={selectedJobs}
+              onToggleSelect={toggleSelectJob}
               highlightTerms={[
                 searchTerm?.trim(),
                 filters.location?.trim(),

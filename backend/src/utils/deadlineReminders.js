@@ -23,7 +23,7 @@ const daysUntil = (deadline) => {
  * @param {number[]} options.thresholds - Days remaining that trigger reminders (e.g., [7,3,1,0,-1])
  * @returns {Promise<{processed:number, emailed:number}>}
  */
-export const sendDeadlineRemindersNow = async ({ windowDays = 7, includeOverdueDays = 7 } = {}) => {
+export const sendDeadlineRemindersNow = async ({ windowDays = 1, includeOverdueDays = 0 } = {}) => {
   // Fetch all jobs that have deadlines and are not archived
   const jobs = await Job.find({ deadline: { $ne: null }, archived: { $ne: true } });
 
