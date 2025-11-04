@@ -494,6 +494,9 @@ export default function ResumeTemplates() {
   const [viewingResume, setViewingResume] = useState(null);
   const [regeneratingSection, setRegeneratingSection] = useState(null);
   
+  // Resume Display State
+  const [showAllResumes, setShowAllResumes] = useState(false);
+  
     // Section Customization State (UC-048)
     const [visibleSections, setVisibleSections] = useState(DEFAULT_SECTIONS.map(s => s.key));
     const [sectionOrder, setSectionOrder] = useState(DEFAULT_SECTIONS.map(s => s.key));
@@ -1209,15 +1212,27 @@ export default function ResumeTemplates() {
 
           {/* Header */}
           <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-start justify-between mb-3">
               <div>
                 <h1 className="text-3xl font-heading font-bold mb-2" style={{ color: "#4F5348" }}>
-                  My Resumes
+                  Resumes & Cover Letters
                 </h1>
                 <p className="text-sm" style={{ color: "#656A5C" }}>
-                  View, create, and manage your resumes and templates.
+                  View, create, and manage your resumes, cover letters, and templates.
                 </p>
               </div>
+              
+            </div>
+            
+            {/* Removed Experimental Features Toggle */}
+          </div>
+
+          {/* Resumes Section */}
+          <div className="mb-12">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-heading font-bold" style={{ color: "#4F5348" }}>
+                My Resumes
+              </h2>
               <div className="flex gap-3">
                 <button
                   onClick={handleOpenAIResumeModal}
@@ -1246,38 +1261,68 @@ export default function ResumeTemplates() {
               </div>
             </div>
             
-            {/* Removed Experimental Features Toggle */}
+            {resumes.length === 0 ? (
+              <Card variant="elevated" className="text-center py-12">
+                <div className="text-gray-500 mb-4">
+                  <svg className="w-16 h-16 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <p className="text-lg font-medium">No resumes yet</p>
+                  <p className="text-sm">Click "Add Resume" to create your first resume</p>
+                </div>
+              </Card>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {(showAllResumes ? resumes : resumes.slice(0, 4)).map((resume) => (
+                    <ResumeTile
+                      key={resume._id}
+                      resume={resume}
+                      template={templates.find(t => t._id === resume.templateId)}
+                      onView={() => handleViewResume(resume)}
+                      onRename={() => {
+                        setRenamingResume(resume);
+                        setRenameValue(resume.name);
+                        setShowRenameModal(true);
+                      }}
+                      onDelete={() => handleDeleteResumeClick(resume)}
+                    />
+                  ))}
+                </div>
+                
+                {/* View All / View Less Button */}
+                {resumes.length > 4 && (
+                  <div className="mt-6 text-center">
+                    <button
+                      onClick={() => setShowAllResumes(!showAllResumes)}
+                      className="px-6 py-2 text-white rounded-lg transition focus:outline-none focus:ring-2 focus:ring-offset-2"
+                      style={{ backgroundColor: '#777C6D' }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                    >
+                      {showAllResumes ? 'View Less' : 'View All'}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
-          {/* Resumes Grid */}
-          {resumes.length === 0 ? (
+          {/* Cover Letters Section */}
+          <div className="mb-12">
+            <h2 className="text-2xl font-heading font-bold mb-4" style={{ color: "#4F5348" }}>
+              My Cover Letters
+            </h2>
             <Card variant="elevated" className="text-center py-12">
               <div className="text-gray-500 mb-4">
                 <svg className="w-16 h-16 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                <p className="text-lg font-medium">No resumes yet</p>
-                <p className="text-sm">Click "Add Resume" to create your first resume</p>
+                <p className="text-lg font-medium">Cover letters coming soon</p>
+                <p className="text-sm">This feature will be available in a future update</p>
               </div>
             </Card>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {resumes.map((resume) => (
-                <ResumeTile
-                  key={resume._id}
-                  resume={resume}
-                  template={templates.find(t => t._id === resume.templateId)}
-                  onView={() => handleViewResume(resume)}
-                  onRename={() => {
-                    setRenamingResume(resume);
-                    setRenameValue(resume.name);
-                    setShowRenameModal(true);
-                  }}
-                  onDelete={() => handleDeleteResumeClick(resume)}
-                />
-              ))}
-            </div>
-          )}
+          </div>
         </div>
       </Container>
 
