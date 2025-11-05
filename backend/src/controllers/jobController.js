@@ -593,22 +593,22 @@ export const getJobAnalytics = asyncHandler(async (req, res) => {
     percentage: totalApplications > 0 ? ((statusCounts[status] / totalApplications) * 100).toFixed(1) : 0
   }));
 
-  // 7. Application funnel analytics (applied → interview → offer)
-  // Use allJobs (not just activeJobs) to include rejected/archived jobs in funnel
+  // 7. Application funnel analytics (applied → phone screen → interview → offer)
+  // Each stage counts only jobs currently at that exact stage
   const funnelData = {
-    applied: appliedJobs.length,
-    phoneScreen: allJobs.filter(job => ["Phone Screen", "Interview", "Offer", "Accepted", "Rejected"].includes(job.status)).length,
-    interview: allJobs.filter(job => ["Interview", "Offer", "Accepted", "Rejected"].includes(job.status)).length,
-    offer: allJobs.filter(job => ["Offer", "Accepted"].includes(job.status)).length,
+    applied: allJobs.length,
+    phoneScreen: allJobs.filter(job => job.status === "Phone Screen").length,
+    interview: allJobs.filter(job => job.status === "Interview").length,
+    offer: allJobs.filter(job => job.status === "Offer").length,
     conversionRates: {
-      applyToScreen: appliedJobs.length > 0 
-        ? ((allJobs.filter(job => ["Phone Screen", "Interview", "Offer", "Accepted", "Rejected"].includes(job.status)).length / appliedJobs.length) * 100).toFixed(1)
+      applyToScreen: allJobs.length > 0
+        ? ((allJobs.filter(job => job.status === "Phone Screen").length / allJobs.length) * 100).toFixed(1)
         : 0,
-      screenToInterview: allJobs.filter(job => ["Phone Screen", "Interview", "Offer", "Accepted", "Rejected"].includes(job.status)).length > 0
-        ? ((allJobs.filter(job => ["Interview", "Offer", "Accepted", "Rejected"].includes(job.status)).length / allJobs.filter(job => ["Phone Screen", "Interview", "Offer", "Accepted", "Rejected"].includes(job.status)).length) * 100).toFixed(1)
+      screenToInterview: allJobs.filter(job => job.status === "Phone Screen").length > 0
+        ? ((allJobs.filter(job => job.status === "Interview").length / allJobs.filter(job => job.status === "Phone Screen").length) * 100).toFixed(1)
         : 0,
-      interviewToOffer: allJobs.filter(job => ["Interview", "Offer", "Accepted", "Rejected"].includes(job.status)).length > 0
-        ? ((allJobs.filter(job => ["Offer", "Accepted"].includes(job.status)).length / allJobs.filter(job => ["Interview", "Offer", "Accepted", "Rejected"].includes(job.status)).length) * 100).toFixed(1)
+      interviewToOffer: allJobs.filter(job => job.status === "Interview").length > 0
+        ? ((allJobs.filter(job => job.status === "Offer").length / allJobs.filter(job => job.status === "Interview").length) * 100).toFixed(1)
         : 0,
     }
   };
@@ -754,14 +754,16 @@ export const getJobAnalytics = asyncHandler(async (req, res) => {
     });
   }
 
-  // 12. Performance benchmarking (industry averages - simulated benchmarks)
+  // 12. Performance benchmarking against industry standards
+  // NOTE: Industry averages are reference benchmarks based on job search industry research
+  // These are static standards for comparison, not user-specific data
   const benchmarks = {
     industryAverages: {
-      responseRate: 25, // Industry average response rate %
-      interviewRate: 15, // Industry average interview rate %
-      offerRate: 5, // Industry average offer rate %
-      avgTimeToOffer: 45, // Industry average days
-      avgResponseTime: 14 // Industry average response time in days
+      responseRate: 25, // Industry standard: 25% response rate
+      interviewRate: 15, // Industry standard: 15% interview rate
+      offerRate: 5, // Industry standard: 5% offer rate
+      avgTimeToOffer: 45, // Industry standard: 45 days to offer
+      avgResponseTime: 14 // Industry standard: 14 days response time
     },
     userPerformance: {
       responseRate: parseFloat(responseRate),
@@ -837,20 +839,21 @@ export const getJobAnalytics = asyncHandler(async (req, res) => {
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
   const monthStart = new Date(currentYear, currentMonth, 1);
-  
+  // 14. Monthly goal tracking - system defaults
+  // NOTE: Goals are currently system-wide defaults. Future enhancement: allow users to set custom goals in User model
   const monthlyGoals = {
     applications: {
-      goal: 20, // Default monthly goal
+      goal: 20, // System default: 20 applications per month
       current: allJobs.filter(j => new Date(j.createdAt) >= monthStart).length,
       percentage: (allJobs.filter(j => new Date(j.createdAt) >= monthStart).length / 20 * 100).toFixed(0)
     },
     interviews: {
-      goal: 5, // Default monthly goal
+      goal: 5, // System default: 5 interviews per month
       current: allJobs.filter(j => new Date(j.createdAt) >= monthStart && ["Interview", "Offer", "Accepted"].includes(j.status)).length,
       percentage: (allJobs.filter(j => new Date(j.createdAt) >= monthStart && ["Interview", "Offer", "Accepted"].includes(j.status)).length / 5 * 100).toFixed(0)
     },
     offers: {
-      goal: 1, // Default monthly goal
+      goal: 1, // System default: 1 offer per month
       current: allJobs.filter(j => new Date(j.createdAt) >= monthStart && ["Offer", "Accepted"].includes(j.status)).length,
       percentage: (allJobs.filter(j => new Date(j.createdAt) >= monthStart && ["Offer", "Accepted"].includes(j.status)).length / 1 * 100).toFixed(0)
     }

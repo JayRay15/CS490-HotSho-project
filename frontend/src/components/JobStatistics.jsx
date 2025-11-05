@@ -65,9 +65,11 @@ export default function JobStatistics({ onClose }) {
       csvRows.push("APPLICATION FUNNEL");
       csvRows.push("Stage,Count,Conversion Rate");
       csvRows.push(`Applied,${analytics.funnelAnalytics.applied},-`);
-      csvRows.push(`Phone Screen,${analytics.funnelAnalytics.phoneScreen},${analytics.funnelAnalytics.conversionRates.applyToScreen}%`);
-      csvRows.push(`Interview,${analytics.funnelAnalytics.interview},${analytics.funnelAnalytics.conversionRates.screenToInterview}%`);
-      csvRows.push(`Offer,${analytics.funnelAnalytics.offer},${analytics.funnelAnalytics.conversionRates.interviewToOffer}%`);
+  // Only show conversion rates in CSV if not 0 or 100
+  const conv = analytics.funnelAnalytics.conversionRates;
+  csvRows.push(`Phone Screen,${analytics.funnelAnalytics.phoneScreen},${(conv.applyToScreen !== 0 && conv.applyToScreen !== 100) ? conv.applyToScreen + '%' : ''}`);
+  csvRows.push(`Interview,${analytics.funnelAnalytics.interview},${(conv.screenToInterview !== 0 && conv.screenToInterview !== 100) ? conv.screenToInterview + '%' : ''}`);
+  csvRows.push(`Offer,${analytics.funnelAnalytics.offer},${(conv.interviewToOffer !== 0 && conv.interviewToOffer !== 100) ? conv.interviewToOffer + '%' : ''}`);
       csvRows.push("");
     }
 
@@ -254,7 +256,6 @@ export default function JobStatistics({ onClose }) {
             {[
               { id: 'overview', label: 'Overview', icon: '📊' },
               { id: 'funnel', label: 'Funnel', icon: '🔀' },
-              { id: 'companies', label: 'Companies', icon: '🏢' },
               { id: 'industries', label: 'Industries', icon: '🏭' },
               { id: 'trends', label: 'Trends', icon: '📈' },
               { id: 'goals', label: 'Goals', icon: '🎯' },
@@ -443,60 +444,60 @@ export default function JobStatistics({ onClose }) {
             <>
               {analytics.funnelAnalytics && analytics.funnelAnalytics.applied > 0 ? (
                 <Card variant="elevated" title="🔀 Application Funnel Analytics">
-                  <div className="space-y-6">
+                  <div className="space-y-0">
                     {/* Visual Funnel */}
-                    <div className="flex flex-col items-center gap-4">
-                    {[
-                      { label: 'Applied', count: analytics.funnelAnalytics.applied, color: 'blue', width: 100 },
-                      { label: 'Phone Screen', count: analytics.funnelAnalytics.phoneScreen, color: 'yellow', width: 75, conversion: analytics.funnelAnalytics.conversionRates.applyToScreen },
-                      { label: 'Interview', count: analytics.funnelAnalytics.interview, color: 'purple', width: 50, conversion: analytics.funnelAnalytics.conversionRates.screenToInterview },
-                      { label: 'Offer', count: analytics.funnelAnalytics.offer, color: 'green', width: 25, conversion: analytics.funnelAnalytics.conversionRates.interviewToOffer },
-                    ].map((stage, idx) => (
-                      <div key={stage.label} className="w-full">
-                        <div className="flex items-center justify-center gap-4">
-                          <div
-                            className={`relative h-16 bg-${stage.color}-500 rounded-lg shadow-lg flex items-center justify-center text-white font-bold transition-all hover:scale-105`}
-                            style={{ width: `${stage.width}%` }}
-                          >
-                            <div className="text-center">
-                              <p className="text-sm">{stage.label}</p>
-                              <p className="text-2xl">{stage.count}</p>
+                    <div className="flex flex-col items-center gap-0">
+                      {(() => {
+                        const stages = [
+                          { label: 'Applied', count: analytics.funnelAnalytics.applied, color: 'blue', width: 100 },
+                          { label: 'Phone Screen', count: analytics.funnelAnalytics.phoneScreen, color: 'yellow', width: 75 },
+                          { label: 'Interview', count: analytics.funnelAnalytics.interview, color: 'purple', width: 50 },
+                          { label: 'Offer', count: analytics.funnelAnalytics.offer, color: 'green', width: 25 },
+                        ];
+                        const conversions = [
+                          analytics.funnelAnalytics.conversionRates.applyToScreen,
+                          analytics.funnelAnalytics.conversionRates.screenToInterview,
+                          analytics.funnelAnalytics.conversionRates.interviewToOffer
+                        ];
+                        return stages.map((stage, idx) => {
+                          const nextStage = stages[idx + 1];
+                          const showArrow = idx < stages.length - 1; // Always show arrow between stages
+                          const conversion = conversions[idx];
+                          const showConversion = showArrow && conversion && !isNaN(Number(conversion)) && Number(conversion) > 0 && Number(conversion) < 100;
+                          return (
+                            <div key={stage.label} className="w-full flex flex-col items-center">
+                              <div className="flex items-center justify-center gap-4 w-full">
+                                <div
+                                  className={`relative h-16 bg-${stage.color}-500 rounded-lg shadow-lg flex items-center justify-center text-white font-bold transition-all hover:scale-105`}
+                                  style={{ width: `${stage.width}%` }}
+                                >
+                                  <div className="text-center w-full">
+                                    <p className="text-sm">{stage.label}</p>
+                                    <p className="text-2xl">{stage.count}</p>
+                                  </div>
+                                </div>
+                              </div>
+                              {/* Show arrow between all stages except after the last one */}
+                              {showArrow && (
+                                <div className="flex flex-col items-center my-3">
+                                  <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 3a.75.75 0 01.75.75v10.638l3.22-3.22a.75.75 0 111.06 1.06l-4.5 4.5a.75.75 0 01-1.06 0l-4.5-4.5a.75.75 0 111.06-1.06l3.22 3.22V3.75A.75.75 0 0110 3z" clipRule="evenodd" />
+                                  </svg>
+                                  {/* Show conversion rate if meaningful */}
+                                  {showConversion && (
+                                    <div className="text-xs text-gray-600 font-medium text-center mt-1">
+                                      {conversion}%
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
-                          </div>
-                          {stage.conversion && (
-                            <div className="text-sm text-gray-600 font-medium w-24 text-right">
-                              {stage.conversion}% ↓
-                            </div>
-                          )}
-                        </div>
-                        {idx < 3 && (
-                          <div className="flex justify-center">
-                            <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M10 18a.75.75 0 01-.75-.75V3.31L5.53 7.03a.75.75 0 01-1.06-1.06l5.25-5.25a.75.75 0 011.06 0l5.25 5.25a.75.75 0 11-1.06 1.06L10.75 3.31v13.94A.75.75 0 0110 18z" clipRule="evenodd" />
-                            </svg>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Conversion Insights */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-                    <div className="p-4 bg-blue-50 rounded-lg">
-                      <p className="text-sm text-blue-600 font-medium mb-1">Apply → Screen</p>
-                      <p className="text-3xl font-bold text-blue-700">{analytics.funnelAnalytics.conversionRates.applyToScreen}%</p>
-                    </div>
-                    <div className="p-4 bg-purple-50 rounded-lg">
-                      <p className="text-sm text-purple-600 font-medium mb-1">Screen → Interview</p>
-                      <p className="text-3xl font-bold text-purple-700">{analytics.funnelAnalytics.conversionRates.screenToInterview}%</p>
-                    </div>
-                    <div className="p-4 bg-green-50 rounded-lg">
-                      <p className="text-sm text-green-600 font-medium mb-1">Interview → Offer</p>
-                      <p className="text-3xl font-bold text-green-700">{analytics.funnelAnalytics.conversionRates.interviewToOffer}%</p>
+                          );
+                        });
+                      })()}
                     </div>
                   </div>
-                </div>
-              </Card>
+                </Card>
               ) : (
                 <Card variant="info" title="🔀 No Funnel Data Yet">
                   <div className="text-center py-8">
@@ -543,63 +544,6 @@ export default function JobStatistics({ onClose }) {
             </>
           )}
 
-          {/* Companies Tab */}
-          {activeTab === 'companies' && (
-            <Card variant="elevated" title="🏢 Company Performance Analytics">
-              {analytics.companyAnalytics && analytics.companyAnalytics.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Applications</th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Response Time</th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Success Rate</th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Rating</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {analytics.companyAnalytics.map((company, idx) => (
-                        <tr key={idx} className="hover:bg-gray-50 transition">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">{company.company}</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-center">
-                            <span className="text-sm text-gray-900">{company.applications}</span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-center">
-                            <span className={`text-sm font-medium ${
-                              parseFloat(company.avgResponseTime) < 7 ? 'text-green-600' :
-                              parseFloat(company.avgResponseTime) < 14 ? 'text-yellow-600' :
-                              'text-red-600'
-                            }`}>
-                              {company.avgResponseTime} days
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-center">
-                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              parseFloat(company.successRate) >= 30 ? 'bg-green-100 text-green-800' :
-                              parseFloat(company.successRate) >= 15 ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {company.successRate}%
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-center text-xl">
-                            {parseFloat(company.successRate) >= 30 && parseFloat(company.avgResponseTime) < 10 ? '⭐⭐⭐' :
-                             parseFloat(company.successRate) >= 20 || parseFloat(company.avgResponseTime) < 14 ? '⭐⭐' :
-                             parseFloat(company.successRate) >= 10 ? '⭐' : '—'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="text-center text-gray-500 py-8">No company data available yet. Keep tracking applications!</p>
-              )}
-            </Card>
-          )}
 
           {/* Industries Tab */}
           {activeTab === 'industries' && (
