@@ -1045,6 +1045,60 @@ export default function ResumeTemplates() {
     }
   };
 
+  // UC-51: Print as HTML (fetch HTML, open new window, print)
+  const handlePrintHtml = async () => {
+    if (!viewingResume) return;
+    setShowExportMenu(false);
+    setIsExporting(true);
+    try {
+      await authWrap();
+      // Request server-rendered HTML for the resume
+      const response = await exportResumeHTML(viewingResume._id);
+
+      // response.data may be a Blob (because export API uses responseType: 'blob') or a string
+      let htmlContent = '';
+      if (response.data instanceof Blob) {
+        // Read blob as text
+        htmlContent = await response.data.text();
+      } else if (typeof response.data === 'string') {
+        htmlContent = response.data;
+      } else if (response.data && typeof response.data.html === 'string') {
+        htmlContent = response.data.html;
+      }
+
+      if (!htmlContent) {
+        throw new Error('No HTML content returned from server');
+      }
+
+      // Open a new window/tab and write the HTML into it, then trigger print()
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        alert('Unable to open print window. Please allow popups for this site.');
+        return;
+      }
+
+      printWindow.document.open();
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      // Wait a tick for resources to load, then invoke print
+      printWindow.focus();
+      // Give the browser a short moment to render before printing
+      setTimeout(() => {
+        try {
+          printWindow.print();
+        } catch (e) {
+          console.error('Print failed:', e);
+        }
+      }, 300);
+
+    } catch (err) {
+      console.error('Print (HTML) failed:', err);
+      alert('Failed to prepare printable view. Please try Export as HTML instead.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   // UC-52: Version management handlers
   const handleCloneResume = async () => {
     if (!viewingResume || !cloneName.trim()) return;
@@ -5151,6 +5205,15 @@ export default function ResumeTemplates() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
                           </svg>
                           Export as HTML
+                        </button>
+                        <button
+                          onClick={() => handlePrintHtml()}
+                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                          </svg>
+                          Print (HTML)
                         </button>
                         <button
                           onClick={() => handleExport('txt')}
