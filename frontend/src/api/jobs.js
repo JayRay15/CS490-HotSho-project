@@ -23,3 +23,7 @@ export const bulkRestoreJobs = (jobIds) =>
 // Auto-archive old jobs
 export const autoArchiveJobs = (daysInactive, statuses) =>
   retryRequest(() => api.post('/api/jobs/auto-archive', { daysInactive, statuses }));
+
+// UC-68: Get interview insights for a company
+export const getInterviewInsights = (jobId) =>
+  retryRequest(() => api.get(`/api/jobs/${jobId}/interview-insights`));
