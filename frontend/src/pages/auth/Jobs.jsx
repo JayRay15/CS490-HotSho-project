@@ -11,6 +11,7 @@ import Button from "../../components/Button";
 import ArchiveModal from "../../components/ArchiveModal";
 import AutoArchiveModal from "../../components/AutoArchiveModal";
 import JobStatistics from "../../components/JobStatistics";
+import InterviewInsights from "../../components/InterviewInsights";
 
 const PIPELINE_STAGES = ["Interested", "Applied", "Phone Screen", "Interview", "Offer", "Rejected"];
 
@@ -62,6 +63,10 @@ export default function Jobs() {
   
   // Statistics modal state
   const [showStatistics, setShowStatistics] = useState(false);
+
+  // UC-68: Interview Insights state
+  const [showInterviewInsights, setShowInterviewInsights] = useState(false);
+  const [insightsJob, setInsightsJob] = useState(null);
 
   // Form state for adding/editing jobs
   const [formData, setFormData] = useState({
@@ -1853,6 +1858,17 @@ export default function Jobs() {
                 >
                   Edit Job
                 </Button>
+                {/* UC-68: Interview Insights Button */}
+                <Button
+                  onClick={() => {
+                    setInsightsJob(viewingJob);
+                    setShowInterviewInsights(true);
+                  }}
+                  variant="secondary"
+                  className="bg-purple-100 hover:bg-purple-200 text-purple-700"
+                >
+                  🎯 Interview Insights
+                </Button>
                 {viewingJob.archived ? (
                   <Button
                     onClick={() => {
@@ -2208,6 +2224,18 @@ export default function Jobs() {
       {/* Job Statistics Modal */}
       {showStatistics && (
         <JobStatistics onClose={() => setShowStatistics(false)} />
+      )}
+
+      {/* UC-68: Interview Insights Modal */}
+      {showInterviewInsights && insightsJob && (
+        <InterviewInsights
+          jobId={insightsJob._id}
+          company={insightsJob.company}
+          onClose={() => {
+            setShowInterviewInsights(false);
+            setInsightsJob(null);
+          }}
+        />
       )}
     </div>
   );

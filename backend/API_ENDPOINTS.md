@@ -603,3 +603,210 @@ console.log('Response:', data);
   "errorCode": 1001
 }
 ```
+
+---
+
+## Job Interview Insights (UC-068)
+
+### Get Interview Insights
+- **GET** `/api/jobs/:jobId/interview-insights`
+- **Status Code:** 200 (Success), 401 (Unauthorized), 404 (Job not found), 500 (Server error)
+- **Description:** Retrieve comprehensive interview insights and preparation guidance for a specific job application
+- **Auth Required:** Yes
+- **Path Parameters:**
+  - `jobId` - MongoDB ObjectId of the job
+- **Error Codes:**
+  - `1001` - Unauthorized (missing credentials)
+  - `3001` - Not found (job not found or user doesn't have permission)
+  - `5001` - Internal server error
+- **Success Response Example:**
+```json
+{
+  "success": true,
+  "message": "Interview insights retrieved successfully",
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "data": {
+    "insights": {
+      "company": "TechCorp",
+      "jobTitle": "Software Engineer",
+      "dataSource": {
+        "totalApplications": 5,
+        "basedOnRealData": true,
+        "note": "Insights based on 5 applications to TechCorp."
+      },
+      "processStages": {
+        "stages": [
+          {
+            "name": "Initial Screening",
+            "description": "Resume review and initial assessment",
+            "frequency": "100%",
+            "avgDuration": "1-3 days",
+            "order": 1
+          },
+          {
+            "name": "Phone/Video Screen",
+            "description": "Initial conversation with recruiter or hiring manager",
+            "frequency": "80%",
+            "avgDuration": "30-45 minutes",
+            "order": 2
+          }
+        ],
+        "totalStages": "3-5 rounds typically",
+        "processType": "Standard multi-stage interview process"
+      },
+      "timeline": {
+        "applicationToFirstResponse": "3-7 days",
+        "firstResponseToPhoneScreen": "5-10 days",
+        "phoneScreenToTechnical": "7-14 days",
+        "technicalToOnsite": "7-14 days",
+        "onsiteToFinalDecision": "5-14 days",
+        "totalProcessDuration": "30 days (based on data)",
+        "note": "Timeline can vary based on role level and hiring urgency"
+      },
+      "successMetrics": {
+        "phoneScreenRate": "60%",
+        "interviewRate": "40%",
+        "offerRate": "20%",
+        "competitiveness": "Moderate",
+        "note": "Based on 5 application(s)"
+      },
+      "commonQuestions": {
+        "behavioral": [
+          "Tell me about yourself and your background",
+          "Why are you interested in this position?",
+          "Why do you want to work at TechCorp?"
+        ],
+        "technical": [
+          "Explain your approach to solving complex technical problems",
+          "Walk me through a recent project architecture you designed"
+        ],
+        "roleSpecific": [
+          "What's your experience with our tech stack?",
+          "How do you approach debugging production issues?"
+        ],
+        "industrySpecific": [
+          "How do you approach learning new technologies?",
+          "What tech trends excite you most?"
+        ]
+      },
+      "interviewerInfo": {
+        "typicalInterviewers": [
+          {
+            "role": "Recruiter/HR Representative",
+            "stage": "Initial Screen",
+            "focus": "Culture fit, basic qualifications, salary expectations",
+            "tips": "Be prepared to discuss your background and career goals"
+          }
+        ],
+        "researchTips": [
+          "Research TechCorp on LinkedIn to find potential interviewers",
+          "Review interviewer backgrounds to find common ground"
+        ]
+      },
+      "interviewFormats": {
+        "commonFormats": [
+          {
+            "format": "Behavioral Interview",
+            "description": "Questions about past experiences and situations",
+            "preparation": "Use STAR method (Situation, Task, Action, Result)",
+            "duration": "30-45 minutes",
+            "frequency": "Very Common"
+          }
+        ],
+        "companySpecificNotes": [
+          "Research TechCorp's interview process on Glassdoor",
+          "Check company career page for interview tips"
+        ]
+      },
+      "preparationRecs": {
+        "general": [
+          {
+            "category": "Company Research",
+            "priority": "High",
+            "tasks": [
+              "Research TechCorp's mission, values, and culture",
+              "Review recent company news, press releases, and blog posts"
+            ]
+          }
+        ],
+        "roleSpecific": [
+          {
+            "category": "Technical Preparation",
+            "priority": "High",
+            "tasks": [
+              "Review data structures and algorithms",
+              "Practice coding problems on LeetCode/HackerRank"
+            ]
+          }
+        ]
+      },
+      "successTips": {
+        "beforeInterview": [
+          {
+            "tip": "Research the company thoroughly",
+            "importance": "Critical",
+            "details": "Understand TechCorp's mission, recent news, products, and culture"
+          }
+        ],
+        "duringInterview": [
+          {
+            "tip": "Make a strong first impression",
+            "importance": "High",
+            "details": "Arrive on time, dress professionally, maintain good eye contact"
+          }
+        ],
+        "afterInterview": [
+          {
+            "tip": "Send thank-you emails",
+            "importance": "High",
+            "details": "Send within 24 hours, personalize for each interviewer"
+          }
+        ],
+        "commonMistakes": [
+          "Not researching the company thoroughly",
+          "Speaking negatively about past employers",
+          "Failing to provide specific examples"
+        ],
+        "dataInsights": [
+          "Based on data from 5 applications, response times vary",
+          "Candidates who reached interview stage typically had strong technical backgrounds"
+        ]
+      },
+      "checklist": {
+        "oneWeekBefore": [
+          { "task": "Research company thoroughly", "completed": false },
+          { "task": "Review job description and requirements", "completed": false }
+        ],
+        "threeDaysBefore": [
+          { "task": "Finalize your 'tell me about yourself' pitch", "completed": false }
+        ],
+        "oneDayBefore": [
+          { "task": "Confirm interview time and format", "completed": false }
+        ],
+        "dayOf": [
+          { "task": "Eat a good breakfast/meal", "completed": false }
+        ],
+        "afterInterview": [
+          { "task": "Send thank-you email within 24 hours", "completed": false }
+        ]
+      },
+      "generatedAt": "2024-01-15T10:30:00.000Z"
+    }
+  }
+}
+```
+
+**Features:**
+- Aggregates data from company applications (when available)
+- Provides industry-standard insights as fallback
+- Customizes questions and preparation based on role and industry
+- Interactive preparation checklist with progress tracking
+- Timeline expectations for interview process
+- Success tips organized by interview phase
+- Common interview formats and preparation guidance
+
+**Data Quality:**
+- Real data used when 3+ applications exist for the company
+- Industry standards used when limited company data available
+- `basedOnRealData` flag indicates data source reliability
+

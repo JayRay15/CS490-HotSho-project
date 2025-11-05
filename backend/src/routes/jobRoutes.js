@@ -19,6 +19,7 @@ import {
   autoArchiveJobs,
 } from "../controllers/jobController.js";
 import { scrapeJobFromURL } from "../controllers/jobScraperController.js";
+import { getInterviewInsights } from "../controllers/interviewInsightsController.js";
 
 const router = express.Router();
 
@@ -60,6 +61,9 @@ router.post("/:jobId/archive", checkJwt, archiveJob);
 
 // POST /api/jobs/:jobId/restore - Restore an archived job
 router.post("/:jobId/restore", checkJwt, restoreJob);
+
+// UC-68: GET /api/jobs/:jobId/interview-insights - Get interview insights for a company
+router.get("/:jobId/interview-insights", checkJwt, getInterviewInsights);
 
 // PUT /api/jobs/:jobId - Update a job
 router.put("/:jobId", checkJwt, updateJob);
