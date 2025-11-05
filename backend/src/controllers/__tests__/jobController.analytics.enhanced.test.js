@@ -3,16 +3,27 @@
  * Tests all new UC-072 features
  */
 
+import { jest } from '@jest/globals';
 import { getJobAnalytics } from '../jobController.js';
 import { Job } from '../../models/Job.js';
 
 // Mock the Job model
-jest.mock('../../models/Job.js');
+jest.mock('../../models/Job.js', () => ({
+  __esModule: true,
+  Job: {
+    find: jest.fn(),
+  },
+}));
 
 describe('Job Controller - Enhanced Analytics (UC-072)', () => {
   let mockReq, mockRes, mockJobs;
 
   beforeEach(() => {
+    // Reset mocks
+    jest.clearAllMocks();
+    // Ensure Job.find is a mock function
+    Job.find = jest.fn();
+
     // Setup mock request
     mockReq = {
       auth: {
@@ -376,9 +387,10 @@ describe('Job Controller - Enhanced Analytics (UC-072)', () => {
       
       await getJobAnalytics(req, mockRes);
 
+      expect(mockRes.status).toHaveBeenCalledWith(401);
       expect(mockRes.json).toHaveBeenCalled();
       const response = mockRes.json.mock.calls[0][0];
-      expect(response.status).toBe('error');
+      expect(response.success).toBe(false);
     });
 
     it('should handle database errors gracefully', async () => {
@@ -386,9 +398,10 @@ describe('Job Controller - Enhanced Analytics (UC-072)', () => {
 
       await getJobAnalytics(mockReq, mockRes);
 
+      expect(mockRes.status).toHaveBeenCalledWith(500);
       expect(mockRes.json).toHaveBeenCalled();
       const response = mockRes.json.mock.calls[0][0];
-      expect(response.status).toBe('error');
+      expect(response.success).toBe(false);
     });
   });
 
@@ -409,9 +422,13 @@ describe('Job Controller - Enhanced Analytics (UC-072)', () => {
 
       await getJobAnalytics(mockReq, mockRes);
 
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+      expect(mockRes.json).toHaveBeenCalled();
       const response = mockRes.json.mock.calls[0][0];
       
-      expect(response.status).toBe('success');
+      expect(response).toBeDefined();
+      expect(response.data).toBeDefined();
+      expect(response.data.overview).toBeDefined();
       expect(response.data.overview.totalApplications).toBe(0);
     });
   });
