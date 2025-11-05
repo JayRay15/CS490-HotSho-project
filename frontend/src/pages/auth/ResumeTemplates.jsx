@@ -16,7 +16,8 @@ import {
   compareResumes as apiCompareResumes,
   setDefaultResume as apiSetDefaultResume,
   archiveResume as apiArchiveResume,
-  unarchiveResume as apiUnarchiveResume
+  unarchiveResume as apiUnarchiveResume,
+  mergeResumes as apiMergeResumes
 } from "../../api/resumes";
 import { 
   generateAIResume, 
@@ -164,7 +165,7 @@ function ResumeTile({ resume, template, onView, onDelete, onRename }) {
           )}
           <button
             onClick={(e) => { e.stopPropagation(); onRename(); }}
-            className="p-1 rounded-lg transition flex-shrink-0"
+            className="p-1 rounded-lg transition flex-shrink-0 flex items-center justify-center"
             style={{ color: '#6B7280' }}
             onMouseOver={(e) => {
               e.currentTarget.style.color = '#777C6D';
@@ -200,7 +201,7 @@ function ResumeTile({ resume, template, onView, onDelete, onRename }) {
           <div className="flex items-center gap-1">
             <button
               onClick={(e) => { e.stopPropagation(); onView(); }}
-              className="p-1 rounded-lg transition flex-shrink-0"
+              className="p-1 rounded-lg transition flex-shrink-0 flex items-center justify-center"
               style={{ color: '#6B7280' }}
               onMouseOver={(e) => {
                 e.currentTarget.style.color = '#777C6D';
@@ -219,7 +220,7 @@ function ResumeTile({ resume, template, onView, onDelete, onRename }) {
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              className="p-1 rounded-lg transition flex-shrink-0"
+              className="p-1 rounded-lg transition flex-shrink-0 flex items-center justify-center"
               style={{ color: '#6B7280' }}
               onMouseOver={(e) => {
                 e.currentTarget.style.color = '#B91C1C';
@@ -320,7 +321,7 @@ function TemplatePreviewCard({ template, isDefault, onSetDefault, onCustomize, o
         </div>
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="p-1 rounded-lg transition flex-shrink-0"
+          className="p-1 rounded-lg transition flex-shrink-0 flex items-center justify-center"
           style={{ color: '#6B7280' }}
           onMouseOver={(e) => {
             e.currentTarget.style.color = '#EF4444';
@@ -579,12 +580,17 @@ export default function ResumeTemplates() {
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [compareResumeId, setCompareResumeId] = useState(null);
   const [comparisonData, setComparisonData] = useState(null);
+  const [showMergeModal, setShowMergeModal] = useState(false);
+  const [selectedMergeChanges, setSelectedMergeChanges] = useState([]);
+  const [isMerging, setIsMerging] = useState(false);
   
     // Section Customization State (UC-048)
     const [visibleSections, setVisibleSections] = useState(DEFAULT_SECTIONS.map(s => s.key));
     const [sectionOrder, setSectionOrder] = useState(DEFAULT_SECTIONS.map(s => s.key));
     const [sectionFormatting, setSectionFormatting] = useState({});
     const [selectedJobType, setSelectedJobType] = useState('general');
+    const [isSavingCustomization, setIsSavingCustomization] = useState(false);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     const [showPresetMenu, setShowPresetMenu] = useState(false);
     const [showSavePresetModal, setShowSavePresetModal] = useState(false);
     const [presetName, setPresetName] = useState('');
@@ -607,6 +613,59 @@ export default function ResumeTemplates() {
     setAuthToken(token);
   };
 
+  // UC-052: Auto-save version snapshot before making changes
+  const createAutoVersionSnapshot = async (resume, changeDescription) => {
+    try {
+      // Create a snapshot with timestamp
+      const timestamp = new Date().toLocaleString('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric',
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      });
+      const snapshotName = `${resume.name} (${timestamp})`;
+      
+      console.log('Creating auto-version snapshot:', snapshotName);
+      
+      // Clone the resume as a version snapshot
+      const cloneResponse = await apiCloneResume(
+        resume._id, 
+        snapshotName,
+        `Auto-saved before: ${changeDescription}`
+      );
+      
+      console.log('Clone response:', cloneResponse);
+      
+      const clonedResumeId = cloneResponse.data?.resume?._id || cloneResponse.data?.data?.resume?._id;
+      
+      if (!clonedResumeId) {
+        console.error('No resume ID in clone response:', cloneResponse);
+        return null;
+      }
+      
+      console.log('Cloned resume ID:', clonedResumeId);
+      
+      // Archive it immediately so it doesn't clutter the main list
+      console.log('Archiving snapshot...');
+      const archiveResponse = await apiArchiveResume(clonedResumeId);
+      console.log('Archive response:', archiveResponse);
+      
+      // Refresh resumes list to include the new archived version
+      console.log('Refreshing resumes list...');
+      await loadAll();
+      console.log('✅ Auto-version snapshot created and archived:', snapshotName);
+      
+      return cloneResponse.data?.resume || cloneResponse.data?.data?.resume;
+    } catch (err) {
+      console.error('❌ Failed to create auto-version snapshot:', err);
+      console.error('Error details:', err.response?.data || err.message);
+      // Don't block the main operation if snapshot fails
+      return null;
+    }
+  };
+
   // UC-048 handlers and derived helpers
   const jobTypeConfigs = {
     general: { required: ['contactInfo', 'experience', 'education'], recommended: ['skills', 'summary'] },
@@ -620,12 +679,14 @@ export default function ResumeTemplates() {
     setVisibleSections((prev) =>
       prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
     );
+    setHasUnsavedChanges(true);
   };
 
   const applyPreset = (preset) => {
     setSectionOrder(preset.order);
     setVisibleSections(preset.order);
     setShowPresetMenu(false);
+    setHasUnsavedChanges(true);
   };
 
   const saveCustomPreset = () => {
@@ -651,6 +712,7 @@ export default function ResumeTemplates() {
       ...prev,
       [key]: { ...(prev[key] || {}), ...formatting }
     }));
+    setHasUnsavedChanges(true);
   };
 
   const applyJobTypeConfig = (jobType) => {
@@ -661,6 +723,7 @@ export default function ResumeTemplates() {
       setSectionOrder(recommendedSections.filter(key => DEFAULT_SECTIONS.find(s => s.key === key)));
       setVisibleSections(recommendedSections);
     }
+    setHasUnsavedChanges(true);
   };
 
   const getSectionStatus = (sectionKey) => {
@@ -668,6 +731,55 @@ export default function ResumeTemplates() {
     if (config?.required?.includes(sectionKey)) return 'required';
     if (config?.recommended?.includes(sectionKey)) return 'recommended';
     return 'optional';
+  };
+
+  // UC-52: Helper function to highlight text differences
+  const highlightTextDiff = (text1, text2) => {
+    if (!text1 && !text2) return { text1: null, text2: null };
+    if (!text1) return { text1: null, text2: <span className="bg-green-200 text-green-900 px-1 rounded">{text2}</span> };
+    if (!text2) return { text1: <span className="bg-red-200 text-red-900 px-1 rounded">{text1}</span>, text2: null };
+    
+    // Simple word-level diff
+    const words1 = text1.split(/\s+/);
+    const words2 = text2.split(/\s+/);
+    
+    if (text1 === text2) {
+      return { text1: text1, text2: text2, identical: true };
+    }
+    
+    // Find common and different words
+    const set1 = new Set(words1);
+    const set2 = new Set(words2);
+    
+    const highlightedText1 = words1.map((word, idx) => {
+      if (!set2.has(word)) {
+        return <span key={idx} className="bg-red-100 text-red-900 px-0.5 rounded">{word}</span>;
+      }
+      return word;
+    });
+    
+    const highlightedText2 = words2.map((word, idx) => {
+      if (!set1.has(word)) {
+        return <span key={idx} className="bg-green-100 text-green-900 px-0.5 rounded">{word}</span>;
+      }
+      return word;
+    });
+    
+    // Join with spaces
+    const result1 = [];
+    const result2 = [];
+    
+    highlightedText1.forEach((item, idx) => {
+      if (idx > 0) result1.push(' ');
+      result1.push(item);
+    });
+    
+    highlightedText2.forEach((item, idx) => {
+      if (idx > 0) result2.push(' ');
+      result2.push(item);
+    });
+    
+    return { text1: <span>{result1}</span>, text2: <span>{result2}</span> };
   };
 
   // Drag-and-drop move for sections (will be used in modal)
@@ -678,33 +790,35 @@ export default function ResumeTemplates() {
       newOrder.splice(hoverIndex, 0, removed);
       return newOrder;
     });
+    setHasUnsavedChanges(true);
   };
 
-  // Auto-save section customization (debounced) when viewing resume
-  useEffect(() => {
-    if (!viewingResume?._id) return;
-    const customization = {
-      order: sectionOrder,
-      visible: visibleSections,
-      formatting: sectionFormatting,
-      jobType: selectedJobType
-    };
-    const timeoutId = setTimeout(() => {
-      saveSectionCustomization(viewingResume._id, customization);
-    }, 1000);
-    return () => clearTimeout(timeoutId);
-  }, [viewingResume?._id, sectionOrder, visibleSections, sectionFormatting, selectedJobType]);
+  // Note: Auto-save has been replaced with manual save button
+  // Users now explicitly save customization changes via "Save Changes" button
 
   // When opening a resume, hydrate customization from existing data or template order
   useEffect(() => {
     if (!showViewResumeModal || !viewingResume) return;
     const existing = viewingResume.sectionCustomization || {};
-    const order = existing.order || (templates.find(t => t._id === viewingResume.templateId)?.layout?.sectionsOrder) || DEFAULT_SECTIONS.map(s => s.key);
-    const vis = existing.visible || order;
+    
+    console.log('Loading resume customization:', existing);
+    
+    // Use consistent field names (match what we save)
+    const order = existing.sectionOrder || existing.order || (templates.find(t => t._id === viewingResume.templateId)?.layout?.sectionsOrder) || DEFAULT_SECTIONS.map(s => s.key);
+    const vis = existing.visibleSections || existing.visible || order;
+    const formatting = existing.sectionFormatting || existing.formatting || {};
+    const jobType = existing.selectedJobType || existing.jobType || 'general';
+    const presets = existing.customPresets || [];
+    
     setSectionOrder(order);
     setVisibleSections(vis);
-    setSectionFormatting(existing.formatting || {});
-    setSelectedJobType(existing.jobType || 'general');
+    setSectionFormatting(formatting);
+    setSelectedJobType(jobType);
+    setCustomPresets(presets);
+    // DON'T reset hasUnsavedChanges here - this effect runs every time viewingResume updates
+    // (including after regeneration), which would incorrectly clear the unsaved flag
+    
+    console.log('Loaded customization - Order:', order, 'Visible:', vis);
   }, [showViewResumeModal, viewingResume]);
 
   const loadAll = async () => {
@@ -751,6 +865,95 @@ export default function ResumeTemplates() {
       await apiUpdateResume(resumeId, { sectionCustomization: customization });
     } catch (err) {
       console.error("Failed to save section customization:", err);
+    }
+  };
+
+  // UC-048: Save all section customization changes
+  const handleSaveCustomization = async () => {
+    if (!viewingResume) return;
+    
+    setIsSavingCustomization(true);
+    try {
+      await authWrap();
+      
+      // STEP 1: Find the CURRENT database version from resumes state (before our local changes)
+      // The resumes array contains the unmodified database versions
+      console.log('Finding current database version for snapshot...');
+      const currentDbVersion = resumes.find(r => r._id === viewingResume._id);
+      
+      if (!currentDbVersion) {
+        console.warn('Current resume not found in resumes list, skipping snapshot');
+      } else {
+        // STEP 2: Create a snapshot of the OLD database version (before changes)
+        console.log('Creating snapshot of old version:', currentDbVersion.name);
+        const timestamp = new Date().toLocaleString('en-US', { 
+          month: 'short', 
+          day: 'numeric', 
+          year: 'numeric',
+          hour: 'numeric', 
+          minute: '2-digit',
+          hour12: true 
+        });
+        const snapshotName = `${currentDbVersion.name} (${timestamp})`;
+        
+        const cloneResponse = await apiCloneResume(
+          currentDbVersion._id, 
+          snapshotName,
+          'Version snapshot before save'
+        );
+        
+        const clonedResumeId = cloneResponse.data?.resume?._id || cloneResponse.data?.data?.resume?._id;
+        
+        if (clonedResumeId) {
+          // Archive it immediately so it doesn't clutter the main list
+          await apiArchiveResume(clonedResumeId);
+          console.log('✅ Archived snapshot:', clonedResumeId);
+        }
+      }
+      
+      // STEP 3: Now save the NEW changes to the main resume
+      console.log('Saving new changes to main resume...');
+      
+      // Build the update object with ALL changes (sections + customization)
+      const updateData = {
+        sections: viewingResume.sections, // Include section content changes (from AI regen, etc)
+        sectionCustomization: {
+          visibleSections,
+          sectionOrder,
+          sectionFormatting,
+          selectedJobType,
+          customPresets
+        }
+      };
+      
+      const response = await apiUpdateResume(viewingResume._id, updateData);
+      
+      // Get the updated resume from the response
+      const savedResume = response.data?.resume || response.data?.data?.resume;
+      
+      // Update the viewing resume with the saved data from backend
+      if (savedResume) {
+        setViewingResume(savedResume);
+        
+        // Refresh the resumes list to include the new archived version
+        await loadAll();
+      } else {
+        // Fallback: reload all resumes
+        await loadAll();
+      }
+      
+      // Clear unsaved changes flag
+      setHasUnsavedChanges(false);
+      
+      // Show success message
+      setSuccessMessage('✅ Resume saved successfully! Previous version archived.');
+      setTimeout(() => setSuccessMessage(null), 3000);
+      
+    } catch (err) {
+      console.error('Failed to save customization:', err);
+      alert(`Failed to save changes: ${err.message || 'Please try again'}`);
+    } finally {
+      setIsSavingCustomization(false);
     }
   };
 
@@ -905,6 +1108,56 @@ export default function ResumeTemplates() {
     }
   };
 
+  // UC-052: Revert to previous version
+  const handleRevertToPreviousVersion = async () => {
+    if (!viewingResume || !compareResumeId) return;
+    
+    const confirm = window.confirm(
+      'Are you sure you want to revert to the previous version? This will create a new version snapshot of your current resume before reverting.'
+    );
+    
+    if (!confirm) return;
+    
+    try {
+      await authWrap();
+      
+      // Create snapshot of current version before reverting
+      await createAutoVersionSnapshot(viewingResume, 'Before Revert');
+      
+      // Get the previous version's full data
+      const previousResume = resumes.find(r => r._id === compareResumeId);
+      if (!previousResume) {
+        alert('Previous version not found.');
+        return;
+      }
+      
+      // Update current resume with previous version's content
+      const revertedResume = {
+        ...viewingResume,
+        sections: previousResume.sections,
+        sectionCustomization: previousResume.sectionCustomization
+      };
+      
+      await apiUpdateResume(viewingResume._id, revertedResume);
+      
+      // Refresh resumes and update viewing resume
+      await loadAll();
+      setViewingResume(revertedResume);
+      
+      // Close comparison modal
+      setShowCompareModal(false);
+      setComparisonData(null);
+      setCompareResumeId(null);
+      
+      setSuccessMessage('Successfully reverted to previous version!');
+      setTimeout(() => setSuccessMessage(null), 3000);
+      
+    } catch (err) {
+      console.error('Revert failed:', err);
+      alert('Failed to revert to previous version. Please try again.');
+    }
+  };
+
   // UC-52: Archive/Unarchive handlers
   const handleArchiveResume = async (resumeId) => {
     try {
@@ -957,6 +1210,126 @@ export default function ResumeTemplates() {
     }
   };
 
+  // UC-52: Merge resumes handler
+  const handleMergeResumes = async () => {
+    if (!viewingResume || !compareResumeId || selectedMergeChanges.length === 0) return;
+    
+    setIsMerging(true);
+    try {
+      await authWrap();
+      
+      // Get the source resume (the old version we're pulling from)
+      const sourceResume = resumes.find(r => r._id === compareResumeId);
+      if (!sourceResume) {
+        alert('Source resume not found');
+        return;
+      }
+      
+      // Create updated resume by merging selected sections
+      const updatedResume = { ...viewingResume };
+      
+      selectedMergeChanges.forEach(change => {
+        if (change === 'summary' && sourceResume.sections?.summary) {
+          // Summary: replace entirely
+          updatedResume.sections.summary = sourceResume.sections.summary;
+        } else if (change === 'skills' && sourceResume.sections?.skills) {
+          // Skills: MERGE (add missing skills, don't replace)
+          const currentSkills = updatedResume.sections?.skills || [];
+          const sourceSkills = sourceResume.sections.skills;
+          
+          // Get skill names from current resume
+          const currentSkillNames = new Set(
+            currentSkills.map(s => typeof s === 'string' ? s : s.name)
+          );
+          
+          // Add skills from source that aren't already in current
+          const newSkills = sourceSkills.filter(skill => {
+            const skillName = typeof skill === 'string' ? skill : skill.name;
+            return !currentSkillNames.has(skillName);
+          });
+          
+          // Combine current + new skills
+          updatedResume.sections.skills = [...currentSkills, ...newSkills];
+        } else if (change.startsWith('skill.')) {
+          // Individual skill selection: skill.0, skill.1, etc.
+          const skillIndex = parseInt(change.split('.')[1]);
+          const skillToAdd = sourceResume.sections?.skills?.[skillIndex];
+          
+          if (skillToAdd) {
+            const currentSkills = updatedResume.sections?.skills || [];
+            const skillName = typeof skillToAdd === 'string' ? skillToAdd : skillToAdd.name;
+            
+            // Check if skill already exists
+            const skillExists = currentSkills.some(s => {
+              const existingName = typeof s === 'string' ? s : s.name;
+              return existingName === skillName;
+            });
+            
+            if (!skillExists) {
+              updatedResume.sections.skills = [...currentSkills, skillToAdd];
+            }
+          }
+        } else if (change === 'experience' && sourceResume.sections?.experience) {
+          // Experience: REPLACE all (user selected "All Experience")
+          updatedResume.sections.experience = sourceResume.sections.experience;
+        } else if (change.startsWith('experience.')) {
+          // Individual experience item: experience.0, experience.1, etc.
+          const expIndex = parseInt(change.split('.')[1]);
+          const expToAdd = sourceResume.sections?.experience?.[expIndex];
+          
+          if (expToAdd) {
+            const currentExperience = updatedResume.sections?.experience || [];
+            
+            // Check if this exact experience already exists (by title + company)
+            const expExists = currentExperience.some(e => 
+              e.title === expToAdd.title && e.company === expToAdd.company
+            );
+            
+            if (!expExists) {
+              updatedResume.sections.experience = [...currentExperience, expToAdd];
+            }
+          }
+        } else if (change === 'education' && sourceResume.sections?.education) {
+          updatedResume.sections.education = sourceResume.sections.education;
+        } else if (change === 'projects' && sourceResume.sections?.projects) {
+          updatedResume.sections.projects = sourceResume.sections.projects;
+        } else if (change === 'sectionCustomization' && sourceResume.sectionCustomization) {
+          // Restore section visibility settings
+          if (sourceResume.sectionCustomization.visibleSections) {
+            setVisibleSections(sourceResume.sectionCustomization.visibleSections);
+          }
+          if (sourceResume.sectionCustomization.sectionOrder) {
+            setSectionOrder(sourceResume.sectionCustomization.sectionOrder);
+          }
+          if (sourceResume.sectionCustomization.sectionFormatting) {
+            setSectionFormatting(sourceResume.sectionCustomization.sectionFormatting);
+          }
+        }
+      });
+      
+      // Update the viewing resume locally (DON'T save to DB yet)
+      setViewingResume(updatedResume);
+      
+      // Mark as having unsaved changes
+      setHasUnsavedChanges(true);
+      
+      // Close modals and reset state
+      setShowMergeModal(false);
+      setShowCompareModal(false);
+      setSelectedMergeChanges([]);
+      setComparisonData(null);
+      setCompareResumeId(null);
+      
+      setSuccessMessage('Changes merged! Click Save to apply.');
+      setTimeout(() => setSuccessMessage(null), 4000);
+    } catch (err) {
+      console.error('Merge failed:', err);
+      alert('Failed to merge changes. Please try again.');
+    } finally {
+      setIsMerging(false);
+    }
+  };
+
   // UC-49: Skills optimization handler
   const handleOptimizeSkills = async () => {
     if (!viewingResume) return;
@@ -997,6 +1370,29 @@ export default function ResumeTemplates() {
     }
   };
 
+  // Delete individual skill
+  const handleDeleteSkill = (skillToDelete) => {
+    if (!viewingResume) return;
+    
+    const skillName = typeof skillToDelete === 'string' ? skillToDelete : skillToDelete.name;
+    
+    const updatedSkills = (viewingResume.sections?.skills || []).filter(skill => {
+      const currentSkillName = typeof skill === 'string' ? skill : skill.name;
+      return currentSkillName !== skillName;
+    });
+    
+    const updatedResume = {
+      ...viewingResume,
+      sections: {
+        ...viewingResume.sections,
+        skills: updatedSkills
+      }
+    };
+    
+    setViewingResume(updatedResume);
+    setHasUnsavedChanges(true);
+  };
+
   // UC-49: Apply skill changes to resume
   const handleApplySkillChanges = async () => {
     if (!viewingResume) return;
@@ -1012,7 +1408,7 @@ export default function ResumeTemplates() {
         level: 'Intermediate' // Default level, user can adjust in resume editor
       }));
       
-      // Update resume with new skills
+      // Update resume with new skills (LOCAL STATE ONLY - not saved to DB yet)
       const updatedResume = {
         ...viewingResume,
         sections: {
@@ -1021,14 +1417,18 @@ export default function ResumeTemplates() {
         }
       };
       
-      await apiUpdateResume(viewingResume._id, updatedResume);
+      // DON'T save to database yet - let user click "Save Changes"
+      // await apiUpdateResume(viewingResume._id, updatedResume);
       
-      // Refresh the resume data
+      // Update local state only
       setViewingResume(updatedResume);
       
       // Update current skills list
       setCurrentResumeSkills(Array.from(newSkillsSet));
       setSelectedSkillsToAdd([]);
+      
+      // Mark as having unsaved changes (user must click Save to create version)
+      setHasUnsavedChanges(true);
       
       // Show success banner
       setShowSkillsSuccessBanner(true);
@@ -1160,7 +1560,7 @@ export default function ResumeTemplates() {
         };
       });
       
-      // Update resume with new experience
+      // Update resume with new experience (LOCAL STATE ONLY - not saved to DB yet)
       const updatedResume = {
         ...viewingResume,
         sections: {
@@ -1169,10 +1569,14 @@ export default function ResumeTemplates() {
         }
       };
       
-      await apiUpdateResume(viewingResume._id, updatedResume);
+      // DON'T save to database yet - let user click "Save Changes"
+      // await apiUpdateResume(viewingResume._id, updatedResume);
       
-      // Refresh the resume data
+      // Update local state only
       setViewingResume(updatedResume);
+      
+      // Mark as having unsaved changes (user must click Save to create version)
+      setHasUnsavedChanges(true);
       
       // Show success banner
       setShowExperienceSuccessBanner(true);
@@ -1195,6 +1599,7 @@ export default function ResumeTemplates() {
   const handleViewResume = async (resume) => {
     setViewingResume(resume);
     setShowViewResumeModal(true);
+    setHasUnsavedChanges(false); // Reset unsaved changes when opening a resume
     // Load jobs for AI optimization features
     if (jobs.length === 0) {
       await loadJobs();
@@ -1257,8 +1662,11 @@ export default function ResumeTemplates() {
       // Also update in the resumes list
       setResumes(prev => prev.map(r => r._id === updatedResume._id ? updatedResume : r));
       
+      // Mark as having unsaved changes (user must click Save to create version)
+      setHasUnsavedChanges(true);
+      
       // Show success banner
-      setSuccessMessage(`${section.charAt(0).toUpperCase() + section.slice(1)} regenerated successfully!`);
+      setSuccessMessage(`${section.charAt(0).toUpperCase() + section.slice(1)} regenerated successfully! Click Save to create a version.`);
       setTimeout(() => setSuccessMessage(null), 4000);
     } catch (err) {
       console.error(`Failed to regenerate ${section}:`, err);
@@ -1811,9 +2219,10 @@ export default function ResumeTemplates() {
             ) : (
               <>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {/* UC-52: Filter by archived status */}
-                  {(showAllResumes ? resumes : resumes.slice(0, 4))
+                  {/* UC-52: Filter by archived status first, then limit display */}
+                  {resumes
                     .filter(r => showArchivedResumes ? true : !r.isArchived)
+                    .slice(0, showAllResumes ? undefined : 4)
                     .map((resume) => (
                     <ResumeTile
                       key={resume._id}
@@ -2997,8 +3406,8 @@ export default function ResumeTemplates() {
       {/* Delete Confirmation Modal */}
       {showDeleteModal && deletingResume && (
         <div 
-          className="fixed inset-0 flex items-center justify-center z-50" 
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          className="fixed inset-0 flex items-center justify-center z-[99999]" 
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)', zIndex: 99999 }}
           onClick={handleCancelDelete}
         >
           <div 
@@ -3072,8 +3481,8 @@ export default function ResumeTemplates() {
       {/* Delete Template Confirmation Modal */}
       {showDeleteTemplateModal && deletingTemplate && (
         <div 
-          className="fixed inset-0 flex items-center justify-center z-50" 
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          className="fixed inset-0 flex items-center justify-center z-[99999]" 
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)', zIndex: 99999 }}
           onClick={handleCancelDeleteTemplate}
         >
           <div 
@@ -3295,7 +3704,7 @@ export default function ResumeTemplates() {
             <div className="bg-purple-50 border-b border-purple-100 px-6 py-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6 text-[#4F5348]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
                   </svg>
                   <h3 className="text-lg font-heading font-semibold text-gray-900">Watermark Settings</h3>
@@ -3359,7 +3768,7 @@ export default function ResumeTemplates() {
               </button>
               <button
                 onClick={() => setShowWatermarkModal(false)}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+                className="px-4 py-2 bg-[#777C6D] text-white rounded-lg hover:bg-[#656A5C] transition"
               >
                 Save Settings
               </button>
@@ -3549,20 +3958,34 @@ export default function ResumeTemplates() {
                       </button>
                     )}
                   </div>
-                  <p 
-                    className="leading-relaxed" 
-                    style={{ 
-                      color: skillsFmt.color || theme.colors.text, 
-                      fontFamily: theme.fonts.body, 
-                      fontSize: theme.fonts.sizes?.body || "14px",
-                      textAlign: resumeTemplate.layout?.textAlignment || 'left',
-                      lineHeight: resumeTemplate.layout?.lineHeight || 1.5
-                    }}
-                  >
-                    {viewingResume.sections.skills.map((skill, idx) => (
-                      typeof skill === 'string' ? skill : skill.name || skill
-                    )).join(' • ')}
-                  </p>
+                  <div className="flex flex-wrap gap-2 print:gap-1">
+                    {viewingResume.sections.skills.map((skill, idx) => {
+                      const skillName = typeof skill === 'string' ? skill : skill.name || skill;
+                      return (
+                        <div 
+                          key={idx}
+                          className="group inline-flex items-center gap-1 px-2 py-1 print:px-1 print:py-0.5 rounded print:rounded-sm bg-gray-100 print:bg-transparent"
+                          style={{
+                            fontFamily: theme.fonts.body,
+                            fontSize: theme.fonts.sizes?.body || "14px"
+                          }}
+                        >
+                          <span style={{ color: skillsFmt.color || theme.colors.text }}>
+                            {skillName}
+                          </span>
+                          <button
+                            onClick={() => handleDeleteSkill(skill)}
+                            className="print:hidden opacity-0 group-hover:opacity-100 transition-opacity text-red-600 hover:text-red-800 ml-1"
+                            title="Remove skill"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               );
             
@@ -4129,7 +4552,7 @@ export default function ResumeTemplates() {
                     {/* AI Optimization Section (UC-49 & UC-50) */}
                     <div className="mt-6 pt-6 border-t border-gray-200">
                       <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                        <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5 text-[#4F5348]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                         </svg>
                         AI Optimization
@@ -4176,7 +4599,7 @@ export default function ResumeTemplates() {
                         <button
                           onClick={handleOptimizeSkills}
                           disabled={isOptimizingSkills || (!selectedJobForSkills && !viewingResume.metadata?.tailoredForJob)}
-                          className="flex-1 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="flex-1 px-3 py-2 bg-[#777C6D] text-white rounded-lg hover:bg-[#656A5C] transition text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {isOptimizingSkills ? (
                             <>
@@ -4531,10 +4954,34 @@ export default function ResumeTemplates() {
               </div>
             )}
 
+            {/* Success Message Banner */}
+            {successMessage && (
+              <div className="bg-green-50 border-l-4 border-green-500 px-6 py-3 print:hidden">
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-sm font-medium text-green-800">{successMessage}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Unsaved Changes Indicator */}
+            {hasUnsavedChanges && !successMessage && (
+              <div className="bg-yellow-50 border-l-4 border-yellow-400 px-6 py-3 print:hidden">
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <p className="text-sm font-medium text-yellow-800">You have unsaved changes. Click "Save Changes" to keep your customization.</p>
+                </div>
+              </div>
+            )}
+
             {/* Modal Footer */}
             <div className="bg-gray-50 px-6 py-4 flex justify-between items-center border-t print:hidden">
               <div className="flex items-center gap-3">
-                <p className="text-sm text-gray-500">
+                <p className="text-[9px] text-gray-500">
                   Last modified: {new Date(viewingResume.updatedAt).toLocaleString()}
                 </p>
                 {viewingResume.isDefault && (
@@ -4544,19 +4991,50 @@ export default function ResumeTemplates() {
                 )}
               </div>
               <div className="flex gap-3">
-                {/* UC-52: Clone Button */}
+                {/* UC-52: Compare Button */}
                 <button
                   onClick={() => {
-                    setCloneName(`${viewingResume.name} (Copy)`);
-                    setShowCloneModal(true);
+                    // Show selector to choose which resume to compare with
+                    setCompareResumeId(null);
+                    setComparisonData(null);
+                    setShowCompareModal(true);
                   }}
                   className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition flex items-center gap-2"
-                  title="Clone this resume"
+                  title="Compare with another resume"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
                   </svg>
-                  Clone
+                  Compare
+                </button>
+                
+                {/* UC-048: Save Customization Button */}
+                <button
+                  onClick={handleSaveCustomization}
+                  disabled={!hasUnsavedChanges || isSavingCustomization}
+                  className={`px-4 py-2 rounded-lg transition flex items-center gap-2 ${
+                    hasUnsavedChanges && !isSavingCustomization
+                      ? 'bg-[#777C6D] text-white hover:bg-[#656A5C]'
+                      : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                  }`}
+                  title={hasUnsavedChanges ? "Save section customization changes" : "No unsaved changes"}
+                >
+                  {isSavingCustomization ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                      </svg>
+                      {hasUnsavedChanges ? 'Save Changes' : 'Saved'}
+                    </>
+                  )}
                 </button>
                 
                 {/* UC-52: Set Default Button */}
@@ -4688,7 +5166,7 @@ export default function ResumeTemplates() {
                   )}
                 </div>
                 
-                <button
+                {/* <button
                   onClick={() => window.print()}
                   className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition flex items-center gap-2"
                 >
@@ -4696,7 +5174,7 @@ export default function ResumeTemplates() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                   </svg>
                   Print
-                </button>
+                </button> */}
                 <button
                   onClick={() => setShowViewResumeModal(false)}
                   className="px-4 py-2 text-white rounded-lg transition"
@@ -4796,6 +5274,862 @@ export default function ResumeTemplates() {
         </div>
       )}
 
+      {/* UC-52: Compare Resume Modal */}
+      {showCompareModal && viewingResume && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={() => {
+            setShowCompareModal(false);
+            setCompareResumeId(null);
+            setComparisonData(null);
+          }}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto border border-gray-200" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="bg-[#777C6D] border-b px-6 py-4 sticky top-0 z-10">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                  </svg>
+                  <h3 className="text-xl font-heading font-bold text-white">Compare Resume Versions</h3>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowCompareModal(false);
+                    setCompareResumeId(null);
+                    setComparisonData(null);
+                  }}
+                  className="text-white hover:text-gray-200 transition"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6">
+              {!comparisonData ? (
+                /* Resume Selector - Only show previous versions */
+                <div className="space-y-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <div className="flex items-start gap-3">
+                      <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-blue-900 mb-1">Version History</h4>
+                        <p className="text-sm text-blue-800">
+                          Compare with previous versions of this resume. Only cloned versions of <strong>{viewingResume.name}</strong> are shown below.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  {(() => {
+                    // Filter to only show versions that are clones of the current resume
+                    // This includes: direct clones, reverse clones, and sibling clones
+                    
+                    console.log('=== VERSION HISTORY DEBUG ===');
+                    console.log('Current resume:', viewingResume.name, 'ID:', viewingResume._id);
+                    console.log('Current resume clonedFrom:', viewingResume.metadata?.clonedFrom);
+                    console.log('Total resumes in state:', resumes.length);
+                    console.log('All resumes:', resumes.map(r => ({ 
+                      name: r.name, 
+                      id: r._id, 
+                      clonedFrom: r.metadata?.clonedFrom,
+                      isArchived: r.isArchived 
+                    })));
+                    
+                    const previousVersions = resumes.filter(r => {
+                      if (r._id === viewingResume._id) return false;
+                      
+                      // Direct clone: r was cloned FROM current resume
+                      if (r.metadata?.clonedFrom === viewingResume._id) {
+                        console.log('✓ Direct clone found:', r.name);
+                        return true;
+                      }
+                      
+                      // Reverse clone: current resume was cloned FROM r
+                      if (viewingResume.metadata?.clonedFrom === r._id) {
+                        console.log('✓ Reverse clone found:', r.name);
+                        return true;
+                      }
+                      
+                      // Sibling clones: both were cloned from the same parent
+                      if (r.metadata?.clonedFrom && viewingResume.metadata?.clonedFrom && 
+                          r.metadata.clonedFrom === viewingResume.metadata.clonedFrom) {
+                        console.log('✓ Sibling clone found:', r.name);
+                        return true;
+                      }
+                      
+                      return false;
+                    });
+
+                    // Sort by date (newest first)
+                    previousVersions.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+
+                    console.log('Previous versions found:', previousVersions.length);
+                    console.log('=== END DEBUG ===');
+
+                    if (previousVersions.length === 0) {
+                      return (
+                        <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                          <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                          </svg>
+                          <p className="text-gray-600 font-medium mb-2">No Previous Versions</p>
+                          <p className="text-sm text-gray-500 mb-2">
+                            Previous versions will appear here automatically when you:
+                          </p>
+                          <ul className="text-xs text-gray-500 text-left inline-block">
+                            <li>• Apply AI skills optimization</li>
+                            <li>• Apply AI experience tailoring</li>
+                            <li>• Manually clone this resume</li>
+                          </ul>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
+                        {previousVersions.map(resume => (
+                        <div
+                          key={resume._id}
+                          className="p-4 border-2 border-gray-200 rounded-lg hover:border-[#777C6D] hover:bg-[#f3f3ef] transition text-left flex items-start justify-between gap-3"
+                        >
+                          <button
+                            onClick={async () => {
+                              await handleCompareResumes(resume._id);
+                            }}
+                            className="text-left flex-1"
+                          >
+                            <div className="font-semibold text-gray-900">{resume.name}</div>
+                            <div className="text-sm text-gray-600 mt-1">
+                              Modified {new Date(resume.updatedAt).toLocaleDateString()}
+                            </div>
+                            {resume.metadata?.description && (
+                              <div className="text-xs text-gray-500 mt-1 italic line-clamp-2">
+                                {resume.metadata.description}
+                              </div>
+                            )}
+                            {resume.isDefault && (
+                              <span className="inline-block mt-2 px-2 py-1 text-xs bg-green-100 text-green-800 rounded">
+                                Default
+                              </span>
+                            )}
+                            {resume.isArchived && (
+                              <span className="inline-block mt-2 px-2 py-1 text-xs bg-gray-200 text-gray-600 rounded">
+                                Archived
+                              </span>
+                            )}
+                          </button>
+
+                          {/* Trash icon to delete this archived version */}
+                          <div className="flex-shrink-0 ml-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeletingResume(resume);
+                                setShowDeleteModal(true);
+                              }}
+                              title="Delete version"
+                              aria-label={`Delete version ${resume.name}`}
+                              className="p-2 rounded-lg transition text-gray-600 flex items-center justify-center"
+                              onMouseOver={(e) => {
+                                e.currentTarget.style.backgroundColor = '#FEE2E2';
+                                e.currentTarget.style.color = '#B91C1C';
+                              }}
+                              onMouseOut={(e) => {
+                                e.currentTarget.style.backgroundColor = 'transparent';
+                                e.currentTarget.style.color = '#6B7280';
+                              }}
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : (
+                /* Comparison View */
+                <div className="space-y-6">
+                  {/* Comparison Header with Revert Button */}
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <span className="text-xs font-medium text-gray-500 uppercase">Current Version</span>
+                        <h4 className="font-semibold text-lg text-gray-900">{comparisonData.resume1.name}</h4>
+                        <p className="text-sm text-gray-600">
+                          Modified: {new Date(comparisonData.resume1.updatedAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-xs font-medium text-gray-500 uppercase">Previous Version</span>
+                        <h4 className="font-semibold text-lg text-gray-900">{comparisonData.resume2.name}</h4>
+                        <p className="text-sm text-gray-600">
+                          Modified: {new Date(comparisonData.resume2.updatedAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Action Buttons */}
+                    <div className="flex justify-center gap-3 pt-3 border-t border-gray-200">
+                      <button
+                        onClick={() => {
+                          // Switch to merge modal
+                          setSelectedMergeChanges([]);
+                          setShowMergeModal(true);
+                        }}
+                        className="px-6 py-2 bg-[#777C6D] text-white rounded-lg hover:bg-[#656A5C] transition flex items-center gap-2 font-medium"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                        </svg>
+                        Merge Selected Sections
+                      </button>
+                      <button
+                        onClick={handleRevertToPreviousVersion}
+                        className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition flex items-center gap-2 font-medium"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                        </svg>
+                        Revert Entirely
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Differences Summary */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Key Differences
+                    </h4>
+                    <ul className="space-y-2 text-sm text-blue-900">
+                      {comparisonData.differences.summary && (
+                        <li className="flex items-start gap-2">
+                          <span className="text-blue-600 mt-0.5">•</span>
+                          <span>Summary content differs</span>
+                        </li>
+                      )}
+                      {comparisonData.differences.experienceCount.resume1 !== comparisonData.differences.experienceCount.resume2 && (
+                        <li className="flex items-start gap-2">
+                          <span className="text-blue-600 mt-0.5">•</span>
+                          <span>
+                            Experience items: {comparisonData.differences.experienceCount.resume1} vs {comparisonData.differences.experienceCount.resume2}
+                          </span>
+                        </li>
+                      )}
+                      {comparisonData.differences.skillsCount.resume1 !== comparisonData.differences.skillsCount.resume2 && (
+                        <li className="flex items-start gap-2">
+                          <span className="text-blue-600 mt-0.5">•</span>
+                          <span>
+                            Skills: {comparisonData.differences.skillsCount.resume1} vs {comparisonData.differences.skillsCount.resume2}
+                          </span>
+                        </li>
+                      )}
+                      {comparisonData.differences.educationCount.resume1 !== comparisonData.differences.educationCount.resume2 && (
+                        <li className="flex items-start gap-2">
+                          <span className="text-blue-600 mt-0.5">•</span>
+                          <span>
+                            Education items: {comparisonData.differences.educationCount.resume1} vs {comparisonData.differences.educationCount.resume2}
+                          </span>
+                        </li>
+                      )}
+                      {comparisonData.differences.projectsCount.resume1 !== comparisonData.differences.projectsCount.resume2 && (
+                        <li className="flex items-start gap-2">
+                          <span className="text-blue-600 mt-0.5">•</span>
+                          <span>
+                            Projects: {comparisonData.differences.projectsCount.resume1} vs {comparisonData.differences.projectsCount.resume2}
+                          </span>
+                        </li>
+                      )}
+                      {comparisonData.differences.sectionCustomization && (
+                        <li className="flex items-start gap-2">
+                          <span className="text-blue-600 mt-0.5">•</span>
+                          <span>Section customization differs</span>
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+
+                  {/* Side-by-Side Sections */}
+                  <div className="space-y-6">
+                    {/* Summary Comparison with Diff Highlighting */}
+                    {(comparisonData.fullData.resume1.summary || comparisonData.fullData.resume2.summary) && (() => {
+                      const summaryDiff = highlightTextDiff(
+                        comparisonData.fullData.resume1.summary,
+                        comparisonData.fullData.resume2.summary
+                      );
+                      
+                      return (
+                        <div className="border border-gray-200 rounded-lg overflow-hidden">
+                          <div className="bg-gray-100 px-4 py-2 flex items-center justify-between">
+                            <span className="font-semibold text-gray-900">Summary</span>
+                            {summaryDiff.identical ? (
+                              <span className="text-xs px-2 py-1 bg-gray-200 text-gray-600 rounded">Identical</span>
+                            ) : (
+                              <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">Different</span>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-2 divide-x">
+                            <div className="p-4 bg-white">
+                              <div className="text-xs font-semibold text-gray-500 mb-2">Current Version</div>
+                              <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                                {summaryDiff.text1 || <span className="text-gray-400 italic">No summary</span>}
+                              </p>
+                            </div>
+                            <div className="p-4 bg-white">
+                              <div className="text-xs font-semibold text-gray-500 mb-2">Previous Version</div>
+                              <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                                {summaryDiff.text2 || <span className="text-gray-400 italic">No summary</span>}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="bg-gray-50 px-4 py-2 text-xs text-gray-600 border-t">
+                            <span className="inline-flex items-center gap-1 mr-3">
+                              <span className="w-3 h-3 bg-red-100 border border-red-300 rounded"></span> Removed
+                            </span>
+                            <span className="inline-flex items-center gap-1">
+                              <span className="w-3 h-3 bg-green-100 border border-green-300 rounded"></span> Added
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Skills Comparison with Highlighting */}
+                    {(comparisonData.fullData.resume1.skills?.length > 0 || comparisonData.fullData.resume2.skills?.length > 0) && (() => {
+                      const skills1Set = new Set(
+                        (comparisonData.fullData.resume1.skills || []).map(s => typeof s === 'string' ? s : s.name)
+                      );
+                      const skills2Set = new Set(
+                        (comparisonData.fullData.resume2.skills || []).map(s => typeof s === 'string' ? s : s.name)
+                      );
+                      
+                      return (
+                        <div className="border border-gray-200 rounded-lg overflow-hidden">
+                          <div className="bg-gray-100 px-4 py-2 flex items-center justify-between">
+                            <span className="font-semibold text-gray-900">Skills</span>
+                            {JSON.stringify([...skills1Set].sort()) === JSON.stringify([...skills2Set].sort()) ? (
+                              <span className="text-xs px-2 py-1 bg-gray-200 text-gray-600 rounded">Identical</span>
+                            ) : (
+                              <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">Different</span>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-2 divide-x">
+                            <div className="p-4 bg-white">
+                              <div className="text-xs font-semibold text-gray-500 mb-2">Current Version</div>
+                              {comparisonData.fullData.resume1.skills?.length > 0 ? (
+                                <div className="flex flex-wrap gap-2">
+                                  {comparisonData.fullData.resume1.skills.map((skill, idx) => {
+                                    const skillName = typeof skill === 'string' ? skill : skill.name;
+                                    const inOther = skills2Set.has(skillName);
+                                    return (
+                                      <span 
+                                        key={idx} 
+                                        className={`px-2 py-1 rounded text-xs font-medium ${
+                                          inOther 
+                                            ? 'bg-gray-100 text-gray-800 border border-gray-300' 
+                                            : 'bg-red-100 text-red-800 border border-red-300'
+                                        }`}
+                                      >
+                                        {skillName}
+                                        {!inOther && <span className="ml-1 text-red-600">✕</span>}
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <span className="text-gray-400 italic text-sm">No skills</span>
+                              )}
+                            </div>
+                            <div className="p-4 bg-white">
+                              <div className="text-xs font-semibold text-gray-500 mb-2">Previous Version</div>
+                              {comparisonData.fullData.resume2.skills?.length > 0 ? (
+                                <div className="flex flex-wrap gap-2">
+                                  {comparisonData.fullData.resume2.skills.map((skill, idx) => {
+                                    const skillName = typeof skill === 'string' ? skill : skill.name;
+                                    const inOther = skills1Set.has(skillName);
+                                    return (
+                                      <span 
+                                        key={idx} 
+                                        className={`px-2 py-1 rounded text-xs font-medium ${
+                                          inOther 
+                                            ? 'bg-gray-100 text-gray-800 border border-gray-300' 
+                                            : 'bg-green-100 text-green-800 border border-green-300'
+                                        }`}
+                                      >
+                                        {skillName}
+                                        {!inOther && <span className="ml-1 text-green-600">✓</span>}
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <span className="text-gray-400 italic text-sm">No skills</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="bg-gray-50 px-4 py-2 text-xs text-gray-600 border-t">
+                            <span className="inline-flex items-center gap-1 mr-3">
+                              <span className="w-3 h-3 bg-red-100 border border-red-300 rounded"></span> Only in current
+                            </span>
+                            <span className="inline-flex items-center gap-1 mr-3">
+                              <span className="w-3 h-3 bg-green-100 border border-green-300 rounded"></span> Only in previous
+                            </span>
+                            <span className="inline-flex items-center gap-1">
+                              <span className="w-3 h-3 bg-gray-100 border border-gray-300 rounded"></span> In both
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Experience Count Comparison */}
+                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                      <div className="bg-gray-100 px-4 py-2 font-semibold text-gray-900">
+                        Experience
+                      </div>
+                      <div className="grid grid-cols-2 divide-x">
+                        <div className="p-4 bg-white">
+                          <p className="text-sm text-gray-700">
+                            {comparisonData.differences.experienceCount.resume1} experience item(s)
+                          </p>
+                        </div>
+                        <div className="p-4 bg-white">
+                          <p className="text-sm text-gray-700">
+                            {comparisonData.differences.experienceCount.resume2} experience item(s)
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Merge Action */}
+                  <div className="bg-[#f7f6f2] border border-[#e6e6e1] rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-semibold text-purple-900 mb-1">Want to merge changes?</h4>
+                        <p className="text-sm text-purple-700">
+                          Copy selected sections from one resume to another
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          // Switch to merge modal
+                          setSelectedMergeChanges([]);
+                          setShowMergeModal(true);
+                        }}
+                        className="px-4 py-2 bg-[#777C6D] text-white rounded-lg hover:bg-[#656A5C] transition flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                        </svg>
+                        Merge Changes
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-gray-50 px-6 py-4 border-t flex justify-end gap-3">
+              {comparisonData && (
+                <button
+                  onClick={() => {
+                    setCompareResumeId(null);
+                    setComparisonData(null);
+                  }}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
+                >
+                  Compare Different Resume
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setShowCompareModal(false);
+                  setCompareResumeId(null);
+                  setComparisonData(null);
+                }}
+                className="px-4 py-2 text-white rounded-lg transition"
+                style={{ backgroundColor: '#777C6D' }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* UC-52: Merge Resume Modal */}
+      {showMergeModal && comparisonData && viewingResume && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={() => {
+            setShowMergeModal(false);
+            setSelectedMergeChanges([]);
+          }}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-gray-200" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="bg-[#777C6D] border-b px-6 py-4 sticky top-0 z-10">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                  <h3 className="text-xl font-heading font-bold text-white">Merge Resume Changes</h3>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowMergeModal(false);
+                    setSelectedMergeChanges([]);
+                  }}
+                  className="text-white hover:text-gray-200 transition"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 space-y-6">
+              {/* Merge Direction Indicator */}
+              <div className="bg-[#f7f6f2] border border-[#e6e6e1] rounded-lg p-4">
+                <div className="flex items-center justify-center gap-4">
+                  <div className="text-center">
+                    <div className="font-semibold text-purple-900">{comparisonData.resume2.name}</div>
+                    <div className="text-xs text-[#4F5348]">Source</div>
+                  </div>
+                  <svg className="w-8 h-8 text-[#4F5348]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                  </svg>
+                  <div className="text-center">
+                    <div className="font-semibold text-purple-900">{comparisonData.resume1.name}</div>
+                    <div className="text-xs text-[#4F5348]">Target (current)</div>
+                  </div>
+                </div>
+                <p className="text-sm text-purple-700 text-center mt-3">
+                  Select which sections to copy from the source resume to the target resume
+                </p>
+              </div>
+
+              {/* Merge Options */}
+              <div className="space-y-4">
+                <h4 className="font-semibold text-gray-900">Select Changes to Merge:</h4>
+
+                {/* Summary Section */}
+                {comparisonData.fullData.resume2.summary && comparisonData.differences.summary && (
+                  <div className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedMergeChanges.includes('summary')}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedMergeChanges([...selectedMergeChanges, 'summary']);
+                          } else {
+                            setSelectedMergeChanges(selectedMergeChanges.filter(c => c !== 'summary'));
+                          }
+                        }}
+                        className="mt-1 w-5 h-5 text-[#4F5348] rounded focus:ring-2 focus:ring-[#777C6D]"
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900 mb-2">Summary</div>
+                        <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded border border-gray-200 line-clamp-3">
+                          {comparisonData.fullData.resume2.summary}
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                )}
+
+                {/* Experience Section */}
+                {comparisonData.fullData.resume2.experience?.length > 0 && (
+                  <div className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedMergeChanges.includes('experience')}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedMergeChanges([...selectedMergeChanges, 'experience']);
+                          } else {
+                            setSelectedMergeChanges(selectedMergeChanges.filter(c => c !== 'experience'));
+                          }
+                        }}
+                        className="mt-1 w-5 h-5 text-[#4F5348] rounded focus:ring-2 focus:ring-[#777C6D]"
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900 mb-2">
+                          All Experience ({comparisonData.fullData.resume2.experience.length} items)
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          Replace all experience with source, or select individual items below to add
+                        </div>
+                      </div>
+                    </label>
+
+                    {/* Individual Experience Items */}
+                    <div className="ml-8 mt-3 space-y-2">
+                      <div className="text-xs text-gray-500 mb-2 italic">Select individual experience items to ADD them to current resume</div>
+                      {comparisonData.fullData.resume2.experience.map((exp, idx) => (
+                        <label key={idx} className="flex items-start gap-2 cursor-pointer p-2 rounded hover:bg-white">
+                          <input
+                            type="checkbox"
+                            checked={selectedMergeChanges.includes(`experience.${idx}`)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedMergeChanges([...selectedMergeChanges, `experience.${idx}`]);
+                              } else {
+                                setSelectedMergeChanges(selectedMergeChanges.filter(c => c !== `experience.${idx}`));
+                              }
+                            }}
+                            className="mt-1 w-4 h-4 text-[#4F5348] rounded focus:ring-2 focus:ring-[#777C6D]"
+                          />
+                          <div className="text-sm">
+                            <div className="font-medium text-gray-900">{exp.title} at {exp.company}</div>
+                            <div className="text-xs text-gray-500">
+                              {exp.startDate} - {exp.current ? 'Present' : exp.endDate}
+                            </div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Skills Section */}
+                {comparisonData.fullData.resume2.skills?.length > 0 && (() => {
+                  // Get current resume skills to show which are new/different
+                  const currentSkillNames = new Set(
+                    (comparisonData.fullData.resume1.skills || []).map(s => 
+                      typeof s === 'string' ? s : s.name
+                    )
+                  );
+                  
+                  return (
+                    <div className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition">
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedMergeChanges.includes('skills')}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedMergeChanges([...selectedMergeChanges, 'skills']);
+                            } else {
+                              setSelectedMergeChanges(selectedMergeChanges.filter(c => c !== 'skills'));
+                            }
+                          }}
+                          className="mt-1 w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
+                        />
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-900 mb-2">
+                            All Skills ({comparisonData.fullData.resume2.skills.length} items)
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            Add all missing skills from source resume
+                          </div>
+                        </div>
+                      </label>
+
+                      {/* Individual Skills */}
+                      <div className="ml-8 mt-3 flex flex-wrap gap-2">
+                        {comparisonData.fullData.resume2.skills.map((skill, idx) => {
+                          const skillName = typeof skill === 'string' ? skill : skill.name;
+                          const isInCurrent = currentSkillNames.has(skillName);
+                          
+                          return (
+                            <label 
+                              key={idx} 
+                              className={`flex items-center gap-2 px-3 py-1.5 rounded cursor-pointer transition ${
+                                isInCurrent 
+                                  ? 'bg-gray-100 text-gray-500' 
+                                  : 'bg-purple-50 hover:bg-purple-100 text-purple-900'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selectedMergeChanges.includes(`skill.${idx}`)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedMergeChanges([...selectedMergeChanges, `skill.${idx}`]);
+                                  } else {
+                                    setSelectedMergeChanges(selectedMergeChanges.filter(c => c !== `skill.${idx}`));
+                                  }
+                                }}
+                                disabled={isInCurrent}
+                                className="w-4 h-4 text-purple-600 rounded focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+                              />
+                              <span className="text-sm">
+                                {skillName}
+                                {isInCurrent && <span className="ml-1 text-xs">(already in current)</span>}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Education Section */}
+                {comparisonData.fullData.resume2.education?.length > 0 && (
+                  <div className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedMergeChanges.includes('education')}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedMergeChanges([...selectedMergeChanges, 'education']);
+                          } else {
+                            setSelectedMergeChanges(selectedMergeChanges.filter(c => c !== 'education'));
+                          }
+                        }}
+                        className="mt-1 w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900 mb-2">
+                          Education ({comparisonData.fullData.resume2.education.length} items)
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          Replace all education entries with those from source resume
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                )}
+
+                {/* Projects Section */}
+                {comparisonData.fullData.resume2.projects?.length > 0 && (
+                  <div className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedMergeChanges.includes('projects')}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedMergeChanges([...selectedMergeChanges, 'projects']);
+                          } else {
+                            setSelectedMergeChanges(selectedMergeChanges.filter(c => c !== 'projects'));
+                          }
+                        }}
+                        className="mt-1 w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900 mb-2">
+                          Projects ({comparisonData.fullData.resume2.projects.length} items)
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          Replace all projects with those from source resume
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                )}
+
+                {/* Section Visibility/Customization */}
+                {comparisonData.differences.sectionCustomization && (
+                  <div className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedMergeChanges.includes('sectionCustomization')}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedMergeChanges([...selectedMergeChanges, 'sectionCustomization']);
+                          } else {
+                            setSelectedMergeChanges(selectedMergeChanges.filter(c => c !== 'sectionCustomization'));
+                          }
+                        }}
+                        className="mt-1 w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900 mb-2">Section Visibility & Layout</div>
+                        <div className="text-sm text-gray-600">
+                          Restore section visibility settings, order, and formatting from source resume
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-gray-50 px-6 py-4 border-t flex justify-between items-center">
+              <div className="text-sm text-gray-600">
+                {selectedMergeChanges.length > 0 ? (
+                  <span className="font-medium text-purple-700">
+                    {selectedMergeChanges.length} section{selectedMergeChanges.length !== 1 ? 's' : ''} selected for merge
+                  </span>
+                ) : (
+                  <span className="text-gray-500">Select at least one section to merge</span>
+                )}
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowMergeModal(false);
+                    setSelectedMergeChanges([]);
+                  }}
+                  disabled={isMerging}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleMergeResumes}
+                  disabled={isMerging || selectedMergeChanges.length === 0}
+                  className="px-6 py-2 bg-[#777C6D] text-white rounded-lg hover:bg-[#656A5C] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isMerging ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Merging...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>Apply Merge</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* UC-49: Skills Optimization Modal */}
       {showSkillsOptimization && skillsOptimizationData && (
         <div 
@@ -4808,7 +6142,7 @@ export default function ResumeTemplates() {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 sticky top-0 z-10">
+            <div className="bg-[#777C6D] px-6 py-4 sticky top-0 z-10">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -4852,7 +6186,7 @@ export default function ResumeTemplates() {
                     <p className="text-sm text-gray-600">{skillsOptimizationData.optimization?.summary || 'Your skills alignment with this job'}</p>
                   </div>
                   <div className="text-right">
-                    <div className="text-4xl font-bold text-blue-600">
+                    <div className="text-4xl font-bold text-[#4F5348]">
                       {skillsOptimizationData.optimization?.matchScore || 0}%
                     </div>
                     <div className="text-sm text-gray-600 mt-1">Match Rate</div>
@@ -5105,7 +6439,7 @@ export default function ResumeTemplates() {
                   <button
                     onClick={handleApplySkillChanges}
                     disabled={isApplyingSkills || (selectedSkillsToAdd.length === 0 && currentResumeSkills.length === (viewingResume?.sections?.skills?.length || 0))}
-                    className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="px-6 py-2 bg-[#777C6D] text-white rounded-lg hover:bg-[#656A5C] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
                     {isApplyingSkills ? (
                       <>
@@ -5146,7 +6480,7 @@ export default function ResumeTemplates() {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4 sticky top-0 z-10">
+            <div className="bg-[#777C6D] px-6 py-4 sticky top-0 z-10">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -5398,7 +6732,7 @@ export default function ResumeTemplates() {
                   <button
                     onClick={handleApplyExperienceChanges}
                     disabled={isApplyingExperience || Object.keys(selectedExperienceVariations).length === 0}
-                    className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="px-6 py-2 bg-[#777C6D] text-white rounded-lg hover:bg-[#656A5C] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
                     {isApplyingExperience ? (
                       <>
