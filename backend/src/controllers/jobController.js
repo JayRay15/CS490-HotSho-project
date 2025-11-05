@@ -593,6 +593,269 @@ export const getJobAnalytics = asyncHandler(async (req, res) => {
     percentage: totalApplications > 0 ? ((statusCounts[status] / totalApplications) * 100).toFixed(1) : 0
   }));
 
+  // 7. Application funnel analytics (applied → interview → offer)
+  // Use allJobs (not just activeJobs) to include rejected/archived jobs in funnel
+  const funnelData = {
+    applied: appliedJobs.length,
+    phoneScreen: allJobs.filter(job => ["Phone Screen", "Interview", "Offer", "Accepted", "Rejected"].includes(job.status)).length,
+    interview: allJobs.filter(job => ["Interview", "Offer", "Accepted", "Rejected"].includes(job.status)).length,
+    offer: allJobs.filter(job => ["Offer", "Accepted"].includes(job.status)).length,
+    conversionRates: {
+      applyToScreen: appliedJobs.length > 0 
+        ? ((allJobs.filter(job => ["Phone Screen", "Interview", "Offer", "Accepted", "Rejected"].includes(job.status)).length / appliedJobs.length) * 100).toFixed(1)
+        : 0,
+      screenToInterview: allJobs.filter(job => ["Phone Screen", "Interview", "Offer", "Accepted", "Rejected"].includes(job.status)).length > 0
+        ? ((allJobs.filter(job => ["Interview", "Offer", "Accepted", "Rejected"].includes(job.status)).length / allJobs.filter(job => ["Phone Screen", "Interview", "Offer", "Accepted", "Rejected"].includes(job.status)).length) * 100).toFixed(1)
+        : 0,
+      interviewToOffer: allJobs.filter(job => ["Interview", "Offer", "Accepted", "Rejected"].includes(job.status)).length > 0
+        ? ((allJobs.filter(job => ["Offer", "Accepted"].includes(job.status)).length / allJobs.filter(job => ["Interview", "Offer", "Accepted", "Rejected"].includes(job.status)).length) * 100).toFixed(1)
+        : 0,
+    }
+  };
+
+  // 8. Time-to-response tracking by company
+  const companyResponseTimes = {};
+  allJobs.forEach(job => {
+    if (job.applicationDate && job.statusHistory.length > 1) {
+      const appDate = new Date(job.applicationDate);
+      // Find first response (any status change after Applied)
+      const responseEntry = job.statusHistory.find(h => 
+        h.status !== "Interested" && h.status !== "Applied" && new Date(h.timestamp) > appDate
+      );
+      
+      if (responseEntry) {
+        const responseTime = Math.floor((new Date(responseEntry.timestamp) - appDate) / (1000 * 60 * 60 * 24));
+        if (!companyResponseTimes[job.company]) {
+          companyResponseTimes[job.company] = { times: [], total: 0, count: 0 };
+        }
+        companyResponseTimes[job.company].times.push(responseTime);
+        companyResponseTimes[job.company].total += responseTime;
+        companyResponseTimes[job.company].count += 1;
+      }
+    }
+  });
+
+  // Build company analytics - include ALL companies, even without response time data
+  const companyStats = {};
+  allJobs.forEach(job => {
+    if (job.company) {
+      if (!companyStats[job.company]) {
+        companyStats[job.company] = { jobs: [], successCount: 0 };
+      }
+      companyStats[job.company].jobs.push(job);
+      if (["Interview", "Offer", "Accepted"].includes(job.status)) {
+        companyStats[job.company].successCount++;
+      }
+    }
+  });
+
+  const companyAnalytics = Object.entries(companyStats)
+    .map(([company, data]) => ({
+      company,
+      avgResponseTime: companyResponseTimes[company] 
+        ? (companyResponseTimes[company].total / companyResponseTimes[company].count).toFixed(1)
+        : 'N/A',
+      applications: data.jobs.length,
+      successRate: data.jobs.length > 0
+        ? ((data.successCount / data.jobs.length) * 100).toFixed(1)
+        : 0
+    }))
+    .sort((a, b) => b.applications - a.applications)
+    .slice(0, 10); // Top 10 companies
+
+  // 9. Time-to-response tracking by industry
+  const industryResponseTimes = {};
+  allJobs.forEach(job => {
+    if (job.industry && job.applicationDate && job.statusHistory.length > 1) {
+      const appDate = new Date(job.applicationDate);
+      const responseEntry = job.statusHistory.find(h => 
+        h.status !== "Interested" && h.status !== "Applied" && new Date(h.timestamp) > appDate
+      );
+      
+      if (responseEntry) {
+        const responseTime = Math.floor((new Date(responseEntry.timestamp) - appDate) / (1000 * 60 * 60 * 24));
+        if (!industryResponseTimes[job.industry]) {
+          industryResponseTimes[job.industry] = { times: [], total: 0, count: 0 };
+        }
+        industryResponseTimes[job.industry].times.push(responseTime);
+        industryResponseTimes[job.industry].total += responseTime;
+        industryResponseTimes[job.industry].count += 1;
+      }
+    }
+  });
+
+  // Build industry analytics - include ALL industries, even without response time data
+  const industryStats = {};
+  allJobs.forEach(job => {
+    if (job.industry) {
+      if (!industryStats[job.industry]) {
+        industryStats[job.industry] = { jobs: [], successCount: 0 };
+      }
+      industryStats[job.industry].jobs.push(job);
+      if (["Interview", "Offer", "Accepted"].includes(job.status)) {
+        industryStats[job.industry].successCount++;
+      }
+    }
+  });
+
+  const industryAnalytics = Object.entries(industryStats)
+    .map(([industry, data]) => ({
+      industry,
+      avgResponseTime: industryResponseTimes[industry] 
+        ? (industryResponseTimes[industry].total / industryResponseTimes[industry].count).toFixed(1)
+        : 'N/A',
+      applications: data.jobs.length,
+      successRate: data.jobs.length > 0
+        ? ((data.successCount / data.jobs.length) * 100).toFixed(1)
+        : 0
+    }))
+    .sort((a, b) => b.applications - a.applications);
+
+  // 10. Success rate by application approach (based on work mode)
+  const approachAnalytics = {};
+  ["Remote", "Hybrid", "On-site"].forEach(mode => {
+    const modeJobs = allJobs.filter(j => j.workMode === mode);
+    if (modeJobs.length > 0) {
+      approachAnalytics[mode] = {
+        applications: modeJobs.length,
+        responseRate: modeJobs.filter(j => j.status !== "Interested" && j.status !== "Applied").length > 0
+          ? ((modeJobs.filter(j => j.status !== "Interested" && j.status !== "Applied").length / modeJobs.length) * 100).toFixed(1)
+          : 0,
+        interviewRate: modeJobs.length > 0
+          ? ((modeJobs.filter(j => ["Interview", "Offer"].includes(j.status)).length / modeJobs.length) * 100).toFixed(1)
+          : 0,
+        offerRate: modeJobs.length > 0
+          ? ((modeJobs.filter(j => j.status === "Offer").length / modeJobs.length) * 100).toFixed(1)
+          : 0
+      };
+    }
+  });
+
+  // 11. Application frequency trends (last 4 weeks)
+  const weeklyTrends = [];
+  for (let i = 3; i >= 0; i--) {
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - (i * 7 + 7));
+    weekStart.setHours(0, 0, 0, 0);
+    
+    const weekEnd = new Date();
+    weekEnd.setDate(weekEnd.getDate() - (i * 7));
+    weekEnd.setHours(23, 59, 59, 999);
+    
+    const weekJobs = allJobs.filter(job => {
+      const createdDate = new Date(job.createdAt);
+      return createdDate >= weekStart && createdDate <= weekEnd;
+    });
+
+    weeklyTrends.push({
+      week: `Week of ${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+      applications: weekJobs.length,
+      responses: weekJobs.filter(j => j.status !== "Interested" && j.status !== "Applied").length
+    });
+  }
+
+  // 12. Performance benchmarking (industry averages - simulated benchmarks)
+  const benchmarks = {
+    industryAverages: {
+      responseRate: 25, // Industry average response rate %
+      interviewRate: 15, // Industry average interview rate %
+      offerRate: 5, // Industry average offer rate %
+      avgTimeToOffer: 45, // Industry average days
+      avgResponseTime: 14 // Industry average response time in days
+    },
+    userPerformance: {
+      responseRate: parseFloat(responseRate),
+      interviewRate: parseFloat(interviewRate),
+      offerRate: parseFloat(offerRate),
+      avgTimeToOffer: parseFloat(avgTimeToOffer),
+      avgResponseTime: companyAnalytics.length > 0 
+        ? (companyAnalytics.reduce((sum, c) => sum + parseFloat(c.avgResponseTime), 0) / companyAnalytics.length).toFixed(1)
+        : 0
+    },
+    comparison: {
+      responseRate: parseFloat(responseRate) >= 25 ? 'above' : parseFloat(responseRate) >= 20 ? 'average' : 'below',
+      interviewRate: parseFloat(interviewRate) >= 15 ? 'above' : parseFloat(interviewRate) >= 10 ? 'average' : 'below',
+      offerRate: parseFloat(offerRate) >= 5 ? 'above' : parseFloat(offerRate) >= 3 ? 'average' : 'below'
+    }
+  };
+
+  // 13. Optimization recommendations based on data
+  const recommendations = [];
+  
+  if (parseFloat(responseRate) < 20) {
+    recommendations.push({
+      type: 'critical',
+      category: 'Response Rate',
+      message: 'Your response rate is below average. Consider tailoring your applications more to each job.',
+      action: 'Review and customize your resume and cover letter for each application'
+    });
+  }
+  
+  if (parseFloat(interviewRate) < 10 && appliedJobs.length >= 10) {
+    recommendations.push({
+      type: 'warning',
+      category: 'Interview Conversion',
+      message: 'Your interview rate could be improved. Focus on quality over quantity.',
+      action: 'Apply to fewer but more relevant positions and enhance your application materials'
+    });
+  }
+  
+  if (weeklyTrends[3]?.applications < 5) {
+    recommendations.push({
+      type: 'info',
+      category: 'Application Volume',
+      message: 'Your application volume is low. Increase your weekly applications to improve chances.',
+      action: 'Set a goal to apply to at least 5-10 positions per week'
+    });
+  }
+  
+  if (companyAnalytics.length > 0) {
+    const fastCompanies = companyAnalytics.filter(c => parseFloat(c.avgResponseTime) < 7);
+    if (fastCompanies.length > 0) {
+      recommendations.push({
+        type: 'success',
+        category: 'Quick Responders',
+        message: `${fastCompanies.map(c => c.company).join(', ')} respond quickly. Consider prioritizing similar companies.`,
+        action: 'Research and apply to companies known for fast hiring processes'
+      });
+    }
+  }
+  
+  if (industryAnalytics.length > 0) {
+    const topIndustry = industryAnalytics[0];
+    if (parseFloat(topIndustry.successRate) > 20) {
+      recommendations.push({
+        type: 'success',
+        category: 'Industry Match',
+        message: `You have ${topIndustry.successRate}% success rate in ${topIndustry.industry}. This could be your sweet spot!`,
+        action: `Focus more applications in the ${topIndustry.industry} industry`
+      });
+    }
+  }
+
+  // 14. Goal tracking metrics
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+  const monthStart = new Date(currentYear, currentMonth, 1);
+  
+  const monthlyGoals = {
+    applications: {
+      goal: 20, // Default monthly goal
+      current: allJobs.filter(j => new Date(j.createdAt) >= monthStart).length,
+      percentage: (allJobs.filter(j => new Date(j.createdAt) >= monthStart).length / 20 * 100).toFixed(0)
+    },
+    interviews: {
+      goal: 5, // Default monthly goal
+      current: allJobs.filter(j => new Date(j.createdAt) >= monthStart && ["Interview", "Offer", "Accepted"].includes(j.status)).length,
+      percentage: (allJobs.filter(j => new Date(j.createdAt) >= monthStart && ["Interview", "Offer", "Accepted"].includes(j.status)).length / 5 * 100).toFixed(0)
+    },
+    offers: {
+      goal: 1, // Default monthly goal
+      current: allJobs.filter(j => new Date(j.createdAt) >= monthStart && ["Offer", "Accepted"].includes(j.status)).length,
+      percentage: (allJobs.filter(j => new Date(j.createdAt) >= monthStart && ["Offer", "Accepted"].includes(j.status)).length / 1 * 100).toFixed(0)
+    }
+  };
+
   const { response, statusCode } = successResponse("Job analytics retrieved successfully", {
     overview: {
       totalApplications,
@@ -617,6 +880,14 @@ export const getJobAnalytics = asyncHandler(async (req, res) => {
       average: parseFloat(avgTimeToOffer),
       count: offerJobs.length,
     },
+    funnelAnalytics: funnelData,
+    companyAnalytics,
+    industryAnalytics,
+    approachAnalytics,
+    weeklyTrends,
+    benchmarks,
+    recommendations,
+    goalTracking: monthlyGoals,
   });
   return sendResponse(res, response, statusCode);
   } catch (err) {
