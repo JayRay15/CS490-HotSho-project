@@ -664,8 +664,8 @@ export const regenerateResumeSection = async (req, res) => {
     }
 
     // Get job and user profile
-    const jobId = resume.metadata?.tailoredForJob;
-    if (!jobId) {
+    const jobIdentifier = resume.metadata?.tailoredForJob;
+    if (!jobIdentifier) {
       const { response, statusCode } = errorResponse(
         "Resume was not generated with AI",
         400,
@@ -674,7 +674,29 @@ export const regenerateResumeSection = async (req, res) => {
       return sendResponse(res, response, statusCode);
     }
 
-    const job = await Job.findOne({ _id: jobId, userId }).lean();
+    // Try to find job by ID first, if that fails, try by title+company
+    let job;
+    try {
+      // Check if it's a valid ObjectId format (24 hex characters)
+      if (/^[0-9a-fA-F]{24}$/.test(jobIdentifier)) {
+        job = await Job.findOne({ _id: jobIdentifier, userId }).lean();
+      }
+    } catch (err) {
+      console.log('Job ID lookup failed, trying title match:', err.message);
+    }
+    
+    // If not found by ID, try to parse as "title at company" format
+    if (!job && typeof jobIdentifier === 'string' && jobIdentifier.includes(' at ')) {
+      const parts = jobIdentifier.split(' at ');
+      const title = parts[0].trim();
+      const company = parts.slice(1).join(' at ').trim();
+      job = await Job.findOne({ 
+        userId, 
+        title: { $regex: new RegExp(title, 'i') },
+        company: { $regex: new RegExp(company, 'i') }
+      }).lean();
+    }
+    
     if (!job) {
       const { response, statusCode } = errorResponse("Original job not found", 404, ERROR_CODES.NOT_FOUND);
       return sendResponse(res, response, statusCode);
@@ -728,9 +750,11 @@ export const regenerateResumeSection = async (req, res) => {
       resume.sections.skills = regenerated;
     }
 
-    await resume.save();
+    // NOTE: Don't save to database - let frontend handle save via "Save Changes" button
+    // This allows version control on the frontend
+    // await resume.save();
 
-    const { response, statusCode } = successResponse("Section regenerated", { resume });
+    const { response, statusCode } = successResponse("Section regenerated", { resume: resume.toObject() });
     return sendResponse(res, response, statusCode);
   } catch (err) {
     console.error("Section regeneration error:", err);
@@ -1173,7 +1197,24 @@ export const compareResumes = async (req, res) => {
       return sendResponse(res, response, statusCode);
     }
 
-    // Build comparison
+    // Get visible sections for each resume (respect sectionCustomization)
+    const visibleSections1 = resume1.sectionCustomization?.visibleSections || [];
+    const visibleSections2 = resume2.sectionCustomization?.visibleSections || [];
+    
+    // Helper to check if section is visible
+    const isSectionVisible = (visibleArray, sectionKey) => {
+      return visibleArray.length === 0 || visibleArray.includes(sectionKey);
+    };
+    
+    // Get section data only if visible, otherwise treat as null/empty
+    const getVisibleSectionData = (resume, sectionKey, visibleSections) => {
+      if (!isSectionVisible(visibleSections, sectionKey)) {
+        return null; // Section is hidden
+      }
+      return resume.sections?.[sectionKey];
+    };
+    
+    // Build comparison with visibility awareness
     const comparison = {
       resume1: {
         id: resume1._id,
@@ -1188,28 +1229,40 @@ export const compareResumes = async (req, res) => {
         updatedAt: resume2.updatedAt
       },
       differences: {
-        summary: resume1.sections?.summary !== resume2.sections?.summary,
+        summary: getVisibleSectionData(resume1, 'summary', visibleSections1) !== getVisibleSectionData(resume2, 'summary', visibleSections2),
         experienceCount: {
-          resume1: resume1.sections?.experience?.length || 0,
-          resume2: resume2.sections?.experience?.length || 0
+          resume1: isSectionVisible(visibleSections1, 'experience') ? (resume1.sections?.experience?.length || 0) : 0,
+          resume2: isSectionVisible(visibleSections2, 'experience') ? (resume2.sections?.experience?.length || 0) : 0
         },
         skillsCount: {
-          resume1: resume1.sections?.skills?.length || 0,
-          resume2: resume2.sections?.skills?.length || 0
+          resume1: isSectionVisible(visibleSections1, 'skills') ? (resume1.sections?.skills?.length || 0) : 0,
+          resume2: isSectionVisible(visibleSections2, 'skills') ? (resume2.sections?.skills?.length || 0) : 0
         },
         educationCount: {
-          resume1: resume1.sections?.education?.length || 0,
-          resume2: resume2.sections?.education?.length || 0
+          resume1: isSectionVisible(visibleSections1, 'education') ? (resume1.sections?.education?.length || 0) : 0,
+          resume2: isSectionVisible(visibleSections2, 'education') ? (resume2.sections?.education?.length || 0) : 0
         },
         projectsCount: {
-          resume1: resume1.sections?.projects?.length || 0,
-          resume2: resume2.sections?.projects?.length || 0
+          resume1: isSectionVisible(visibleSections1, 'projects') ? (resume1.sections?.projects?.length || 0) : 0,
+          resume2: isSectionVisible(visibleSections2, 'projects') ? (resume2.sections?.projects?.length || 0) : 0
         },
         sectionCustomization: JSON.stringify(resume1.sectionCustomization) !== JSON.stringify(resume2.sectionCustomization)
       },
       fullData: {
-        resume1: resume1.sections,
-        resume2: resume2.sections
+        resume1: {
+          summary: getVisibleSectionData(resume1, 'summary', visibleSections1),
+          experience: isSectionVisible(visibleSections1, 'experience') ? resume1.sections?.experience : [],
+          skills: isSectionVisible(visibleSections1, 'skills') ? resume1.sections?.skills : [],
+          education: isSectionVisible(visibleSections1, 'education') ? resume1.sections?.education : [],
+          projects: isSectionVisible(visibleSections1, 'projects') ? resume1.sections?.projects : []
+        },
+        resume2: {
+          summary: getVisibleSectionData(resume2, 'summary', visibleSections2),
+          experience: isSectionVisible(visibleSections2, 'experience') ? resume2.sections?.experience : [],
+          skills: isSectionVisible(visibleSections2, 'skills') ? resume2.sections?.skills : [],
+          education: isSectionVisible(visibleSections2, 'education') ? resume2.sections?.education : [],
+          projects: isSectionVisible(visibleSections2, 'projects') ? resume2.sections?.projects : []
+        }
       }
     };
 
