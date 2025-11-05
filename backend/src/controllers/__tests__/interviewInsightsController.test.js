@@ -1,10 +1,46 @@
-import { getInterviewInsights } from "../interviewInsightsController.js";
-import { Job } from "../../models/Job.js";
-import { successResponse, errorResponse } from "../../utils/responseFormat.js";
+import { jest, beforeEach, describe, it, expect } from '@jest/globals';
 
-// Mock dependencies
-jest.mock("../../models/Job.js");
-jest.mock("../../utils/responseFormat.js");
+// Reset modules to ensure clean imports
+jest.resetModules();
+
+// Mock dependencies before importing
+const mockSelect = jest.fn();
+const mockFind = jest.fn(() => ({
+  select: mockSelect,
+}));
+
+const mockJob = {
+  findOne: jest.fn(),
+  find: mockFind,
+};
+
+const mockSuccessResponse = jest.fn();
+const mockErrorResponse = jest.fn();
+const mockSendResponse = jest.fn();
+
+// Use unstable_mockModule for ES modules
+jest.unstable_mockModule('../../models/Job.js', () => ({
+  Job: mockJob,
+}));
+
+jest.unstable_mockModule('../../utils/responseFormat.js', () => ({
+  successResponse: mockSuccessResponse,
+  errorResponse: mockErrorResponse,
+  sendResponse: mockSendResponse,
+  ERROR_CODES: {
+    UNAUTHORIZED: 'UNAUTHORIZED',
+    NOT_FOUND: 'NOT_FOUND',
+    VALIDATION_ERROR: 'VALIDATION_ERROR',
+    INTERNAL_ERROR: 'INTERNAL_ERROR'
+  }
+}));
+
+jest.unstable_mockModule('../../middleware/errorHandler.js', () => ({
+  asyncHandler: (fn) => fn,
+}));
+
+// Import controller AFTER mocks are set up
+const { getInterviewInsights } = await import('../interviewInsightsController.js');
 
 describe("Interview Insights Controller", () => {
   let req, res;
@@ -26,11 +62,17 @@ describe("Interview Insights Controller", () => {
 
     // Reset mocks
     jest.clearAllMocks();
+    mockJob.findOne.mockReset();
+    mockFind.mockClear();
+    mockSelect.mockReset();
+    mockSuccessResponse.mockReset();
+    mockErrorResponse.mockReset();
+    mockSendResponse.mockReset();
   });
 
   describe("getInterviewInsights", () => {
     it("should return interview insights for a valid job", async () => {
-      const mockJob = {
+      const mockJobData = {
         _id: "job-123",
         userId: "test-user-123",
         company: "TechCorp",
@@ -62,29 +104,29 @@ describe("Interview Insights Controller", () => {
         },
       ];
 
-      Job.findOne.mockResolvedValue(mockJob);
-      Job.find.mockResolvedValue(mockCompanyJobs);
+      mockJob.findOne.mockResolvedValue(mockJobData);
+      mockSelect.mockResolvedValue(mockCompanyJobs);
 
       const mockResponse = {
         response: { success: true, data: { insights: {} } },
         statusCode: 200,
       };
-      successResponse.mockReturnValue(mockResponse);
+      mockSuccessResponse.mockReturnValue(mockResponse);
 
       await getInterviewInsights(req, res);
 
-      expect(Job.findOne).toHaveBeenCalledWith({
+      expect(mockJob.findOne).toHaveBeenCalledWith({
         _id: "job-123",
         userId: "test-user-123",
       });
 
-      expect(Job.find).toHaveBeenCalledWith({
+      expect(mockJob.find).toHaveBeenCalledWith({
         company: "TechCorp",
         status: { $in: ["Phone Screen", "Interview", "Offer", "Rejected"] },
       });
 
-      expect(successResponse).toHaveBeenCalled();
-      const successCall = successResponse.mock.calls[0];
+      expect(mockSuccessResponse).toHaveBeenCalled();
+      const successCall = mockSuccessResponse.mock.calls[0];
       expect(successCall[0]).toBe("Interview insights retrieved successfully");
       expect(successCall[1].insights).toBeDefined();
       expect(successCall[1].insights.company).toBe("TechCorp");
@@ -98,11 +140,11 @@ describe("Interview Insights Controller", () => {
         response: { success: false, message: "Unauthorized" },
         statusCode: 401,
       };
-      errorResponse.mockReturnValue(mockResponse);
+      mockErrorResponse.mockReturnValue(mockResponse);
 
       await getInterviewInsights(req, res);
 
-      expect(errorResponse).toHaveBeenCalledWith(
+      expect(mockErrorResponse).toHaveBeenCalledWith(
         "Unauthorized: missing authentication credentials",
         401,
         expect.any(String)
@@ -110,22 +152,22 @@ describe("Interview Insights Controller", () => {
     });
 
     it("should return 404 if job is not found", async () => {
-      Job.findOne.mockResolvedValue(null);
+      mockJob.findOne.mockResolvedValue(null);
 
       const mockResponse = {
         response: { success: false, message: "Job not found" },
         statusCode: 404,
       };
-      errorResponse.mockReturnValue(mockResponse);
+      mockErrorResponse.mockReturnValue(mockResponse);
 
       await getInterviewInsights(req, res);
 
-      expect(Job.findOne).toHaveBeenCalledWith({
+      expect(mockJob.findOne).toHaveBeenCalledWith({
         _id: "job-123",
         userId: "test-user-123",
       });
 
-      expect(errorResponse).toHaveBeenCalledWith(
+      expect(mockErrorResponse).toHaveBeenCalledWith(
         "Job not found or you don't have permission to view it",
         404,
         expect.any(String)
@@ -133,7 +175,7 @@ describe("Interview Insights Controller", () => {
     });
 
     it("should generate insights with all required sections", async () => {
-      const mockJob = {
+      const mockJobData = {
         _id: "job-123",
         userId: "test-user-123",
         company: "DataCorp",
@@ -143,18 +185,18 @@ describe("Interview Insights Controller", () => {
         statusHistory: [{ status: "Applied", timestamp: new Date() }],
       };
 
-      Job.findOne.mockResolvedValue(mockJob);
-      Job.find.mockResolvedValue([]);
+      mockJob.findOne.mockResolvedValue(mockJobData);
+      mockSelect.mockResolvedValue([]);
 
       const mockResponse = {
         response: { success: true, data: { insights: {} } },
         statusCode: 200,
       };
-      successResponse.mockReturnValue(mockResponse);
+      mockSuccessResponse.mockReturnValue(mockResponse);
 
       await getInterviewInsights(req, res);
 
-      const successCall = successResponse.mock.calls[0];
+      const successCall = mockSuccessResponse.mock.calls[0];
       const insights = successCall[1].insights;
 
       // Verify all required sections are present
@@ -172,7 +214,7 @@ describe("Interview Insights Controller", () => {
     });
 
     it("should include role-specific questions for software engineers", async () => {
-      const mockJob = {
+      const mockJobData = {
         _id: "job-123",
         userId: "test-user-123",
         company: "TechStartup",
@@ -182,18 +224,18 @@ describe("Interview Insights Controller", () => {
         statusHistory: [{ status: "Interview", timestamp: new Date() }],
       };
 
-      Job.findOne.mockResolvedValue(mockJob);
-      Job.find.mockResolvedValue([]);
+      mockJob.findOne.mockResolvedValue(mockJobData);
+      mockSelect.mockResolvedValue([]);
 
       const mockResponse = {
         response: { success: true, data: { insights: {} } },
         statusCode: 200,
       };
-      successResponse.mockReturnValue(mockResponse);
+      mockSuccessResponse.mockReturnValue(mockResponse);
 
       await getInterviewInsights(req, res);
 
-      const successCall = successResponse.mock.calls[0];
+      const successCall = mockSuccessResponse.mock.calls[0];
       const insights = successCall[1].insights;
 
       expect(insights.commonQuestions.technical).toBeDefined();
@@ -203,7 +245,7 @@ describe("Interview Insights Controller", () => {
     });
 
     it("should indicate limited data when company jobs are less than 3", async () => {
-      const mockJob = {
+      const mockJobData = {
         _id: "job-123",
         userId: "test-user-123",
         company: "NewCompany",
@@ -213,18 +255,18 @@ describe("Interview Insights Controller", () => {
         statusHistory: [{ status: "Applied", timestamp: new Date() }],
       };
 
-      Job.findOne.mockResolvedValue(mockJob);
-      Job.find.mockResolvedValue([mockJob]); // Only 1 job
+      mockJob.findOne.mockResolvedValue(mockJobData);
+      mockSelect.mockResolvedValue([mockJobData]); // Only 1 job
 
       const mockResponse = {
         response: { success: true, data: { insights: {} } },
         statusCode: 200,
       };
-      successResponse.mockReturnValue(mockResponse);
+      mockSuccessResponse.mockReturnValue(mockResponse);
 
       await getInterviewInsights(req, res);
 
-      const successCall = successResponse.mock.calls[0];
+      const successCall = mockSuccessResponse.mock.calls[0];
       const insights = successCall[1].insights;
 
       expect(insights.dataSource.basedOnRealData).toBe(false);
@@ -232,7 +274,7 @@ describe("Interview Insights Controller", () => {
     });
 
     it("should include preparation checklist with all phases", async () => {
-      const mockJob = {
+      const mockJobData = {
         _id: "job-123",
         userId: "test-user-123",
         company: "GlobalCorp",
@@ -241,18 +283,18 @@ describe("Interview Insights Controller", () => {
         statusHistory: [{ status: "Interview", timestamp: new Date() }],
       };
 
-      Job.findOne.mockResolvedValue(mockJob);
-      Job.find.mockResolvedValue([]);
+      mockJob.findOne.mockResolvedValue(mockJobData);
+      mockSelect.mockResolvedValue([]);
 
       const mockResponse = {
         response: { success: true, data: { insights: {} } },
         statusCode: 200,
       };
-      successResponse.mockReturnValue(mockResponse);
+      mockSuccessResponse.mockReturnValue(mockResponse);
 
       await getInterviewInsights(req, res);
 
-      const successCall = successResponse.mock.calls[0];
+      const successCall = mockSuccessResponse.mock.calls[0];
       const checklist = successCall[1].insights.checklist;
 
       expect(checklist.oneWeekBefore).toBeDefined();
