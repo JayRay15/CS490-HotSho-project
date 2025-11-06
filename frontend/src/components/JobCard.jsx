@@ -1,5 +1,6 @@
 import { useState } from "react";
 import PropTypes from "prop-types";
+import { useNavigate } from "react-router-dom";
 
 // Stage color mapping for visual clarity
 const STAGE_COLORS = {
@@ -19,6 +20,7 @@ const PRIORITY_COLORS = {
 
 export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange, isDragging, highlightTerms, isSelected, onToggleSelect, onArchive, onRestore, onScheduleInterview }) {
   const [showDetails, setShowDetails] = useState(false);
+  const navigate = useNavigate();
 
   const formatDate = (date) => {
     if (!date) return "N/A";
@@ -237,6 +239,16 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
               className="text-xs px-2 py-1 rounded bg-purple-100 hover:bg-purple-200 text-purple-700 font-medium"
             >
               📅 Schedule Interview
+            </button>
+          )}
+          {/* UC-067: Salary Research button */}
+          {!job.archived && (
+            <button
+              onClick={() => navigate(`/salary-research/${job._id}`)}
+              className="text-xs px-2 py-1 rounded bg-blue-100 hover:bg-blue-200 text-blue-700 font-medium"
+              title="View salary research and benchmarks"
+            >
+              💰 Salary Research
             </button>
           )}
           {job.archived ? (

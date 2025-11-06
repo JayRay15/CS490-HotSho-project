@@ -86,6 +86,9 @@ export default function Navbar() {
                             <NavLink to="/jobs" className={navLinkClass} aria-label="Jobs">
                                 Jobs
                             </NavLink>
+                            <NavLink to="/salary-benchmarks" className={navLinkClass} aria-label="Salary Benchmarks">
+                                Salary
+                            </NavLink>
                             <NavLink to="/resumes" className={navLinkClass} aria-label="Resumes">
                                 Resumes & Cover Letters
                             </NavLink>
@@ -238,6 +241,19 @@ export default function Navbar() {
                             aria-label="Jobs"
                         >
                             Jobs
+                        </NavLink>
+                        <NavLink 
+                            to="/salary-benchmarks" 
+                            className={({ isActive }) => 
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${
+                                    isActive 
+                                        ? 'bg-primary-900 text-white shadow-md' 
+                                        : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                }`
+                            }
+                            aria-label="Salary Benchmarks"
+                        >
+                            Salary Benchmarks
                         </NavLink>
                         <NavLink 
                             to="/resumes" 
