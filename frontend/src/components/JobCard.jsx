@@ -17,7 +17,7 @@ const PRIORITY_COLORS = {
   "High": "text-red-600",
 };
 
-export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange, isDragging, highlightTerms, isSelected, onToggleSelect, onArchive, onRestore }) {
+export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange, isDragging, highlightTerms, isSelected, onToggleSelect, onArchive, onRestore, onScheduleInterview }) {
   const [showDetails, setShowDetails] = useState(false);
 
   const formatDate = (date) => {
@@ -231,6 +231,14 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
               Edit
             </button>
           )}
+          {onScheduleInterview && !job.archived && (job.status === "Interview" || job.status === "Phone Screen") && (
+            <button
+              onClick={() => onScheduleInterview(job)}
+              className="text-xs px-2 py-1 rounded bg-purple-100 hover:bg-purple-200 text-purple-700 font-medium"
+            >
+              📅 Schedule Interview
+            </button>
+          )}
           {job.archived ? (
             onRestore && (
               <button
@@ -372,4 +380,5 @@ JobCard.propTypes = {
   onToggleSelect: PropTypes.func,
   onArchive: PropTypes.func,
   onRestore: PropTypes.func,
+  onScheduleInterview: PropTypes.func,
 };

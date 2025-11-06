@@ -26,12 +26,30 @@ export default function InterviewInsights({ jobId, company, onClose }) {
       // Initialize checklist state
       const initialChecklistState = {};
       if (response.data.data.insights.checklist) {
-        Object.keys(response.data.data.insights.checklist).forEach(phase => {
-          initialChecklistState[phase] = response.data.data.insights.checklist[phase].map(
-            item => ({ ...item })
-          );
-        });
-        setChecklistState(initialChecklistState);
+        // Try to load saved checklist from localStorage
+        const savedChecklist = localStorage.getItem(`checklist_${jobId}`);
+        if (savedChecklist) {
+          try {
+            setChecklistState(JSON.parse(savedChecklist));
+          } catch (e) {
+            console.error("Error parsing saved checklist:", e);
+            // If parsing fails, use fresh checklist
+            Object.keys(response.data.data.insights.checklist).forEach(phase => {
+              initialChecklistState[phase] = response.data.data.insights.checklist[phase].map(
+                item => ({ ...item })
+              );
+            });
+            setChecklistState(initialChecklistState);
+          }
+        } else {
+          // No saved checklist, use fresh from API
+          Object.keys(response.data.data.insights.checklist).forEach(phase => {
+            initialChecklistState[phase] = response.data.data.insights.checklist[phase].map(
+              item => ({ ...item })
+            );
+          });
+          setChecklistState(initialChecklistState);
+        }
       }
     } catch (err) {
       console.error("Error fetching interview insights:", err);
@@ -42,12 +60,19 @@ export default function InterviewInsights({ jobId, company, onClose }) {
   };
 
   const toggleChecklistItem = (phase, index) => {
-    setChecklistState(prev => ({
-      ...prev,
-      [phase]: prev[phase].map((item, i) => 
-        i === index ? { ...item, completed: !item.completed } : item
-      )
-    }));
+    setChecklistState(prev => {
+      const newState = {
+        ...prev,
+        [phase]: prev[phase].map((item, i) => 
+          i === index ? { ...item, completed: !item.completed } : item
+        )
+      };
+      
+      // Save to localStorage
+      localStorage.setItem(`checklist_${jobId}`, JSON.stringify(newState));
+      
+      return newState;
+    });
   };
 
   const calculateChecklistProgress = () => {

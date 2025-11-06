@@ -11,7 +11,7 @@ const PIPELINE_STAGES = [
   { id: "Rejected", label: "Rejected", color: "bg-red-100 border-red-300" },
 ];
 
-export default function JobPipeline({ jobs, onJobStatusChange, onJobEdit, onJobDelete, onJobView, highlightTerms, selectedJobs = [], onToggleSelect, onJobArchive, onJobRestore }) {
+export default function JobPipeline({ jobs, onJobStatusChange, onJobEdit, onJobDelete, onJobView, highlightTerms, selectedJobs = [], onToggleSelect, onJobArchive, onJobRestore, onScheduleInterview }) {
   const [draggedJob, setDraggedJob] = useState(null);
   const [dragOverStage, setDragOverStage] = useState(null);
 
@@ -144,6 +144,7 @@ export default function JobPipeline({ jobs, onJobStatusChange, onJobEdit, onJobD
                       highlightTerms={highlightTerms}
                       onArchive={onJobArchive}
                       onRestore={onJobRestore}
+                      onScheduleInterview={onScheduleInterview}
                     />
                   </div>
                 ))
@@ -174,4 +175,5 @@ JobPipeline.propTypes = {
   onToggleSelect: PropTypes.func,
   onJobArchive: PropTypes.func,
   onJobRestore: PropTypes.func,
+  onScheduleInterview: PropTypes.func,
 };
