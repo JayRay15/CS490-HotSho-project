@@ -12,6 +12,9 @@ import ArchiveModal from "../../components/ArchiveModal";
 import AutoArchiveModal from "../../components/AutoArchiveModal";
 import JobStatistics from "../../components/JobStatistics";
 import InterviewInsights from "../../components/InterviewInsights";
+import InterviewScheduler from "../../components/InterviewScheduler";
+import InterviewCard from "../../components/InterviewCard";
+import * as interviewsAPI from "../../api/interviews";
 
 const PIPELINE_STAGES = ["Interested", "Applied", "Phone Screen", "Interview", "Offer", "Rejected"];
 
@@ -68,6 +71,12 @@ export default function Jobs() {
   const [showInterviewInsights, setShowInterviewInsights] = useState(false);
   const [insightsJob, setInsightsJob] = useState(null);
 
+  // UC-071: Interview Scheduling state
+  const [showInterviewScheduler, setShowInterviewScheduler] = useState(false);
+  const [selectedJobForInterview, setSelectedJobForInterview] = useState(null);
+  const [interviews, setInterviews] = useState([]);
+  const [editingInterview, setEditingInterview] = useState(null);
+
   // Form state for adding/editing jobs
   const [formData, setFormData] = useState({
     title: "",
@@ -95,6 +104,7 @@ export default function Jobs() {
   useEffect(() => {
     fetchJobs();
     fetchStats();
+    fetchUpcomingInterviews();
   }, []);
 
   // Filter jobs when search or filter changes
@@ -300,6 +310,27 @@ export default function Jobs() {
       setStats(response.data.data);
     } catch (error) {
       console.error("Failed to fetch stats:", error);
+    }
+  };
+
+  const fetchUpcomingInterviews = async () => {
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      const response = await interviewsAPI.getInterviews({ limit: 20 });
+      
+      // Backend returns: { success: true, data: { interviews: [...], count: X } }
+      const interviewData = response.data?.data?.interviews || [];
+      
+      // Filter out cancelled and completed interviews from the upcoming list
+      const activeInterviews = interviewData.filter(
+        i => i.status !== "Cancelled" && i.status !== "Completed"
+      );
+      
+      setInterviews(activeInterviews);
+    } catch (error) {
+      console.error("Failed to fetch interviews:", error);
+      setInterviews([]);
     }
   };
 
@@ -809,6 +840,53 @@ export default function Jobs() {
     }
   };
 
+  // UC-071: Interview Scheduling Handlers
+  const handleScheduleInterview = (job) => {
+    // Only allow scheduling interviews for jobs in Interview or Phone Screen stages
+    const allowedStages = ['Interview', 'Phone Screen'];
+    if (!allowedStages.includes(job.status)) {
+      alert(`You can only schedule interviews for jobs in "Interview" or "Phone Screen" stages. This job is currently in "${job.status}" stage.`);
+      return;
+    }
+    
+    setSelectedJobForInterview(job);
+    setEditingInterview(null);
+    setShowInterviewScheduler(true);
+  };
+
+  const handleInterviewSaved = async () => {
+    await fetchUpcomingInterviews();
+    setShowInterviewScheduler(false);
+    setSelectedJobForInterview(null);
+    setEditingInterview(null);
+    setSuccessMessage("Interview scheduled successfully!");
+    setTimeout(() => setSuccessMessage(null), 5000);
+  };
+
+  const handleInterviewUpdated = async () => {
+    await fetchUpcomingInterviews();
+    setSuccessMessage("Interview updated successfully!");
+    setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
+  const handleInterviewDeleted = async () => {
+    await fetchUpcomingInterviews();
+    setSuccessMessage("Interview cancelled successfully!");
+    setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
+  const handleInterviewView = (interview) => {
+    // interview.jobId might be populated with job object or just ID
+    const jobIdString = typeof interview.jobId === 'object' 
+      ? interview.jobId._id 
+      : interview.jobId;
+    const job = jobs.find(j => j._id === jobIdString);
+    
+    setEditingInterview(interview);
+    setSelectedJobForInterview(job);
+    setShowInterviewScheduler(true);
+  };
+
   const handleAutoArchive = async (daysInactive, statuses) => {
     try {
       const token = await getToken();
@@ -1307,9 +1385,46 @@ export default function Jobs() {
             )}
           </Card>
 
+          {/* UC-071: Upcoming Interviews Section */}
+          {!showArchived && interviews.length > 0 && (
+            <Card variant="primary" className="mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-gray-800">📅 Upcoming Interviews</h2>
+                <span className="text-sm text-gray-600">{interviews.length} scheduled</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {interviews.map((interview) => (
+                  <InterviewCard
+                    key={interview._id}
+                    interview={interview}
+                    onUpdate={handleInterviewUpdated}
+                    onDelete={handleInterviewDeleted}
+                    onEdit={(interview) => {
+                      // interview.jobId might be populated with job object or just ID
+                      const jobIdString = typeof interview.jobId === 'object' 
+                        ? interview.jobId._id 
+                        : interview.jobId;
+                      const job = jobs.find(j => j._id === jobIdString);
+                      
+                      setEditingInterview(interview);
+                      setSelectedJobForInterview(job);
+                      setShowInterviewScheduler(true);
+                    }}
+                    compact={true}
+                  />
+                ))}
+              </div>
+            </Card>
+          )}
+
           {/* Pipeline or Calendar View */}
           {showCalendar ? (
-            <DeadlineCalendar jobs={filteredJobs} onJobView={handleViewJob} />
+            <DeadlineCalendar 
+              jobs={filteredJobs} 
+              interviews={interviews}
+              onJobView={handleViewJob}
+              onInterviewView={handleInterviewView}
+            />
           ) : (
             <JobPipeline
               jobs={filteredJobs}
@@ -1321,6 +1436,7 @@ export default function Jobs() {
               onToggleSelect={toggleSelectJob}
               onJobArchive={handleArchiveJob}
               onJobRestore={handleRestoreJob}
+              onScheduleInterview={handleScheduleInterview}
               highlightTerms={[
                 searchTerm?.trim(),
                 filters.location?.trim(),
@@ -2235,6 +2351,20 @@ export default function Jobs() {
             setShowInterviewInsights(false);
             setInsightsJob(null);
           }}
+        />
+      )}
+
+      {/* UC-071: Interview Scheduler Modal */}
+      {showInterviewScheduler && selectedJobForInterview && (
+        <InterviewScheduler
+          job={selectedJobForInterview}
+          interview={editingInterview}
+          onClose={() => {
+            setShowInterviewScheduler(false);
+            setSelectedJobForInterview(null);
+            setEditingInterview(null);
+          }}
+          onSuccess={handleInterviewSaved}
         />
       )}
     </div>
