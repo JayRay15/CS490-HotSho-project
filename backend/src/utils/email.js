@@ -361,4 +361,476 @@ export const sendDeadlineReminderEmail = async (toEmail, fullName, items = []) =
   }
 };
 
-export default { sendDeletionEmail, sendFinalDeletionEmail, sendDeadlineReminderEmail };
+/**
+ * sendInterviewConfirmationEmail - Sends interview confirmation email
+ * @param {string} toEmail - Recipient email
+ * @param {string} fullName - Recipient name
+ * @param {Object} interview - Interview details
+ */
+export const sendInterviewConfirmationEmail = async (toEmail, fullName, interview) => {
+  const subject = `✅ Interview Scheduled: ${interview.title} at ${interview.company}`;
+  
+  const interviewDate = new Date(interview.scheduledDate).toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+  
+  const interviewTime = new Date(interview.scheduledDate).toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  
+  const locationDetails = interview.meetingLink 
+    ? `<strong>Video Meeting:</strong> <a href="${interview.meetingLink}">${interview.meetingLink}</a>`
+    : interview.location 
+    ? `<strong>Location:</strong> ${interview.location}`
+    : '<strong>Location:</strong> To be confirmed';
+  
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #777C6D; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background-color: #f9f9f9; padding: 30px; border: 1px solid #ddd; border-radius: 0 0 8px 8px; }
+          .info-box { background-color: #e8f4f8; border-left: 4px solid #777C6D; padding: 15px; margin: 20px 0; }
+          .button { display: inline-block; padding: 12px 24px; background-color: #777C6D; color: white; text-decoration: none; border-radius: 4px; margin: 10px 0; }
+          .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #777; }
+          ul { margin: 10px 0; padding-left: 20px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>✅ Interview Confirmed</h1>
+          </div>
+          <div class="content">
+            <p>Hello <strong>${fullName || 'there'}</strong>,</p>
+            
+            <p>Your interview has been successfully scheduled!</p>
+            
+            <div class="info-box">
+              <h3>${interview.title}</h3>
+              <p><strong>Company:</strong> ${interview.company}</p>
+              <p><strong>Date:</strong> ${interviewDate}</p>
+              <p><strong>Time:</strong> ${interviewTime}</p>
+              <p><strong>Duration:</strong> ${interview.duration || 60} minutes</p>
+              <p><strong>Type:</strong> ${interview.interviewType}</p>
+              <p>${locationDetails}</p>
+            </div>
+
+            ${interview.interviewer?.name ? `
+            <p><strong>Interviewer:</strong> ${interview.interviewer.name}${interview.interviewer.title ? ` (${interview.interviewer.title})` : ''}</p>
+            ` : ''}
+
+            ${interview.preparationTasks && interview.preparationTasks.length > 0 ? `
+            <h3>📝 Preparation Tasks</h3>
+            <ul>
+              ${interview.preparationTasks.slice(0, 5).map(task => `<li>${task.title}</li>`).join('')}
+            </ul>
+            ` : ''}
+
+            <p>We'll send you reminder emails before your interview to help you prepare.</p>
+
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.FRONTEND_ORIGIN || 'http://localhost:5173'}/jobs" class="button">View Interview Details</a>
+            </div>
+
+            <p>Good luck with your interview!</p>
+            
+            <p>Best regards,<br><strong>The Nirvana Team</strong></p>
+          </div>
+          <div class="footer">
+            <p>This is an automated message from Nirvana.</p>
+            <p>&copy; ${new Date().getFullYear()} Nirvana. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const textContent = `Hello ${fullName || 'there'},\n\n` +
+    `Your interview has been successfully scheduled!\n\n` +
+    `${interview.title}\n` +
+    `Company: ${interview.company}\n` +
+    `Date: ${interviewDate}\n` +
+    `Time: ${interviewTime}\n` +
+    `Duration: ${interview.duration || 60} minutes\n` +
+    `Type: ${interview.interviewType}\n` +
+    `${interview.location ? `Location: ${interview.location}` : ''}\n` +
+    `${interview.meetingLink ? `Meeting Link: ${interview.meetingLink}` : ''}\n\n` +
+    `We'll send you reminder emails before your interview to help you prepare.\n\n` +
+    `Good luck with your interview!\n\n` +
+    `Best regards,\nThe Nirvana Team`;
+
+  const transporter = createTransporter();
+  if (!transporter) {
+    console.log('📧 [MOCK EMAIL] Interview Confirmation:');
+    console.log(`   To: ${toEmail}`);
+    console.log(`   Subject: ${subject}`);
+    console.log(`   Text Content:\n${textContent}\n`);
+    return;
+  }
+
+  try {
+    const info = await transporter.sendMail({
+      from: process.env.SMTP_FROM || 'Nirvana <no-reply@nirvanaprofile.com>',
+      to: toEmail,
+      subject,
+      text: textContent,
+      html: htmlContent
+    });
+    console.log('✅ Interview confirmation email sent to:', toEmail, 'Message ID:', info.messageId);
+  } catch (error) {
+    console.error('❌ Failed to send interview confirmation email:', error.message);
+    throw error;
+  }
+};
+
+/**
+ * sendInterviewReminderEmail - Sends interview reminder email
+ * @param {string} toEmail - Recipient email
+ * @param {string} fullName - Recipient name
+ * @param {Object} interview - Interview details
+ * @param {number} hoursUntil - Hours until interview
+ */
+export const sendInterviewReminderEmail = async (toEmail, fullName, interview, hoursUntil) => {
+  const timeText = hoursUntil === 24 ? '24 hours' : hoursUntil === 2 ? '2 hours' : `${hoursUntil} hours`;
+  const subject = `⏰ Interview Reminder: ${interview.title} in ${timeText}`;
+  
+  const interviewDate = new Date(interview.scheduledDate).toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+  
+  const interviewTime = new Date(interview.scheduledDate).toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  
+  const incompleteTasks = interview.preparationTasks?.filter(t => !t.completed) || [];
+  
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #F59E0B; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background-color: #f9f9f9; padding: 30px; border: 1px solid #ddd; border-radius: 0 0 8px 8px; }
+          .warning-box { background-color: #fef3c7; border-left: 4px solid #F59E0B; padding: 15px; margin: 20px 0; }
+          .button { display: inline-block; padding: 12px 24px; background-color: #777C6D; color: white; text-decoration: none; border-radius: 4px; margin: 10px 0; }
+          .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #777; }
+          ul { margin: 10px 0; padding-left: 20px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>⏰ Interview in ${timeText}</h1>
+          </div>
+          <div class="content">
+            <p>Hello <strong>${fullName || 'there'}</strong>,</p>
+            
+            <p>This is a reminder that you have an interview coming up in <strong>${timeText}</strong>.</p>
+            
+            <div class="warning-box">
+              <h3>${interview.title}</h3>
+              <p><strong>Company:</strong> ${interview.company}</p>
+              <p><strong>Date:</strong> ${interviewDate}</p>
+              <p><strong>Time:</strong> ${interviewTime}</p>
+              <p><strong>Type:</strong> ${interview.interviewType}</p>
+              ${interview.meetingLink ? `<p><strong>Link:</strong> <a href="${interview.meetingLink}">${interview.meetingLink}</a></p>` : ''}
+              ${interview.location ? `<p><strong>Location:</strong> ${interview.location}</p>` : ''}
+            </div>
+
+            ${incompleteTasks.length > 0 ? `
+            <h3>📋 Incomplete Preparation Tasks</h3>
+            <ul>
+              ${incompleteTasks.slice(0, 5).map(task => `<li>${task.title}</li>`).join('')}
+            </ul>
+            ` : '<p>✅ All preparation tasks completed! Great job!</p>'}
+
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.FRONTEND_ORIGIN || 'http://localhost:5173'}/jobs" class="button">View Interview Details</a>
+            </div>
+
+            <p>Good luck!</p>
+            
+            <p>Best regards,<br><strong>The Nirvana Team</strong></p>
+          </div>
+          <div class="footer">
+            <p>This is an automated reminder from Nirvana.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const textContent = `Hello ${fullName || 'there'},\n\n` +
+    `This is a reminder that you have an interview coming up in ${timeText}.\n\n` +
+    `${interview.title}\n` +
+    `Company: ${interview.company}\n` +
+    `Date: ${interviewDate}\n` +
+    `Time: ${interviewTime}\n` +
+    `Type: ${interview.interviewType}\n\n` +
+    `${incompleteTasks.length > 0 ? `Incomplete tasks:\n${incompleteTasks.slice(0, 5).map(t => `- ${t.title}`).join('\n')}` : 'All preparation tasks completed!'}\n\n` +
+    `Good luck!\n\n` +
+    `Best regards,\nThe Nirvana Team`;
+
+  const transporter = createTransporter();
+  if (!transporter) {
+    console.log('📧 [MOCK EMAIL] Interview Reminder:');
+    console.log(`   To: ${toEmail}`);
+    console.log(`   Subject: ${subject}`);
+    console.log(`   Text Content:\n${textContent}\n`);
+    return;
+  }
+
+  try {
+    const info = await transporter.sendMail({
+      from: process.env.SMTP_FROM || 'Nirvana <no-reply@nirvanaprofile.com>',
+      to: toEmail,
+      subject,
+      text: textContent,
+      html: htmlContent
+    });
+    console.log('✅ Interview reminder email sent to:', toEmail, 'Message ID:', info.messageId);
+  } catch (error) {
+    console.error('❌ Failed to send interview reminder email:', error.message);
+    throw error;
+  }
+};
+
+/**
+ * sendInterviewCancellationEmail - Sends interview cancellation email
+ * @param {string} toEmail - Recipient email
+ * @param {string} fullName - Recipient name
+ * @param {Object} interview - Interview details
+ */
+export const sendInterviewCancellationEmail = async (toEmail, fullName, interview) => {
+  const subject = `❌ Interview Cancelled: ${interview.title} at ${interview.company}`;
+  
+  const interviewDate = new Date(interview.scheduledDate).toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+  
+  const interviewTime = new Date(interview.scheduledDate).toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #EF4444; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background-color: #f9f9f9; padding: 30px; border: 1px solid #ddd; border-radius: 0 0 8px 8px; }
+          .info-box { background-color: #fee; border-left: 4px solid #EF4444; padding: 15px; margin: 20px 0; }
+          .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #777; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>❌ Interview Cancelled</h1>
+          </div>
+          <div class="content">
+            <p>Hello <strong>${fullName || 'there'}</strong>,</p>
+            
+            <p>Your interview has been cancelled.</p>
+            
+            <div class="info-box">
+              <h3>${interview.title}</h3>
+              <p><strong>Company:</strong> ${interview.company}</p>
+              <p><strong>Was scheduled for:</strong> ${interviewDate} at ${interviewTime}</p>
+              ${interview.cancelled?.reason ? `<p><strong>Reason:</strong> ${interview.cancelled.reason}</p>` : ''}
+            </div>
+
+            <p>You will no longer receive reminders for this interview.</p>
+            
+            <p>Best regards,<br><strong>The Nirvana Team</strong></p>
+          </div>
+          <div class="footer">
+            <p>This is an automated message from Nirvana.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const textContent = `Hello ${fullName || 'there'},\n\n` +
+    `Your interview has been cancelled.\n\n` +
+    `${interview.title}\n` +
+    `Company: ${interview.company}\n` +
+    `Was scheduled for: ${interviewDate} at ${interviewTime}\n` +
+    `${interview.cancelled?.reason ? `Reason: ${interview.cancelled.reason}\n` : ''}\n` +
+    `You will no longer receive reminders for this interview.\n\n` +
+    `Best regards,\nThe Nirvana Team`;
+
+  const transporter = createTransporter();
+  if (!transporter) {
+    console.log('📧 [MOCK EMAIL] Interview Cancellation:');
+    console.log(`   To: ${toEmail}`);
+    console.log(`   Subject: ${subject}`);
+    console.log(`   Text Content:\n${textContent}\n`);
+    return;
+  }
+
+  try {
+    const info = await transporter.sendMail({
+      from: process.env.SMTP_FROM || 'Nirvana <no-reply@nirvanaprofile.com>',
+      to: toEmail,
+      subject,
+      text: textContent,
+      html: htmlContent
+    });
+    console.log('✅ Interview cancellation email sent to:', toEmail, 'Message ID:', info.messageId);
+  } catch (error) {
+    console.error('❌ Failed to send interview cancellation email:', error.message);
+    throw error;
+  }
+};
+
+/**
+ * sendInterviewRescheduledEmail - Sends interview rescheduled email
+ * @param {string} toEmail - Recipient email
+ * @param {string} fullName - Recipient name
+ * @param {Object} interview - Interview details
+ * @param {Date} previousDate - Previous interview date
+ */
+export const sendInterviewRescheduledEmail = async (toEmail, fullName, interview, previousDate) => {
+  const subject = `📅 Interview Rescheduled: ${interview.title} at ${interview.company}`;
+  
+  const oldDate = new Date(previousDate).toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+  
+  const oldTime = new Date(previousDate).toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  
+  const newDate = new Date(interview.scheduledDate).toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+  
+  const newTime = new Date(interview.scheduledDate).toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #3B82F6; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background-color: #f9f9f9; padding: 30px; border: 1px solid #ddd; border-radius: 0 0 8px 8px; }
+          .info-box { background-color: #e8f4f8; border-left: 4px solid #3B82F6; padding: 15px; margin: 20px 0; }
+          .button { display: inline-block; padding: 12px 24px; background-color: #777C6D; color: white; text-decoration: none; border-radius: 4px; margin: 10px 0; }
+          .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #777; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>📅 Interview Rescheduled</h1>
+          </div>
+          <div class="content">
+            <p>Hello <strong>${fullName || 'there'}</strong>,</p>
+            
+            <p>Your interview has been rescheduled to a new date and time.</p>
+            
+            <div class="info-box">
+              <h3>${interview.title}</h3>
+              <p><strong>Company:</strong> ${interview.company}</p>
+              <p><strong>Previous Date:</strong> ${oldDate} at ${oldTime}</p>
+              <p><strong>New Date:</strong> ${newDate} at ${newTime}</p>
+              <p><strong>Type:</strong> ${interview.interviewType}</p>
+            </div>
+
+            ${interview.conflictWarning?.hasConflict ? `
+            <p style="color: #F59E0B;">⚠️ Warning: ${interview.conflictWarning.conflictDetails}</p>
+            ` : ''}
+
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.FRONTEND_ORIGIN || 'http://localhost:5173'}/jobs" class="button">View Interview Details</a>
+            </div>
+
+            <p>We'll send you reminder emails before your new interview time.</p>
+            
+            <p>Best regards,<br><strong>The Nirvana Team</strong></p>
+          </div>
+          <div class="footer">
+            <p>This is an automated message from Nirvana.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const textContent = `Hello ${fullName || 'there'},\n\n` +
+    `Your interview has been rescheduled to a new date and time.\n\n` +
+    `${interview.title}\n` +
+    `Company: ${interview.company}\n` +
+    `Previous Date: ${oldDate} at ${oldTime}\n` +
+    `New Date: ${newDate} at ${newTime}\n` +
+    `Type: ${interview.interviewType}\n\n` +
+    `We'll send you reminder emails before your new interview time.\n\n` +
+    `Best regards,\nThe Nirvana Team`;
+
+  const transporter = createTransporter();
+  if (!transporter) {
+    console.log('📧 [MOCK EMAIL] Interview Rescheduled:');
+    console.log(`   To: ${toEmail}`);
+    console.log(`   Subject: ${subject}`);
+    console.log(`   Text Content:\n${textContent}\n`);
+    return;
+  }
+
+  try {
+    const info = await transporter.sendMail({
+      from: process.env.SMTP_FROM || 'Nirvana <no-reply@nirvanaprofile.com>',
+      to: toEmail,
+      subject,
+      text: textContent,
+      html: htmlContent
+    });
+    console.log('✅ Interview rescheduled email sent to:', toEmail, 'Message ID:', info.messageId);
+  } catch (error) {
+    console.error('❌ Failed to send interview rescheduled email:', error.message);
+    throw error;
+  }
+};
+
+export default { 
+  sendDeletionEmail, 
+  sendFinalDeletionEmail, 
+  sendDeadlineReminderEmail,
+  sendInterviewConfirmationEmail,
+  sendInterviewReminderEmail,
+  sendInterviewCancellationEmail,
+  sendInterviewRescheduledEmail,
+};

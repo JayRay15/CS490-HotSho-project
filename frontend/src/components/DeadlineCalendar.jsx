@@ -9,7 +9,7 @@ function formatYmd(d) {
   return `${y}-${m}-${day}`;
 }
 
-export default function DeadlineCalendar({ jobs, onJobView }) {
+export default function DeadlineCalendar({ jobs, interviews, onJobView, onInterviewView }) {
   const [current, setCurrent] = useState(() => {
     const now = new Date();
     now.setDate(1);
@@ -57,6 +57,17 @@ export default function DeadlineCalendar({ jobs, onJobView }) {
     return map;
   }, [jobs]);
 
+  const interviewsByDay = useMemo(() => {
+    const map = new Map();
+    (interviews || []).forEach((i) => {
+      if (!i.scheduledDate || i.status === "Cancelled") return;
+      const key = formatYmd(i.scheduledDate);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(i);
+    });
+    return map;
+  }, [interviews]);
+
   const monthLabel = current.toLocaleDateString(undefined, { month: "long", year: "numeric" });
 
   const goPrev = () => {
@@ -88,27 +99,50 @@ export default function DeadlineCalendar({ jobs, onJobView }) {
         {weeks.flat().map((d, idx) => {
           const key = formatYmd(d);
           const jobsForDay = jobsByDay.get(key) || [];
+          const interviewsForDay = interviewsByDay.get(key) || [];
           const muted = !isSameMonth(d);
+          const totalItems = jobsForDay.length + interviewsForDay.length;
+          
           return (
             <div key={key+idx} className={`bg-white p-2 min-h-[92px] ${muted ? 'opacity-40' : ''}`}>
               <div className="text-xs font-medium text-gray-700">{d.getDate()}</div>
+              
+              {/* Job Deadlines */}
               {jobsForDay.length > 0 && (
                 <div className="mt-1 space-y-1">
-                  {jobsForDay.slice(0,3).map((j) => (
+                  {jobsForDay.slice(0, Math.min(2, totalItems > 3 ? 1 : 2)).map((j) => (
                     <div key={j._id} className="text-[11px] truncate">
                       <button
                         className="text-blue-700 hover:underline"
                         onClick={() => onJobView && onJobView(j)}
-                        title={`${j.title} @ ${j.company}`}
+                        title={`Deadline: ${j.title} @ ${j.company}`}
                       >
-                        {j.title}
+                        📋 {j.title}
                       </button>
                     </div>
                   ))}
-                  {jobsForDay.length > 3 && (
-                    <div className="text-[11px] text-gray-500">+{jobsForDay.length - 3} more</div>
-                  )}
                 </div>
+              )}
+              
+              {/* Interviews */}
+              {interviewsForDay.length > 0 && (
+                <div className="mt-1 space-y-1">
+                  {interviewsForDay.slice(0, Math.min(2, totalItems > 3 ? 1 : 2)).map((i) => (
+                    <div key={i._id} className="text-[11px] truncate">
+                      <button
+                        className="text-purple-700 hover:underline"
+                        onClick={() => onInterviewView && onInterviewView(i)}
+                        title={`Interview: ${i.title} @ ${i.company} - ${new Date(i.scheduledDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                      >
+                        📅 {new Date(i.scheduledDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {i.company}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {totalItems > 3 && (
+                <div className="text-[11px] text-gray-500 mt-1">+{totalItems - 2} more</div>
               )}
             </div>
           );
@@ -120,5 +154,7 @@ export default function DeadlineCalendar({ jobs, onJobView }) {
 
 DeadlineCalendar.propTypes = {
   jobs: PropTypes.arrayOf(PropTypes.object),
+  interviews: PropTypes.arrayOf(PropTypes.object),
   onJobView: PropTypes.func,
+  onInterviewView: PropTypes.func,
 };

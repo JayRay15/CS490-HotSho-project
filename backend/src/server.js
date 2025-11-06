@@ -10,8 +10,10 @@ import profileRoutes from "./routes/profileRoutes.js";
 import jobRoutes from "./routes/jobRoutes.js";
 import resumeRoutes from "./routes/resumeRoutes.js";
 import pdfAnalysisRoutes from "./routes/pdfAnalysisRoutes.js";
+import interviewRoutes from "./routes/interviewRoutes.js";
 import { getPublicProject } from "./controllers/profileController.js";
 import { startDeadlineReminderSchedule } from "./utils/deadlineReminders.js";
+import { startInterviewReminderSchedule } from "./utils/interviewReminders.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 // Cleanup schedule no longer needed - accounts are deleted immediately
 // import { startCleanupSchedule } from "./utils/cleanupDeletedUsers.js";
@@ -46,6 +48,7 @@ app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/jobs", jobRoutes);
+app.use("/api/interviews", interviewRoutes);
 app.use("/api/resume", resumeRoutes);
 app.use("/api/pdf-analysis", pdfAnalysisRoutes);
 // Mount profile routes under /api/profile (existing) and also under /api/users
@@ -79,5 +82,11 @@ app.listen(PORT, () => {
     startDeadlineReminderSchedule();
   } catch (err) {
     console.error('Failed to start deadline reminder schedule:', err?.message || err);
+  }
+  // Start interview reminders if enabled via env flag
+  try {
+    startInterviewReminderSchedule();
+  } catch (err) {
+    console.error('Failed to start interview reminder schedule:', err?.message || err);
   }
 });
