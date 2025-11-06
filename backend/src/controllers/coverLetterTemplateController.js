@@ -111,13 +111,8 @@ Sincerely,
 // Industry-specific guidance/suggestions (not actual templates)
 const industryGuidance = {
   technology: "Focus on technical skills, projects, and innovation. Mention specific technologies and methodologies.",
-  marketing: "Emphasize creativity, campaigns, metrics, and brand growth. Showcase your creative thinking.",
-  finance: "Highlight analytical skills, financial acumen, compliance knowledge, and attention to detail.",
+  business: "Emphasize leadership, strategic thinking, business acumen, and measurable results.",
   healthcare: "Emphasize patient care, medical knowledge, certifications, and compassionate service.",
-  education: "Focus on teaching philosophy, student outcomes, curriculum development, and educational impact.",
-  creative: "Showcase your portfolio, creative projects, unique perspective, and artistic vision.",
-  sales: "Highlight numbers, client relationships, revenue growth, and negotiation skills.",
-  engineering: "Emphasize technical expertise, project management, problem-solving, and innovation.",
   general: "Focus on transferable skills, adaptability, and how your background fits the role."
 };
 
@@ -131,83 +126,53 @@ const defaultCoverLetterTemplates = Object.keys(styleTemplates).map((style) => (
 export const listTemplates = async (req, res) => {
   try {
     const userId = getUserId(req);
-    const { industry, style, isTemplate } = req.query;
+    const { industry, style } = req.query;
+    
+    // First, check if user has any templates at all
+    const userTemplateCount = await CoverLetterTemplate.countDocuments({ userId });
+    
+    // If user has no templates, seed the 5 default ones
+    if (userTemplateCount === 0) {
+      console.log(`Seeding initial templates for user ${userId}`);
+      await CoverLetterTemplate.insertMany(
+        defaultCoverLetterTemplates.map((t, idx) => ({
+          userId,
+          name: t.name,
+          industry: t.industry,
+          style: t.style,
+          description: t.description,
+          content: t.content,
+          isDefault: idx === 0,
+          isShared: false
+        }))
+      );
+    }
     
     // Build query for own templates or shared (global shared)
     let query = { $or: [{ userId }, { isShared: true }] };
     
-    // Add filters if provided
-    if (industry) query.industry = industry;
-    if (style) query.style = style;
-    
-    // Filter by isTemplate if specified (true = templates, false = saved cover letters)
-    if (isTemplate !== undefined) {
-      if (isTemplate === 'true') {
-        query.isTemplate = true;
-      } else if (isTemplate === 'false') {
-        // For saved cover letters, explicitly check for false (not undefined/null)
-        query.isTemplate = false;
-      }
-    }
-    
-    let templates = await CoverLetterTemplate.find(query)
-      .sort({ isDefault: -1, updatedAt: -1 })
-      .lean();
-
-    // One-time migration: Update old templates without isTemplate field to have isTemplate: true
-    // Only update templates with general industry and one of the 5 default styles
-    await CoverLetterTemplate.updateMany(
-      {
-        userId,
-        isTemplate: { $ne: false }, // Don't update explicitly false ones
-        industry: 'general',
-        style: { $in: ['formal', 'modern', 'creative', 'technical', 'executive'] }
-      },
-      {
-        $set: { isTemplate: true }
-      }
-    );
-
-    // Re-fetch after migration to get updated data
-    templates = await CoverLetterTemplate.find(query)
-      .sort({ isDefault: -1, updatedAt: -1 })
-      .lean();
-
-    // Seed defaults if none exist for this user (only seed templates, not saved letters)
-    // Only check and seed when not specifically requesting saved letters
-    // Check if user already has the default style templates
-    const existingStyles = new Set(
-      templates
-        .filter(t => t.userId === userId && t.isTemplate === true && t.industry === 'general')
-        .map(t => t.style)
-    );
-    
-    const needsSeeding = !['formal', 'modern', 'creative', 'technical', 'executive']
-      .every(style => existingStyles.has(style));
-    
-    if (needsSeeding && isTemplate !== 'false') {
-      // Only seed templates that don't already exist
-      const templatesToSeed = defaultCoverLetterTemplates.filter(
-        t => !existingStyles.has(t.style)
-      );
+    // Add filters if provided - apply to both sides of the OR
+    if (industry || style) {
+      const filterQuery = {};
+      if (industry) filterQuery.industry = industry;
+      if (style) filterQuery.style = style;
       
-      if (templatesToSeed.length > 0) {
-        const seeded = await CoverLetterTemplate.insertMany(
-          templatesToSeed.map((t, idx) => ({
-            userId,
-            name: t.name,
-            industry: t.industry,
-            style: t.style,
-            description: t.description,
-            content: t.content,
-            isTemplate: true,  // Mark as template
-            isDefault: idx === 0 && templates.length === 0, // Only first is default if no templates exist
-            isShared: false
-          }))
-        );
-        templates = [...templates, ...seeded.map((d) => d.toObject())];
-      }
+      // Apply filters to both conditions in the $or
+      query = {
+        $or: [
+          { userId, ...filterQuery },
+          { isShared: true, ...filterQuery }
+        ]
+      };
     }
+    
+    console.log('Template query:', JSON.stringify(query)); // Debug log
+    
+    const templates = await CoverLetterTemplate.find(query)
+      .sort({ isDefault: -1, updatedAt: -1 })
+      .lean();
+      
+    console.log(`Found ${templates.length} templates for user ${userId}`); // Debug log
 
     // Add industry guidance to response
     const { response, statusCode } = successResponse("Cover letter templates fetched", { 
@@ -273,10 +238,10 @@ export const getTemplateById = async (req, res) => {
 export const createTemplate = async (req, res) => {
   try {
     const userId = getUserId(req);
-    const { name, industry, style, content, description, isDefault, isTemplate } = req.body;
+    const { name, industry, style, content, description, isDefault } = req.body;
 
-    if (!name || !industry || !style || !content) {
-      const { response, statusCode } = errorResponse("Name, industry, style, and content are required", 400, ERROR_CODES.MISSING_REQUIRED_FIELD);
+    if (!name || !content) {
+      const { response, statusCode} = errorResponse("Name and content are required", 400, ERROR_CODES.MISSING_REQUIRED_FIELD);
       return sendResponse(res, response, statusCode);
     }
 
@@ -287,15 +252,14 @@ export const createTemplate = async (req, res) => {
     const template = await CoverLetterTemplate.create({
       userId,
       name,
-      industry,
-      style,
+      industry: industry || 'general',
+      style: style || 'formal',
       content,
       description,
-      isTemplate: isTemplate !== undefined ? isTemplate : false, // Default to false (saved cover letter)
       isDefault: !!isDefault
     });
 
-    const { response, statusCode } = successResponse("Template created", { template });
+    const { response, statusCode } = successResponse("Template created", { template }, 201);
     return sendResponse(res, response, statusCode);
   } catch (err) {
     console.error("Error creating template:", err);

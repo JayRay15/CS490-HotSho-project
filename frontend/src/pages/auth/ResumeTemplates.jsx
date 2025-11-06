@@ -5,6 +5,7 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { setAuthToken } from "../../api/axios";
 import { fetchTemplates, createTemplate as apiCreateTemplate, updateTemplate as apiUpdateTemplate, deleteTemplate as apiDeleteTemplate, importTemplate as apiImportTemplate } from "../../api/resumeTemplates";
 import { fetchCoverLetterTemplates, createCoverLetterTemplate, updateCoverLetterTemplate, deleteCoverLetterTemplate, trackCoverLetterTemplateUsage, importCoverLetterTemplate, exportCoverLetterTemplate, shareCoverLetterTemplate, getIndustryGuidance } from "../../api/coverLetterTemplates";
+import { fetchCoverLetters, createCoverLetter, updateCoverLetter as apiUpdateCoverLetter, deleteCoverLetter as apiDeleteCoverLetter, setDefaultCoverLetter, archiveCoverLetter, unarchiveCoverLetter, cloneCoverLetter as apiCloneCoverLetter } from "../../api/coverLetters";
 import { 
   fetchResumes, 
   updateResume as apiUpdateResume, 
@@ -626,6 +627,7 @@ export default function ResumeTemplates() {
   const [selectedIndustry, setSelectedIndustry] = useState('general');
   const [customCoverLetterName, setCustomCoverLetterName] = useState('');
   const [customCoverLetterContent, setCustomCoverLetterContent] = useState('');
+  const [isCreatingCoverLetterTemplate, setIsCreatingCoverLetterTemplate] = useState(false); // Track if creating template vs cover letter
   const [showAllCoverLetters, setShowAllCoverLetters] = useState(false);
   const [showAddCoverLetterModal, setShowAddCoverLetterModal] = useState(false);
   const [showManageCoverLetterTemplates, setShowManageCoverLetterTemplates] = useState(false);
@@ -870,10 +872,12 @@ export default function ResumeTemplates() {
     try {
       setCoverLetterLoading(true);
       await authWrap();
+      console.log('Loading templates with filters:', filters); // Debug log
       const [templatesResponse, guidanceResponse] = await Promise.all([
-        fetchCoverLetterTemplates({ ...filters, isTemplate: 'true' }), // Only load templates
+        fetchCoverLetterTemplates(filters), // Fetch templates (no isTemplate filter needed)
         getIndustryGuidance()
       ]);
+      console.log('Received templates:', templatesResponse.data.data.templates.length); // Debug log
       setCoverLetterTemplates(templatesResponse.data.data.templates || []);
       setIndustryGuidance(guidanceResponse.data.data.guidance || {});
     } catch (err) {
@@ -887,8 +891,8 @@ export default function ResumeTemplates() {
   const loadSavedCoverLetters = async () => {
     try {
       await authWrap();
-      const response = await fetchCoverLetterTemplates({ isTemplate: 'false' }); // Only load saved cover letters
-      setSavedCoverLetters(response.data.data.templates || []);
+      const response = await fetchCoverLetters(); // Fetch actual cover letters from /api/cover-letters
+      setSavedCoverLetters(response.data.data.coverLetters || []);
     } catch (err) {
       console.error("Failed to load saved cover letters:", err);
       setSavedCoverLetters([]);
@@ -2454,8 +2458,9 @@ export default function ResumeTemplates() {
                             if (confirm(`Delete "${letter.name}"?`)) {
                               try {
                                 await authWrap();
-                                await deleteCoverLetterTemplate(letter._id);
+                                await apiDeleteCoverLetter(letter._id);
                                 await loadSavedCoverLetters();
+                                alert("Cover letter deleted successfully!");
                               } catch (err) {
                                 console.error("Delete failed:", err);
                                 alert("Failed to delete cover letter.");
@@ -7021,13 +7026,8 @@ export default function ResumeTemplates() {
                   >
                     <option value="general">General</option>
                     <option value="technology">Technology</option>
-                    <option value="marketing">Marketing</option>
-                    <option value="finance">Finance</option>
+                    <option value="business">Business</option>
                     <option value="healthcare">Healthcare</option>
-                    <option value="education">Education</option>
-                    <option value="creative">Creative</option>
-                    <option value="sales">Sales</option>
-                    <option value="engineering">Engineering</option>
                   </select>
                   <select
                     value={coverLetterFilters.style}
@@ -7077,7 +7077,24 @@ export default function ResumeTemplates() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {coverLetterTemplates.map((template) => (
+                  {(() => {
+                    // Deduplicate default templates - keep only one per style
+                    const defaultTemplateNames = ['Formal Professional', 'Modern Professional', 'Creative Expression', 'Technical Professional', 'Executive Leadership'];
+                    const seenStyles = new Set();
+                    const uniqueTemplates = coverLetterTemplates.filter(template => {
+                      const isDefaultSystemTemplate = defaultTemplateNames.includes(template.name);
+                      
+                      if (isDefaultSystemTemplate) {
+                        if (seenStyles.has(template.style)) {
+                          return false; // Skip duplicate
+                        }
+                        seenStyles.add(template.style);
+                        return true;
+                      }
+                      return true; // Keep all custom templates
+                    });
+                    
+                    return uniqueTemplates.map((template) => (
                     <Card 
                       key={template._id} 
                       variant="outlined" 
@@ -7122,6 +7139,7 @@ export default function ResumeTemplates() {
                                 // Initialize the customization form
                                 setCustomCoverLetterName(`${template.name} - Customized`);
                                 setCustomCoverLetterContent(template.content);
+                                setIsCreatingCoverLetterTemplate(false); // Using template to create cover letter
                                 setShowCoverLetterCustomize(true);
                               } catch (err) {
                                 console.error("Failed to track usage:", err);
@@ -7166,7 +7184,8 @@ export default function ResumeTemplates() {
                         </div>
                       </div>
                     </Card>
-                  ))}
+                  ));
+                  })()}
                 </div>
               )}
             </div>
@@ -7291,6 +7310,31 @@ export default function ResumeTemplates() {
                 />
               </div>
 
+              {isCreatingCoverLetterTemplate && (
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Template Style
+                  </label>
+                  <select
+                    className="w-full p-3 border border-gray-300 rounded-lg"
+                    value={selectedCoverLetterTemplate.style || 'formal'}
+                    onChange={(e) => setSelectedCoverLetterTemplate({
+                      ...selectedCoverLetterTemplate,
+                      style: e.target.value
+                    })}
+                  >
+                    <option value="formal">Formal</option>
+                    <option value="modern">Modern</option>
+                    <option value="creative">Creative</option>
+                    <option value="technical">Technical</option>
+                    <option value="executive">Executive</option>
+                  </select>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Choose a style that best represents this template
+                  </p>
+                </div>
+              )}
+
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Cover Letter Content
@@ -7324,7 +7368,7 @@ export default function ResumeTemplates() {
                   onClick={async () => {
                     try {
                       if (!customCoverLetterName.trim()) {
-                        alert("Please enter a name for your cover letter template.");
+                        alert("Please enter a name for your cover letter.");
                         return;
                       }
                       if (!customCoverLetterContent.trim()) {
@@ -7333,27 +7377,48 @@ export default function ResumeTemplates() {
                       }
 
                       await authWrap();
-                      await createCoverLetterTemplate({
-                        name: customCoverLetterName,
-                        industry: selectedCoverLetterTemplate.industry || 'general',
-                        style: selectedCoverLetterTemplate.style || 'formal',
-                        description: `Customized ${selectedCoverLetterTemplate.style || 'formal'} cover letter`,
-                        content: customCoverLetterContent,
-                        isTemplate: false  // This is a saved cover letter, not a template
-                      });
                       
-                      setShowCoverLetterCustomize(false);
-                      setCustomCoverLetterName('');
-                      setCustomCoverLetterContent('');
-                      await loadSavedCoverLetters();  // Reload saved cover letters
-                      alert("Cover letter saved successfully!");
+                      if (isCreatingCoverLetterTemplate) {
+                        // Creating a reusable template
+                        await createCoverLetterTemplate({
+                          name: customCoverLetterName,
+                          industry: selectedCoverLetterTemplate.industry || 'general',
+                          style: selectedCoverLetterTemplate.style || 'formal',
+                          description: `Custom ${selectedCoverLetterTemplate.style || 'formal'} cover letter template`,
+                          content: customCoverLetterContent
+                        });
+                        
+                        setShowCoverLetterCustomize(false);
+                        setCustomCoverLetterName('');
+                        setCustomCoverLetterContent('');
+                        setIsCreatingCoverLetterTemplate(false);
+                        
+                        await loadCoverLetterTemplates();
+                        setShowManageCoverLetterTemplates(true); // Reopen Manage Templates modal
+                        alert("Cover letter template created successfully!");
+                      } else {
+                        // Creating a saved cover letter (one-time use)
+                        await createCoverLetter({
+                          name: customCoverLetterName,
+                          content: customCoverLetterContent,
+                          templateId: selectedCoverLetterTemplate._id || null
+                        });
+                        
+                        setShowCoverLetterCustomize(false);
+                        setCustomCoverLetterName('');
+                        setCustomCoverLetterContent('');
+                        setIsCreatingCoverLetterTemplate(false);
+                        
+                        await loadSavedCoverLetters();
+                        alert("Cover letter saved successfully!");
+                      }
                     } catch (err) {
                       console.error("Save failed:", err);
-                      alert("Failed to save cover letter. Please try again.");
+                      alert("Failed to save. Please try again.");
                     }
                   }}
                 >
-                  Save Cover Letter
+                  {isCreatingCoverLetterTemplate ? 'Create Template' : 'Save Cover Letter'}
                 </Button>
               </div>
             </div>
@@ -7610,32 +7675,7 @@ export default function ResumeTemplates() {
                   </div>
                 </button>
 
-                {/* Option 2: Import from Text */}
-                <button
-                  onClick={() => {
-                    setShowAddCoverLetterModal(false);
-                    setShowCoverLetterImport(true);
-                  }}
-                  className="w-full p-6 border-2 border-gray-300 rounded-lg hover:border-[#777C6D] hover:bg-gray-50 transition text-left"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="p-3 rounded-lg" style={{ backgroundColor: "#E8EAE3" }}>
-                      <svg className="w-6 h-6" style={{ color: "#4F5348" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                      </svg>
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg mb-2" style={{ color: "#4F5348" }}>
-                        Import from Text
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        Paste your existing cover letter text to create a new template
-                      </p>
-                    </div>
-                  </div>
-                </button>
-
-                {/* Option 3: Create from Scratch */}
+                {/* Option 2: Create from Scratch */}
                 <button
                   onClick={() => {
                     setShowAddCoverLetterModal(false);
@@ -7648,6 +7688,7 @@ export default function ResumeTemplates() {
                     });
                     setCustomCoverLetterName('My Cover Letter');
                     setCustomCoverLetterContent('');
+                    setIsCreatingCoverLetterTemplate(false); // Creating a cover letter, not a template
                     setShowCoverLetterCustomize(true);
                   }}
                   className="w-full p-6 border-2 border-gray-300 rounded-lg hover:border-[#777C6D] hover:bg-gray-50 transition text-left"
@@ -7712,6 +7753,7 @@ export default function ResumeTemplates() {
                       });
                       setCustomCoverLetterName('My Custom Template');
                       setCustomCoverLetterContent('');
+                      setIsCreatingCoverLetterTemplate(true); // Creating a template, not a cover letter
                       setShowCoverLetterCustomize(true);
                     }}
                     className="px-4 py-2 text-white rounded-lg transition"
@@ -7753,179 +7795,100 @@ export default function ResumeTemplates() {
                   <p className="text-gray-600">No templates available</p>
                 </div>
               ) : (
-                <>
-                  {/* Default Templates Section */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {(() => {
-                    const defaultTemplates = coverLetterTemplates.filter(
-                      t => t.industry === 'general' && ['formal', 'modern', 'creative', 'technical', 'executive'].includes(t.style)
-                    );
-                    const customTemplates = coverLetterTemplates.filter(
-                      t => !(t.industry === 'general' && ['formal', 'modern', 'creative', 'technical', 'executive'].includes(t.style))
-                    );
-                    
-                    // Remove duplicates from default templates by style
-                    const uniqueDefaults = [];
+                    // Deduplicate default templates - keep only one per style
+                    const defaultTemplateNames = ['Formal Professional', 'Modern Professional', 'Creative Expression', 'Technical Professional', 'Executive Leadership'];
                     const seenStyles = new Set();
-                    defaultTemplates.forEach(template => {
-                      if (!seenStyles.has(template.style)) {
+                    const uniqueTemplates = coverLetterTemplates.filter(template => {
+                      const isDefaultSystemTemplate = defaultTemplateNames.includes(template.name);
+                      
+                      if (isDefaultSystemTemplate) {
+                        if (seenStyles.has(template.style)) {
+                          return false; // Skip duplicate
+                        }
                         seenStyles.add(template.style);
-                        uniqueDefaults.push(template);
+                        return true;
                       }
+                      return true; // Keep all custom templates
                     });
-
+                    
+                    return uniqueTemplates.map((template) => {
+                    // Check if this is a default system template
+                    const isDefaultSystemTemplate = defaultTemplateNames.includes(template.name);
+                    
                     return (
-                      <>
-                        {uniqueDefaults.length > 0 && (
-                          <div className="mb-8">
-                            <h3 className="text-lg font-semibold mb-4" style={{ color: "#4F5348" }}>
-                              Default Templates
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                              {uniqueDefaults.map((template) => (
-                                <div
-                                  key={template._id}
-                                  className="border-2 border-gray-300 rounded-lg overflow-hidden hover:border-[#777C6D] transition"
-                                >
-                                  <div className="bg-white p-4 h-64 overflow-hidden">
-                                    <div className="text-xs font-mono whitespace-pre-wrap text-gray-700 line-clamp-[14]">
-                                      {template.content}
-                                    </div>
-                                  </div>
-                                  <div className="border-t border-gray-200 p-4 bg-gray-50">
-                                    <div className="flex items-start justify-between mb-3">
-                                      <div className="flex-1">
-                                        <h3 className="font-semibold truncate" style={{ color: "#4F5348" }}>
-                                          {template.name}
-                                        </h3>
-                                        <p className="text-xs text-gray-600 mt-1">{template.description || template.style}</p>
-                                      </div>
-                                      {template.isDefault && (
-                                        <span className="ml-2 px-2 py-1 text-xs rounded" style={{ backgroundColor: "#E8EAE3", color: "#4F5348" }}>
-                                          Default
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className="flex gap-2">
-                                      <button
-                                        onClick={async () => {
-                                          try {
-                                            await authWrap();
-                                            await updateCoverLetterTemplate(template._id, { isDefault: true });
-                                            await loadCoverLetterTemplates();
-                                            alert("Default template updated!");
-                                          } catch (err) {
-                                            console.error("Update failed:", err);
-                                            alert("Failed to set as default");
-                                          }
-                                        }}
-                                        className="flex-1 px-3 py-2 text-sm rounded transition border border-gray-300 hover:bg-gray-100"
-                                      >
-                                        Set Default
-                                      </button>
-                                      <button
-                                        onClick={() => {
-                                          setSelectedCoverLetterTemplate(template);
-                                          setCustomCoverLetterName(`${template.name} - Copy`);
-                                          setCustomCoverLetterContent(template.content);
-                                          setShowManageCoverLetterTemplates(false);
-                                          setShowCoverLetterCustomize(true);
-                                        }}
-                                        className="flex-1 px-3 py-2 text-sm text-white rounded transition"
-                                        style={{ backgroundColor: '#777C6D' }}
-                                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-                                      >
-                                        Customize
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
+                      <div
+                        key={template._id}
+                        className="border-2 border-gray-300 rounded-lg overflow-hidden hover:border-[#777C6D] transition"
+                      >
+                        <div className="bg-white p-4 h-64 overflow-hidden">
+                          <div className="text-xs font-mono whitespace-pre-wrap text-gray-700 line-clamp-[14]">
+                            {template.content}
                           </div>
-                        )}
-
-                        {/* Custom & Imported Templates Section */}
-                        <div>
-                          <h3 className="text-lg font-semibold mb-4" style={{ color: "#4F5348" }}>
-                            Custom & Imported Templates
-                          </h3>
-                          {customTemplates.length === 0 ? (
-                            <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
-                              <svg className="w-12 h-12 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                              </svg>
-                              <p className="text-gray-600 mb-2">No custom or imported templates yet</p>
-                              <p className="text-sm text-gray-500">Import a template to see it here</p>
-                            </div>
-                          ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                              {customTemplates.map((template) => (
-                                <div
-                                  key={template._id}
-                                  className="border-2 border-gray-300 rounded-lg overflow-hidden hover:border-[#777C6D] transition"
-                                >
-                                  <div className="bg-white p-4 h-64 overflow-hidden">
-                                    <div className="text-xs font-mono whitespace-pre-wrap text-gray-700 line-clamp-[14]">
-                                      {template.content}
-                                    </div>
-                                  </div>
-                                  <div className="border-t border-gray-200 p-4 bg-gray-50">
-                                    <div className="flex items-start justify-between mb-3">
-                                      <div className="flex-1">
-                                        <h3 className="font-semibold truncate" style={{ color: "#4F5348" }}>
-                                          {template.name}
-                                        </h3>
-                                        <p className="text-xs text-gray-600 mt-1">{template.description || template.style}</p>
-                                      </div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                      <button
-                                        onClick={() => {
-                                          setSelectedCoverLetterTemplate(template);
-                                          setCustomCoverLetterName(`${template.name} - Copy`);
-                                          setCustomCoverLetterContent(template.content);
-                                          setShowManageCoverLetterTemplates(false);
-                                          setShowCoverLetterCustomize(true);
-                                        }}
-                                        className="flex-1 px-3 py-2 text-sm text-white rounded transition"
-                                        style={{ backgroundColor: '#777C6D' }}
-                                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-                                      >
-                                        Customize
-                                      </button>
-                                      <button
-                                        onClick={async () => {
-                                          if (confirm(`Delete "${template.name}"?`)) {
-                                            try {
-                                              await authWrap();
-                                              await deleteCoverLetterTemplate(template._id);
-                                              await loadCoverLetterTemplates();
-                                              alert("Template deleted successfully!");
-                                            } catch (err) {
-                                              console.error("Delete failed:", err);
-                                              alert("Failed to delete template");
-                                            }
-                                          }
-                                        }}
-                                        className="px-3 py-2 text-sm text-red-600 hover:text-red-700 border border-red-300 rounded transition"
-                                      >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
                         </div>
-                      </>
+                        <div className="border-t border-gray-200 p-4 bg-gray-50">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1">
+                              <h3 className="font-semibold truncate" style={{ color: "#4F5348" }}>
+                                {template.name}
+                              </h3>
+                              <p className="text-xs text-gray-600 mt-1">{template.description || template.style}</p>
+                            </div>
+                            {template.isDefault && (
+                              <span className="ml-2 px-2 py-1 text-xs rounded" style={{ backgroundColor: "#E8EAE3", color: "#4F5348" }}>
+                                Default
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                setSelectedCoverLetterTemplate(template);
+                                setCustomCoverLetterName(`${template.name} - Copy`);
+                                setCustomCoverLetterContent(template.content);
+                                setIsCreatingCoverLetterTemplate(false);
+                                setShowManageCoverLetterTemplates(false);
+                                setShowCoverLetterCustomize(true);
+                              }}
+                              className={`${isDefaultSystemTemplate ? 'w-full' : 'flex-1'} px-3 py-2 text-sm text-white rounded transition`}
+                              style={{ backgroundColor: '#777C6D' }}
+                              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                            >
+                              Use Template
+                            </button>
+                            {!isDefaultSystemTemplate && (
+                              <button
+                                onClick={async () => {
+                                  if (confirm(`Delete "${template.name}"?`)) {
+                                    try {
+                                      await authWrap();
+                                      await deleteCoverLetterTemplate(template._id);
+                                      await loadCoverLetterTemplates();
+                                      setShowManageCoverLetterTemplates(true);
+                                      alert("Template deleted successfully!");
+                                    } catch (err) {
+                                      console.error("Delete failed:", err);
+                                      alert("Failed to delete template");
+                                    }
+                                  }
+                                }}
+                                className="px-3 py-2 text-sm text-red-600 hover:text-red-700 border border-red-300 rounded transition"
+                                title="Delete Template"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     );
+                    });
                   })()}
-                </>
+                </div>
               )}
             </div>
           </div>

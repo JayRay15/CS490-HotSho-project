@@ -6,17 +6,16 @@ const coverLetterTemplateSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     industry: { 
       type: String, 
-      enum: ["general", "technology", "marketing", "finance", "healthcare", "education", "creative", "sales", "engineering", "other"], 
-      required: true 
+      enum: ["general", "technology", "business", "healthcare"], 
+      default: "general"
     },
     style: { 
       type: String, 
       enum: ["formal", "modern", "creative", "technical", "executive"], 
-      required: true 
+      default: "formal"
     },
     content: { type: String, required: true }, // Template content with placeholders
     description: { type: String, trim: true },
-    isTemplate: { type: Boolean, default: false }, // true = reusable template, false = saved cover letter
     isDefault: { type: Boolean, default: false },
     isShared: { type: Boolean, default: false },
     sharedWith: { type: [String], default: [] }, // optional list of userIds

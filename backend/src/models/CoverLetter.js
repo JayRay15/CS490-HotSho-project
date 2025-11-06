@@ -1,0 +1,20 @@
+import mongoose from "mongoose";
+
+const coverLetterSchema = new mongoose.Schema(
+  {
+    userId: { type: String, required: true, index: true },
+    templateId: { type: mongoose.Schema.Types.ObjectId, ref: "CoverLetterTemplate" },
+    name: { type: String, required: true, trim: true },
+    content: { type: String, required: true }, // Actual cover letter content
+    jobId: { type: mongoose.Schema.Types.ObjectId, ref: "Job" }, // Optional: link to job application
+    metadata: { type: Object, default: {} }, // { clonedFrom?, clonedAt?, tailoredForJob?, etc. }
+    isDefault: { type: Boolean, default: false }, // Mark default cover letter
+    isArchived: { type: Boolean, default: false, index: true }, // Archive functionality
+  },
+  { timestamps: true }
+);
+
+coverLetterSchema.index({ userId: 1, createdAt: -1 });
+coverLetterSchema.index({ userId: 1, isArchived: 1 }); // Index for filtering archived cover letters
+
+export const CoverLetter = mongoose.model("CoverLetter", coverLetterSchema);
