@@ -8,6 +8,11 @@ import { asyncHandler } from "../middleware/errorHandler.js";
  * 
  * This controller provides comprehensive salary research and benchmarking features
  * including market analysis, compensation comparisons, and negotiation insights.
+ * 
+ * Note: The benchmark data (INDUSTRY_BENCHMARKS, LOCATION_MULTIPLIERS, COMPANY_SIZE_MULTIPLIERS)
+ * represents industry-standard market data. In a production environment, this would be
+ * fetched from external salary APIs (e.g., Glassdoor, Payscale, Bureau of Labor Statistics).
+ * These are NOT user-specific data and are NOT stored in localStorage.
  */
 
 // Industry salary benchmarks (simulated market data)
@@ -215,6 +220,7 @@ export const getSalaryResearch = asyncHandler(async (req, res) => {
   const similarSalaries = similarJobs
     .filter(j => j.salary?.min || j.salary?.max)
     .map(j => ({
+      id: j._id.toString(),
       company: j.company,
       title: j.title,
       location: j.location,
@@ -255,8 +261,8 @@ export const getSalaryResearch = asyncHandler(async (req, res) => {
   );
 
   // Compare with user's current compensation (if available)
-  const currentCompensation = user?.employment?.[0] ? 
-    extractCurrentSalary(user.employment[0]) : null;
+  const currentJob = user?.employment?.find(emp => emp.isCurrentPosition);
+  const currentCompensation = currentJob ? extractCurrentSalary(currentJob) : null;
 
   const salaryComparison = currentCompensation ? {
     current: currentCompensation,
@@ -324,7 +330,18 @@ export const compareSalaries = asyncHandler(async (req, res) => {
     return sendResponse(res, response, statusCode);
   }
 
-  const jobIdArray = jobIds.split(',');
+  // Filter out empty or invalid IDs
+  const jobIdArray = jobIds.split(',').filter(id => id && id.trim().length > 0);
+  
+  if (jobIdArray.length === 0) {
+    const { response, statusCode } = errorResponse(
+      "Valid job IDs are required for comparison",
+      400,
+      ERROR_CODES.VALIDATION_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
   const jobs = await Job.find({
     _id: { $in: jobIdArray },
     userId
@@ -649,8 +666,10 @@ function generateNegotiationRecommendations(job, salaryData, totalComp, experien
  * Helper: Extract current salary from employment history
  */
 function extractCurrentSalary(currentJob) {
-  // In production, this would be a field in the employment record
-  // For now, return null as we don't store salary in employment history
+  // Return the salary field if it exists and the job is current
+  if (currentJob?.salary && currentJob?.isCurrentPosition) {
+    return currentJob.salary;
+  }
   return null;
 }
 
