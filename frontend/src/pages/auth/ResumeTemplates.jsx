@@ -49,6 +49,13 @@ import EditableSkills from "../../components/resume/EditableSkills";
 import FinishEditDropdown from "../../components/resume/FinishEditDropdown";
 import InlineValidationIssuesPanel from "../../components/resume/InlineValidationIssuesPanel";
 import ResumeSectionHeader from "../../components/resume/ResumeSectionHeader";
+import SectionToggleItem from "../../components/resume/SectionToggleItem";
+import CustomizationPanel from "../../components/resume/CustomizationPanel";
+import SavePresetModal from "../../components/resume/SavePresetModal";
+import SectionFormattingModal from "../../components/resume/SectionFormattingModal";
+import CustomizeTemplateModal from "../../components/resume/CustomizeTemplateModal";
+import RenameResumeModal from "../../components/resume/RenameResumeModal";
+import DeleteConfirmationModal from "../../components/resume/DeleteConfirmationModal";
 import ViewIssuesButton from "../../components/resume/ViewIssuesButton";
 import { THEME_PRESETS, getThemePresetNames, getThemePreset } from "../../utils/themePresets";
 
@@ -2343,228 +2350,15 @@ export default function ResumeTemplates() {
       )}
 
       {/* Customize Template Modal */}
-      {customizeTemplate && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-[60] p-4" 
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
-          onClick={() => setCustomizeTemplate(null)}
-        >
-          <div 
-            className="bg-white rounded-lg shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-gray-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center z-10">
-              <h3 className="text-2xl font-heading font-semibold">Customize Template: {customizeTemplate.name}</h3>
-              <button
-                onClick={() => setCustomizeTemplate(null)}
-                className="text-gray-400 hover:text-gray-600 transition"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="p-6">
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="customizeName" className="block text-sm font-medium text-gray-700 mb-2">
-                      Template Name
-                    </label>
-                    <input
-                      type="text"
-                      id="customizeName"
-                      value={customizeTemplate.name}
-                      onChange={(e) => setCustomizeTemplate({...customizeTemplate, name: e.target.value})}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="customizeType" className="block text-sm font-medium text-gray-700 mb-2">Type</label>
-                    <select 
-                      id="customizeType"
-                      value={customizeTemplate.type} 
-                      onChange={(e) => setCustomizeTemplate({...customizeTemplate, type: e.target.value})} 
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      {TEMPLATE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                    </select>
-                  </div>
-                </div>
-
-                {/* UC-051: Theme Preset Selector */}
-                <div className="border-t pt-4">
-                  <h4 className="text-lg font-heading font-semibold mb-3">Theme Preset</h4>
-                  <p className="text-sm text-gray-600 mb-4">Choose a pre-designed theme or customize colors manually below</p>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {getThemePresetNames().map(presetName => {
-                      const preset = getThemePreset(presetName);
-                      const isSelected = customizeTemplate.theme?.presetName === presetName;
-                      return (
-                        <button
-                          key={presetName}
-                          onClick={() => {
-                            const themeData = getThemePreset(presetName);
-                            setCustomizeTemplate({
-                              ...customizeTemplate,
-                              theme: {
-                                ...themeData,
-                                presetName
-                              }
-                            });
-                          }}
-                          className={`p-4 rounded-lg border-2 transition text-left ${
-                            isSelected 
-                              ? 'border-blue-600 bg-blue-50' 
-                              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="font-medium text-gray-900">{preset.name}</div>
-                            {isSelected && (
-                              <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                              </svg>
-                            )}
-                          </div>
-                          <div className="text-xs text-gray-600 mb-3">{preset.description}</div>
-                          <div className="flex gap-1">
-                            <div 
-                              className="w-6 h-6 rounded border border-gray-300" 
-                              style={{ backgroundColor: preset.colors.primary }}
-                              title="Primary"
-                            />
-                            <div 
-                              className="w-6 h-6 rounded border border-gray-300" 
-                              style={{ backgroundColor: preset.colors.accent }}
-                              title="Accent"
-                            />
-                            <div 
-                              className="w-6 h-6 rounded border border-gray-300" 
-                              style={{ backgroundColor: preset.colors.text }}
-                              title="Text"
-                            />
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="border-t pt-4">
-                  <h4 className="text-lg font-heading font-semibold mb-3">Custom Theme Colors</h4>
-                  <p className="text-sm text-gray-600 mb-3">Fine-tune the selected theme or create your own color scheme</p>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="primaryColor" className="block text-sm font-medium text-gray-700 mb-2">Primary Color</label>
-                      <input 
-                        type="color"
-                        id="primaryColor"
-                        value={customizeTemplate.theme?.colors?.primary || "#4F5348"} 
-                        onChange={(e) => setCustomizeTemplate({
-                          ...customizeTemplate, 
-                          theme: { 
-                            ...(customizeTemplate.theme||{}), 
-                            colors: { ...(customizeTemplate.theme?.colors||{}), primary: e.target.value }
-                          }
-                        })}
-                        className="w-full h-10 rounded-lg border border-gray-300"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="textColor" className="block text-sm font-medium text-gray-700 mb-2">Text Color</label>
-                      <input 
-                        type="color"
-                        id="textColor"
-                        value={customizeTemplate.theme?.colors?.text || "#222222"} 
-                        onChange={(e) => setCustomizeTemplate({
-                          ...customizeTemplate, 
-                          theme: { 
-                            ...(customizeTemplate.theme||{}), 
-                            colors: { ...(customizeTemplate.theme?.colors||{}), text: e.target.value }
-                          }
-                        })}
-                        className="w-full h-10 rounded-lg border border-gray-300"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="border-t pt-4">
-                  <h4 className="text-lg font-heading font-semibold mb-3">Layout</h4>
-                  <div className="space-y-4">
-                    <div>
-                      <label htmlFor="sectionOrder" className="block text-sm font-medium text-gray-700 mb-2">
-                        Section Order (comma-separated)
-                      </label>
-                      <input 
-                        type="text"
-                        id="sectionOrder"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                        value={(customizeTemplate.layout?.sectionsOrder||[]).join(", ")} 
-                        onChange={(e) => setCustomizeTemplate({
-                          ...customizeTemplate, 
-                          layout: { 
-                            ...(customizeTemplate.layout||{}), 
-                            sectionsOrder: e.target.value.split(",").map(s=>s.trim()).filter(Boolean) 
-                          }
-                        })} 
-                        placeholder="summary, experience, skills, education, projects"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="spacing" className="block text-sm font-medium text-gray-700 mb-2">
-                        Spacing (px)
-                      </label>
-                      <input
-                        type="number"
-                        id="spacing"
-                        value={customizeTemplate.theme?.spacing || 8}
-                        onChange={(e) => setCustomizeTemplate({
-                          ...customizeTemplate,
-                          theme: {
-                            ...(customizeTemplate.theme||{}),
-                            spacing: parseInt(e.target.value)||8
-                          }
-                        })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 -mx-6 -mb-6 mt-6 border-t">
-                <button
-                  type="button"
-                  onClick={() => setCustomizeTemplate(null)}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPreviewTemplate(customizeTemplate)}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
-                >
-                  Preview
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCustomizeSave}
-                  className="px-4 py-2 text-white rounded-lg transition"
-                  style={{ backgroundColor: '#777C6D' }}
-                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-                >
-                  Save Changes
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <CustomizeTemplateModal
+        customizeTemplate={customizeTemplate}
+        setCustomizeTemplate={setCustomizeTemplate}
+        TEMPLATE_TYPES={TEMPLATE_TYPES}
+        getThemePresetNames={getThemePresetNames}
+        getThemePreset={getThemePreset}
+        setPreviewTemplate={setPreviewTemplate}
+        handleCustomizeSave={handleCustomizeSave}
+      />
 
       {/* Import Template Modal */}
       {showImport && (
@@ -3406,220 +3200,43 @@ export default function ResumeTemplates() {
       )}
 
       {/* Delete Confirmation Modal */}
-      {showDeleteModal && deletingResume && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-[99999]" 
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)', zIndex: 99999 }}
-          onClick={handleCancelDelete}
-        >
-          <div 
-            className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 border border-gray-200" 
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="bg-red-50 border-b border-red-100 px-6 py-4">
-              <div className="flex items-center space-x-3">
-                <div className="flex-shrink-0">
-                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-heading font-semibold text-gray-900">Confirm Deletion</h3>
-              </div>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-6">
-              <p className="text-gray-700 mb-4">
-                Are you sure you want to delete this resume?
-              </p>
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
-                <p className="font-semibold text-gray-900">{deletingResume.name}</p>
-                <p className="text-sm text-gray-600">Modified {new Date(deletingResume.updatedAt).toLocaleDateString()}</p>
-              </div>
-              <p className="text-sm text-red-600 font-medium">
-                This action cannot be undone.
-              </p>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 border-t">
-              <button
-                type="button"
-                onClick={handleCancelDelete}
-                disabled={isDeleting}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDelete}
-                disabled={isDeleting}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-              >
-                {isDeleting ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span>Deleting...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    <span>Delete</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteConfirmationModal
+        showModal={showDeleteModal}
+        itemToDelete={deletingResume}
+        onClose={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+        isDeleting={isDeleting}
+        itemType="resume"
+        itemDetails={{
+          name: deletingResume?.name,
+          subtitle: deletingResume ? `Modified ${new Date(deletingResume.updatedAt).toLocaleDateString()}` : ''
+        }}
+      />
 
       {/* Delete Template Confirmation Modal */}
-      {showDeleteTemplateModal && deletingTemplate && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-[99999]" 
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)', zIndex: 99999 }}
-          onClick={handleCancelDeleteTemplate}
-        >
-          <div 
-            className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 border border-gray-200" 
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="bg-red-50 border-b border-red-100 px-6 py-4">
-              <div className="flex items-center space-x-3">
-                <div className="flex-shrink-0">
-                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-heading font-semibold text-gray-900">Confirm Deletion</h3>
-              </div>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-6">
-              <p className="text-gray-700 mb-4">
-                Are you sure you want to delete this template?
-              </p>
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
-                <p className="font-semibold text-gray-900">{deletingTemplate.name}</p>
-                <p className="text-sm text-gray-600 capitalize">{deletingTemplate.type} template</p>
-              </div>
-              <p className="text-sm text-red-600 font-medium">
-                This action cannot be undone.
-              </p>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 border-t">
-              <button
-                type="button"
-                onClick={handleCancelDeleteTemplate}
-                disabled={isDeleting}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDeleteTemplate}
-                disabled={isDeleting}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-              >
-                {isDeleting ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span>Deleting...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    <span>Delete</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteConfirmationModal
+        showModal={showDeleteTemplateModal}
+        itemToDelete={deletingTemplate}
+        onClose={handleCancelDeleteTemplate}
+        onConfirm={handleConfirmDeleteTemplate}
+        isDeleting={isDeleting}
+        itemType="template"
+        itemDetails={{
+          name: deletingTemplate?.name,
+          subtitle: deletingTemplate ? `${deletingTemplate.type.charAt(0).toUpperCase() + deletingTemplate.type.slice(1)} template` : ''
+        }}
+      />
 
       {/* Rename Resume Modal */}
-      {showRenameModal && renamingResume && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-50" 
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
-          onClick={() => !isRenaming && setShowRenameModal(false)}
-        >
-          <div 
-            className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 border border-gray-200" 
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="bg-blue-50 border-b border-blue-100 px-6 py-4">
-              <div className="flex items-center space-x-3">
-                <div className="flex-shrink-0">
-                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-heading font-semibold text-gray-900">Rename Resume</h3>
-              </div>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-6">
-              <label htmlFor="renameInput" className="block text-sm font-medium text-gray-700 mb-2">
-                Resume Name
-              </label>
-              <input
-                id="renameInput"
-                type="text"
-                value={renameValue}
-                onChange={(e) => setRenameValue(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter' && !isRenaming && renameValue.trim()) {
-                    handleRenameResume();
-                  }
-                }}
-                disabled={isRenaming}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
-                placeholder="Enter resume name"
-                autoFocus
-              />
-            </div>
-
-            {/* Modal Actions */}
-            <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t">
-              <button
-                onClick={() => !isRenaming && setShowRenameModal(false)}
-                disabled={isRenaming}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleRenameResume}
-                disabled={isRenaming || !renameValue.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
-              >
-                {isRenaming ? "Renaming..." : "Rename"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <RenameResumeModal
+        showModal={showRenameModal}
+        renamingResume={renamingResume}
+        onClose={() => setShowRenameModal(false)}
+        renameValue={renameValue}
+        setRenameValue={setRenameValue}
+        onRename={handleRenameResume}
+        isRenaming={isRenaming}
+      />
 
       {/* Save As (Export filename) Modal - replaces window.prompt */}
       <SaveAsModal
@@ -4254,83 +3871,6 @@ export default function ResumeTemplates() {
           }
         };
         
-        // DnD item for section toggle/reorder in customization panel
-        const SectionToggleItem = ({ section, index }) => {
-          const ref = React.useRef(null);
-          const [, drop] = useDrop({
-            accept: 'section',
-            hover(item) {
-              if (item.index === index) return;
-              moveSection(item.index, index);
-              item.index = index;
-            },
-          });
-          const [{ isDragging }, drag] = useDrag({
-            type: 'section',
-            item: { type: 'section', key: section.key, index },
-            collect: (monitor) => ({ isDragging: monitor.isDragging() }),
-          });
-          drag(drop(ref));
-
-          const hasFormatting = !!sectionFormatting[section.key];
-          const sectionStatus = getSectionStatus(section.key);
-
-          // Completion indicator
-          const isComplete = viewingResume.sections?.[section.key] && (
-            Array.isArray(viewingResume.sections[section.key])
-              ? viewingResume.sections[section.key].length > 0
-              : !!viewingResume.sections[section.key]
-          );
-
-          const getBorderColor = () => {
-            if (sectionStatus === 'required') return 'border-red-300';
-            if (sectionStatus === 'recommended') return 'border-yellow-300';
-            return 'border-gray-300';
-          };
-
-          return (
-            <div
-              ref={ref}
-              style={{ opacity: isDragging ? 0.5 : 1 }}
-              className={`flex items-center gap-2 text-sm cursor-move border-2 ${getBorderColor()} px-3 py-2 rounded-lg bg-white hover:shadow-md transition-shadow relative`}
-            >
-              <input
-                type="checkbox"
-                checked={visibleSections.includes(section.key)}
-                onChange={() => handleToggleSection(section.key)}
-                className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-              />
-              <span className="font-medium text-gray-700">{section.label}</span>
-              <span
-                className={`text-sm ${isComplete ? 'text-green-600' : 'text-gray-400'}`}
-                title={isComplete ? 'Section complete' : 'Section incomplete'}
-              >
-                {isComplete ? '✓' : '○'}
-              </span>
-              {sectionStatus === 'required' && (
-                <span className="text-[10px] px-1.5 py-0.5 bg-red-100 text-red-700 rounded font-semibold">REQ</span>
-              )}
-              {sectionStatus === 'recommended' && (
-                <span className="text-[10px] px-1.5 py-0.5 bg-yellow-100 text-yellow-700 rounded font-semibold">REC</span>
-              )}
-              <button
-                onClick={(e) => { e.stopPropagation(); openSectionFormatting(section.key); }}
-                className={`p-1 rounded hover:bg-gray-100 transition ${hasFormatting ? 'text-blue-600' : 'text-gray-400'}`}
-                title="Format section"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-                </svg>
-              </button>
-              <span className="text-gray-400 text-sm ml-auto" style={{ cursor: 'grab' }}>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-                </svg>
-              </span>
-            </div>
-          );
-        };
-
         return (
         <>
         <div 
@@ -4422,205 +3962,35 @@ export default function ResumeTemplates() {
             {/* Modal Content - HTML View only (PDF experimental removed) */}
             <div className="flex-1 overflow-y-auto py-4 px-4" style={{ backgroundColor: '#525252' }}>
               {/* Customization Panel */}
-              {showCustomizationPanel && (
-                <div className="mb-4 mx-auto bg-white border border-gray-200 rounded-lg shadow-lg" style={{ width: '8.5in' }}>
-                  <div className="bg-gray-50 border-b border-gray-200 px-4 py-3 rounded-t-lg">
-                    <div className="flex items-center space-x-2">
-                      <svg className="w-5 h-5 text-[#777C6D]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                      </svg>
-                      <h4 className="text-sm font-heading font-semibold text-gray-900">Section Customization</h4>
-                    </div>
-                  </div>
-                  
-                  <div className="p-4 space-y-4">
-                    {/* Job Type and Presets Row */}
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-2">
-                        <label className="text-sm font-medium text-gray-700">Job Type:</label>
-                        <select
-                          value={selectedJobType}
-                          onChange={(e) => applyJobTypeConfig(e.target.value)}
-                          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                        >
-                          <option value="general">General</option>
-                          <option value="technical">Technical/Engineering</option>
-                          <option value="creative">Creative/Design</option>
-                          <option value="academic">Academic/Research</option>
-                          <option value="entry_level">Entry Level</option>
-                        </select>
-                      </div>
-                      <div className="flex items-center gap-2 relative">
-                        <button
-                          onClick={() => setShowPresetMenu(v => !v)}
-                          className="px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition text-sm flex items-center gap-2"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                          Presets
-                        </button>
-                        {showPresetMenu && (
-                          <div className="absolute right-0 top-12 z-10 w-64 bg-white border border-gray-200 rounded-lg shadow-xl">
-                            <div className="py-2 max-h-64 overflow-auto">
-                              <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Built-in Presets</div>
-                              {SECTION_PRESETS.map(preset => (
-                                <button
-                                  key={preset.name}
-                                  onClick={() => applyPreset(preset)}
-                                  className="w-full text-left px-3 py-2 hover:bg-blue-50 transition"
-                                >
-                                  <div className="font-medium text-sm text-gray-900">{preset.name}</div>
-                                  <div className="text-xs text-gray-500">{preset.description}</div>
-                                </button>
-                              ))}
-                              {customPresets.length > 0 && (
-                                <>
-                                  <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide mt-2 border-t">Custom Presets</div>
-                                  {customPresets.map((preset, idx) => (
-                                    <button
-                                      key={idx}
-                                      onClick={() => applyPreset(preset)}
-                                      className="w-full text-left px-3 py-2 hover:bg-blue-50 transition"
-                                    >
-                                      <div className="font-medium text-sm text-gray-900">{preset.name}</div>
-                                    </button>
-                                  ))}
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                        <button
-                          onClick={() => setShowSavePresetModal(true)}
-                          className="px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition text-sm flex items-center gap-2"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                          </svg>
-                          Save Preset
-                        </button>
-                      </div>
-                    </div>
-                    
-                    {/* Sections Grid */}
-                    <div>
-                      <label className="text-sm font-medium text-gray-700 mb-2 block">Section Order & Visibility (Drag to Reorder)</label>
-                      <DndProvider backend={HTML5Backend}>
-                        <div className="flex flex-wrap gap-2">
-                          {sectionOrder.map((key, idx) => {
-                            const section = DEFAULT_SECTIONS.find(s => s.key === key);
-                            if (!section) return null;
-                            return <SectionToggleItem key={key} section={section} index={idx} />;
-                          })}
-                        </div>
-                      </DndProvider>
-                    </div>
-
-                    {/* AI Optimization Section (UC-49 & UC-50) */}
-                    <div className="mt-6 pt-6 border-t border-gray-200">
-                      <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                        <svg className="w-5 h-5 text-[#4F5348]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                        </svg>
-                        AI Optimization
-                      </h4>
-                      
-                      {/* Job Selector */}
-                      {jobs.length > 0 && (
-                        <div className="mb-4">
-                          <label className="text-xs font-medium text-gray-700 mb-2 block">Select Job for Optimization:</label>
-                          <select
-                            value={selectedJobForSkills || selectedJobForExperience || ''}
-                            onChange={(e) => {
-                              const selectedValue = e.target.value;
-                              console.log('Selected job:', selectedValue); // Debug
-                              setSelectedJobForSkills(selectedValue);
-                              setSelectedJobForExperience(selectedValue);
-                            }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
-                          >
-                            <option value="">Select a job...</option>
-                            {jobs.map((job, idx) => {
-                              // Ensure we have a valid job object
-                              if (!job || !job.title || !job.company) {
-                                console.warn('Invalid job object:', job);
-                                return null;
-                              }
-                              
-                              // Use title|company as the value (pipe separator)
-                              const jobValue = `${job.title}|${job.company}`;
-                              const displayText = `${job.title} at ${job.company}`;
-                              
-                              return (
-                                <option key={idx} value={jobValue}>
-                                  {displayText}
-                                </option>
-                              );
-                            }).filter(Boolean)}
-                          </select>
-                        </div>
-                      )}
-                      
-                      <div className="flex gap-2">
-                        {/* UC-49: Skills Optimization Button */}
-                        <button
-                          onClick={handleOptimizeSkills}
-                          disabled={isOptimizingSkills || (!selectedJobForSkills && !viewingResume.metadata?.tailoredForJob)}
-                          className="flex-1 px-3 py-2 bg-[#777C6D] text-white rounded-lg hover:bg-[#656A5C] transition text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {isOptimizingSkills ? (
-                            <>
-                              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                              </svg>
-                              Optimizing...
-                            </>
-                          ) : (
-                            <>
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                              </svg>
-                              Optimize Skills
-                            </>
-                          )}
-                        </button>
-
-                        {/* UC-50: Experience Tailoring Button */}
-                        <button
-                          onClick={handleTailorExperience}
-                          disabled={isTailoringExperience || (!selectedJobForExperience && !viewingResume.metadata?.tailoredForJob)}
-                          className="flex-1 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {isTailoringExperience ? (
-                            <>
-                              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                              </svg>
-                              Tailoring...
-                            </>
-                          ) : (
-                            <>
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                              </svg>
-                              Tailor Experience
-                            </>
-                          )}
-                        </button>
-                      </div>
-
-                      {jobs.length === 0 && (
-                        <p className="text-xs text-gray-500 mt-2 italic">
-                          Save or apply to jobs to use AI optimization features.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
+              <CustomizationPanel
+                showCustomizationPanel={showCustomizationPanel}
+                selectedJobType={selectedJobType}
+                applyJobTypeConfig={applyJobTypeConfig}
+                showPresetMenu={showPresetMenu}
+                setShowPresetMenu={setShowPresetMenu}
+                SECTION_PRESETS={SECTION_PRESETS}
+                applyPreset={applyPreset}
+                customPresets={customPresets}
+                setShowSavePresetModal={setShowSavePresetModal}
+                sectionOrder={sectionOrder}
+                DEFAULT_SECTIONS={DEFAULT_SECTIONS}
+                visibleSections={visibleSections}
+                sectionFormatting={sectionFormatting}
+                viewingResume={viewingResume}
+                moveSection={moveSection}
+                handleToggleSection={handleToggleSection}
+                openSectionFormatting={openSectionFormatting}
+                getSectionStatus={getSectionStatus}
+                jobs={jobs}
+                selectedJobForSkills={selectedJobForSkills}
+                selectedJobForExperience={selectedJobForExperience}
+                setSelectedJobForSkills={setSelectedJobForSkills}
+                setSelectedJobForExperience={setSelectedJobForExperience}
+                handleOptimizeSkills={handleOptimizeSkills}
+                isOptimizingSkills={isOptimizingSkills}
+                handleTailorExperience={handleTailorExperience}
+                isTailoringExperience={isTailoringExperience}
+              />
 
               {/* UC-053: Validation Issues Panel - Inline view below customization */}
               {showValidationIssuesPanel && validationResults && (
@@ -4746,202 +4116,24 @@ export default function ResumeTemplates() {
             </div>
 
             {/* Save Preset Modal */}
-            {showSavePresetModal && (
-              <div 
-                className="fixed inset-0 flex items-center justify-center z-50 p-4" 
-                style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
-                onClick={() => setShowSavePresetModal(false)}
-              >
-                <div 
-                  className="bg-white rounded-lg shadow-2xl max-w-md w-full border border-gray-200"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {/* Modal Header */}
-                  <div className="bg-blue-50 border-b border-blue-100 px-6 py-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="flex-shrink-0">
-                        <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                        </svg>
-                      </div>
-                      <h3 className="text-lg font-heading font-semibold text-gray-900">Save Section Arrangement</h3>
-                    </div>
-                  </div>
-
-                  {/* Modal Content */}
-                  <div className="p-6">
-                    <label htmlFor="presetName" className="block text-sm font-medium text-gray-700 mb-2">
-                      Preset Name
-                    </label>
-                    <input
-                      id="presetName"
-                      type="text"
-                      value={presetName}
-                      onChange={(e) => setPresetName(e.target.value)}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter' && presetName.trim()) {
-                          saveCustomPreset();
-                        }
-                      }}
-                      placeholder="e.g., My Custom Layout"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      autoFocus
-                    />
-                  </div>
-
-                  {/* Modal Actions */}
-                  <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t">
-                    <button
-                      onClick={() => setShowSavePresetModal(false)}
-                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={saveCustomPreset}
-                      disabled={!presetName.trim()}
-                      className="px-4 py-2 text-white rounded-lg transition disabled:opacity-50"
-                      style={{ backgroundColor: '#777C6D' }}
-                      onMouseOver={(e) => !presetName.trim() ? null : e.currentTarget.style.backgroundColor = '#656A5C'}
-                      onMouseOut={(e) => !presetName.trim() ? null : e.currentTarget.style.backgroundColor = '#777C6D'}
-                    >
-                      Save Preset
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+            <SavePresetModal
+              showModal={showSavePresetModal}
+              onClose={() => setShowSavePresetModal(false)}
+              presetName={presetName}
+              setPresetName={setPresetName}
+              onSave={saveCustomPreset}
+            />
 
             {/* Section Formatting Panel */}
-            {showFormattingPanel && formattingSection && (
-              <div 
-                className="fixed inset-0 flex items-center justify-center z-50 p-4" 
-                style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
-                onClick={() => setShowFormattingPanel(false)}
-              >
-                <div 
-                  className="bg-white rounded-lg shadow-2xl max-w-lg w-full border border-gray-200"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {/* Modal Header */}
-                  <div className="bg-gray-50 border-b border-gray-200 px-6 py-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="flex-shrink-0">
-                          <svg className="w-6 h-6 text-[#777C6D]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-                          </svg>
-                        </div>
-                        <h3 className="text-lg font-heading font-semibold text-gray-900">
-                          Format: {DEFAULT_SECTIONS.find(s => s.key === formattingSection)?.label}
-                        </h3>
-                      </div>
-                      <button
-                        type="button"
-                        aria-label="Close"
-                        onClick={() => setShowFormattingPanel(false)}
-                        className="p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#777C6D] focus:ring-offset-1"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Modal Content */}
-                  <div className="p-6 space-y-5">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Font Size</label>
-                      <select
-                        value={sectionFormatting[formattingSection]?.fontSize || 'medium'}
-                        onChange={(e) => updateSectionFormatting(formattingSection, { fontSize: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#777C6D] focus:border-transparent"
-                      >
-                        <option value="small">Small</option>
-                        <option value="medium">Medium (Default)</option>
-                        <option value="large">Large</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Font Weight</label>
-                      <select
-                        value={sectionFormatting[formattingSection]?.fontWeight || 'normal'}
-                        onChange={(e) => updateSectionFormatting(formattingSection, { fontWeight: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#777C6D] focus:border-transparent"
-                      >
-                        <option value="light">Light</option>
-                        <option value="normal">Normal (Default)</option>
-                        <option value="bold">Bold</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Text Color</label>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="color"
-                          value={sectionFormatting[formattingSection]?.color || '#000000'}
-                          onChange={(e) => updateSectionFormatting(formattingSection, { color: e.target.value })}
-                          className="h-10 w-20 border border-gray-300 rounded cursor-pointer"
-                        />
-                        <input
-                          type="text"
-                          value={sectionFormatting[formattingSection]?.color || '#000000'}
-                          onChange={(e) => updateSectionFormatting(formattingSection, { color: e.target.value })}
-                          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#777C6D] focus:border-transparent font-mono text-sm"
-                          placeholder="#000000"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Bottom Spacing (px)</label>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="range"
-                          value={sectionFormatting[formattingSection]?.spacing || 24}
-                          onChange={(e) => updateSectionFormatting(formattingSection, { spacing: e.target.value })}
-                          className="flex-1"
-                          min="0"
-                          max="100"
-                        />
-                        <input
-                          type="number"
-                          value={sectionFormatting[formattingSection]?.spacing || 24}
-                          onChange={(e) => updateSectionFormatting(formattingSection, { spacing: e.target.value })}
-                          className="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#777C6D] focus:border-transparent text-sm"
-                          min="0"
-                          max="100"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Modal Actions */}
-                  <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t">
-                    <button
-                      onClick={() => {
-                        const newFormatting = { ...sectionFormatting };
-                        delete newFormatting[formattingSection];
-                        setSectionFormatting(newFormatting);
-                        setShowFormattingPanel(false);
-                      }}
-                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
-                    >
-                      Reset to Default
-                    </button>
-                    <button
-                      onClick={() => setShowFormattingPanel(false)}
-                      className="px-4 py-2 text-white rounded-lg transition"
-                      style={{ backgroundColor: '#777C6D' }}
-                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-                    >
-                      Apply
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+            <SectionFormattingModal
+              showModal={showFormattingPanel}
+              onClose={() => setShowFormattingPanel(false)}
+              formattingSection={formattingSection}
+              sectionFormatting={sectionFormatting}
+              updateSectionFormatting={updateSectionFormatting}
+              setSectionFormatting={setSectionFormatting}
+              DEFAULT_SECTIONS={DEFAULT_SECTIONS}
+            />
 
             {/* Success Message Banner */}
             {successMessage && (
