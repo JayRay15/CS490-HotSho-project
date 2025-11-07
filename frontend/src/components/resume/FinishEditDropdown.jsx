@@ -57,7 +57,7 @@ const FinishEditDropdown = ({
             <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
-            <span className="text-gray-700">Save & Exit</span>
+            <span className="text-gray-700">Save</span>
           </button>
           <button
             onClick={onExitWithoutSaving}
@@ -66,7 +66,7 @@ const FinishEditDropdown = ({
             <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
-            <span className="text-gray-700">Exit Without Saving</span>
+            <span className="text-gray-700">Don't Save</span>
           </button>
         </div>
       )}

@@ -299,6 +299,303 @@ export const validateResumeLength = async (pdfBuffer) => {
 };
 
 /**
+ * Check for professional tone and language
+ */
+export const analyzeProfessionalTone = (text) => {
+  const issues = [];
+  const textLower = text.toLowerCase();
+  
+  // Check for informal language
+  const informalPhrases = [
+    { phrase: /\bkinda\b/gi, replacement: 'somewhat', reason: 'Too informal' },
+    { phrase: /\bgonna\b/gi, replacement: 'going to', reason: 'Too informal' },
+    { phrase: /\bwanna\b/gi, replacement: 'want to', reason: 'Too informal' },
+    { phrase: /\bgotta\b/gi, replacement: 'have to', reason: 'Too informal' },
+    { phrase: /\blots of\b/gi, replacement: 'many', reason: 'Too informal' },
+    { phrase: /\bstuff\b/gi, replacement: 'items/things', reason: 'Too vague' },
+    { phrase: /\bbunch of\b/gi, replacement: 'several', reason: 'Too informal' },
+    { phrase: /\bguys\b/gi, replacement: 'team members', reason: 'Too informal' },
+  ];
+  
+  informalPhrases.forEach(({ phrase, replacement, reason }) => {
+    const matches = text.match(phrase);
+    if (matches) {
+      matches.forEach(match => {
+        issues.push({
+          type: 'tone',
+          message: `${reason}: "${match}" - Consider using "${replacement}"`,
+          severity: 'warning',
+          replacements: [replacement]
+        });
+      });
+    }
+  });
+  
+  // Check for first-person pronouns (should be avoided in resumes)
+  const firstPersonPronouns = text.match(/\b(I|me|my|mine|we|us|our|ours)\b/gi);
+  if (firstPersonPronouns && firstPersonPronouns.length > 0) {
+    issues.push({
+      type: 'tone',
+      message: `Avoid first-person pronouns in resumes. Found: ${firstPersonPronouns.slice(0, 3).join(', ')}`,
+      severity: 'warning',
+      replacements: ['Use action verbs instead']
+    });
+  }
+  
+  // Check for weak action verbs
+  const weakVerbs = [
+    { verb: /\bhelped\b/gi, replacement: 'assisted, supported, facilitated' },
+    { verb: /\bdid\b/gi, replacement: 'executed, performed, completed' },
+    { verb: /\bwas responsible for\b/gi, replacement: 'managed, led, oversaw' },
+    { verb: /\bworked on\b/gi, replacement: 'developed, created, implemented' },
+  ];
+  
+  weakVerbs.forEach(({ verb, replacement }) => {
+    const matches = text.match(verb);
+    if (matches) {
+      issues.push({
+        type: 'tone',
+        message: `Consider stronger action verb. Instead of "${matches[0]}", use: ${replacement}`,
+        severity: 'info',
+        replacements: replacement.split(', ')
+      });
+    }
+  });
+  
+  return issues;
+};
+
+/**
+ * Check format consistency across sections
+ */
+export const checkFormatConsistency = (resume) => {
+  const issues = [];
+  
+  // Check date formats in experience
+  if (resume.sections?.experience && Array.isArray(resume.sections.experience)) {
+    const dateFormats = [];
+    resume.sections.experience.forEach((exp, idx) => {
+      if (exp.startDate) {
+        const format = detectDateFormat(exp.startDate);
+        dateFormats.push({ idx, field: 'startDate', format });
+      }
+      if (exp.endDate && exp.endDate !== 'Present') {
+        const format = detectDateFormat(exp.endDate);
+        dateFormats.push({ idx, field: 'endDate', format });
+      }
+    });
+    
+    // Check if all dates use the same format
+    const uniqueFormats = [...new Set(dateFormats.map(d => d.format))];
+    if (uniqueFormats.length > 1) {
+      issues.push({
+        type: 'format_consistency',
+        section: 'experience',
+        message: `Inconsistent date formats detected. Use consistent format throughout (e.g., "Jan 2020" or "01/2020")`,
+        severity: 'warning',
+        details: `Found formats: ${uniqueFormats.join(', ')}`
+      });
+    }
+  }
+  
+  // Check date formats in education
+  if (resume.sections?.education && Array.isArray(resume.sections.education)) {
+    const dateFormats = [];
+    resume.sections.education.forEach((edu, idx) => {
+      if (edu.startDate) {
+        const format = detectDateFormat(edu.startDate);
+        dateFormats.push({ idx, field: 'startDate', format });
+      }
+      if (edu.endDate && edu.endDate !== 'Present') {
+        const format = detectDateFormat(edu.endDate);
+        dateFormats.push({ idx, field: 'endDate', format });
+      }
+    });
+    
+    const uniqueFormats = [...new Set(dateFormats.map(d => d.format))];
+    if (uniqueFormats.length > 1) {
+      issues.push({
+        type: 'format_consistency',
+        section: 'education',
+        message: `Inconsistent date formats in education. Use consistent format throughout`,
+        severity: 'warning'
+      });
+    }
+  }
+  
+  // Check bullet point consistency
+  if (resume.sections?.experience && Array.isArray(resume.sections.experience)) {
+    resume.sections.experience.forEach((exp, idx) => {
+      if (exp.responsibilities && Array.isArray(exp.responsibilities)) {
+        const startsWithVerb = [];
+        const hasProperPunctuation = [];
+        
+        exp.responsibilities.forEach((resp, respIdx) => {
+          const trimmed = resp.trim();
+          // Check if starts with capital letter and action verb
+          const startsWithCapital = /^[A-Z]/.test(trimmed);
+          startsWithVerb.push(startsWithCapital);
+          
+          // Check punctuation consistency
+          const endsWithPeriod = trimmed.endsWith('.');
+          hasProperPunctuation.push(endsWithPeriod);
+        });
+        
+        // If some bullets have periods and some don't, flag it
+        const periodCount = hasProperPunctuation.filter(Boolean).length;
+        if (periodCount > 0 && periodCount < hasProperPunctuation.length) {
+          issues.push({
+            type: 'format_consistency',
+            section: 'experience',
+            field: `experience_${idx}`,
+            message: `Inconsistent punctuation in bullet points. Either use periods on all bullets or none`,
+            severity: 'warning'
+          });
+        }
+      }
+    });
+  }
+  
+  return issues;
+};
+
+/**
+ * Detect date format pattern
+ */
+const detectDateFormat = (dateStr) => {
+  if (!dateStr) return 'none';
+  if (dateStr === 'Present' || dateStr === 'Current') return 'present';
+  
+  // Mon YYYY (e.g., "Jan 2020")
+  if (/^[A-Z][a-z]{2}\s\d{4}$/.test(dateStr)) return 'Mon YYYY';
+  // Month YYYY (e.g., "January 2020")
+  if (/^[A-Z][a-z]+\s\d{4}$/.test(dateStr)) return 'Month YYYY';
+  // MM/YYYY (e.g., "01/2020")
+  if (/^\d{2}\/\d{4}$/.test(dateStr)) return 'MM/YYYY';
+  // YYYY-MM (e.g., "2020-01")
+  if (/^\d{4}-\d{2}$/.test(dateStr)) return 'YYYY-MM';
+  // YYYY (e.g., "2020")
+  if (/^\d{4}$/.test(dateStr)) return 'YYYY';
+  
+  return 'unknown';
+};
+
+/**
+ * Check for missing or incomplete information
+ */
+export const checkMissingInformation = (resume) => {
+  const warnings = [];
+  const sections = resume.sections || {};
+  
+  // Check contact info completeness
+  const contact = sections.contactInfo || {};
+  if (!contact.name) {
+    warnings.push({
+      type: 'missing_info',
+      section: 'contactInfo',
+      field: 'name',
+      message: 'Name is missing from contact information',
+      severity: 'error'
+    });
+  }
+  if (!contact.location) {
+    warnings.push({
+      type: 'missing_info',
+      section: 'contactInfo',
+      field: 'location',
+      message: 'Location is recommended for contact information',
+      severity: 'warning'
+    });
+  }
+  if (!contact.linkedin) {
+    warnings.push({
+      type: 'missing_info',
+      section: 'contactInfo',
+      field: 'linkedin',
+      message: 'LinkedIn profile URL is recommended',
+      severity: 'info'
+    });
+  }
+  
+  // Check for summary
+  if (!sections.summary || sections.summary.trim().length === 0) {
+    warnings.push({
+      type: 'missing_info',
+      section: 'summary',
+      message: 'Professional summary is recommended to highlight your key qualifications',
+      severity: 'warning'
+    });
+  } else if (sections.summary.trim().length < 100) {
+    warnings.push({
+      type: 'missing_info',
+      section: 'summary',
+      message: 'Summary is too brief. Aim for 2-3 sentences (100+ characters)',
+      severity: 'info'
+    });
+  }
+  
+  // Check experience section
+  if (!sections.experience || sections.experience.length === 0) {
+    warnings.push({
+      type: 'missing_info',
+      section: 'experience',
+      message: 'No work experience listed. Add your professional experience',
+      severity: 'error'
+    });
+  } else {
+    sections.experience.forEach((exp, idx) => {
+      if (!exp.description && (!exp.responsibilities || exp.responsibilities.length === 0)) {
+        warnings.push({
+          type: 'missing_info',
+          section: 'experience',
+          field: `experience_${idx}`,
+          message: `Experience entry "${exp.company || 'Untitled'}" is missing description or responsibilities`,
+          severity: 'warning'
+        });
+      }
+      if (exp.responsibilities && exp.responsibilities.length < 2) {
+        warnings.push({
+          type: 'missing_info',
+          section: 'experience',
+          field: `experience_${idx}`,
+          message: `Experience entry "${exp.company || 'Untitled'}" should have at least 2-3 bullet points`,
+          severity: 'info'
+        });
+      }
+    });
+  }
+  
+  // Check education section
+  if (!sections.education || sections.education.length === 0) {
+    warnings.push({
+      type: 'missing_info',
+      section: 'education',
+      message: 'No education listed. Add your educational background',
+      severity: 'warning'
+    });
+  }
+  
+  // Check skills section
+  if (!sections.skills || sections.skills.length === 0) {
+    warnings.push({
+      type: 'missing_info',
+      section: 'skills',
+      message: 'No skills listed. Add relevant technical and soft skills',
+      severity: 'warning'
+    });
+  } else if (sections.skills.length < 5) {
+    warnings.push({
+      type: 'missing_info',
+      section: 'skills',
+      message: 'Consider adding more skills (aim for 8-12 relevant skills)',
+      severity: 'info'
+    });
+  }
+  
+  return warnings;
+};
+
+/**
  * Extract all text content from resume sections for grammar checking
  */
 export const extractTextFromResume = (resume) => {
@@ -470,12 +767,86 @@ export const validateResume = async (resume, pdfBuffer) => {
     });
   }
   
+  // 4. Check for missing information
+  const missingInfoWarnings = checkMissingInformation(resume);
+  missingInfoWarnings.forEach(warning => {
+    if (warning.severity === 'error') {
+      validationResults.isValid = false;
+      validationResults.errors.push(warning);
+    } else {
+      validationResults.warnings.push(warning);
+    }
+  });
+  
+  // 5. Check format consistency
+  const formatIssues = checkFormatConsistency(resume);
+  formatIssues.forEach(issue => {
+    validationResults.warnings.push(issue);
+  });
+  
+  // 6. Professional tone analysis on key sections
+  const sectionsToAnalyze = [
+    { text: resume.sections?.summary, section: 'summary' },
+  ];
+  
+  // Analyze experience descriptions
+  if (resume.sections?.experience && Array.isArray(resume.sections.experience)) {
+    resume.sections.experience.forEach((exp, idx) => {
+      if (exp.description) {
+        sectionsToAnalyze.push({ 
+          text: exp.description, 
+          section: 'experience',
+          field: `experience_${idx}_description`
+        });
+      }
+      if (exp.responsibilities && Array.isArray(exp.responsibilities)) {
+        exp.responsibilities.forEach((resp, respIdx) => {
+          sectionsToAnalyze.push({ 
+            text: resp, 
+            section: 'experience',
+            field: `experience_${idx}_resp_${respIdx}`
+          });
+        });
+      }
+    });
+  }
+  
+  // Analyze project descriptions
+  if (resume.sections?.projects && Array.isArray(resume.sections.projects)) {
+    resume.sections.projects.forEach((proj, idx) => {
+      if (proj.description) {
+        sectionsToAnalyze.push({ 
+          text: proj.description, 
+          section: 'projects',
+          field: `project_${idx}_description`
+        });
+      }
+    });
+  }
+  
+  // Run tone analysis
+  sectionsToAnalyze.forEach(item => {
+    if (item.text) {
+      const toneIssues = analyzeProfessionalTone(item.text);
+      toneIssues.forEach(issue => {
+        validationResults.warnings.push({
+          ...issue,
+          section: item.section,
+          field: item.field
+        });
+      });
+    }
+  });
+  
   // Summary counts
   validationResults.summary = {
     totalErrors: validationResults.errors.length,
     totalWarnings: validationResults.warnings.length,
     contactInfoValid: emailValidation.valid && phoneValidation.valid,
-    grammarIssues: grammarErrors.reduce((sum, g) => sum + g.errors.length, 0)
+    grammarIssues: grammarErrors.reduce((sum, g) => sum + g.errors.length, 0),
+    missingInfoCount: missingInfoWarnings.length,
+    formatIssuesCount: formatIssues.length,
+    toneIssuesCount: validationResults.warnings.filter(w => w.type === 'tone').length
   };
   
   return validationResults;
