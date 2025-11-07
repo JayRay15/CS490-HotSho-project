@@ -26,6 +26,7 @@ import {
   optimizeResumeSkills,
   tailorExperienceForJob
 } from "../../api/aiResume";
+import { getValidationStatus } from "../../api/resumeValidation";
 import api from "../../api/axios";
 import Container from "../../components/Container";
 import Card from "../../components/Card";
@@ -191,7 +192,8 @@ export default function ResumeTemplates() {
     isValidating,
     validationStatus,
     setValidationStatus,
-    handleValidateResume: validateResumeHook
+    handleValidateResume: validateResumeHook,
+    checkValidationStatus
   } = useResumeValidation(showViewResumeModal, viewingResume);
   
   const [showValidationPanel, setShowValidationPanel] = useState(false);
@@ -1455,40 +1457,6 @@ export default function ResumeTemplates() {
     }
   };
 
-  // UC-053: Check validation status
-  const checkValidationStatus = async (resumeId) => {
-    try {
-      await authWrap();
-      const response = await getValidationStatus(resumeId);
-      const status = response.data?.data;
-      
-      let badgeStatus = 'not-validated';
-      if (status.hasBeenValidated) {
-        if (status.isStale) {
-          badgeStatus = 'stale';
-        } else if (status.isValid) {
-          badgeStatus = 'valid';
-        } else {
-          badgeStatus = 'invalid';
-        }
-      }
-      
-      setValidationStatus(prev => ({
-        ...prev,
-        [resumeId]: {
-          status: badgeStatus,
-          lastValidation: status.lastValidation,
-          validatedAt: status.validatedAt
-        }
-      }));
-      
-      return badgeStatus;
-    } catch (error) {
-      console.error('Error checking validation status:', error);
-      return 'not-validated';
-    }
-  };
-
   // UC-053: Toggle edit mode
   const toggleEditMode = () => {
     if (isEditMode) {
@@ -1571,11 +1539,13 @@ export default function ResumeTemplates() {
       
       setSuccessMessage('✓ Resume updated successfully');
       setTimeout(() => setSuccessMessage(null), 3000);
+      setIsEditMode(false); // Exit edit mode
       setShowEditDropdown(false);
       await loadAll();
     } catch (error) {
       console.error('Error saving edited content:', error);
-      setError('Failed to save changes');
+      setSuccessMessage('❌ Failed to save changes');
+      setTimeout(() => setSuccessMessage(null), 5000);
     }
   };
 
@@ -1584,7 +1554,8 @@ export default function ResumeTemplates() {
     const status = validationStatus[resumeId];
     
     if (!status || status.status !== 'valid') {
-      setError('⚠ Please validate your resume before exporting');
+      setSuccessMessage('⚠️ Please validate your resume before exporting');
+      setTimeout(() => setSuccessMessage(null), 5000);
       // Auto-scroll to show validation button or open validation
       return false;
     }

@@ -106,12 +106,47 @@ export const useResumeValidation = (showViewResumeModal, viewingResume) => {
     }
   };
 
+  // Check validation status for a resume (used for badges in resume list)
+  const checkValidationStatus = async (resumeId) => {
+    try {
+      await authWrap();
+      const response = await getValidationStatus(resumeId);
+      const status = response.data?.data;
+      
+      let badgeStatus = 'not-validated';
+      if (status.hasBeenValidated) {
+        if (status.isStale) {
+          badgeStatus = 'stale';
+        } else if (status.isValid) {
+          badgeStatus = 'valid';
+        } else {
+          badgeStatus = 'invalid';
+        }
+      }
+      
+      setValidationStatus(prev => ({
+        ...prev,
+        [resumeId]: {
+          status: badgeStatus,
+          lastValidation: status.lastValidation,
+          validatedAt: status.validatedAt
+        }
+      }));
+      
+      return badgeStatus;
+    } catch (error) {
+      console.error('Error checking validation status:', error);
+      return 'not-validated';
+    }
+  };
+
   return {
     validationResults,
     setValidationResults,
     isValidating,
     validationStatus,
     setValidationStatus,
-    handleValidateResume
+    handleValidateResume,
+    checkValidationStatus
   };
 };
