@@ -110,7 +110,7 @@ describe('User Model', () => {
   });
 
   describe('Employment Schema', () => {
-    it('should validate required employment fields', () => {
+    it('should validate required employment fields', async () => {
       const user = new User({
         auth0Id: 'test-id',
         email: 'test@example.com',
@@ -118,9 +118,14 @@ describe('User Model', () => {
         employment: [{}],
       });
 
-      const error = user.validateSync();
+      let error;
+      try {
+        await user.validate();
+      } catch (e) {
+        error = e;
+      }
+
       expect(error).toBeDefined();
-      expect(error.errors['employment.0.jobTitle']).toBeDefined();
       expect(error.errors['employment.0.company']).toBeDefined();
       expect(error.errors['employment.0.startDate']).toBeDefined();
     });

@@ -1,8 +1,11 @@
+import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useMemo } from "react";
 
 export default function Breadcrumb() {
+
     const location = useLocation();
+    const [jobLabel, setJobLabel] = React.useState(null);
 
     const breadcrumbs = useMemo(() => {
         const paths = location.pathname.split('/').filter(Boolean);
@@ -15,16 +18,19 @@ export default function Breadcrumb() {
         let currentPath = '';
         paths.forEach((path, index) => {
             currentPath += `/${path}`;
-            
-            // Format the label (capitalize, remove hyphens)
             let label = path
                 .split('-')
                 .map(word => word.charAt(0).toUpperCase() + word.slice(1))
                 .join(' ');
-            
+
             // Custom label for resumes page
             if (path === 'resumes') {
                 label = 'Resumes & Cover Letters';
+            }
+
+            // If last segment looks like a MongoDB ObjectId, use jobLabel if available
+            if (index === paths.length - 1 && /^[a-f\d]{24}$/i.test(path) && jobLabel) {
+                label = jobLabel;
             }
 
             crumbs.push({
@@ -33,9 +39,32 @@ export default function Breadcrumb() {
                 isLast: index === paths.length - 1
             });
         });
-
         return crumbs;
+    }, [location.pathname, jobLabel]);
+
+    // Fetch job details if last segment is ObjectId
+    React.useEffect(() => {
+        const paths = location.pathname.split('/').filter(Boolean);
+        const last = paths[paths.length - 1];
+        if (/^[a-f\d]{24}$/i.test(last)) {
+            // Try to fetch job details
+            import('../api/salary').then(api => {
+                api.getSalaryResearch(last).then(res => {
+                    const job = res.data?.data?.job;
+                    if (job && job.title && job.company) {
+                        setJobLabel(`${job.title} @ ${job.company}`);
+                    } else if (job && job.title) {
+                        setJobLabel(job.title);
+                    }
+                }).catch(() => {
+                    setJobLabel(null);
+                });
+            });
+        } else {
+            setJobLabel(null);
+        }
     }, [location.pathname]);
+
 
     // Don't show breadcrumbs on root or single-level paths
     if (breadcrumbs.length <= 1) {
