@@ -26,36 +26,57 @@ export const validateEmail = (email) => {
 
 /**
  * Validate phone number format
+ * Supports multiple common US phone formats:
+ * - 1234567890
+ * - 123 456 7890
+ * - 123-456-7890
+ * - (123) 456-7890
+ * - (123)-456-7890
  */
 export const validatePhoneNumber = (phone) => {
   if (!phone) {
     return { valid: false, message: 'Phone number is required' };
   }
   
-  try {
-    // Try to parse with US as default country
-    const phoneNumber = parsePhoneNumber(phone, 'US');
-    
-    if (!phoneNumber.isValid()) {
-      return { valid: false, message: 'Invalid phone number format' };
-    }
-    
-    return { 
-      valid: true, 
-      message: 'Valid phone number',
-      formatted: phoneNumber.formatInternational()
-    };
-  } catch (error) {
-    // Fallback: check if it's a valid phone number without country code
-    if (isValidPhoneNumber(phone, 'US')) {
-      return { valid: true, message: 'Valid phone number' };
-    }
-    
+  // Remove all non-digit characters to normalize
+  const digitsOnly = phone.replace(/\D/g, '');
+  
+  // Check if we have exactly 10 digits (US phone number)
+  if (digitsOnly.length !== 10) {
     return { 
       valid: false, 
-      message: 'Invalid phone number format. Please use format: (XXX) XXX-XXXX or XXX-XXX-XXXX' 
+      message: 'Phone number must contain exactly 10 digits' 
     };
   }
+  
+  // Check if the normalized number starts with a valid area code (2-9)
+  if (digitsOnly[0] < '2' || digitsOnly[0] > '9') {
+    return { 
+      valid: false, 
+      message: 'Invalid area code - must start with 2-9' 
+    };
+  }
+  
+  try {
+    // Try to parse with libphonenumber-js for additional validation
+    const phoneNumber = parsePhoneNumber(digitsOnly, 'US');
+    
+    if (phoneNumber.isValid()) {
+      return { 
+        valid: true, 
+        message: 'Valid phone number',
+        formatted: phoneNumber.formatInternational()
+      };
+    }
+  } catch (error) {
+    // If parsing fails but we have 10 valid digits, still accept it
+  }
+  
+  // If we have 10 digits with valid area code, accept it
+  return { 
+    valid: true, 
+    message: 'Valid phone number' 
+  };
 };
 
 /**
