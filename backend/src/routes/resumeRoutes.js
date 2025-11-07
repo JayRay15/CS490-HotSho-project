@@ -27,6 +27,10 @@ import {
   exportResumeHtml,
   exportResumeText,
 } from "../controllers/resumeController.js";
+import {
+  validateResumeEndpoint,
+  getValidationStatus
+} from "../controllers/resumeValidationController.js";
 
 const router = express.Router();
 
@@ -54,6 +58,10 @@ router.get("/resumes/:id/optimize-skills", checkJwt, optimizeSkills);
 
 // UC-50: Experience tailoring
 router.get("/resumes/:id/tailor-experience", checkJwt, tailorExperienceForJob);
+
+// UC-53: Resume validation routes
+router.post("/resumes/:id/validate", checkJwt, validateResumeEndpoint);
+router.get("/resumes/:id/validation-status", checkJwt, getValidationStatus);
 
 // UC-51: Export routes
 router.get("/resumes/:id/pdf", checkJwt, generateResumePDF);
