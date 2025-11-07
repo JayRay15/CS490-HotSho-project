@@ -2975,7 +2975,8 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken, editingJob }) {
     startDate: '',
     endDate: '',
     isCurrentPosition: false,
-    description: ''
+    description: '',
+    salary: ''
   });
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -2999,13 +3000,14 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken, editingJob }) {
       }
 
       setFormData({
-        jobTitle: editingJob.jobTitle || '',
+        jobTitle: editingJob.jobTitle || editingJob.position || '',
         company: editingJob.company || '',
         location: editingJob.location || '',
         startDate: formattedStartDate,
         endDate: formattedEndDate,
         isCurrentPosition: editingJob.isCurrentPosition || false,
-        description: editingJob.description || ''
+        description: editingJob.description || '',
+        salary: editingJob.salary ? String(editingJob.salary) : ''
       });
       setDescCharCount(editingJob.description?.length || 0);
     } else {
@@ -3017,7 +3019,8 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken, editingJob }) {
         startDate: '',
         endDate: '',
         isCurrentPosition: false,
-        description: ''
+        description: '',
+        salary: ''
       });
       setDescCharCount(0);
     }
@@ -3151,13 +3154,21 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken, editingJob }) {
       const token = await getToken();
       setAuthToken(token);
 
+      // Map jobTitle to position for backend compatibility, keep both fields for compatibility
+      const apiData = {
+        ...formData,
+        position: formData.jobTitle, // Backend expects 'position'
+        jobTitle: formData.jobTitle,  // Keep jobTitle for backward compatibility
+        salary: formData.salary ? parseFloat(formData.salary) : undefined
+      };
+
       let response;
       if (isEditMode) {
         // Edit existing employment
-        response = await api.put(`/api/users/employment/${editingJob._id}`, formData);
+        response = await api.put(`/api/users/employment/${editingJob._id}`, apiData);
       } else {
         // Add new employment
-        response = await api.post('/api/users/employment', formData);
+        response = await api.post('/api/users/employment', apiData);
       }
       
       const successMsg = isEditMode 
@@ -3165,7 +3176,7 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken, editingJob }) {
         : 'Employment entry added successfully!';
       
       // Call success callback with updated employment list and message
-      onSuccess(response.data.data.employment, successMsg);
+      onSuccess(response.data.data.employment || response.data.data, successMsg);
       
       // For add mode only: clear form and show inline success message
       if (!isEditMode) {
@@ -3176,7 +3187,8 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken, editingJob }) {
           startDate: '',
           endDate: '',
           isCurrentPosition: false,
-          description: ''
+          description: '',
+          salary: ''
         });
         setDescCharCount(0);
         setError(null);
@@ -3201,7 +3213,8 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken, editingJob }) {
       startDate: '',
       endDate: '',
       isCurrentPosition: false,
-      description: ''
+      description: '',
+      salary: ''
     });
     setDescCharCount(0);
     setError(null);
@@ -3352,6 +3365,28 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken, editingJob }) {
               <label htmlFor="isCurrentPosition" className="ml-2 block text-sm text-gray-700">
                 I currently work here
               </label>
+            </div>
+
+            {/* Annual Salary */}
+            <div>
+              <label htmlFor="salary" className="block text-sm font-medium text-gray-700 mb-2">
+                Annual Salary (USD)
+              </label>
+              <input
+                type="number"
+                id="salary"
+                name="salary"
+                value={formData.salary || ''}
+                onChange={handleInputChange}
+                min="0"
+                max="10000000"
+                step="1000"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="e.g., 75000"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                💡 Add your current salary to see personalized comparisons in Salary Research
+              </p>
             </div>
 
             {/* Job Description */}

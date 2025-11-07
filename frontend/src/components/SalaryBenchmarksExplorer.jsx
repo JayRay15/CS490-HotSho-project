@@ -95,11 +95,11 @@ const SalaryBenchmarksExplorer = () => {
 
   // Prepare radar chart data for current selection
   const radarData = [
-    { metric: 'Min Salary', value: benchmarkData.benchmark.min / 1000 },
-    { metric: 'Median Salary', value: benchmarkData.benchmark.median / 1000 },
-    { metric: 'Max Salary', value: benchmarkData.benchmark.max / 1000 },
+    { metric: 'Minimum', value: benchmarkData.benchmark.min / 1000 },
+    { metric: 'Median', value: benchmarkData.benchmark.median / 1000 },
+    { metric: 'Maximum', value: benchmarkData.benchmark.max / 1000 },
     { metric: 'Benefits', value: benchmarkData.benchmark.benefits / 1000 },
-    { metric: 'Total Comp', value: benchmarkData.totalCompensation / 1000 }
+    { metric: 'Total', value: benchmarkData.totalCompensation / 1000 }
   ];
 
   return (
@@ -173,32 +173,32 @@ const SalaryBenchmarksExplorer = () => {
       {/* Current Selection Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <Card className="p-6 bg-blue-50">
-          <h3 className="text-sm font-medium text-gray-600 mb-2">Minimum</h3>
+          <h3 className="text-sm font-medium text-gray-600 mb-3">Minimum</h3>
           <p className="text-2xl font-bold text-blue-600">
             ${benchmarkData.benchmark.min.toLocaleString()}
           </p>
         </Card>
 
         <Card className="p-6 bg-green-50">
-          <h3 className="text-sm font-medium text-gray-600 mb-2">Median</h3>
+          <h3 className="text-sm font-medium text-gray-600 mb-3">Median</h3>
           <p className="text-2xl font-bold text-green-600">
             ${benchmarkData.benchmark.median.toLocaleString()}
           </p>
         </Card>
 
         <Card className="p-6 bg-purple-50">
-          <h3 className="text-sm font-medium text-gray-600 mb-2">Maximum</h3>
+          <h3 className="text-sm font-medium text-gray-600 mb-3">Maximum</h3>
           <p className="text-2xl font-bold text-purple-600">
             ${benchmarkData.benchmark.max.toLocaleString()}
           </p>
         </Card>
 
         <Card className="p-6 bg-orange-50">
-          <h3 className="text-sm font-medium text-gray-600 mb-2">Total Comp</h3>
+          <h3 className="text-sm font-medium text-gray-600 mb-3">Total Comp</h3>
           <p className="text-2xl font-bold text-orange-600">
             ${benchmarkData.totalCompensation.toLocaleString()}
           </p>
-          <p className="text-xs text-gray-500 mt-1">Inc. benefits</p>
+          <p className="text-xs text-gray-500 mt-2">Inc. benefits</p>
         </Card>
       </div>
 
@@ -206,14 +206,14 @@ const SalaryBenchmarksExplorer = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         {/* Industry Comparison */}
         <Card className="p-6">
-          <h2 className="text-xl font-bold mb-4">
+          <h2 className="text-xl font-bold mb-6">
             Median Salary by Industry ({filters.experienceLevel} Level)
           </h2>
           <ResponsiveContainer width="100%" height={400}>
-            <BarChart data={industryComparisonData} layout="vertical">
+            <BarChart data={industryComparisonData} layout="vertical" margin={{ top: 5, right: 20, bottom: 5, left: 5 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis type="number" tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
-              <YAxis type="category" dataKey="industry" width={100} />
+              <YAxis type="category" dataKey="industry" width={110} tick={{ fontSize: 12 }} />
               <Tooltip formatter={(value) => `$${value.toLocaleString()}`} />
               <Bar dataKey="median" fill="#3b82f6" />
             </BarChart>
@@ -222,16 +222,16 @@ const SalaryBenchmarksExplorer = () => {
 
         {/* Experience Level Progression */}
         <Card className="p-6">
-          <h2 className="text-xl font-bold mb-4">
+          <h2 className="text-xl font-bold mb-6">
             Salary by Experience Level ({filters.industry})
           </h2>
           <ResponsiveContainer width="100%" height={400}>
-            <BarChart data={experienceLevelData}>
+            <BarChart data={experienceLevelData} margin={{ top: 5, right: 20, bottom: 5, left: 5 }}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="level" />
+              <XAxis dataKey="level" tick={{ fontSize: 12 }} />
               <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
               <Tooltip formatter={(value) => `$${value.toLocaleString()}`} />
-              <Legend />
+              <Legend wrapperStyle={{ paddingTop: '20px' }} />
               <Bar dataKey="min" fill="#ef4444" name="Minimum" />
               <Bar dataKey="median" fill="#3b82f6" name="Median" />
               <Bar dataKey="max" fill="#10b981" name="Maximum" />
@@ -242,47 +242,57 @@ const SalaryBenchmarksExplorer = () => {
 
       {/* Radar Chart */}
       <Card className="p-6 mb-8">
-        <h2 className="text-xl font-bold mb-4">Compensation Profile</h2>
-        <ResponsiveContainer width="100%" height={400}>
-          <RadarChart data={radarData}>
-            <PolarGrid />
-            <PolarAngleAxis dataKey="metric" />
-            <PolarRadiusAxis angle={90} domain={[0, 'auto']} />
-            <Radar
-              name="Salary (thousands)"
-              dataKey="value"
-              stroke="#3b82f6"
-              fill="#3b82f6"
-              fillOpacity={0.6}
-            />
-            <Tooltip formatter={(value) => `$${value}k`} />
-          </RadarChart>
-        </ResponsiveContainer>
+        <h2 className="text-xl font-bold mb-6">Compensation Profile</h2>
+        <div className="flex justify-center">
+          <ResponsiveContainer width="100%" height={450}>
+            <RadarChart data={radarData} margin={{ top: 20, right: 60, bottom: 20, left: 60 }}>
+              <PolarGrid />
+              <PolarAngleAxis 
+                dataKey="metric" 
+                tick={{ fontSize: 13, fontWeight: 500 }}
+                dy={-5}
+              />
+              <PolarRadiusAxis 
+                angle={90} 
+                domain={[0, 'auto']} 
+                tick={{ fontSize: 11 }}
+              />
+              <Radar
+                name="Salary (thousands)"
+                dataKey="value"
+                stroke="#3b82f6"
+                fill="#3b82f6"
+                fillOpacity={0.6}
+              />
+              <Tooltip formatter={(value) => `$${value}k`} />
+            </RadarChart>
+          </ResponsiveContainer>
+        </div>
       </Card>
 
       {/* Details Table */}
-      <Card className="p-6">
-        <h2 className="text-xl font-bold mb-4">Detailed Breakdown</h2>
+      <Card className="p-6 mb-6">
+        <h2 className="text-xl font-bold mb-6">Detailed Breakdown</h2>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Experience Level
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Minimum
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Median
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Maximum
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Benefits
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                <th className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Total Comp
                 </th>
               </tr>
@@ -290,20 +300,20 @@ const SalaryBenchmarksExplorer = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {experienceLevelData.map((level, index) => (
                 <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900">{level.level}</td>
-                  <td className="px-4 py-3 text-sm text-gray-900 text-right">
+                  <td className="px-6 py-4 text-sm font-medium text-gray-900 whitespace-nowrap">{level.level}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900 text-right whitespace-nowrap">
                     ${level.min.toLocaleString()}
                   </td>
-                  <td className="px-4 py-3 text-sm font-bold text-blue-600 text-right">
+                  <td className="px-6 py-4 text-sm font-bold text-blue-600 text-right whitespace-nowrap">
                     ${level.median.toLocaleString()}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-900 text-right">
+                  <td className="px-6 py-4 text-sm text-gray-900 text-right whitespace-nowrap">
                     ${level.max.toLocaleString()}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600 text-right">
+                  <td className="px-6 py-4 text-sm text-gray-600 text-right whitespace-nowrap">
                     ${level.benefits.toLocaleString()}
                   </td>
-                  <td className="px-4 py-3 text-sm font-semibold text-green-600 text-right">
+                  <td className="px-6 py-4 text-sm font-semibold text-green-600 text-right whitespace-nowrap">
                     ${(level.median + level.benefits).toLocaleString()}
                   </td>
                 </tr>
@@ -314,8 +324,8 @@ const SalaryBenchmarksExplorer = () => {
       </Card>
 
       {/* Adjustment Info */}
-      <Card className="p-4 bg-blue-50 border border-blue-200">
-        <p className="text-sm text-blue-800">
+      <Card className="p-5 bg-blue-50 border border-blue-200">
+        <p className="text-sm text-blue-800 leading-relaxed">
           <strong>Location Adjustment:</strong> {filters.location} has a {benchmarkData.filters.locationMultiplier}x multiplier applied. 
           This accounts for cost of living differences across regions.
         </p>

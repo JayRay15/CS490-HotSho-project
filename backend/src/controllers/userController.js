@@ -337,7 +337,7 @@ export const deleteAccount = asyncHandler(async (req, res) => {
 // POST /api/users/employment - Add employment entry
 export const addEmployment = asyncHandler(async (req, res) => {
   const userId = req.auth?.userId || req.auth?.payload?.sub;
-  const { jobTitle, company, location, startDate, endDate, isCurrentPosition, description } = req.body;
+  const { jobTitle, company, location, startDate, endDate, isCurrentPosition, description, salary, position } = req.body;
 
   if (!userId) {
     const { response, statusCode } = errorResponse(
@@ -423,7 +423,8 @@ export const addEmployment = asyncHandler(async (req, res) => {
 
   // Create employment entry
   const employmentEntry = {
-    jobTitle: jobTitle.trim(),
+    jobTitle: jobTitle?.trim() || position?.trim() || '',
+    position: position?.trim() || jobTitle?.trim() || '',
     company: company.trim(),
     location: location?.trim() || '',
     startDate: (() => {
@@ -441,7 +442,8 @@ export const addEmployment = asyncHandler(async (req, res) => {
       return new Date(endDate);
     })() : null),
     isCurrentPosition: Boolean(isCurrentPosition),
-    description: description?.trim() || ''
+    description: description?.trim() || '',
+    salary: salary !== undefined && salary !== null && salary !== '' ? Number(salary) : undefined
   };
 
   // Add to user's employment array
@@ -470,7 +472,7 @@ export const addEmployment = asyncHandler(async (req, res) => {
 export const updateEmployment = asyncHandler(async (req, res) => {
   const userId = req.auth?.userId || req.auth?.payload?.sub;
   const { employmentId } = req.params;
-  const { jobTitle, company, location, startDate, endDate, isCurrentPosition, description } = req.body;
+  const { jobTitle, company, location, startDate, endDate, isCurrentPosition, description, salary, position } = req.body;
 
   if (!userId) {
     const { response, statusCode } = errorResponse(
@@ -551,7 +553,8 @@ export const updateEmployment = asyncHandler(async (req, res) => {
 
   // Update employment entry
   const updatedEmployment = {
-    jobTitle: jobTitle.trim(),
+    jobTitle: jobTitle?.trim() || position?.trim() || '',
+    position: position?.trim() || jobTitle?.trim() || '',
     company: company.trim(),
     location: location?.trim() || '',
     startDate: (() => {
@@ -569,23 +572,30 @@ export const updateEmployment = asyncHandler(async (req, res) => {
       return new Date(endDate);
     })() : null),
     isCurrentPosition: Boolean(isCurrentPosition),
-    description: description?.trim() || ''
+    description: description?.trim() || '',
+    salary: salary !== undefined && salary !== null && salary !== '' ? Number(salary) : undefined
   };
 
   // Find user and update specific employment entry
+  const updateFields = {
+    'employment.$.jobTitle': updatedEmployment.jobTitle,
+    'employment.$.position': updatedEmployment.position,
+    'employment.$.company': updatedEmployment.company,
+    'employment.$.location': updatedEmployment.location,
+    'employment.$.startDate': updatedEmployment.startDate,
+    'employment.$.endDate': updatedEmployment.endDate,
+    'employment.$.isCurrentPosition': updatedEmployment.isCurrentPosition,
+    'employment.$.description': updatedEmployment.description
+  };
+  
+  // Only set salary if it's provided
+  if (updatedEmployment.salary !== undefined) {
+    updateFields['employment.$.salary'] = updatedEmployment.salary;
+  }
+
   const user = await User.findOneAndUpdate(
     { auth0Id: userId, 'employment._id': employmentId },
-    { 
-      $set: {
-        'employment.$.jobTitle': updatedEmployment.jobTitle,
-        'employment.$.company': updatedEmployment.company,
-        'employment.$.location': updatedEmployment.location,
-        'employment.$.startDate': updatedEmployment.startDate,
-        'employment.$.endDate': updatedEmployment.endDate,
-        'employment.$.isCurrentPosition': updatedEmployment.isCurrentPosition,
-        'employment.$.description': updatedEmployment.description
-      }
-    },
+    { $set: updateFields },
     { new: true, runValidators: true }
   );
 
