@@ -18,7 +18,8 @@ jest.unstable_mockModule('../email.js', () => ({
 
 const { User } = await import('../../models/User.js');
 const { sendFinalDeletionEmail } = await import('../email.js');
-const { cleanupExpiredAccounts, startCleanupSchedule } = await import('../cleanupDeletedUsers.js');
+const cleanupModule = await import('../cleanupDeletedUsers.js');
+const { cleanupExpiredAccounts, startCleanupSchedule } = cleanupModule;
 
 describe('cleanupDeletedUsers utility (DEPRECATED)', () => {
   let consoleLogSpy;
@@ -37,6 +38,7 @@ describe('cleanupDeletedUsers utility (DEPRECATED)', () => {
     consoleLogSpy.mockRestore();
     consoleWarnSpy.mockRestore();
     consoleErrorSpy.mockRestore();
+    jest.clearAllTimers();
     jest.useRealTimers();
   });
 
@@ -213,9 +215,34 @@ describe('cleanupDeletedUsers utility (DEPRECATED)', () => {
   });
 
   describe('startCleanupSchedule', () => {
-    it.skip('should run cleanup immediately on startup', async () => {
-      // Skipping this test as it's testing implementation details of a deprecated function
-      // The startCleanupSchedule function is deprecated and will be removed
+    it('should run cleanup immediately on startup', async () => {
+      // Use real timers for the immediate startup invocation to let promises resolve
+      jest.useRealTimers();
+
+      // Make the underlying User.find resolve to an empty list so the cleanup resolves
+      mockUser.find.mockResolvedValue([]);
+
+      // capture any real interval IDs so we can clear them after the test
+      const origSetInterval = global.setInterval;
+      const intervalIds = [];
+      global.setInterval = (fn, ms) => {
+        const id = origSetInterval(fn, ms);
+        intervalIds.push(id);
+        return id;
+      };
+
+      startCleanupSchedule();
+
+      // wait a tick for the initial promise chain to resolve
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockUser.find).toHaveBeenCalled();
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('Initial cleanup completed'), expect.any(Object));
+
+      // clear any real intervals created by the function
+      intervalIds.forEach(id => clearInterval(id));
+      global.setInterval = origSetInterval;
+      jest.useFakeTimers();
     });
 
     it('should schedule cleanup to run every 24 hours', () => {
@@ -231,9 +258,58 @@ describe('cleanupDeletedUsers utility (DEPRECATED)', () => {
       );
     });
 
-    it.skip('should handle initial cleanup errors gracefully', async () => {
-      // Skipping this test as it's testing implementation details of a deprecated function
-      // The startCleanupSchedule function is deprecated and will be removed
+    it('should handle initial cleanup errors gracefully', async () => {
+      jest.useRealTimers();
+
+      const error = new Error('Initial cleanup failure');
+      mockUser.find.mockRejectedValue(error);
+
+      // capture any real interval IDs so we can clear them after the test
+      const origSetInterval2 = global.setInterval;
+      const intervalIds2 = [];
+      global.setInterval = (fn, ms) => {
+        const id = origSetInterval2(fn, ms);
+        intervalIds2.push(id);
+        return id;
+      };
+
+      startCleanupSchedule();
+
+      // wait for the promise rejection to be handled
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockUser.find).toHaveBeenCalled();
+      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Initial cleanup failed'), error);
+
+      // clear any real intervals created by the function
+      intervalIds2.forEach(id => clearInterval(id));
+      global.setInterval = origSetInterval2;
+      jest.useFakeTimers();
+    });
+
+    it('should run scheduled cleanup job and log failures', async () => {
+      // First call (immediate) resolves; second scheduled call will reject
+      mockUser.find.mockResolvedValueOnce([]).mockRejectedValueOnce(new Error('Scheduled failure'));
+
+      startCleanupSchedule();
+
+      // Immediate first call should have happened
+      expect(mockUser.find).toHaveBeenCalled();
+
+      // Advance timers by 24 hours to trigger the interval
+      const CLEANUP_INTERVAL = 24 * 60 * 60 * 1000;
+      jest.advanceTimersByTime(CLEANUP_INTERVAL);
+
+      // The interval logs synchronously
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('Running scheduled cleanup job'));
+
+  // Allow any promise rejections to be processed
+  await Promise.resolve();
+
+  // The scheduled invocation may log either the scheduled failure message or the internal cleanup job error.
+  expect(consoleErrorSpy).toHaveBeenCalled();
+  const loggedError = consoleErrorSpy.mock.calls.some(call => call.some(arg => arg instanceof Error));
+  expect(loggedError).toBe(true);
     });
   });
 
