@@ -1,6 +1,6 @@
 // UC-50: Experience Tailoring Custom Hook
 import { useState } from 'react';
-import { tailorExperienceForJob } from '../api/resumes';
+import { tailorExperienceForJob } from '../api/aiResume';
 
 export function useExperienceTailoring(authWrap) {
   const [showExperienceTailoring, setShowExperienceTailoring] = useState(false);
