@@ -26,10 +26,10 @@ const RenameResumeModal = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="bg-blue-50 border-b border-blue-100 px-6 py-4">
+        <div className="bg-gray-50 border-b border-gray-100 px-6 py-4">
           <div className="flex items-center space-x-3">
             <div className="flex-shrink-0">
-              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
             </div>
@@ -53,7 +53,7 @@ const RenameResumeModal = ({
               }
             }}
             disabled={isRenaming}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent disabled:bg-gray-100"
             placeholder="Enter resume name"
             autoFocus
           />
@@ -71,7 +71,10 @@ const RenameResumeModal = ({
           <button
             onClick={onRename}
             disabled={isRenaming || !renameValue.trim()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+            className="px-4 py-2 text-white rounded-lg transition disabled:opacity-50"
+            style={{ backgroundColor: '#777C6D' }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
           >
             {isRenaming ? "Renaming..." : "Rename"}
           </button>
