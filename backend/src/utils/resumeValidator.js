@@ -3,7 +3,6 @@
  * Provides validation for resume content including grammar, email, phone, and page length
  */
 
-import languagetoolApi from 'languagetool-api';
 import { parsePhoneNumber, isValidPhoneNumber } from 'libphonenumber-js';
 import validator from 'validator';
 import { generateResumePDF } from '../controllers/resumeController.js';
