@@ -30,7 +30,8 @@ const validators = {
 };
 
 const employmentSchema = new mongoose.Schema({
-  jobTitle: { type: String, required: true, trim: true },
+  jobTitle: { type: String, trim: true }, // Legacy field, kept for backward compatibility
+  position: { type: String, trim: true }, // New field name
   company: { type: String, required: true, trim: true },
   location: { type: String, trim: true },
   startDate: { type: Date, required: true },
@@ -46,8 +47,29 @@ const employmentSchema = new mongoose.Schema({
     }
   },
   isCurrentPosition: { type: Boolean, default: false },
+  salary: { 
+    type: Number, 
+    min: [0, 'Salary must be at least 0'],
+    max: [10000000, 'Salary must not exceed 10,000,000']
+  },
   description: { type: String, maxlength: 1000, trim: true }
 }, { timestamps: true });
+
+// Virtual field to handle backward compatibility: use position if available, otherwise jobTitle
+employmentSchema.virtual('displayPosition').get(function() {
+  return this.position || this.jobTitle;
+});
+
+// Pre-save hook to ensure position is set (migrate from jobTitle if needed)
+employmentSchema.pre('save', function(next) {
+  if (!this.position && this.jobTitle) {
+    this.position = this.jobTitle;
+  }
+  if (!this.position) {
+    return next(new Error('Position is required'));
+  }
+  next();
+});
 
 const skillSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true, minlength: 1, maxlength: 100 },

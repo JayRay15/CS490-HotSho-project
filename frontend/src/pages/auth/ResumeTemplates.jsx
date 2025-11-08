@@ -4,16 +4,12 @@ import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { setAuthToken } from "../../api/axios";
 import { fetchTemplates, createTemplate as apiCreateTemplate, updateTemplate as apiUpdateTemplate, deleteTemplate as apiDeleteTemplate, importTemplate as apiImportTemplate } from "../../api/resumeTemplates";
-import { fetchCoverLetterTemplates, createCoverLetterTemplate, updateCoverLetterTemplate, deleteCoverLetterTemplate, trackCoverLetterTemplateUsage, importCoverLetterTemplate, exportCoverLetterTemplate, shareCoverLetterTemplate, getIndustryGuidance } from "../../api/coverLetterTemplates";
+import { fetchCoverLetterTemplates, createCoverLetterTemplate, updateCoverLetterTemplate, deleteCoverLetterTemplate, trackCoverLetterTemplateUsage, importCoverLetterTemplate, exportCoverLetterTemplate, shareCoverLetterTemplate, getIndustryGuidance, getCoverLetterTemplateAnalytics } from "../../api/coverLetterTemplates";
 import { fetchCoverLetters, createCoverLetter, updateCoverLetter as apiUpdateCoverLetter, deleteCoverLetter as apiDeleteCoverLetter, setDefaultCoverLetter, archiveCoverLetter, unarchiveCoverLetter, cloneCoverLetter as apiCloneCoverLetter } from "../../api/coverLetters";
 import { 
   fetchResumes, 
   updateResume as apiUpdateResume, 
   deleteResume as apiDeleteResume,
-  exportResumePDF,
-  exportResumeDOCX,
-  exportResumeHTML,
-  exportResumeText,
   cloneResume as apiCloneResume,
   compareResumes as apiCompareResumes,
   setDefaultResume as apiSetDefaultResume,
@@ -24,468 +20,47 @@ import {
 import { 
   generateAIResume, 
   generateResumeVariations, 
-  regenerateResumeSection,
-  optimizeResumeSkills,
-  tailorExperienceForJob
+  regenerateResumeSection
 } from "../../api/aiResume";
+import { getValidationStatus } from "../../api/resumeValidation";
 import api from "../../api/axios";
 import Container from "../../components/Container";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import InputField from "../../components/InputField";
 import LoadingSpinner from "../../components/LoadingSpinner";
+import ValidationPanel from "../../components/resume/ValidationPanel";
+import ValidationBadge from "../../components/resume/ValidationBadge";
+import RichTextEditor from "../../components/resume/RichTextEditor";
+import WatermarkModal from "../../components/resume/WatermarkModal";
+import SaveAsModal from "../../components/resume/SaveAsModal";
+import CloneModal from "../../components/resume/CloneModal";
+import ExportMenu from "../../components/resume/ExportMenu";
+import ResumeTile from "../../components/resume/ResumeTile";
+import TemplatePreviewCard from "../../components/resume/TemplatePreviewCard";
+import TemplatePreviewModal from "../../components/resume/TemplatePreviewModal";
+import CompareModal from "../../components/resume/CompareModal";
+import EditableContactInfo from "../../components/resume/EditableContactInfo";
+import EditableEducation from "../../components/resume/EditableEducation";
+import EditableSkills from "../../components/resume/EditableSkills";
+import FinishEditDropdown from "../../components/resume/FinishEditDropdown";
+import InlineValidationIssuesPanel from "../../components/resume/InlineValidationIssuesPanel";
+import ResumeSectionHeader from "../../components/resume/ResumeSectionHeader";
+import SectionToggleItem from "../../components/resume/SectionToggleItem";
+import CustomizationPanel from "../../components/resume/CustomizationPanel";
+import SavePresetModal from "../../components/resume/SavePresetModal";
+import SectionFormattingModal from "../../components/resume/SectionFormattingModal";
+import CustomizeTemplateModal from "../../components/resume/CustomizeTemplateModal";
+import RenameResumeModal from "../../components/resume/RenameResumeModal";
+import DeleteConfirmationModal from "../../components/resume/DeleteConfirmationModal";
+import ViewIssuesButton from "../../components/resume/ViewIssuesButton";
 import { THEME_PRESETS, getThemePresetNames, getThemePreset } from "../../utils/themePresets";
-
-const TEMPLATE_TYPES = [
-  { value: "chronological", label: "Chronological" },
-  { value: "functional", label: "Functional" },
-  { value: "hybrid", label: "Hybrid" },
-];
-
-const DEFAULT_SECTIONS = [
-  { key: 'contactInfo', label: 'Contact Info' },
-  { key: 'summary', label: 'Summary' },
-  { key: 'experience', label: 'Experience' },
-  { key: 'skills', label: 'Skills' },
-  { key: 'education', label: 'Education' },
-  { key: 'projects', label: 'Projects' },
-  { key: 'certifications', label: 'Certifications' },
-];
-
-// Section arrangement presets/templates
-const SECTION_PRESETS = [
-  {
-    name: 'Standard',
-    order: ['contactInfo', 'summary', 'experience', 'education', 'skills', 'projects', 'certifications'],
-    description: 'Traditional resume layout'
-  },
-  {
-    name: 'Skills-First',
-    order: ['contactInfo', 'skills', 'experience', 'projects', 'education', 'certifications', 'summary'],
-    description: 'Emphasize skills before experience'
-  },
-  {
-    name: 'Project-Focused',
-    order: ['contactInfo', 'summary', 'projects', 'experience', 'skills', 'education', 'certifications'],
-    description: 'Highlight projects prominently'
-  },
-  {
-    name: 'Academic',
-    order: ['contactInfo', 'education', 'projects', 'experience', 'skills', 'certifications', 'summary'],
-    description: 'Education and academic work first'
-  },
-  {
-    name: 'Minimal',
-    order: ['contactInfo', 'experience', 'education', 'skills'],
-    description: 'Only essential sections'
-  },
-];
-
-// Helper function to format dates
-const formatDate = (dateString) => {
-  if (!dateString) return '';
-  
-  // If it's already in a good format (e.g., "Jan 2020"), return as-is
-  if (dateString.match(/^[A-Za-z]{3,9}\s\d{4}$/)) {
-    return dateString;
-  }
-  
-  // If it's an ISO string or Date object, format it
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString; // Invalid date, return as-is
-    
-    const month = date.toLocaleDateString('en-US', { month: 'short' });
-    const year = date.getFullYear();
-    return `${month} ${year}`;
-  } catch (e) {
-    return dateString; // Return as-is if parsing fails
-  }
-};
-
-// Simple resume preview tile (Google Docs style)
-function ResumeTile({ resume, template, onView, onDelete, onRename }) {
-  const theme = template?.theme || { colors: { primary: "#4F5348", text: "#222" } };
-  const fonts = theme?.fonts || { heading: "Inter, sans-serif", body: "Inter, sans-serif", sizes: {} };
-
-
-  return (
-    <Card variant="outlined" interactive className={`overflow-hidden !p-0 ${resume.isArchived ? 'opacity-60' : ''}`}>
-      {/* Preview Area */}
-      <div 
-        className="h-64 p-4 flex flex-col justify-start border-b cursor-pointer"
-        style={{ backgroundColor: "#F9F9F9" }}
-        onClick={onView}
-      >
-        <div className="text-xs font-bold mb-2" style={{ color: theme.colors?.primary || '#4F5348', fontFamily: fonts.heading }}>
-          {resume.name || "Untitled Resume"}
-        </div>
-        <div className="flex-1 space-y-2 overflow-hidden">
-            {/* Simple preview of resume sections */}
-            {resume.sections?.contactInfo && (
-              <div className="text-[8px] text-gray-700 font-semibold" style={{ fontFamily: fonts.heading }}>
-                {resume.sections.contactInfo.name || "Name"}
-              </div>
-            )}
-            {resume.sections?.summary && (
-              <div className="text-[7px] text-gray-600 leading-tight line-clamp-2" style={{ fontFamily: fonts.body }}>
-                {resume.sections.summary.substring(0, 100)}...
-              </div>
-            )}
-            {resume.sections?.experience && resume.sections.experience.length > 0 && (
-              <div className="mt-2">
-                <div className="text-[7px] text-gray-700 font-semibold" style={{ fontFamily: fonts.heading }}>
-                  {resume.sections.experience[0].company}
-                </div>
-                <div className="text-[6px] text-gray-500 italic" style={{ fontFamily: fonts.heading }}>
-                  {resume.sections.experience[0].title}
-                </div>
-              </div>
-            )}
-            {resume.sections?.skills && resume.sections.skills.length > 0 && (
-              <div className="mt-2 text-[6px] text-gray-600" style={{ fontFamily: fonts.body }}>
-                {resume.sections.skills.slice(0, 3).join(' • ')}
-                {resume.sections.skills.length > 3 && ' ...'}
-              </div>
-            )}
-            {resume.sections?.education && resume.sections.education.length > 0 && (
-              <div className="mt-2 text-[6px] text-gray-600" style={{ fontFamily: fonts.body }}>
-                {resume.sections.education[0].school} ({resume.sections.education[0].degree})
-              </div>
-            )}
-        </div>
-      </div>
-      {/* Info & Actions */}
-      <div className="px-2 pt-2 pb-2">
-        <div className="flex items-center gap-2 mb-1.5">
-          <p className="text-sm font-medium text-gray-900 line-clamp-2 flex-1 min-w-0" style={{ fontFamily: fonts.heading }}>{resume.name}</p>
-          {/* UC-52: Archived badge */}
-          {resume.isArchived && (
-            <span className="px-2 py-0.5 text-xs font-medium bg-gray-200 text-gray-600 rounded">
-              ARCHIVED
-            </span>
-          )}
-          <button
-            onClick={(e) => { e.stopPropagation(); onRename(); }}
-            className="p-1 rounded-lg transition flex-shrink-0 flex items-center justify-center"
-            style={{ color: '#6B7280' }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.color = '#777C6D';
-              e.currentTarget.style.backgroundColor = '#F5F6F4';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.color = '#6B7280';
-              e.currentTarget.style.backgroundColor = 'transparent';
-            }}
-            title="Rename resume"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-          </button>
-        </div>
-        {/* UC-52: Version description */}
-        {resume.metadata?.description && (
-          <p className="text-xs text-gray-600 mb-1 line-clamp-2 italic" style={{ fontFamily: fonts.body }}>
-            {resume.metadata.description}
-          </p>
-        )}
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col">
-            <p className="text-xs text-gray-500">Modified {new Date(resume.updatedAt).toLocaleDateString()}</p>
-            {/* UC-52: Job usage badge */}
-            {resume.linkedJobCount > 0 && (
-              <p className="text-xs text-blue-600 font-medium">
-                Used in {resume.linkedJobCount} application{resume.linkedJobCount !== 1 ? 's' : ''}
-              </p>
-            )}
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={(e) => { e.stopPropagation(); onView(); }}
-              className="p-1 rounded-lg transition flex-shrink-0 flex items-center justify-center"
-              style={{ color: '#6B7280' }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.color = '#777C6D';
-                e.currentTarget.style.backgroundColor = '#F5F6F4';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.color = '#6B7280';
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-              title="View"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              </svg>
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              className="p-1 rounded-lg transition flex-shrink-0 flex items-center justify-center"
-              style={{ color: '#6B7280' }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.color = '#B91C1C';
-                e.currentTarget.style.backgroundColor = '#FEE2E2';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.color = '#6B7280';
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-              title="Delete"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0H7m4-4h2a2 2 0 012 2v2H9V5a2 2 0 012-2z" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-// Template preview for management modal
-function TemplatePreviewCard({ template, isDefault, onSetDefault, onCustomize, onDelete, onPreview }) {
-  const theme = template.theme || { colors: { primary: "#4F5348", text: "#222" } };
-  
-  return (
-    <Card variant="outlined" className={isDefault ? 'ring-2 ring-green-500' : ''}>
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <div className="font-semibold">{template.name}</div>
-          <div className="text-xs text-gray-500 capitalize">{template.type}</div>
-        </div>
-        {isDefault && (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border" style={{ backgroundColor: '#DCFCE7', color: '#166534', borderColor: '#BBF7D0' }}>
-            Default
-          </span>
-        )}
-      </div>
-
-      {/* Mini preview - Document style */}
-      <div 
-        className="border rounded-lg p-4 mb-3 h-40 overflow-hidden cursor-pointer hover:border-blue-400 transition bg-white shadow-sm"
-        onClick={onPreview}
-      >
-        {/* Sample resume header */}
-        <div className="text-center mb-2 pb-1 border-b" style={{ borderColor: theme.colors?.primary }}>
-          <div className="text-xs font-bold" style={{ color: theme.colors?.primary || '#4F5348', fontFamily: 'Georgia, serif' }}>
-            John Doe
-          </div>
-          <div className="text-[8px] text-gray-500">john.doe@email.com • (555) 123-4567</div>
-        </div>
-        
-        {/* Sample section */}
-        <div className="mb-2">
-          <div className="text-[9px] font-bold mb-1 uppercase" style={{ color: theme.colors?.primary || '#4F5348' }}>
-            Experience
-          </div>
-          <div className="text-[7px] font-semibold text-gray-800">Senior Developer</div>
-          <div className="text-[6px] text-gray-500 italic mb-1">Tech Company Inc.</div>
-          <div className="space-y-0.5">
-            <div className="flex items-start gap-1">
-              <div className="w-1 h-1 rounded-full bg-gray-400 mt-0.5 flex-shrink-0"></div>
-              <div className="text-[6px] text-gray-700 leading-tight">Led development of key features</div>
-            </div>
-            <div className="flex items-start gap-1">
-              <div className="w-1 h-1 rounded-full bg-gray-400 mt-0.5 flex-shrink-0"></div>
-              <div className="text-[6px] text-gray-700 leading-tight">Improved system performance</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Sample skills */}
-        <div>
-          <div className="text-[9px] font-bold mb-1 uppercase" style={{ color: theme.colors?.primary || '#4F5348' }}>
-            Skills
-          </div>
-          <div className="text-[6px] text-gray-700">JavaScript • React • Node.js • Python • SQL</div>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-2 items-center justify-between">
-        <div className="flex flex-wrap gap-2">
-          {!isDefault && (
-            <button
-              onClick={onSetDefault}
-              className="px-3 py-1 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
-            >
-              Set Default
-            </button>
-          )}
-          <button
-            onClick={onCustomize}
-            className="px-3 py-1 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
-          >
-            Customize
-          </button>
-        </div>
-        <button
-          onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="p-1 rounded-lg transition flex-shrink-0 flex items-center justify-center"
-          style={{ color: '#6B7280' }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.color = '#EF4444';
-            e.currentTarget.style.backgroundColor = '#FEF2F2';
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.color = '#6B7280';
-            e.currentTarget.style.backgroundColor = 'transparent';
-          }}
-          title="Delete template"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-        </button>
-      </div>
-    </Card>
-  );
-}
-
-// Full-page template preview modal
-function TemplatePreviewModal({ template, onClose }) {
-  if (!template) return null;
-  const theme = template.theme || { colors: { primary: "#4F5348", text: "#222", muted: "#666" } };
-  const layout = template.layout || { sectionsOrder: ["summary","experience","skills","education","projects"] };
-  
-  return (
-    <div 
-      className="fixed inset-0 flex items-center justify-center z-50 p-4" 
-      style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
-      onClick={onClose}
-    >
-      <div 
-        className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-gray-200"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
-          <h3 className="text-2xl font-heading font-semibold">Preview: {template.name}</h3>
-          <button 
-            onClick={onClose} 
-            className="text-gray-400 hover:text-gray-600 transition"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        
-        <div className="p-8 bg-gray-100">
-          {/* Simulated resume page - Document style */}
-          <div 
-            className="bg-white shadow-lg mx-auto"
-            style={{ maxWidth: "8.5in", minHeight: "11in", padding: "0.75in" }}
-          >
-            {/* Header */}
-            <div className="text-center mb-8 pb-6 border-b-2" style={{ borderColor: theme.colors?.primary }}>
-              <h1 className="text-3xl font-bold mb-2" style={{ color: '#2C2C2C', fontFamily: 'Georgia, serif' }}>
-                JANE DOE
-              </h1>
-              <p className="text-sm" style={{ color: '#666', fontFamily: 'Times New Roman, serif' }}>
-                jane.doe@email.com • (555) 987-6543 • New York, NY • linkedin.com/in/janedoe
-              </p>
-            </div>
-
-            {layout.sectionsOrder?.map((section) => (
-              <div key={section} className="mb-6">
-                <h2 
-                  className="text-lg font-bold mb-3 uppercase tracking-wide"
-                  style={{ color: theme.colors?.primary || '#4F5348', fontFamily: 'Georgia, serif' }}
-                >
-                  {section === "summary" && "Professional Summary"}
-                  {section === "experience" && "Professional Experience"}
-                  {section === "skills" && "Technical Skills"}
-                  {section === "education" && "Education"}
-                  {section === "projects" && "Projects"}
-                  {!["summary", "experience", "skills", "education", "projects"].includes(section) && section}
-                </h2>
-                <div className="text-sm" style={{ color: '#2C2C2C' }}>
-                  {section === "summary" && (
-                    <p style={{ textAlign: 'justify', lineHeight: '1.6', fontFamily: 'Times New Roman, serif' }}>
-                      Results-oriented professional with 8+ years of experience driving innovation and leading cross-functional teams. 
-                      Proven track record of delivering high-impact projects and exceeding organizational goals through strategic thinking 
-                      and collaborative problem-solving. Expertise in leveraging cutting-edge technologies to optimize processes and 
-                      enhance business outcomes.
-                    </p>
-                  )}
-                  {section === "experience" && (
-                    <div className="space-y-5">
-                      <div>
-                        <div className="flex justify-between items-baseline mb-1">
-                          <h3 className="text-base font-bold" style={{ fontFamily: 'Georgia, serif' }}>Senior Software Engineer</h3>
-                          <span className="text-xs font-semibold" style={{ color: '#666' }}>Jan 2021 - Present</span>
-                        </div>
-                        <p className="text-sm italic mb-2" style={{ color: '#555', fontFamily: 'Georgia, serif' }}>Tech Solutions Inc., New York, NY</p>
-                        <ul className="space-y-1 ml-5" style={{ listStyleType: 'disc', fontFamily: 'Times New Roman, serif' }}>
-                          <li>Architected and deployed scalable microservices infrastructure serving 500K+ daily active users</li>
-                          <li>Led team of 6 engineers in delivering mission-critical features, improving system performance by 45%</li>
-                          <li>Implemented CI/CD pipelines reducing deployment time by 60% and minimizing production incidents</li>
-                        </ul>
-                      </div>
-                      <div>
-                        <div className="flex justify-between items-baseline mb-1">
-                          <h3 className="text-base font-bold" style={{ fontFamily: 'Georgia, serif' }}>Software Developer</h3>
-                          <span className="text-xs font-semibold" style={{ color: '#666' }}>Jun 2018 - Dec 2020</span>
-                        </div>
-                        <p className="text-sm italic mb-2" style={{ color: '#555', fontFamily: 'Georgia, serif' }}>Digital Innovations LLC, San Francisco, CA</p>
-                        <ul className="space-y-1 ml-5" style={{ listStyleType: 'disc', fontFamily: 'Times New Roman, serif' }}>
-                          <li>Developed full-stack web applications using modern frameworks, increasing user engagement by 35%</li>
-                          <li>Collaborated with product team to design and implement customer-facing features for B2B platform</li>
-                        </ul>
-                      </div>
-                    </div>
-                  )}
-                  {section === "skills" && (
-                    <p style={{ lineHeight: '1.6', fontFamily: 'Times New Roman, serif' }}>
-                      JavaScript • TypeScript • React • Node.js • Python • Java • MongoDB • PostgreSQL • AWS • Docker • 
-                      Kubernetes • CI/CD • Git • Agile/Scrum • REST APIs • GraphQL • Microservices • System Design
-                    </p>
-                  )}
-                  {section === "education" && (
-                    <div>
-                      <div className="flex justify-between items-baseline">
-                        <h3 className="text-base font-bold" style={{ fontFamily: 'Georgia, serif' }}>Bachelor of Science in Computer Science</h3>
-                        <span className="text-xs font-semibold" style={{ color: '#666' }}>May 2018</span>
-                      </div>
-                      <p className="text-sm italic" style={{ color: '#555', fontFamily: 'Georgia, serif' }}>University of California, Berkeley</p>
-                      <p className="text-sm mt-1" style={{ fontFamily: 'Times New Roman, serif' }}>GPA: 3.85/4.0 • Dean's List • Magna Cum Laude</p>
-                    </div>
-                  )}
-                  {section === "projects" && (
-                    <div className="space-y-3">
-                      <div>
-                        <h3 className="text-base font-bold" style={{ fontFamily: 'Georgia, serif' }}>E-Commerce Platform Redesign</h3>
-                        <p className="text-xs italic mb-1" style={{ color: '#666', fontFamily: 'Times New Roman, serif' }}>
-                          Technologies: React, Redux, Node.js, Express, PostgreSQL, Stripe API
-                        </p>
-                        <p style={{ lineHeight: '1.6', fontFamily: 'Times New Roman, serif' }}>
-                          Built responsive full-stack e-commerce application with payment processing, inventory management, 
-                          and real-time analytics dashboard. Achieved 99.9% uptime and handled 50K+ monthly transactions.
-                        </p>
-                      </div>
-                      <div>
-                        <h3 className="text-base font-bold" style={{ fontFamily: 'Georgia, serif' }}>AI-Powered Task Management System</h3>
-                        <p className="text-xs italic mb-1" style={{ color: '#666', fontFamily: 'Times New Roman, serif' }}>
-                          Technologies: Python, TensorFlow, React, MongoDB, AWS Lambda
-                        </p>
-                        <p style={{ lineHeight: '1.6', fontFamily: 'Times New Roman, serif' }}>
-                          Developed intelligent task prioritization system using machine learning algorithms. 
-                          Improved team productivity by 30% through automated scheduling and smart notifications.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+import { TEMPLATE_TYPES, DEFAULT_SECTIONS, SECTION_PRESETS, formatDate } from "../../utils/resumeConstants";
+import { useResumeValidation } from "../../hooks/useResumeValidation";
+import { useResumeExport } from "../../components/resume/useResumeExport";
+import { useSkillsOptimization } from "../../hooks/useSkillsOptimization";
+import { useExperienceTailoring } from "../../hooks/useExperienceTailoring";
+import { useVersionManagement } from "../../hooks/useVersionManagement";
 
 export default function ResumeTemplates() {
   const { getToken } = useAuth();
@@ -539,52 +114,6 @@ export default function ResumeTemplates() {
   
   // Resume Display State
   const [showAllResumes, setShowAllResumes] = useState(false);
-  const [showArchivedResumes, setShowArchivedResumes] = useState(false); // UC-52: Archive filter
-  
-  // UC-49: Skills Optimization State
-  const [showSkillsOptimization, setShowSkillsOptimization] = useState(false);
-  const [skillsOptimizationData, setSkillsOptimizationData] = useState(null);
-  const [isOptimizingSkills, setIsOptimizingSkills] = useState(false);
-  const [selectedJobForSkills, setSelectedJobForSkills] = useState(''); // Store "title|company" string
-  const [selectedSkillsToAdd, setSelectedSkillsToAdd] = useState([]); // Skills user wants to add
-  const [currentResumeSkills, setCurrentResumeSkills] = useState([]); // Current skills in resume
-  const [isApplyingSkills, setIsApplyingSkills] = useState(false);
-  const [showSkillsSuccessBanner, setShowSkillsSuccessBanner] = useState(false);
-  
-  // UC-50: Experience Tailoring State
-  const [showExperienceTailoring, setShowExperienceTailoring] = useState(false);
-  const [experienceTailoringData, setExperienceTailoringData] = useState(null);
-  const [isTailoringExperience, setIsTailoringExperience] = useState(false);
-  const [selectedJobForExperience, setSelectedJobForExperience] = useState(''); // Store "title|company" string
-  const [selectedExperienceVariations, setSelectedExperienceVariations] = useState({}); // { "expIdx-bulletIdx": "achievement" | "technical" | "impact" | "original" }
-  const [isApplyingExperience, setIsApplyingExperience] = useState(false);
-  const [showExperienceSuccessBanner, setShowExperienceSuccessBanner] = useState(false);
-  
-  // UC-51: Export State
-  const [showExportMenu, setShowExportMenu] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
-  const [exportFormat, setExportFormat] = useState(null);
-  // Custom "Save As" modal for exports (replaces window.prompt)
-  const [showSaveAsModal, setShowSaveAsModal] = useState(false);
-  const [saveAsFilename, setSaveAsFilename] = useState('');
-  const [pendingExportFormat, setPendingExportFormat] = useState(null);
-  
-  // UC-51: Watermark options
-  const [watermarkEnabled, setWatermarkEnabled] = useState(false);
-  const [watermarkText, setWatermarkText] = useState('CONFIDENTIAL');
-  const [showWatermarkModal, setShowWatermarkModal] = useState(false);
-  
-  // UC-52: Version Management State
-  const [showCloneModal, setShowCloneModal] = useState(false);
-  const [cloneName, setCloneName] = useState('');
-  const [cloneDescription, setCloneDescription] = useState('');
-  const [isCloning, setIsCloning] = useState(false);
-  const [showCompareModal, setShowCompareModal] = useState(false);
-  const [compareResumeId, setCompareResumeId] = useState(null);
-  const [comparisonData, setComparisonData] = useState(null);
-  const [showMergeModal, setShowMergeModal] = useState(false);
-  const [selectedMergeChanges, setSelectedMergeChanges] = useState([]);
-  const [isMerging, setIsMerging] = useState(false);
   
     // Section Customization State (UC-048)
     const [visibleSections, setVisibleSections] = useState(DEFAULT_SECTIONS.map(s => s.key));
@@ -610,6 +139,26 @@ export default function ResumeTemplates() {
   // Success message state
   const [successMessage, setSuccessMessage] = useState(null);
 
+  // UC-053: Validation State (using custom hook)
+  const {
+    validationResults,
+    setValidationResults,
+    isValidating,
+    validationStatus,
+    setValidationStatus,
+    handleValidateResume: validateResumeHook,
+    checkValidationStatus
+  } = useResumeValidation(showViewResumeModal, viewingResume);
+  
+  const [showValidationPanel, setShowValidationPanel] = useState(false);
+  const [showValidationIssuesPanel, setShowValidationIssuesPanel] = useState(false); // Inline issues panel
+
+  // UC-053: Rich Text Editing State
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingSection, setEditingSection] = useState(null); // Which section is being edited
+  const [editedContent, setEditedContent] = useState({}); // Temporary edited content before saving
+  const [showEditDropdown, setShowEditDropdown] = useState(false); // Dropdown for Finish Edit button
+
   // Cover Letter State
   const [coverLetterTemplates, setCoverLetterTemplates] = useState([]);
   const [savedCoverLetters, setSavedCoverLetters] = useState([]);
@@ -627,15 +176,117 @@ export default function ResumeTemplates() {
   const [selectedIndustry, setSelectedIndustry] = useState('general');
   const [customCoverLetterName, setCustomCoverLetterName] = useState('');
   const [customCoverLetterContent, setCustomCoverLetterContent] = useState('');
+  const [customCoverLetterStyle, setCustomCoverLetterStyle] = useState('formal');
   const [isCreatingCoverLetterTemplate, setIsCreatingCoverLetterTemplate] = useState(false); // Track if creating template vs cover letter
   const [showAllCoverLetters, setShowAllCoverLetters] = useState(false);
+  const [showCoverLetterAnalytics, setShowCoverLetterAnalytics] = useState(false);
+  const [coverLetterAnalytics, setCoverLetterAnalytics] = useState(null);
   const [showAddCoverLetterModal, setShowAddCoverLetterModal] = useState(false);
   const [showManageCoverLetterTemplates, setShowManageCoverLetterTemplates] = useState(false);
+  const [editingCoverLetter, setEditingCoverLetter] = useState(null);
+  const [showEditCoverLetterModal, setShowEditCoverLetterModal] = useState(false);
 
   const authWrap = async () => {
     const token = await getToken();
     setAuthToken(token);
   };
+
+  // UC-49: Skills Optimization State - Using custom hook (initialized after authWrap)
+  const skillsHook = useSkillsOptimization(authWrap);
+  const {
+    showSkillsOptimization,
+    setShowSkillsOptimization,
+    skillsOptimizationData,
+    isOptimizingSkills,
+    selectedJobForSkills,
+    setSelectedJobForSkills,
+    selectedSkillsToAdd,
+    currentResumeSkills,
+    setCurrentResumeSkills,
+    isApplyingSkills,
+    showSkillsSuccessBanner,
+    handleOptimizeSkills: handleOptimizeSkillsHook,
+    handleDeleteSkill: handleDeleteSkillHook,
+    handleApplySkillChanges: handleApplySkillChangesHook,
+    toggleSkillSelection,
+    handleRemoveSkill
+  } = skillsHook;
+
+  // UC-50: Experience Tailoring State - Using custom hook (initialized after authWrap)
+  const experienceHook = useExperienceTailoring(authWrap);
+  const {
+    showExperienceTailoring,
+    setShowExperienceTailoring,
+    experienceTailoringData,
+    isTailoringExperience,
+    selectedJobForExperience,
+    setSelectedJobForExperience,
+    selectedExperienceVariations,
+    isApplyingExperience,
+    showExperienceSuccessBanner,
+    handleTailorExperience: handleTailorExperienceHook,
+    toggleExperienceVariation,
+    handleApplyExperienceChanges: handleApplyExperienceChangesHook
+  } = experienceHook;
+
+  // UC-52: Version Management State - Using custom hook (initialized after authWrap)
+  const versionHook = useVersionManagement(authWrap);
+  const {
+    showCloneModal,
+    setShowCloneModal,
+    cloneName,
+    setCloneName,
+    cloneDescription,
+    setCloneDescription,
+    isCloning,
+    showCompareModal,
+    setShowCompareModal,
+    compareResumeId,
+    setCompareResumeId,
+    comparisonData,
+    setComparisonData,
+    showMergeModal,
+    setShowMergeModal,
+    selectedMergeChanges,
+    setSelectedMergeChanges,
+    isMerging,
+    showArchivedResumes,
+    setShowArchivedResumes,
+    handleCloneResume: handleCloneResumeHook,
+    handleSetDefaultResume: handleSetDefaultResumeHook,
+    handleCompareResumes: handleCompareResumesHook,
+    handleRevertToPreviousVersion: handleRevertToPreviousVersionHook,
+    handleArchiveResume: handleArchiveResumeHook,
+    handleUnarchiveResume: handleUnarchiveResumeHook,
+    handleMergeResumes: handleMergeResumesHook
+  } = versionHook;
+
+  // UC-51: Export State - Using custom hook (initialized after authWrap)
+  const exportHook = useResumeExport(authWrap, validationStatus);
+  const {
+    showExportMenu,
+    setShowExportMenu,
+    isExporting,
+    exportFormat,
+    setExportFormat,
+    showSaveAsModal,
+    setShowSaveAsModal,
+    saveAsFilename,
+    setSaveAsFilename,
+    pendingExportFormat,
+    watermarkEnabled,
+    setWatermarkEnabled,
+    watermarkText,
+    setWatermarkText,
+    showWatermarkModal,
+    handleExport: handleExportFromHook,
+    handleExportWithValidation: handleExportWithValidationFromHook,
+    confirmExport: confirmExportFromHook,
+    cancelExport: cancelExportFromHook,
+    handlePrintHtml: handlePrintHtmlFromHook,
+    toggleWatermarkModal,
+    saveWatermarkSettings
+  } = exportHook;
 
   // UC-052: Auto-save version snapshot before making changes
   const createAutoVersionSnapshot = async (resume, changeDescription) => {
@@ -757,55 +408,6 @@ export default function ResumeTemplates() {
     return 'optional';
   };
 
-  // UC-52: Helper function to highlight text differences
-  const highlightTextDiff = (text1, text2) => {
-    if (!text1 && !text2) return { text1: null, text2: null };
-    if (!text1) return { text1: null, text2: <span className="bg-green-200 text-green-900 px-1 rounded">{text2}</span> };
-    if (!text2) return { text1: <span className="bg-red-200 text-red-900 px-1 rounded">{text1}</span>, text2: null };
-    
-    // Simple word-level diff
-    const words1 = text1.split(/\s+/);
-    const words2 = text2.split(/\s+/);
-    
-    if (text1 === text2) {
-      return { text1: text1, text2: text2, identical: true };
-    }
-    
-    // Find common and different words
-    const set1 = new Set(words1);
-    const set2 = new Set(words2);
-    
-    const highlightedText1 = words1.map((word, idx) => {
-      if (!set2.has(word)) {
-        return <span key={idx} className="bg-red-100 text-red-900 px-0.5 rounded">{word}</span>;
-      }
-      return word;
-    });
-    
-    const highlightedText2 = words2.map((word, idx) => {
-      if (!set1.has(word)) {
-        return <span key={idx} className="bg-green-100 text-green-900 px-0.5 rounded">{word}</span>;
-      }
-      return word;
-    });
-    
-    // Join with spaces
-    const result1 = [];
-    const result2 = [];
-    
-    highlightedText1.forEach((item, idx) => {
-      if (idx > 0) result1.push(' ');
-      result1.push(item);
-    });
-    
-    highlightedText2.forEach((item, idx) => {
-      if (idx > 0) result2.push(' ');
-      result2.push(item);
-    });
-    
-    return { text1: <span>{result1}</span>, text2: <span>{result2}</span> };
-  };
-
   // Drag-and-drop move for sections (will be used in modal)
   const moveSection = (dragIndex, hoverIndex) => {
     setSectionOrder((prevOrder) => {
@@ -849,7 +451,13 @@ export default function ResumeTemplates() {
     await authWrap();
     const [tpls, res] = await Promise.all([fetchTemplates(), fetchResumes()]);
     setTemplates(tpls.data.data.templates || []);
-    setResumes(res.data.data.resumes || []);
+    const loadedResumes = res.data.data.resumes || [];
+    setResumes(loadedResumes);
+    
+    // UC-053: Check validation status for each resume
+    loadedResumes.forEach(resume => {
+      checkValidationStatus(resume._id);
+    });
   };
 
   const loadJobs = async () => {
@@ -1000,6 +608,9 @@ export default function ResumeTemplates() {
       // Clear unsaved changes flag
       setHasUnsavedChanges(false);
       
+      // Close validation issues panel on save
+      setShowValidationIssuesPanel(false);
+      
       // Show success message
       setSuccessMessage('✅ Resume saved successfully! Previous version archived.');
       setTimeout(() => setSuccessMessage(null), 3000);
@@ -1012,9 +623,7 @@ export default function ResumeTemplates() {
     }
   };
 
-  // UC-51: Export handlers
-  // When user clicks an export option, open a themed "Save As" modal first.
-  // After they confirm filename, performExport will run the request and download.
+  // UC-51: Export handlers - Wrapping hook functions
   const handleExport = async (format) => {
     if (!viewingResume) return;
     setShowExportMenu(false);
@@ -1023,303 +632,141 @@ export default function ResumeTemplates() {
     const ext = extMap[format] || '';
     const suggested = `${filenameBase}${ext}`;
     setSaveAsFilename(suggested);
-    setPendingExportFormat(format);
-    setShowSaveAsModal(true);
+    
+    await handleExportFromHook(
+      format,
+      viewingResume._id,
+      (message) => {
+        setSuccessMessage(message);
+        setTimeout(() => setSuccessMessage(null), 4000);
+      },
+      (error) => {
+        setSuccessMessage(error);
+        setTimeout(() => setSuccessMessage(null), 5000);
+      }
+    );
   };
 
   // Perform the server request and trigger file download
   const performExport = async (format, filename) => {
     if (!viewingResume) return;
-    setIsExporting(true);
-    setExportFormat(format);
-    setShowSaveAsModal(false);
-    try {
-      await authWrap();
-      // Ensure filename has proper extension
-      const extMap = { pdf: '.pdf', docx: '.docx', html: '.html', txt: '.txt' };
-      const ext = extMap[format] || '';
-      if (ext && filename && !filename.toLowerCase().endsWith(ext)) {
-        filename = filename + ext;
+    
+    // UC-053: Check validation before export
+    const canExport = await handleExportWithValidationFromHook(
+      viewingResume._id,
+      format,
+      (message) => {
+        setSuccessMessage(message);
+        setTimeout(() => setSuccessMessage(null), 4000);
+      },
+      (error) => {
+        setSuccessMessage(error);
+        setTimeout(() => setSuccessMessage(null), 5000);
       }
-      
-      // UC-51: Prepare watermark options
-      const watermarkOptions = watermarkEnabled ? { enabled: true, text: watermarkText } : null;
-      
-      let response;
-      switch (format) {
-        case 'pdf':
-          response = await exportResumePDF(viewingResume._id, watermarkOptions);
-          break;
-        case 'docx':
-          response = await exportResumeDOCX(viewingResume._id, watermarkOptions);
-          break;
-        case 'html':
-          response = await exportResumeHTML(viewingResume._id);
-          break;
-        case 'txt':
-          response = await exportResumeText(viewingResume._id);
-          break;
-        default:
-          throw new Error('Invalid export format');
-      }
-
-      const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/octet-stream' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-
-      setSuccessMessage(`Resume exported as ${format.toUpperCase()} successfully!`);
-      setTimeout(() => setSuccessMessage(null), 4000);
-    } catch (err) {
-      console.error('Export failed:', err);
-      let errorMsg = `Failed to export resume as ${format.toUpperCase()}. Please try again.`;
-      try {
-        const data = err?.response?.data;
-        if (data instanceof Blob) {
-          const text = await data.text();
-          try {
-            const json = JSON.parse(text);
-            if (json?.message) errorMsg = json.message;
-          } catch {
-            if (text) errorMsg = text;
-          }
-        } else if (typeof err?.response?.data === 'object' && err.response.data?.message) {
-          errorMsg = err.response.data.message;
-        }
-      } catch {}
-      alert(errorMsg);
-    } finally {
-      setIsExporting(false);
-      setExportFormat(null);
-      setPendingExportFormat(null);
+    );
+    
+    if (!canExport) {
+      setShowSaveAsModal(false);
+      return;
     }
+    
+    // Set filename and confirm export
+    setSaveAsFilename(filename);
+    await confirmExportFromHook();
   };
 
   // UC-51: Print as HTML (fetch HTML, open new window, print)
   const handlePrintHtml = async () => {
     if (!viewingResume) return;
     setShowExportMenu(false);
-    setIsExporting(true);
-    try {
-      await authWrap();
-      // Request server-rendered HTML for the resume
-      const response = await exportResumeHTML(viewingResume._id);
-
-      // response.data may be a Blob (because export API uses responseType: 'blob') or a string
-      let htmlContent = '';
-      if (response.data instanceof Blob) {
-        // Read blob as text
-        htmlContent = await response.data.text();
-      } else if (typeof response.data === 'string') {
-        htmlContent = response.data;
-      } else if (response.data && typeof response.data.html === 'string') {
-        htmlContent = response.data.html;
-      }
-
-      if (!htmlContent) {
-        throw new Error('No HTML content returned from server');
-      }
-
-      // Open a new window/tab and write the HTML into it, then trigger print()
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) {
-        alert('Unable to open print window. Please allow popups for this site.');
-        return;
-      }
-
-      printWindow.document.open();
-      printWindow.document.write(htmlContent);
-      printWindow.document.close();
-      // Wait a tick for resources to load, then invoke print
-      printWindow.focus();
-      // Give the browser a short moment to render before printing
-      setTimeout(() => {
-        try {
-          printWindow.print();
-        } catch (e) {
-          console.error('Print failed:', e);
-        }
-      }, 300);
-
-    } catch (err) {
-      console.error('Print (HTML) failed:', err);
-      alert('Failed to prepare printable view. Please try Export as HTML instead.');
-    } finally {
-      setIsExporting(false);
-    }
+    
+    await handlePrintHtmlFromHook(
+      viewingResume._id,
+      (message) => {
+        setSuccessMessage(message);
+        setTimeout(() => setSuccessMessage(null), 3000);
+      },
+      (error) => alert(error)
+    );
   };
 
-  // UC-52: Version management handlers
+  // UC-52: Version management handlers - Wrappers for hook
   const handleCloneResume = async () => {
-    if (!viewingResume || !cloneName.trim()) return;
-    
-    setIsCloning(true);
-    try {
-      await authWrap();
-      const response = await apiCloneResume(viewingResume._id, cloneName.trim(), cloneDescription.trim());
-      const clonedResume = response.data.data.resume;
-      
+    await handleCloneResumeHook(viewingResume, (clonedResume, message) => {
       setResumes(prev => [clonedResume, ...prev]);
-      setShowCloneModal(false);
-      setCloneName('');
-      setCloneDescription('');
-      setSuccessMessage(`Resume cloned successfully as "${clonedResume.name}"!`);
+      setSuccessMessage(message);
       setTimeout(() => setSuccessMessage(null), 4000);
-    } catch (err) {
-      console.error('Clone failed:', err);
-      alert('Failed to clone resume. Please try again.');
-    } finally {
-      setIsCloning(false);
-    }
+    });
   };
 
   const handleSetDefaultResume = async (resumeId) => {
-    try {
-      await authWrap();
-      await apiSetDefaultResume(resumeId);
-      
-      // Update resumes list
+    await handleSetDefaultResumeHook(resumeId, viewingResume?._id, (setResumeId, viewingResumeId) => {
       setResumes(prev => prev.map(r => ({
         ...r,
-        isDefault: r._id === resumeId
+        isDefault: r._id === setResumeId
       })));
       
-      // Update viewing resume if it's the one being set as default
-      if (viewingResume?._id === resumeId) {
+      if (viewingResumeId === setResumeId) {
         setViewingResume(prev => ({ ...prev, isDefault: true }));
       }
       
       setSuccessMessage('Default resume updated successfully!');
       setTimeout(() => setSuccessMessage(null), 4000);
-    } catch (err) {
-      console.error('Set default failed:', err);
-      alert('Failed to set default resume. Please try again.');
-    }
+    });
   };
 
   const handleCompareResumes = async (resumeId2) => {
-    if (!viewingResume || !resumeId2) return;
-    
-    try {
-      await authWrap();
-      const response = await apiCompareResumes(viewingResume._id, resumeId2);
-      setComparisonData(response.data.data.comparison);
-      setCompareResumeId(resumeId2);
-      setShowCompareModal(true);
-    } catch (err) {
-      console.error('Compare failed:', err);
-      alert('Failed to compare resumes. Please try again.');
-    }
+    await handleCompareResumesHook(viewingResume?._id, resumeId2);
   };
 
-  // UC-052: Revert to previous version
   const handleRevertToPreviousVersion = async () => {
-    if (!viewingResume || !compareResumeId) return;
-    
-    const confirm = window.confirm(
-      'Are you sure you want to revert to the previous version? This will create a new version snapshot of your current resume before reverting.'
-    );
-    
-    if (!confirm) return;
-    
-    try {
-      await authWrap();
-      
-      // Create snapshot of current version before reverting
-      await createAutoVersionSnapshot(viewingResume, 'Before Revert');
-      
-      // Get the previous version's full data
-      const previousResume = resumes.find(r => r._id === compareResumeId);
-      if (!previousResume) {
-        alert('Previous version not found.');
-        return;
+    await handleRevertToPreviousVersionHook(
+      viewingResume,
+      resumes,
+      createAutoVersionSnapshot,
+      async (revertedResume) => {
+        await loadAll();
+        setViewingResume(revertedResume);
+        setSuccessMessage('Successfully reverted to previous version!');
+        setTimeout(() => setSuccessMessage(null), 3000);
       }
-      
-      // Update current resume with previous version's content
-      const revertedResume = {
-        ...viewingResume,
-        sections: previousResume.sections,
-        sectionCustomization: previousResume.sectionCustomization
-      };
-      
-      await apiUpdateResume(viewingResume._id, revertedResume);
-      
-      // Refresh resumes and update viewing resume
-      await loadAll();
-      setViewingResume(revertedResume);
-      
-      // Close comparison modal
-      setShowCompareModal(false);
-      setComparisonData(null);
-      setCompareResumeId(null);
-      
-      setSuccessMessage('Successfully reverted to previous version!');
-      setTimeout(() => setSuccessMessage(null), 3000);
-      
-    } catch (err) {
-      console.error('Revert failed:', err);
-      alert('Failed to revert to previous version. Please try again.');
-    }
+    );
   };
 
-  // UC-52: Archive/Unarchive handlers
   const handleArchiveResume = async (resumeId) => {
-    try {
-      await authWrap();
-      await apiArchiveResume(resumeId);
-      
+    await handleArchiveResumeHook(resumeId, (archivedId, message) => {
       setResumes(prev => prev.map(r => 
-        r._id === resumeId ? { ...r, isArchived: true } : r
+        r._id === archivedId ? { ...r, isArchived: true } : r
       ));
       
-      if (viewingResume?._id === resumeId) {
+      if (viewingResume?._id === archivedId) {
         setViewingResume(prev => ({ ...prev, isArchived: true }));
       }
       
-      // If not showing all resumes and not showing archived, expand view to show 4 active resumes
       if (!showAllResumes && !showArchivedResumes) {
-        const nonArchivedCount = resumes.filter(r => !r.isArchived && r._id !== resumeId).length;
-        // If we had exactly 4 showing and now will have less, keep showing 4 if possible
-        if (nonArchivedCount >= 4) {
-          // Keep current collapsed view - filter will handle showing 4
-        }
+        const nonArchivedCount = resumes.filter(r => !r.isArchived && r._id !== archivedId).length;
       }
       
-      setSuccessMessage('Resume archived successfully!');
+      setSuccessMessage(message);
       setTimeout(() => setSuccessMessage(null), 4000);
-    } catch (err) {
-      console.error('Archive failed:', err);
-      alert('Failed to archive resume. Please try again.');
-    }
+    });
   };
 
   const handleUnarchiveResume = async (resumeId) => {
-    try {
-      await authWrap();
-      await apiUnarchiveResume(resumeId);
-      
+    await handleUnarchiveResumeHook(resumeId, (unarchivedId, message) => {
       setResumes(prev => prev.map(r => 
-        r._id === resumeId ? { ...r, isArchived: false } : r
+        r._id === unarchivedId ? { ...r, isArchived: false } : r
       ));
       
-      if (viewingResume?._id === resumeId) {
+      if (viewingResume?._id === unarchivedId) {
         setViewingResume(prev => ({ ...prev, isArchived: false }));
       }
       
-      setSuccessMessage('Resume unarchived successfully!');
+      setSuccessMessage(message);
       setTimeout(() => setSuccessMessage(null), 4000);
-    } catch (err) {
-      console.error('Unarchive failed:', err);
-      alert('Failed to unarchive resume. Please try again.');
-    }
+    });
   };
 
-  // UC-52: Merge resumes handler
   const handleMergeResumes = async () => {
     if (!viewingResume || !compareResumeId || selectedMergeChanges.length === 0) return;
     
@@ -1439,56 +886,29 @@ export default function ResumeTemplates() {
     }
   };
 
-  // UC-49: Skills optimization handler
+  // UC-49: Skills optimization handler - Wrapper for hook
   const handleOptimizeSkills = async () => {
     if (!viewingResume) return;
     
-    // Parse selected job (format: "title|company")
     const jobSelector = selectedJobForSkills || selectedJobForExperience;
     
-    if (!jobSelector) {
-      alert('Please select a job posting to optimize skills against.');
-      return;
-    }
-
-    const [title, company] = jobSelector.split('|');
-    if (!title || !company) {
-      alert('Invalid job selection. Please select a valid job from the dropdown.');
-      console.error('Invalid job selector:', jobSelector);
-      return;
-    }
+    // Initialize current resume skills
+    const currentSkills = viewingResume.sections?.skills || [];
+    setCurrentResumeSkills(currentSkills.map(s => typeof s === 'string' ? s : s.name));
     
-    setIsOptimizingSkills(true);
-    try {
-      await authWrap();
-      const response = await optimizeResumeSkills(viewingResume._id, { title, company });
-      setSkillsOptimizationData(response.data.data);
-      
-      // Initialize current resume skills
-      const currentSkills = viewingResume.sections?.skills || [];
-      setCurrentResumeSkills(currentSkills.map(s => typeof s === 'string' ? s : s.name));
-      setSelectedSkillsToAdd([]);
-      
-      setShowSkillsOptimization(true);
-    } catch (err) {
-      console.error('Skills optimization failed:', err);
-      const errorMsg = err.response?.data?.message || 'Failed to optimize skills. Please try again.';
-      alert(errorMsg);
-    } finally {
-      setIsOptimizingSkills(false);
-    }
+    await handleOptimizeSkillsHook(viewingResume._id, jobSelector);
   };
 
-  // Delete individual skill
+  // Delete individual skill - Wrapper for hook
   const handleDeleteSkill = (skillToDelete) => {
     if (!viewingResume) return;
     
     const skillName = typeof skillToDelete === 'string' ? skillToDelete : skillToDelete.name;
+    const currentSkills = (viewingResume.sections?.skills || []).map(skill => 
+      typeof skill === 'string' ? skill : skill.name
+    );
     
-    const updatedSkills = (viewingResume.sections?.skills || []).filter(skill => {
-      const currentSkillName = typeof skill === 'string' ? skill : skill.name;
-      return currentSkillName !== skillName;
-    });
+    const updatedSkills = handleDeleteSkillHook(skillName, currentSkills);
     
     const updatedResume = {
       ...viewingResume,
@@ -1502,206 +922,31 @@ export default function ResumeTemplates() {
     setHasUnsavedChanges(true);
   };
 
-  // UC-49: Apply skill changes to resume
+  // UC-49: Apply skill changes to resume - Wrapper for hook
   const handleApplySkillChanges = async () => {
     if (!viewingResume) return;
     
-    setIsApplyingSkills(true);
-    try {
-      await authWrap();
-      
-      // Combine current skills with selected new skills (avoiding duplicates)
-      const newSkillsSet = new Set([...currentResumeSkills, ...selectedSkillsToAdd]);
-      const updatedSkills = Array.from(newSkillsSet).map(skillName => ({
-        name: skillName,
-        level: 'Intermediate' // Default level, user can adjust in resume editor
-      }));
-      
-      // Update resume with new skills (LOCAL STATE ONLY - not saved to DB yet)
-      const updatedResume = {
-        ...viewingResume,
-        sections: {
-          ...viewingResume.sections,
-          skills: updatedSkills
-        }
-      };
-      
-      // DON'T save to database yet - let user click "Save Changes"
-      // await apiUpdateResume(viewingResume._id, updatedResume);
-      
-      // Update local state only
-      setViewingResume(updatedResume);
-      
-      // Update current skills list
-      setCurrentResumeSkills(Array.from(newSkillsSet));
-      setSelectedSkillsToAdd([]);
-      
-      // Mark as having unsaved changes (user must click Save to create version)
-      setHasUnsavedChanges(true);
-      
-      // Show success banner
-      setShowSkillsSuccessBanner(true);
-      
-      // Auto-close modal after 2 seconds
-      setTimeout(() => {
-        setShowSkillsOptimization(false);
-        setShowSkillsSuccessBanner(false);
-      }, 2000);
-    } catch (err) {
-      console.error('Failed to apply skill changes:', err);
-      alert('Failed to update skills. Please try again.');
-    } finally {
-      setIsApplyingSkills(false);
-    }
+    await handleApplySkillChangesHook(
+      viewingResume,
+      (updatedResume) => {
+        setViewingResume(updatedResume);
+        setHasUnsavedChanges(true);
+      },
+      () => {} // Success callback - already handled in hook
+    );
   };
 
-  // UC-49: Toggle skill selection
-  const toggleSkillSelection = (skillName) => {
-    setSelectedSkillsToAdd(prev => {
-      if (prev.includes(skillName)) {
-        return prev.filter(s => s !== skillName);
-      } else {
-        return [...prev, skillName];
-      }
-    });
-  };
-
-  // UC-49: Remove skill from resume
-  const handleRemoveSkill = (skillName) => {
-    setCurrentResumeSkills(prev => prev.filter(s => s !== skillName));
-  };
-
-  // UC-50: Experience tailoring handler
+  // UC-50: Experience tailoring handler - Wrapper for hook
   const handleTailorExperience = async () => {
-    if (!viewingResume) return;
-    
-    // Parse selected job (format: "title|company")
-    const jobSelector = selectedJobForExperience || selectedJobForSkills;
-    
-    if (!jobSelector) {
-      alert('Please select a job posting to tailor experience for.');
-      return;
-    }
-
-    const [title, company] = jobSelector.split('|');
-    if (!title || !company) {
-      alert('Invalid job selection. Please select a valid job from the dropdown.');
-      console.error('Invalid job selector:', jobSelector);
-      return;
-    }
-    
-    setIsTailoringExperience(true);
-    try {
-      await authWrap();
-      const response = await tailorExperienceForJob(viewingResume._id, { title, company });
-      setExperienceTailoringData(response.data.data);
-      setSelectedExperienceVariations({}); // Reset selections
-      setShowExperienceTailoring(true);
-    } catch (err) {
-      console.error('Experience tailoring failed:', err);
-      const errorMsg = err.response?.data?.message || 'Failed to tailor experience. Please try again.';
-      alert(errorMsg);
-    } finally {
-      setIsTailoringExperience(false);
-    }
+    await handleTailorExperienceHook(viewingResume, selectedJobForSkills);
   };
 
-  // UC-50: Toggle experience variation selection
-  const toggleExperienceVariation = (expIdx, bulletIdx, variationType) => {
-    const key = `${expIdx}-${bulletIdx}`;
-    setSelectedExperienceVariations(prev => {
-      const newSelections = { ...prev };
-      // If clicking the same variation, deselect it (go back to original)
-      if (newSelections[key] === variationType) {
-        delete newSelections[key];
-      } else {
-        newSelections[key] = variationType;
-      }
-      return newSelections;
-    });
-  };
-
-  // UC-50: Apply selected experience variations to resume
+  // UC-50: Apply selected experience variations to resume - Wrapper for hook
   const handleApplyExperienceChanges = async () => {
-    if (!viewingResume || !experienceTailoringData) return;
-    
-    setIsApplyingExperience(true);
-    try {
-      await authWrap();
-      
-      // Build updated experience array with selected variations
-      const updatedExperience = viewingResume.sections?.experience?.map((job, expIdx) => {
-        const aiExperience = experienceTailoringData.tailoring?.experiences?.find(
-          exp => exp.experienceIndex === expIdx
-        );
-        
-        if (!aiExperience || !aiExperience.bullets) {
-          return job; // No AI suggestions for this experience, keep original
-        }
-        
-        // Map bullets with selected variations
-        const updatedBullets = job.bullets?.map((originalBullet, bulletIdx) => {
-          const key = `${expIdx}-${bulletIdx}`;
-          const selectedVariation = selectedExperienceVariations[key];
-          
-          if (!selectedVariation || selectedVariation === 'original') {
-            return originalBullet; // Keep original
-          }
-          
-          // Find the AI bullet suggestion
-          const aiBullet = aiExperience.bullets?.find(b => {
-            // Match by comparing original text (after cleaning)
-            const cleanOriginal = (b.originalBullet || '').trim().toLowerCase();
-            const cleanCurrent = originalBullet.trim().toLowerCase();
-            return cleanOriginal.includes(cleanCurrent) || cleanCurrent.includes(cleanOriginal);
-          });
-          
-          if (aiBullet && aiBullet.variations && aiBullet.variations[selectedVariation]) {
-            return aiBullet.variations[selectedVariation]; // Use selected variation
-          }
-          
-          return originalBullet; // Fallback to original
-        });
-        
-        return {
-          ...job,
-          bullets: updatedBullets || job.bullets
-        };
-      });
-      
-      // Update resume with new experience (LOCAL STATE ONLY - not saved to DB yet)
-      const updatedResume = {
-        ...viewingResume,
-        sections: {
-          ...viewingResume.sections,
-          experience: updatedExperience
-        }
-      };
-      
-      // DON'T save to database yet - let user click "Save Changes"
-      // await apiUpdateResume(viewingResume._id, updatedResume);
-      
-      // Update local state only
+    await handleApplyExperienceChangesHook(viewingResume, (updatedResume) => {
       setViewingResume(updatedResume);
-      
-      // Mark as having unsaved changes (user must click Save to create version)
       setHasUnsavedChanges(true);
-      
-      // Show success banner
-      setShowExperienceSuccessBanner(true);
-      
-      // Auto-close modal after 2 seconds
-      setTimeout(() => {
-        setShowExperienceTailoring(false);
-        setShowExperienceSuccessBanner(false);
-        setSelectedExperienceVariations({});
-      }, 2000);
-    } catch (err) {
-      console.error('Failed to apply experience changes:', err);
-      alert('Failed to update experience. Please try again.');
-    } finally {
-      setIsApplyingExperience(false);
-    }
+    });
   };
 
   // Resume handlers
@@ -1909,6 +1154,124 @@ export default function ResumeTemplates() {
       alert("Failed to rename resume");
     } finally {
       setIsRenaming(false);
+    }
+  };
+
+  // UC-053: Validate resume
+  const handleValidateResume = async (resume) => {
+    setShowValidationIssuesPanel(false); // Close issues panel when running validation
+    try {
+      const validation = await validateResumeHook(resume, {
+        onSuccess: async (validation) => {
+          setShowValidationPanel(true);
+          
+          // Refresh resumes to get updated metadata
+          await loadAll();
+          
+          if (validation.isValid) {
+            setSuccessMessage('✓ Resume validation passed! You can now export your resume.');
+            setTimeout(() => setSuccessMessage(null), 5000);
+          }
+        },
+        onError: (error) => {
+          setSuccessMessage('❌ ' + (error.response?.data?.message || 'Failed to validate resume. Please check your connection and try again.'));
+          setTimeout(() => setSuccessMessage(null), 5000);
+        }
+      });
+    } catch (error) {
+      // Error already handled by hook
+    }
+  };
+
+  // UC-053: Toggle edit mode
+  const toggleEditMode = () => {
+    if (isEditMode) {
+      // In edit mode - show dropdown instead of immediate action
+      setShowEditDropdown(!showEditDropdown);
+    } else {
+      // Entering edit mode - initialize edited content with current values
+      setEditedContent({});
+      setIsEditMode(true);
+    }
+  };
+
+  // UC-053: Exit edit mode without saving
+  const exitEditModeWithoutSaving = () => {
+    setEditedContent({});
+    setIsEditMode(false);
+    setShowEditDropdown(false);
+  };
+
+  // UC-053: Save edited content
+  const handleSaveEditedContent = async () => {
+    if (!viewingResume || Object.keys(editedContent).length === 0) {
+      setIsEditMode(false);
+      setShowEditDropdown(false);
+      return;
+    }
+    
+    try {
+      await authWrap();
+      const updatedSections = { ...viewingResume.sections };
+      
+      // Apply edited content to sections
+      Object.keys(editedContent).forEach(key => {
+        const parts = key.split('.');
+        if (parts.length === 1) {
+          // Top-level section (e.g., summary)
+          updatedSections[parts[0]] = editedContent[key];
+        } else if (parts.length === 2) {
+          const [section, indexOrField] = parts;
+          
+          // Check if it's an array of strings (like skills)
+          if (Array.isArray(updatedSections[section]) && !isNaN(indexOrField)) {
+            // Array item (e.g., skills.0, skills.1)
+            const index = parseInt(indexOrField);
+            updatedSections[section][index] = editedContent[key];
+          } else {
+            // Nested object property (e.g., contactInfo.name, contactInfo.email)
+            if (!updatedSections[section]) {
+              updatedSections[section] = {};
+            }
+            updatedSections[section][indexOrField] = editedContent[key];
+          }
+        } else if (parts.length === 3) {
+          // Array item property (e.g., experience.0.description, education.1.degree)
+          const [section, index, field] = parts;
+          if (Array.isArray(updatedSections[section])) {
+            updatedSections[section][parseInt(index)][field] = editedContent[key];
+          }
+        }
+      });
+      
+      await apiUpdateResume(viewingResume._id, { sections: updatedSections });
+      
+      // Update viewing resume
+      setViewingResume({ ...viewingResume, sections: updatedSections });
+      
+      // Clear edited content
+      setEditedContent({});
+      
+      // Mark validation as stale
+      if (validationStatus[viewingResume._id]?.status === 'valid') {
+        setValidationStatus(prev => ({
+          ...prev,
+          [viewingResume._id]: {
+            ...prev[viewingResume._id],
+            status: 'stale'
+          }
+        }));
+      }
+      
+      setSuccessMessage('✓ Resume updated successfully');
+      setTimeout(() => setSuccessMessage(null), 3000);
+      setIsEditMode(false); // Exit edit mode
+      setShowEditDropdown(false);
+      await loadAll();
+    } catch (error) {
+      console.error('Error saving edited content:', error);
+      setSuccessMessage('❌ Failed to save changes');
+      setTimeout(() => setSuccessMessage(null), 5000);
     }
   };
 
@@ -2337,6 +1700,7 @@ export default function ResumeTemplates() {
                       key={resume._id}
                       resume={resume}
                       template={templates.find(t => t._id === resume.templateId)}
+                      validationStatus={validationStatus[resume._id]?.status}
                       onView={() => handleViewResume(resume)}
                       onRename={() => {
                         setRenamingResume(resume);
@@ -2400,6 +1764,28 @@ export default function ResumeTemplates() {
                   </svg>
                   <span>Manage Templates</span>
                 </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      await authWrap();
+                      const response = await getCoverLetterTemplateAnalytics();
+                      setCoverLetterAnalytics(response.data.data.analytics);
+                      setShowCoverLetterAnalytics(true);
+                    } catch (err) {
+                      console.error("Failed to load analytics:", err);
+                      alert("Failed to load template analytics");
+                    }
+                  }}
+                  className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                  style={{ backgroundColor: '#777C6D' }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                  <span>View Analytics</span>
+                </button>
               </div>
             </div>
             
@@ -2428,11 +1814,6 @@ export default function ResumeTemplates() {
                         <h3 className="font-semibold text-lg truncate" style={{ color: "#4F5348" }}>
                           {letter.name}
                         </h3>
-                        <div className="flex gap-2 mt-2">
-                          <span className="inline-block px-2 py-1 text-xs rounded" style={{ backgroundColor: "#E8EAE3", color: "#4F5348" }}>
-                            {letter.style} style
-                          </span>
-                        </div>
                       </div>
                       <p className="text-sm text-gray-600 mb-3 line-clamp-3">
                         {letter.content.substring(0, 100)}...
@@ -2443,8 +1824,11 @@ export default function ResumeTemplates() {
                       <div className="flex gap-2">
                         <button
                           onClick={() => {
-                            setSelectedCoverLetterTemplate(letter);
-                            setShowCoverLetterPreview(true);
+                            setEditingCoverLetter(letter);
+                            setCustomCoverLetterName(letter.name);
+                            setCustomCoverLetterContent(letter.content);
+                            setCustomCoverLetterStyle(letter.style || 'formal');
+                            setShowEditCoverLetterModal(true);
                           }}
                           className="flex-1 px-3 py-1.5 text-sm rounded transition"
                           style={{ backgroundColor: "#777C6D", color: "white" }}
@@ -2561,228 +1945,15 @@ export default function ResumeTemplates() {
       )}
 
       {/* Customize Template Modal */}
-      {customizeTemplate && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-[60] p-4" 
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
-          onClick={() => setCustomizeTemplate(null)}
-        >
-          <div 
-            className="bg-white rounded-lg shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-gray-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center z-10">
-              <h3 className="text-2xl font-heading font-semibold">Customize Template: {customizeTemplate.name}</h3>
-              <button
-                onClick={() => setCustomizeTemplate(null)}
-                className="text-gray-400 hover:text-gray-600 transition"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="p-6">
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="customizeName" className="block text-sm font-medium text-gray-700 mb-2">
-                      Template Name
-                    </label>
-                    <input
-                      type="text"
-                      id="customizeName"
-                      value={customizeTemplate.name}
-                      onChange={(e) => setCustomizeTemplate({...customizeTemplate, name: e.target.value})}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="customizeType" className="block text-sm font-medium text-gray-700 mb-2">Type</label>
-                    <select 
-                      id="customizeType"
-                      value={customizeTemplate.type} 
-                      onChange={(e) => setCustomizeTemplate({...customizeTemplate, type: e.target.value})} 
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      {TEMPLATE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                    </select>
-                  </div>
-                </div>
-
-                {/* UC-051: Theme Preset Selector */}
-                <div className="border-t pt-4">
-                  <h4 className="text-lg font-heading font-semibold mb-3">Theme Preset</h4>
-                  <p className="text-sm text-gray-600 mb-4">Choose a pre-designed theme or customize colors manually below</p>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {getThemePresetNames().map(presetName => {
-                      const preset = getThemePreset(presetName);
-                      const isSelected = customizeTemplate.theme?.presetName === presetName;
-                      return (
-                        <button
-                          key={presetName}
-                          onClick={() => {
-                            const themeData = getThemePreset(presetName);
-                            setCustomizeTemplate({
-                              ...customizeTemplate,
-                              theme: {
-                                ...themeData,
-                                presetName
-                              }
-                            });
-                          }}
-                          className={`p-4 rounded-lg border-2 transition text-left ${
-                            isSelected 
-                              ? 'border-blue-600 bg-blue-50' 
-                              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="font-medium text-gray-900">{preset.name}</div>
-                            {isSelected && (
-                              <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                              </svg>
-                            )}
-                          </div>
-                          <div className="text-xs text-gray-600 mb-3">{preset.description}</div>
-                          <div className="flex gap-1">
-                            <div 
-                              className="w-6 h-6 rounded border border-gray-300" 
-                              style={{ backgroundColor: preset.colors.primary }}
-                              title="Primary"
-                            />
-                            <div 
-                              className="w-6 h-6 rounded border border-gray-300" 
-                              style={{ backgroundColor: preset.colors.accent }}
-                              title="Accent"
-                            />
-                            <div 
-                              className="w-6 h-6 rounded border border-gray-300" 
-                              style={{ backgroundColor: preset.colors.text }}
-                              title="Text"
-                            />
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="border-t pt-4">
-                  <h4 className="text-lg font-heading font-semibold mb-3">Custom Theme Colors</h4>
-                  <p className="text-sm text-gray-600 mb-3">Fine-tune the selected theme or create your own color scheme</p>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="primaryColor" className="block text-sm font-medium text-gray-700 mb-2">Primary Color</label>
-                      <input 
-                        type="color"
-                        id="primaryColor"
-                        value={customizeTemplate.theme?.colors?.primary || "#4F5348"} 
-                        onChange={(e) => setCustomizeTemplate({
-                          ...customizeTemplate, 
-                          theme: { 
-                            ...(customizeTemplate.theme||{}), 
-                            colors: { ...(customizeTemplate.theme?.colors||{}), primary: e.target.value }
-                          }
-                        })}
-                        className="w-full h-10 rounded-lg border border-gray-300"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="textColor" className="block text-sm font-medium text-gray-700 mb-2">Text Color</label>
-                      <input 
-                        type="color"
-                        id="textColor"
-                        value={customizeTemplate.theme?.colors?.text || "#222222"} 
-                        onChange={(e) => setCustomizeTemplate({
-                          ...customizeTemplate, 
-                          theme: { 
-                            ...(customizeTemplate.theme||{}), 
-                            colors: { ...(customizeTemplate.theme?.colors||{}), text: e.target.value }
-                          }
-                        })}
-                        className="w-full h-10 rounded-lg border border-gray-300"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="border-t pt-4">
-                  <h4 className="text-lg font-heading font-semibold mb-3">Layout</h4>
-                  <div className="space-y-4">
-                    <div>
-                      <label htmlFor="sectionOrder" className="block text-sm font-medium text-gray-700 mb-2">
-                        Section Order (comma-separated)
-                      </label>
-                      <input 
-                        type="text"
-                        id="sectionOrder"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                        value={(customizeTemplate.layout?.sectionsOrder||[]).join(", ")} 
-                        onChange={(e) => setCustomizeTemplate({
-                          ...customizeTemplate, 
-                          layout: { 
-                            ...(customizeTemplate.layout||{}), 
-                            sectionsOrder: e.target.value.split(",").map(s=>s.trim()).filter(Boolean) 
-                          }
-                        })} 
-                        placeholder="summary, experience, skills, education, projects"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="spacing" className="block text-sm font-medium text-gray-700 mb-2">
-                        Spacing (px)
-                      </label>
-                      <input
-                        type="number"
-                        id="spacing"
-                        value={customizeTemplate.theme?.spacing || 8}
-                        onChange={(e) => setCustomizeTemplate({
-                          ...customizeTemplate,
-                          theme: {
-                            ...(customizeTemplate.theme||{}),
-                            spacing: parseInt(e.target.value)||8
-                          }
-                        })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 -mx-6 -mb-6 mt-6 border-t">
-                <button
-                  type="button"
-                  onClick={() => setCustomizeTemplate(null)}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPreviewTemplate(customizeTemplate)}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
-                >
-                  Preview
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCustomizeSave}
-                  className="px-4 py-2 text-white rounded-lg transition"
-                  style={{ backgroundColor: '#777C6D' }}
-                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-                >
-                  Save Changes
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <CustomizeTemplateModal
+        customizeTemplate={customizeTemplate}
+        setCustomizeTemplate={setCustomizeTemplate}
+        TEMPLATE_TYPES={TEMPLATE_TYPES}
+        getThemePresetNames={getThemePresetNames}
+        getThemePreset={getThemePreset}
+        setPreviewTemplate={setPreviewTemplate}
+        handleCustomizeSave={handleCustomizeSave}
+      />
 
       {/* Import Template Modal */}
       {showImport && (
@@ -3624,378 +2795,62 @@ export default function ResumeTemplates() {
       )}
 
       {/* Delete Confirmation Modal */}
-      {showDeleteModal && deletingResume && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-[99999]" 
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)', zIndex: 99999 }}
-          onClick={handleCancelDelete}
-        >
-          <div 
-            className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 border border-gray-200" 
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="bg-red-50 border-b border-red-100 px-6 py-4">
-              <div className="flex items-center space-x-3">
-                <div className="flex-shrink-0">
-                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-heading font-semibold text-gray-900">Confirm Deletion</h3>
-              </div>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-6">
-              <p className="text-gray-700 mb-4">
-                Are you sure you want to delete this resume?
-              </p>
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
-                <p className="font-semibold text-gray-900">{deletingResume.name}</p>
-                <p className="text-sm text-gray-600">Modified {new Date(deletingResume.updatedAt).toLocaleDateString()}</p>
-              </div>
-              <p className="text-sm text-red-600 font-medium">
-                This action cannot be undone.
-              </p>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 border-t">
-              <button
-                type="button"
-                onClick={handleCancelDelete}
-                disabled={isDeleting}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDelete}
-                disabled={isDeleting}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-              >
-                {isDeleting ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span>Deleting...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    <span>Delete</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteConfirmationModal
+        showModal={showDeleteModal}
+        itemToDelete={deletingResume}
+        onClose={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+        isDeleting={isDeleting}
+        itemType="resume"
+        itemDetails={{
+          name: deletingResume?.name,
+          subtitle: deletingResume ? `Modified ${new Date(deletingResume.updatedAt).toLocaleDateString()}` : ''
+        }}
+      />
 
       {/* Delete Template Confirmation Modal */}
-      {showDeleteTemplateModal && deletingTemplate && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-[99999]" 
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)', zIndex: 99999 }}
-          onClick={handleCancelDeleteTemplate}
-        >
-          <div 
-            className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 border border-gray-200" 
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="bg-red-50 border-b border-red-100 px-6 py-4">
-              <div className="flex items-center space-x-3">
-                <div className="flex-shrink-0">
-                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-heading font-semibold text-gray-900">Confirm Deletion</h3>
-              </div>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-6">
-              <p className="text-gray-700 mb-4">
-                Are you sure you want to delete this template?
-              </p>
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
-                <p className="font-semibold text-gray-900">{deletingTemplate.name}</p>
-                <p className="text-sm text-gray-600 capitalize">{deletingTemplate.type} template</p>
-              </div>
-              <p className="text-sm text-red-600 font-medium">
-                This action cannot be undone.
-              </p>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 border-t">
-              <button
-                type="button"
-                onClick={handleCancelDeleteTemplate}
-                disabled={isDeleting}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDeleteTemplate}
-                disabled={isDeleting}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-              >
-                {isDeleting ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span>Deleting...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    <span>Delete</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteConfirmationModal
+        showModal={showDeleteTemplateModal}
+        itemToDelete={deletingTemplate}
+        onClose={handleCancelDeleteTemplate}
+        onConfirm={handleConfirmDeleteTemplate}
+        isDeleting={isDeleting}
+        itemType="template"
+        itemDetails={{
+          name: deletingTemplate?.name,
+          subtitle: deletingTemplate ? `${deletingTemplate.type.charAt(0).toUpperCase() + deletingTemplate.type.slice(1)} template` : ''
+        }}
+      />
 
       {/* Rename Resume Modal */}
-      {showRenameModal && renamingResume && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-50" 
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
-          onClick={() => !isRenaming && setShowRenameModal(false)}
-        >
-          <div 
-            className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 border border-gray-200" 
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="bg-blue-50 border-b border-blue-100 px-6 py-4">
-              <div className="flex items-center space-x-3">
-                <div className="flex-shrink-0">
-                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-heading font-semibold text-gray-900">Rename Resume</h3>
-              </div>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-6">
-              <label htmlFor="renameInput" className="block text-sm font-medium text-gray-700 mb-2">
-                Resume Name
-              </label>
-              <input
-                id="renameInput"
-                type="text"
-                value={renameValue}
-                onChange={(e) => setRenameValue(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter' && !isRenaming && renameValue.trim()) {
-                    handleRenameResume();
-                  }
-                }}
-                disabled={isRenaming}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
-                placeholder="Enter resume name"
-                autoFocus
-              />
-            </div>
-
-            {/* Modal Actions */}
-            <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t">
-              <button
-                onClick={() => !isRenaming && setShowRenameModal(false)}
-                disabled={isRenaming}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleRenameResume}
-                disabled={isRenaming || !renameValue.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
-              >
-                {isRenaming ? "Renaming..." : "Rename"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <RenameResumeModal
+        showModal={showRenameModal}
+        renamingResume={renamingResume}
+        onClose={() => setShowRenameModal(false)}
+        renameValue={renameValue}
+        setRenameValue={setRenameValue}
+        onRename={handleRenameResume}
+        isRenaming={isRenaming}
+      />
 
       {/* Save As (Export filename) Modal - replaces window.prompt */}
-      {showSaveAsModal && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-60"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
-          onClick={() => !isExporting && setShowSaveAsModal(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 border border-gray-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="bg-gray-50 border-b px-6 py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <h3 className="text-lg font-heading font-semibold text-gray-900">Download Resume</h3>
-                </div>
-                <button
-                  onClick={() => !isExporting && setShowSaveAsModal(false)}
-                  className="text-gray-400 hover:text-gray-600 transition"
-                  aria-label="Close"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6">
-              <label htmlFor="saveAsInput" className="block text-sm font-medium text-gray-700 mb-2">Filename</label>
-              <input
-                id="saveAsInput"
-                type="text"
-                value={saveAsFilename}
-                onChange={(e) => setSaveAsFilename(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter' && !isExporting && saveAsFilename.trim()) {
-                    performExport(pendingExportFormat, saveAsFilename.trim());
-                  }
-                }}
-                disabled={isExporting}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
-                placeholder="Enter filename"
-                autoFocus
-              />
-              <p className="text-xs text-gray-500 mt-2">Enter a filename for the exported file. The appropriate extension will be kept if included.</p>
-            </div>
-
-            <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t">
-              <button
-                onClick={() => !isExporting && setShowSaveAsModal(false)}
-                disabled={isExporting}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => performExport(pendingExportFormat, saveAsFilename.trim() || saveAsFilename)}
-                disabled={isExporting || !saveAsFilename.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
-                style={{ backgroundColor: '#777C6D' }}
-                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-              >
-                {isExporting ? 'Exporting...' : 'Download'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SaveAsModal
+        isOpen={showSaveAsModal}
+        onClose={() => setShowSaveAsModal(false)}
+        onSave={(filename) => performExport(pendingExportFormat, filename)}
+        filename={saveAsFilename}
+        setFilename={setSaveAsFilename}
+        isExporting={isExporting}
+        format={pendingExportFormat}
+      />
 
       {/* UC-51: Watermark Configuration Modal */}
-      {showWatermarkModal && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-60"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
-          onClick={() => setShowWatermarkModal(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 border border-gray-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="bg-purple-50 border-b border-purple-100 px-6 py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <svg className="w-6 h-6 text-[#4F5348]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-                  </svg>
-                  <h3 className="text-lg font-heading font-semibold text-gray-900">Watermark Settings</h3>
-                </div>
-                <button
-                  onClick={() => setShowWatermarkModal(false)}
-                  className="text-gray-400 hover:text-gray-600 transition"
-                  aria-label="Close"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6">
-              <p className="text-sm text-gray-600 mb-4">
-                Configure the watermark text that will appear on exported PDF and DOCX files.
-              </p>
-              
-              <label htmlFor="watermarkTextInput" className="block text-sm font-medium text-gray-700 mb-2">
-                Watermark Text
-              </label>
-              <input
-                id="watermarkTextInput"
-                type="text"
-                value={watermarkText}
-                onChange={(e) => setWatermarkText(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter' && watermarkText.trim()) {
-                    setShowWatermarkModal(false);
-                  }
-                }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="e.g., CONFIDENTIAL, DRAFT, Property of..."
-                autoFocus
-              />
-              
-              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <div className="flex items-start gap-2">
-                  <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <div className="text-xs text-blue-800">
-                    <p className="font-medium mb-1">Preview</p>
-                    <p className="text-gray-600 opacity-30 font-semibold text-2xl tracking-wide transform -rotate-45">
-                      {watermarkText || 'CONFIDENTIAL'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t">
-              <button
-                onClick={() => setShowWatermarkModal(false)}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => setShowWatermarkModal(false)}
-                className="px-4 py-2 bg-[#777C6D] text-white rounded-lg hover:bg-[#656A5C] transition"
-              >
-                Save Settings
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <WatermarkModal
+        isOpen={showWatermarkModal}
+        onClose={() => setShowWatermarkModal(false)}
+        watermarkText={watermarkText}
+        setWatermarkText={setWatermarkText}
+      />
 
       {/* View Resume Modal */}
       {showViewResumeModal && viewingResume && (() => {
@@ -4065,18 +2920,33 @@ export default function ResumeTemplates() {
                       </button>
                     )}
                   </div>
-                  <p 
-                    className="leading-relaxed" 
-                    style={{ 
-                      color: summaryFmt.color || theme.colors.text, 
-                      textAlign: resumeTemplate.layout?.textAlignment || 'justify', 
-                      fontFamily: theme.fonts.body, 
-                      fontSize: theme.fonts.sizes?.body || "14px",
-                      lineHeight: resumeTemplate.layout?.lineHeight || 1.5
-                    }}
-                  >
-                    {viewingResume.sections.summary}
-                  </p>
+                  {/* UC-053: Rich text editor in edit mode */}
+                  {isEditMode ? (
+                    <RichTextEditor
+                      value={editedContent['summary'] || viewingResume.sections.summary}
+                      onChange={(content) => {
+                        setEditedContent(prev => ({ ...prev, summary: content }));
+                      }}
+                      placeholder="Enter your professional summary..."
+                      style={{
+                        fontFamily: theme.fonts.body,
+                        fontSize: theme.fonts.sizes?.body || "14px"
+                      }}
+                    />
+                  ) : (
+                    <p 
+                      className="leading-relaxed" 
+                      style={{ 
+                        color: summaryFmt.color || theme.colors.text, 
+                        textAlign: resumeTemplate.layout?.textAlignment || 'justify', 
+                        fontFamily: theme.fonts.body, 
+                        fontSize: theme.fonts.sizes?.body || "14px",
+                        lineHeight: resumeTemplate.layout?.lineHeight || 1.5
+                      }}
+                    >
+                      {viewingResume.sections.summary}
+                    </p>
+                  )}
                 </div>
               );
             
@@ -4124,23 +2994,43 @@ export default function ResumeTemplates() {
                           {job.company}
                         </p>
                         {job.bullets && job.bullets.length > 0 && (
-                          <ul className="space-y-1 ml-5" style={{ listStyleType: 'disc' }}>
-                            {job.bullets.map((bullet, bulletIdx) => (
-                              <li 
-                                key={bulletIdx} 
-                                className="leading-relaxed" 
-                                style={{ 
-                                  color: theme.colors.text, 
-                                  fontFamily: theme.fonts.body, 
-                                  fontSize: theme.fonts.sizes?.body || "14px",
-                                  lineHeight: resumeTemplate.layout?.lineHeight || 1.5,
-                                  marginBottom: `${(resumeTemplate.layout?.paragraphSpacing || 8) / 2}px`
-                                }}
-                              >
-                                {bullet}
-                              </li>
-                            ))}
-                          </ul>
+                          isEditMode ? (
+                            /* UC-053: Rich text editor for experience bullets in edit mode */
+                            <div className="space-y-2">
+                              {job.bullets.map((bullet, bulletIdx) => (
+                                <RichTextEditor
+                                  key={bulletIdx}
+                                  value={editedContent[`experience_${idx}_${bulletIdx}`] || bullet}
+                                  onChange={(content) => {
+                                    setEditedContent(prev => ({ ...prev, [`experience_${idx}_${bulletIdx}`]: content }));
+                                  }}
+                                  placeholder={`Bullet point ${bulletIdx + 1}...`}
+                                  style={{
+                                    fontFamily: theme.fonts.body,
+                                    fontSize: theme.fonts.sizes?.body || "14px"
+                                  }}
+                                />
+                              ))}
+                            </div>
+                          ) : (
+                            <ul className="space-y-1 ml-5" style={{ listStyleType: 'disc' }}>
+                              {job.bullets.map((bullet, bulletIdx) => (
+                                <li 
+                                  key={bulletIdx} 
+                                  className="leading-relaxed" 
+                                  style={{ 
+                                    color: theme.colors.text, 
+                                    fontFamily: theme.fonts.body, 
+                                    fontSize: theme.fonts.sizes?.body || "14px",
+                                    lineHeight: resumeTemplate.layout?.lineHeight || 1.5,
+                                    marginBottom: `${(resumeTemplate.layout?.paragraphSpacing || 8) / 2}px`
+                                  }}
+                                >
+                                  {bullet}
+                                </li>
+                              ))}
+                            </ul>
+                          )
                         )}
                       </div>
                     ))}
@@ -4178,34 +3068,46 @@ export default function ResumeTemplates() {
                       </button>
                     )}
                   </div>
-                  <div className="flex flex-wrap gap-2 print:gap-1">
-                    {viewingResume.sections.skills.map((skill, idx) => {
-                      const skillName = typeof skill === 'string' ? skill : skill.name || skill;
-                      return (
-                        <div 
-                          key={idx}
-                          className="group inline-flex items-center gap-1 px-2 py-1 print:px-1 print:py-0.5 rounded print:rounded-sm bg-gray-100 print:bg-transparent"
-                          style={{
-                            fontFamily: theme.fonts.body,
-                            fontSize: theme.fonts.sizes?.body || "14px"
-                          }}
-                        >
-                          <span style={{ color: skillsFmt.color || theme.colors.text }}>
-                            {skillName}
-                          </span>
-                          <button
-                            onClick={() => handleDeleteSkill(skill)}
-                            className="print:hidden opacity-0 group-hover:opacity-100 transition-opacity text-red-600 hover:text-red-800 ml-1"
-                            title="Remove skill"
+                  {/* UC-053: Edit mode for skills */}
+                  {isEditMode ? (
+                    <EditableSkills
+                      skills={viewingResume.sections.skills}
+                      editedContent={editedContent}
+                      setEditedContent={setEditedContent}
+                      viewingResume={viewingResume}
+                      setViewingResume={setViewingResume}
+                      theme={theme}
+                    />
+                  ) : (
+                    <div className="flex flex-wrap gap-2 print:gap-1">
+                      {viewingResume.sections.skills.map((skill, idx) => {
+                        const skillName = typeof skill === 'string' ? skill : skill.name || skill;
+                        return (
+                          <div 
+                            key={idx}
+                            className="group inline-flex items-center gap-1 px-2 py-1 print:px-1 print:py-0.5 rounded print:rounded-sm bg-gray-100 print:bg-transparent"
+                            style={{
+                              fontFamily: theme.fonts.body,
+                              fontSize: theme.fonts.sizes?.body || "14px"
+                            }}
                           >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
+                            <span style={{ color: skillsFmt.color || theme.colors.text }}>
+                              {skillName}
+                            </span>
+                            <button
+                              onClick={() => handleDeleteSkill(skill)}
+                              className="print:hidden opacity-0 group-hover:opacity-100 transition-opacity text-red-600 hover:text-red-800 ml-1"
+                              title="Remove skill"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               );
             
@@ -4236,6 +3138,20 @@ export default function ResumeTemplates() {
                         locationAfterInstitution: true,
                         gpaSeparateLine: true
                       };
+                      
+                      // UC-053: Edit mode for education
+                      if (isEditMode) {
+                        return (
+                          <EditableEducation
+                            key={idx}
+                            education={edu}
+                            idx={idx}
+                            editedContent={editedContent}
+                            setEditedContent={setEditedContent}
+                            theme={theme}
+                          />
+                        );
+                      }
                       
                       // Render fields based on template format
                       const renderEducationField = (fieldType) => {
@@ -4550,83 +3466,6 @@ export default function ResumeTemplates() {
           }
         };
         
-        // DnD item for section toggle/reorder in customization panel
-        const SectionToggleItem = ({ section, index }) => {
-          const ref = React.useRef(null);
-          const [, drop] = useDrop({
-            accept: 'section',
-            hover(item) {
-              if (item.index === index) return;
-              moveSection(item.index, index);
-              item.index = index;
-            },
-          });
-          const [{ isDragging }, drag] = useDrag({
-            type: 'section',
-            item: { type: 'section', key: section.key, index },
-            collect: (monitor) => ({ isDragging: monitor.isDragging() }),
-          });
-          drag(drop(ref));
-
-          const hasFormatting = !!sectionFormatting[section.key];
-          const sectionStatus = getSectionStatus(section.key);
-
-          // Completion indicator
-          const isComplete = viewingResume.sections?.[section.key] && (
-            Array.isArray(viewingResume.sections[section.key])
-              ? viewingResume.sections[section.key].length > 0
-              : !!viewingResume.sections[section.key]
-          );
-
-          const getBorderColor = () => {
-            if (sectionStatus === 'required') return 'border-red-300';
-            if (sectionStatus === 'recommended') return 'border-yellow-300';
-            return 'border-gray-300';
-          };
-
-          return (
-            <div
-              ref={ref}
-              style={{ opacity: isDragging ? 0.5 : 1 }}
-              className={`flex items-center gap-2 text-sm cursor-move border-2 ${getBorderColor()} px-3 py-2 rounded-lg bg-white hover:shadow-md transition-shadow relative`}
-            >
-              <input
-                type="checkbox"
-                checked={visibleSections.includes(section.key)}
-                onChange={() => handleToggleSection(section.key)}
-                className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-              />
-              <span className="font-medium text-gray-700">{section.label}</span>
-              <span
-                className={`text-sm ${isComplete ? 'text-green-600' : 'text-gray-400'}`}
-                title={isComplete ? 'Section complete' : 'Section incomplete'}
-              >
-                {isComplete ? '✓' : '○'}
-              </span>
-              {sectionStatus === 'required' && (
-                <span className="text-[10px] px-1.5 py-0.5 bg-red-100 text-red-700 rounded font-semibold">REQ</span>
-              )}
-              {sectionStatus === 'recommended' && (
-                <span className="text-[10px] px-1.5 py-0.5 bg-yellow-100 text-yellow-700 rounded font-semibold">REC</span>
-              )}
-              <button
-                onClick={(e) => { e.stopPropagation(); openSectionFormatting(section.key); }}
-                className={`p-1 rounded hover:bg-gray-100 transition ${hasFormatting ? 'text-blue-600' : 'text-gray-400'}`}
-                title="Format section"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-                </svg>
-              </button>
-              <span className="text-gray-400 text-sm ml-auto" style={{ cursor: 'grab' }}>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-                </svg>
-              </span>
-            </div>
-          );
-        };
-
         return (
         <>
         <div 
@@ -4648,6 +3487,50 @@ export default function ResumeTemplates() {
                 <h3 className="text-lg font-heading font-semibold text-gray-900">{viewingResume.name}</h3>
               </div>
               <div className="flex items-center gap-3">
+                {/* UC-053: View Issues Button */}
+                <ViewIssuesButton 
+                  validationResults={validationResults}
+                  onClick={() => setShowValidationIssuesPanel(v => !v)}
+                />
+                
+                {/* UC-053: Validate Button */}
+                <button
+                  onClick={() => handleValidateResume(viewingResume)}
+                  disabled={isValidating}
+                  className="px-4 py-2 text-white rounded-lg transition flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: isValidating ? '#9CA3AF' : '#10B981' }}
+                  onMouseOver={(e) => !isValidating && (e.currentTarget.style.backgroundColor = '#059669')}
+                  onMouseOut={(e) => !isValidating && (e.currentTarget.style.backgroundColor = '#10B981')}
+                  title="Validate resume before export"
+                >
+                  {isValidating ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Validating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>Validate</span>
+                    </>
+                  )}
+                </button>
+                
+                {/* UC-053: Edit Mode Toggle with Dropdown */}
+                <FinishEditDropdown
+                  isEditMode={isEditMode}
+                  showDropdown={showEditDropdown}
+                  setShowDropdown={setShowEditDropdown}
+                  onToggleEditMode={toggleEditMode}
+                  onSaveAndExit={handleSaveEditedContent}
+                  onExitWithoutSaving={exitEditModeWithoutSaving}
+                />
+                
                 <button
                   onClick={() => setShowCustomizationPanel(v => !v)}
                   className="px-4 py-2 text-white rounded-lg transition flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
@@ -4674,205 +3557,44 @@ export default function ResumeTemplates() {
             {/* Modal Content - HTML View only (PDF experimental removed) */}
             <div className="flex-1 overflow-y-auto py-4 px-4" style={{ backgroundColor: '#525252' }}>
               {/* Customization Panel */}
-              {showCustomizationPanel && (
-                <div className="mb-4 mx-auto bg-white border border-gray-200 rounded-lg shadow-lg" style={{ width: '8.5in' }}>
-                  <div className="bg-gray-50 border-b border-gray-200 px-4 py-3 rounded-t-lg">
-                    <div className="flex items-center space-x-2">
-                      <svg className="w-5 h-5 text-[#777C6D]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                      </svg>
-                      <h4 className="text-sm font-heading font-semibold text-gray-900">Section Customization</h4>
-                    </div>
-                  </div>
-                  
-                  <div className="p-4 space-y-4">
-                    {/* Job Type and Presets Row */}
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-2">
-                        <label className="text-sm font-medium text-gray-700">Job Type:</label>
-                        <select
-                          value={selectedJobType}
-                          onChange={(e) => applyJobTypeConfig(e.target.value)}
-                          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                        >
-                          <option value="general">General</option>
-                          <option value="technical">Technical/Engineering</option>
-                          <option value="creative">Creative/Design</option>
-                          <option value="academic">Academic/Research</option>
-                          <option value="entry_level">Entry Level</option>
-                        </select>
-                      </div>
-                      <div className="flex items-center gap-2 relative">
-                        <button
-                          onClick={() => setShowPresetMenu(v => !v)}
-                          className="px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition text-sm flex items-center gap-2"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                          Presets
-                        </button>
-                        {showPresetMenu && (
-                          <div className="absolute right-0 top-12 z-10 w-64 bg-white border border-gray-200 rounded-lg shadow-xl">
-                            <div className="py-2 max-h-64 overflow-auto">
-                              <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Built-in Presets</div>
-                              {SECTION_PRESETS.map(preset => (
-                                <button
-                                  key={preset.name}
-                                  onClick={() => applyPreset(preset)}
-                                  className="w-full text-left px-3 py-2 hover:bg-blue-50 transition"
-                                >
-                                  <div className="font-medium text-sm text-gray-900">{preset.name}</div>
-                                  <div className="text-xs text-gray-500">{preset.description}</div>
-                                </button>
-                              ))}
-                              {customPresets.length > 0 && (
-                                <>
-                                  <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide mt-2 border-t">Custom Presets</div>
-                                  {customPresets.map((preset, idx) => (
-                                    <button
-                                      key={idx}
-                                      onClick={() => applyPreset(preset)}
-                                      className="w-full text-left px-3 py-2 hover:bg-blue-50 transition"
-                                    >
-                                      <div className="font-medium text-sm text-gray-900">{preset.name}</div>
-                                    </button>
-                                  ))}
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                        <button
-                          onClick={() => setShowSavePresetModal(true)}
-                          className="px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition text-sm flex items-center gap-2"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                          </svg>
-                          Save Preset
-                        </button>
-                      </div>
-                    </div>
-                    
-                    {/* Sections Grid */}
-                    <div>
-                      <label className="text-sm font-medium text-gray-700 mb-2 block">Section Order & Visibility (Drag to Reorder)</label>
-                      <DndProvider backend={HTML5Backend}>
-                        <div className="flex flex-wrap gap-2">
-                          {sectionOrder.map((key, idx) => {
-                            const section = DEFAULT_SECTIONS.find(s => s.key === key);
-                            if (!section) return null;
-                            return <SectionToggleItem key={key} section={section} index={idx} />;
-                          })}
-                        </div>
-                      </DndProvider>
-                    </div>
+              <CustomizationPanel
+                showCustomizationPanel={showCustomizationPanel}
+                selectedJobType={selectedJobType}
+                applyJobTypeConfig={applyJobTypeConfig}
+                showPresetMenu={showPresetMenu}
+                setShowPresetMenu={setShowPresetMenu}
+                SECTION_PRESETS={SECTION_PRESETS}
+                applyPreset={applyPreset}
+                customPresets={customPresets}
+                setShowSavePresetModal={setShowSavePresetModal}
+                sectionOrder={sectionOrder}
+                DEFAULT_SECTIONS={DEFAULT_SECTIONS}
+                visibleSections={visibleSections}
+                sectionFormatting={sectionFormatting}
+                viewingResume={viewingResume}
+                moveSection={moveSection}
+                handleToggleSection={handleToggleSection}
+                openSectionFormatting={openSectionFormatting}
+                getSectionStatus={getSectionStatus}
+                jobs={jobs}
+                selectedJobForSkills={selectedJobForSkills}
+                selectedJobForExperience={selectedJobForExperience}
+                setSelectedJobForSkills={setSelectedJobForSkills}
+                setSelectedJobForExperience={setSelectedJobForExperience}
+                handleOptimizeSkills={handleOptimizeSkills}
+                isOptimizingSkills={isOptimizingSkills}
+                handleTailorExperience={handleTailorExperience}
+                isTailoringExperience={isTailoringExperience}
+              />
 
-                    {/* AI Optimization Section (UC-49 & UC-50) */}
-                    <div className="mt-6 pt-6 border-t border-gray-200">
-                      <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                        <svg className="w-5 h-5 text-[#4F5348]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                        </svg>
-                        AI Optimization
-                      </h4>
-                      
-                      {/* Job Selector */}
-                      {jobs.length > 0 && (
-                        <div className="mb-4">
-                          <label className="text-xs font-medium text-gray-700 mb-2 block">Select Job for Optimization:</label>
-                          <select
-                            value={selectedJobForSkills || selectedJobForExperience || ''}
-                            onChange={(e) => {
-                              const selectedValue = e.target.value;
-                              console.log('Selected job:', selectedValue); // Debug
-                              setSelectedJobForSkills(selectedValue);
-                              setSelectedJobForExperience(selectedValue);
-                            }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
-                          >
-                            <option value="">Select a job...</option>
-                            {jobs.map((job, idx) => {
-                              // Ensure we have a valid job object
-                              if (!job || !job.title || !job.company) {
-                                console.warn('Invalid job object:', job);
-                                return null;
-                              }
-                              
-                              // Use title|company as the value (pipe separator)
-                              const jobValue = `${job.title}|${job.company}`;
-                              const displayText = `${job.title} at ${job.company}`;
-                              
-                              return (
-                                <option key={idx} value={jobValue}>
-                                  {displayText}
-                                </option>
-                              );
-                            }).filter(Boolean)}
-                          </select>
-                        </div>
-                      )}
-                      
-                      <div className="flex gap-2">
-                        {/* UC-49: Skills Optimization Button */}
-                        <button
-                          onClick={handleOptimizeSkills}
-                          disabled={isOptimizingSkills || (!selectedJobForSkills && !viewingResume.metadata?.tailoredForJob)}
-                          className="flex-1 px-3 py-2 bg-[#777C6D] text-white rounded-lg hover:bg-[#656A5C] transition text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {isOptimizingSkills ? (
-                            <>
-                              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                              </svg>
-                              Optimizing...
-                            </>
-                          ) : (
-                            <>
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                              </svg>
-                              Optimize Skills
-                            </>
-                          )}
-                        </button>
-
-                        {/* UC-50: Experience Tailoring Button */}
-                        <button
-                          onClick={handleTailorExperience}
-                          disabled={isTailoringExperience || (!selectedJobForExperience && !viewingResume.metadata?.tailoredForJob)}
-                          className="flex-1 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {isTailoringExperience ? (
-                            <>
-                              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                              </svg>
-                              Tailoring...
-                            </>
-                          ) : (
-                            <>
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                              </svg>
-                              Tailor Experience
-                            </>
-                          )}
-                        </button>
-                      </div>
-
-                      {jobs.length === 0 && (
-                        <p className="text-xs text-gray-500 mt-2 italic">
-                          Save or apply to jobs to use AI optimization features.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
+              {/* UC-053: Validation Issues Panel - Inline view below customization */}
+              {showValidationIssuesPanel && validationResults && (
+                <InlineValidationIssuesPanel
+                  validationResults={validationResults}
+                  onClose={() => setShowValidationIssuesPanel(false)}
+                />
               )}
+
               <div 
                 className="resume-printable mx-auto bg-white shadow-2xl print:shadow-none" 
                 style={{ 
@@ -4892,79 +3614,91 @@ export default function ResumeTemplates() {
                   marginBottom: `${resumeTemplate.layout?.sectionSpacing || 32}px`
                 }}
               >
-                <h1 className="font-bold mb-2" style={{ color: theme.colors.text, fontFamily: theme.fonts.heading, fontSize: theme.fonts.sizes?.name || "36px" }}>
-                  {viewingResume.sections?.contactInfo?.name || 'Your Name'}
-                </h1>
-                <div 
-                  className="flex flex-wrap gap-2 justify-center" 
-                  style={{ 
-                    color: theme.colors.muted, 
-                    fontFamily: theme.fonts.body, 
-                    fontSize: theme.fonts.sizes?.small || "12px"
-                  }}
-                >
-                  {viewingResume.sections?.contactInfo?.email && (
-                    <span>{viewingResume.sections.contactInfo.email}</span>
-                  )}
-                  {viewingResume.sections?.contactInfo?.phone && (
-                    <>
-                      {viewingResume.sections?.contactInfo?.email && <span>•</span>}
-                      <span>{viewingResume.sections.contactInfo.phone}</span>
-                    </>
-                  )}
-                  {viewingResume.sections?.contactInfo?.location && (
-                    <>
-                      {(viewingResume.sections?.contactInfo?.email || viewingResume.sections?.contactInfo?.phone) && <span>•</span>}
-                      <span>{viewingResume.sections.contactInfo.location}</span>
-                    </>
-                  )}
-                </div>
-                {/* Links row */}
-                {(viewingResume.sections?.contactInfo?.linkedin || 
-                  viewingResume.sections?.contactInfo?.github || 
-                  viewingResume.sections?.contactInfo?.website) && (
-                  <div 
-                    className="text-xs flex flex-wrap gap-2 mt-1 justify-center" 
-                    style={{ 
-                      color: '#4A5568'
-                    }}
-                  >
-                    {viewingResume.sections?.contactInfo?.linkedin && (
-                      <a 
-                        href={viewingResume.sections.contactInfo.linkedin} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="hover:underline"
+                {/* UC-053: Editable Contact Info in Edit Mode */}
+                {isEditMode ? (
+                  <EditableContactInfo
+                    contactInfo={viewingResume.sections?.contactInfo}
+                    editedContent={editedContent}
+                    setEditedContent={setEditedContent}
+                    theme={theme}
+                  />
+                ) : (
+                  <>
+                    <h1 className="font-bold mb-2" style={{ color: theme.colors.text, fontFamily: theme.fonts.heading, fontSize: theme.fonts.sizes?.name || "36px" }}>
+                      {viewingResume.sections?.contactInfo?.name || 'Your Name'}
+                    </h1>
+                    <div 
+                      className="flex flex-wrap gap-2 justify-center" 
+                      style={{ 
+                        color: theme.colors.muted, 
+                        fontFamily: theme.fonts.body, 
+                        fontSize: theme.fonts.sizes?.small || "12px"
+                      }}
+                    >
+                      {viewingResume.sections?.contactInfo?.email && (
+                        <span>{viewingResume.sections.contactInfo.email}</span>
+                      )}
+                      {viewingResume.sections?.contactInfo?.phone && (
+                        <>
+                          {viewingResume.sections?.contactInfo?.email && <span>•</span>}
+                          <span>{viewingResume.sections.contactInfo.phone}</span>
+                        </>
+                      )}
+                      {viewingResume.sections?.contactInfo?.location && (
+                        <>
+                          {(viewingResume.sections?.contactInfo?.email || viewingResume.sections?.contactInfo?.phone) && <span>•</span>}
+                          <span>{viewingResume.sections.contactInfo.location}</span>
+                        </>
+                      )}
+                    </div>
+                    {/* Links row */}
+                    {(viewingResume.sections?.contactInfo?.linkedin || 
+                      viewingResume.sections?.contactInfo?.github || 
+                      viewingResume.sections?.contactInfo?.website) && (
+                      <div 
+                        className="text-xs flex flex-wrap gap-2 mt-1 justify-center" 
+                        style={{ 
+                          color: '#4A5568'
+                        }}
                       >
-                        LinkedIn
-                      </a>
+                        {viewingResume.sections?.contactInfo?.linkedin && (
+                          <a 
+                            href={viewingResume.sections.contactInfo.linkedin} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="hover:underline"
+                          >
+                            LinkedIn
+                          </a>
+                        )}
+                        {viewingResume.sections?.contactInfo?.github && (
+                          <>
+                            {viewingResume.sections?.contactInfo?.linkedin && <span>•</span>}
+                            <a 
+                              href={viewingResume.sections.contactInfo.github} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="hover:underline"
+                            >
+                              GitHub
+                            </a>
+                          </>
+                        )}
+                        {viewingResume.sections?.contactInfo?.website && (
+                          <>
+                            {(viewingResume.sections?.contactInfo?.linkedin || viewingResume.sections?.contactInfo?.github) && <span>•</span>}
+                            <a 
+                              href={viewingResume.sections.contactInfo.website} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                            >
+                              Portfolio
+                            </a>
+                          </>
+                        )}
+                      </div>
                     )}
-                    {viewingResume.sections?.contactInfo?.github && (
-                      <>
-                        {viewingResume.sections?.contactInfo?.linkedin && <span>•</span>}
-                        <a 
-                          href={viewingResume.sections.contactInfo.github} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="hover:underline"
-                        >
-                          GitHub
-                        </a>
-                      </>
-                    )}
-                    {viewingResume.sections?.contactInfo?.website && (
-                      <>
-                        {(viewingResume.sections?.contactInfo?.linkedin || viewingResume.sections?.contactInfo?.github) && <span>•</span>}
-                        <a 
-                          href={viewingResume.sections.contactInfo.website} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                        >
-                          Portfolio
-                        </a>
-                      </>
-                    )}
-                  </div>
+                  </>
                 )}
               </div>
 
@@ -4977,202 +3711,24 @@ export default function ResumeTemplates() {
             </div>
 
             {/* Save Preset Modal */}
-            {showSavePresetModal && (
-              <div 
-                className="fixed inset-0 flex items-center justify-center z-50 p-4" 
-                style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
-                onClick={() => setShowSavePresetModal(false)}
-              >
-                <div 
-                  className="bg-white rounded-lg shadow-2xl max-w-md w-full border border-gray-200"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {/* Modal Header */}
-                  <div className="bg-blue-50 border-b border-blue-100 px-6 py-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="flex-shrink-0">
-                        <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                        </svg>
-                      </div>
-                      <h3 className="text-lg font-heading font-semibold text-gray-900">Save Section Arrangement</h3>
-                    </div>
-                  </div>
-
-                  {/* Modal Content */}
-                  <div className="p-6">
-                    <label htmlFor="presetName" className="block text-sm font-medium text-gray-700 mb-2">
-                      Preset Name
-                    </label>
-                    <input
-                      id="presetName"
-                      type="text"
-                      value={presetName}
-                      onChange={(e) => setPresetName(e.target.value)}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter' && presetName.trim()) {
-                          saveCustomPreset();
-                        }
-                      }}
-                      placeholder="e.g., My Custom Layout"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      autoFocus
-                    />
-                  </div>
-
-                  {/* Modal Actions */}
-                  <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t">
-                    <button
-                      onClick={() => setShowSavePresetModal(false)}
-                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={saveCustomPreset}
-                      disabled={!presetName.trim()}
-                      className="px-4 py-2 text-white rounded-lg transition disabled:opacity-50"
-                      style={{ backgroundColor: '#777C6D' }}
-                      onMouseOver={(e) => !presetName.trim() ? null : e.currentTarget.style.backgroundColor = '#656A5C'}
-                      onMouseOut={(e) => !presetName.trim() ? null : e.currentTarget.style.backgroundColor = '#777C6D'}
-                    >
-                      Save Preset
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+            <SavePresetModal
+              showModal={showSavePresetModal}
+              onClose={() => setShowSavePresetModal(false)}
+              presetName={presetName}
+              setPresetName={setPresetName}
+              onSave={saveCustomPreset}
+            />
 
             {/* Section Formatting Panel */}
-            {showFormattingPanel && formattingSection && (
-              <div 
-                className="fixed inset-0 flex items-center justify-center z-50 p-4" 
-                style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
-                onClick={() => setShowFormattingPanel(false)}
-              >
-                <div 
-                  className="bg-white rounded-lg shadow-2xl max-w-lg w-full border border-gray-200"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {/* Modal Header */}
-                  <div className="bg-gray-50 border-b border-gray-200 px-6 py-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="flex-shrink-0">
-                          <svg className="w-6 h-6 text-[#777C6D]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-                          </svg>
-                        </div>
-                        <h3 className="text-lg font-heading font-semibold text-gray-900">
-                          Format: {DEFAULT_SECTIONS.find(s => s.key === formattingSection)?.label}
-                        </h3>
-                      </div>
-                      <button
-                        type="button"
-                        aria-label="Close"
-                        onClick={() => setShowFormattingPanel(false)}
-                        className="p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#777C6D] focus:ring-offset-1"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Modal Content */}
-                  <div className="p-6 space-y-5">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Font Size</label>
-                      <select
-                        value={sectionFormatting[formattingSection]?.fontSize || 'medium'}
-                        onChange={(e) => updateSectionFormatting(formattingSection, { fontSize: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#777C6D] focus:border-transparent"
-                      >
-                        <option value="small">Small</option>
-                        <option value="medium">Medium (Default)</option>
-                        <option value="large">Large</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Font Weight</label>
-                      <select
-                        value={sectionFormatting[formattingSection]?.fontWeight || 'normal'}
-                        onChange={(e) => updateSectionFormatting(formattingSection, { fontWeight: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#777C6D] focus:border-transparent"
-                      >
-                        <option value="light">Light</option>
-                        <option value="normal">Normal (Default)</option>
-                        <option value="bold">Bold</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Text Color</label>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="color"
-                          value={sectionFormatting[formattingSection]?.color || '#000000'}
-                          onChange={(e) => updateSectionFormatting(formattingSection, { color: e.target.value })}
-                          className="h-10 w-20 border border-gray-300 rounded cursor-pointer"
-                        />
-                        <input
-                          type="text"
-                          value={sectionFormatting[formattingSection]?.color || '#000000'}
-                          onChange={(e) => updateSectionFormatting(formattingSection, { color: e.target.value })}
-                          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#777C6D] focus:border-transparent font-mono text-sm"
-                          placeholder="#000000"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Bottom Spacing (px)</label>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="range"
-                          value={sectionFormatting[formattingSection]?.spacing || 24}
-                          onChange={(e) => updateSectionFormatting(formattingSection, { spacing: e.target.value })}
-                          className="flex-1"
-                          min="0"
-                          max="100"
-                        />
-                        <input
-                          type="number"
-                          value={sectionFormatting[formattingSection]?.spacing || 24}
-                          onChange={(e) => updateSectionFormatting(formattingSection, { spacing: e.target.value })}
-                          className="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#777C6D] focus:border-transparent text-sm"
-                          min="0"
-                          max="100"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Modal Actions */}
-                  <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t">
-                    <button
-                      onClick={() => {
-                        const newFormatting = { ...sectionFormatting };
-                        delete newFormatting[formattingSection];
-                        setSectionFormatting(newFormatting);
-                        setShowFormattingPanel(false);
-                      }}
-                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
-                    >
-                      Reset to Default
-                    </button>
-                    <button
-                      onClick={() => setShowFormattingPanel(false)}
-                      className="px-4 py-2 text-white rounded-lg transition"
-                      style={{ backgroundColor: '#777C6D' }}
-                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-                    >
-                      Apply
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+            <SectionFormattingModal
+              showModal={showFormattingPanel}
+              onClose={() => setShowFormattingPanel(false)}
+              formattingSection={formattingSection}
+              sectionFormatting={sectionFormatting}
+              updateSectionFormatting={updateSectionFormatting}
+              setSectionFormatting={setSectionFormatting}
+              DEFAULT_SECTIONS={DEFAULT_SECTIONS}
+            />
 
             {/* Success Message Banner */}
             {successMessage && (
@@ -5314,85 +3870,17 @@ export default function ResumeTemplates() {
                     )}
                   </button>
                   
-                  {showExportMenu && !isExporting && (
-                    <div className="absolute right-0 bottom-full mb-2 w-56 bg-white border border-gray-200 rounded-lg shadow-xl z-10">
-                      <div className="py-1">
-                        {/* UC-51: Watermark Toggle */}
-                        <div className="px-4 py-2 border-b border-gray-200">
-                          <label className="flex items-center justify-between cursor-pointer">
-                            <span className="text-xs font-medium text-gray-700">Watermark</span>
-                            <div className="relative">
-                              <input
-                                type="checkbox"
-                                checked={watermarkEnabled}
-                                onChange={(e) => setWatermarkEnabled(e.target.checked)}
-                                className="sr-only peer"
-                              />
-                              <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-                            </div>
-                          </label>
-                          {watermarkEnabled && (
-                            <button
-                              onClick={() => { setShowExportMenu(false); setShowWatermarkModal(true); }}
-                              className="mt-2 w-full text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                            >
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              </svg>
-                              Configure: "{watermarkText}"
-                            </button>
-                          )}
-                        </div>
-                        
-                        <button
-                          onClick={() => handleExport('pdf')}
-                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                          </svg>
-                          Export as PDF
-                        </button>
-                        <button
-                          onClick={() => handleExport('docx')}
-                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                          Export as DOCX
-                        </button>
-                        <button
-                          onClick={() => handleExport('html')}
-                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                          </svg>
-                          Export as HTML
-                        </button>
-                        <button
-                          onClick={() => handlePrintHtml()}
-                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                          </svg>
-                          Print (HTML)
-                        </button>
-                        <button
-                          onClick={() => handleExport('txt')}
-                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                          Export as Text
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                  <ExportMenu
+                    isOpen={showExportMenu}
+                    onClose={() => setShowExportMenu(false)}
+                    onExport={handleExport}
+                    onPrintHtml={handlePrintHtml}
+                    isExporting={isExporting}
+                    watermarkEnabled={watermarkEnabled}
+                    setWatermarkEnabled={setWatermarkEnabled}
+                    watermarkText={watermarkText}
+                    onConfigureWatermark={() => setShowWatermarkModal(true)}
+                  />
                 </div>
                 
                 {/* <button
@@ -5421,591 +3909,77 @@ export default function ResumeTemplates() {
         );
       })()}
 
-      {/* UC-52: Clone Resume Modal */}
-      {showCloneModal && viewingResume && (
+      {/* UC-053: Validation Panel Modal */}
+      {showValidationPanel && validationResults && (
         <div 
-          className="fixed inset-0 flex items-center justify-center z-50" 
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
-          onClick={() => !isCloning && setShowCloneModal(false)}
-        >
-          <div 
-            className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 border border-gray-200" 
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="bg-blue-50 border-b border-blue-100 px-6 py-4">
-              <div className="flex items-center space-x-3">
-                <div className="flex-shrink-0">
-                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-heading font-semibold text-gray-900">Clone Resume</h3>
-              </div>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-6">
-              <p className="text-sm text-gray-600 mb-4">
-                Create a copy of "{viewingResume.name}" with a new name.
-              </p>
-              <label htmlFor="cloneNameInput" className="block text-sm font-medium text-gray-700 mb-2">
-                New Resume Name
-              </label>
-              <input
-                id="cloneNameInput"
-                type="text"
-                value={cloneName}
-                onChange={(e) => setCloneName(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter' && cloneName.trim()) {
-                    handleCloneResume();
-                  }
-                }}
-                placeholder="Enter name for cloned resume"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                autoFocus
-                disabled={isCloning}
-              />
-              
-              <label htmlFor="cloneDescriptionInput" className="block text-sm font-medium text-gray-700 mb-2 mt-4">
-                Version Description (Optional)
-              </label>
-              <textarea
-                id="cloneDescriptionInput"
-                value={cloneDescription}
-                onChange={(e) => setCloneDescription(e.target.value)}
-                placeholder="Describe this version (e.g., 'Tailored for software engineering roles')"
-                rows={3}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                disabled={isCloning}
-              />
-            </div>
-
-            {/* Modal Actions */}
-            <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t">
-              <button
-                onClick={() => setShowCloneModal(false)}
-                disabled={isCloning}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCloneResume}
-                disabled={isCloning || !cloneName.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
-              >
-                {isCloning ? 'Cloning...' : 'Clone Resume'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* UC-52: Compare Resume Modal */}
-      {showCompareModal && viewingResume && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          className="fixed inset-0 flex items-center justify-center p-4"
+          style={{ 
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 9999 
+          }}
           onClick={() => {
-            setShowCompareModal(false);
-            setCompareResumeId(null);
-            setComparisonData(null);
+            setShowValidationPanel(false);
+            // Keep validationResults so "View Issues" button stays visible
           }}
         >
           <div 
-            className="bg-white rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto border border-gray-200" 
+            className="max-w-4xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Modal Header */}
-            <div className="bg-[#777C6D] border-b px-6 py-4 sticky top-0 z-10">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
-                  </svg>
-                  <h3 className="text-xl font-heading font-bold text-white">Compare Resume Versions</h3>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowCompareModal(false);
-                    setCompareResumeId(null);
-                    setComparisonData(null);
-                  }}
-                  className="text-white hover:text-gray-200 transition"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-6">
-              {!comparisonData ? (
-                /* Resume Selector - Only show previous versions */
-                <div className="space-y-4">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                    <div className="flex items-start gap-3">
-                      <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-blue-900 mb-1">Version History</h4>
-                        <p className="text-sm text-blue-800">
-                          Compare with previous versions of this resume. Only cloned versions of <strong>{viewingResume.name}</strong> are shown below.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  {(() => {
-                    // Filter to only show versions that are clones of the current resume
-                    // This includes: direct clones, reverse clones, and sibling clones
-                    
-                    console.log('=== VERSION HISTORY DEBUG ===');
-                    console.log('Current resume:', viewingResume.name, 'ID:', viewingResume._id);
-                    console.log('Current resume clonedFrom:', viewingResume.metadata?.clonedFrom);
-                    console.log('Total resumes in state:', resumes.length);
-                    console.log('All resumes:', resumes.map(r => ({ 
-                      name: r.name, 
-                      id: r._id, 
-                      clonedFrom: r.metadata?.clonedFrom,
-                      isArchived: r.isArchived 
-                    })));
-                    
-                    const previousVersions = resumes.filter(r => {
-                      if (r._id === viewingResume._id) return false;
-                      
-                      // Direct clone: r was cloned FROM current resume
-                      if (r.metadata?.clonedFrom === viewingResume._id) {
-                        console.log('✓ Direct clone found:', r.name);
-                        return true;
-                      }
-                      
-                      // Reverse clone: current resume was cloned FROM r
-                      if (viewingResume.metadata?.clonedFrom === r._id) {
-                        console.log('✓ Reverse clone found:', r.name);
-                        return true;
-                      }
-                      
-                      // Sibling clones: both were cloned from the same parent
-                      if (r.metadata?.clonedFrom && viewingResume.metadata?.clonedFrom && 
-                          r.metadata.clonedFrom === viewingResume.metadata.clonedFrom) {
-                        console.log('✓ Sibling clone found:', r.name);
-                        return true;
-                      }
-                      
-                      return false;
-                    });
-
-                    // Sort by date (newest first)
-                    previousVersions.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-
-                    console.log('Previous versions found:', previousVersions.length);
-                    console.log('=== END DEBUG ===');
-
-                    if (previousVersions.length === 0) {
-                      return (
-                        <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                          <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                          </svg>
-                          <p className="text-gray-600 font-medium mb-2">No Previous Versions</p>
-                          <p className="text-sm text-gray-500 mb-2">
-                            Previous versions will appear here automatically when you:
-                          </p>
-                          <ul className="text-xs text-gray-500 text-left inline-block">
-                            <li>• Apply AI skills optimization</li>
-                            <li>• Apply AI experience tailoring</li>
-                            <li>• Manually clone this resume</li>
-                          </ul>
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
-                        {previousVersions.map(resume => (
-                        <div
-                          key={resume._id}
-                          className="p-4 border-2 border-gray-200 rounded-lg hover:border-[#777C6D] hover:bg-[#f3f3ef] transition text-left flex items-start justify-between gap-3"
-                        >
-                          <button
-                            onClick={async () => {
-                              await handleCompareResumes(resume._id);
-                            }}
-                            className="text-left flex-1"
-                          >
-                            <div className="font-semibold text-gray-900">{resume.name}</div>
-                            <div className="text-sm text-gray-600 mt-1">
-                              Modified {new Date(resume.updatedAt).toLocaleDateString()}
-                            </div>
-                            {resume.metadata?.description && (
-                              <div className="text-xs text-gray-500 mt-1 italic line-clamp-2">
-                                {resume.metadata.description}
-                              </div>
-                            )}
-                            {resume.isDefault && (
-                              <span className="inline-block mt-2 px-2 py-1 text-xs bg-green-100 text-green-800 rounded">
-                                Default
-                              </span>
-                            )}
-                            {resume.isArchived && (
-                              <span className="inline-block mt-2 px-2 py-1 text-xs bg-gray-200 text-gray-600 rounded">
-                                Archived
-                              </span>
-                            )}
-                          </button>
-
-                          {/* Trash icon to delete this archived version */}
-                          <div className="flex-shrink-0 ml-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDeletingResume(resume);
-                                setShowDeleteModal(true);
-                              }}
-                              title="Delete version"
-                              aria-label={`Delete version ${resume.name}`}
-                              className="p-2 rounded-lg transition text-gray-600 flex items-center justify-center"
-                              onMouseOver={(e) => {
-                                e.currentTarget.style.backgroundColor = '#FEE2E2';
-                                e.currentTarget.style.color = '#B91C1C';
-                              }}
-                              onMouseOut={(e) => {
-                                e.currentTarget.style.backgroundColor = 'transparent';
-                                e.currentTarget.style.color = '#6B7280';
-                              }}
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                        ))}
-                      </div>
-                    );
-                  })()}
-                </div>
-              ) : (
-                /* Comparison View */
-                <div className="space-y-6">
-                  {/* Comparison Header with Revert Button */}
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <span className="text-xs font-medium text-gray-500 uppercase">Current Version</span>
-                        <h4 className="font-semibold text-lg text-gray-900">{comparisonData.resume1.name}</h4>
-                        <p className="text-sm text-gray-600">
-                          Modified: {new Date(comparisonData.resume1.updatedAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-xs font-medium text-gray-500 uppercase">Previous Version</span>
-                        <h4 className="font-semibold text-lg text-gray-900">{comparisonData.resume2.name}</h4>
-                        <p className="text-sm text-gray-600">
-                          Modified: {new Date(comparisonData.resume2.updatedAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    {/* Action Buttons */}
-                    <div className="flex justify-center gap-3 pt-3 border-t border-gray-200">
-                      <button
-                        onClick={() => {
-                          // Switch to merge modal
-                          setSelectedMergeChanges([]);
-                          setShowMergeModal(true);
-                        }}
-                        className="px-6 py-2 bg-[#777C6D] text-white rounded-lg hover:bg-[#656A5C] transition flex items-center gap-2 font-medium"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                        </svg>
-                        Merge Selected Sections
-                      </button>
-                      <button
-                        onClick={handleRevertToPreviousVersion}
-                        className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition flex items-center gap-2 font-medium"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                        </svg>
-                        Revert Entirely
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Differences Summary */}
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      Key Differences
-                    </h4>
-                    <ul className="space-y-2 text-sm text-blue-900">
-                      {comparisonData.differences.summary && (
-                        <li className="flex items-start gap-2">
-                          <span className="text-blue-600 mt-0.5">•</span>
-                          <span>Summary content differs</span>
-                        </li>
-                      )}
-                      {comparisonData.differences.experienceCount.resume1 !== comparisonData.differences.experienceCount.resume2 && (
-                        <li className="flex items-start gap-2">
-                          <span className="text-blue-600 mt-0.5">•</span>
-                          <span>
-                            Experience items: {comparisonData.differences.experienceCount.resume1} vs {comparisonData.differences.experienceCount.resume2}
-                          </span>
-                        </li>
-                      )}
-                      {comparisonData.differences.skillsCount.resume1 !== comparisonData.differences.skillsCount.resume2 && (
-                        <li className="flex items-start gap-2">
-                          <span className="text-blue-600 mt-0.5">•</span>
-                          <span>
-                            Skills: {comparisonData.differences.skillsCount.resume1} vs {comparisonData.differences.skillsCount.resume2}
-                          </span>
-                        </li>
-                      )}
-                      {comparisonData.differences.educationCount.resume1 !== comparisonData.differences.educationCount.resume2 && (
-                        <li className="flex items-start gap-2">
-                          <span className="text-blue-600 mt-0.5">•</span>
-                          <span>
-                            Education items: {comparisonData.differences.educationCount.resume1} vs {comparisonData.differences.educationCount.resume2}
-                          </span>
-                        </li>
-                      )}
-                      {comparisonData.differences.projectsCount.resume1 !== comparisonData.differences.projectsCount.resume2 && (
-                        <li className="flex items-start gap-2">
-                          <span className="text-blue-600 mt-0.5">•</span>
-                          <span>
-                            Projects: {comparisonData.differences.projectsCount.resume1} vs {comparisonData.differences.projectsCount.resume2}
-                          </span>
-                        </li>
-                      )}
-                      {comparisonData.differences.sectionCustomization && (
-                        <li className="flex items-start gap-2">
-                          <span className="text-blue-600 mt-0.5">•</span>
-                          <span>Section customization differs</span>
-                        </li>
-                      )}
-                    </ul>
-                  </div>
-
-                  {/* Side-by-Side Sections */}
-                  <div className="space-y-6">
-                    {/* Summary Comparison with Diff Highlighting */}
-                    {(comparisonData.fullData.resume1.summary || comparisonData.fullData.resume2.summary) && (() => {
-                      const summaryDiff = highlightTextDiff(
-                        comparisonData.fullData.resume1.summary,
-                        comparisonData.fullData.resume2.summary
-                      );
-                      
-                      return (
-                        <div className="border border-gray-200 rounded-lg overflow-hidden">
-                          <div className="bg-gray-100 px-4 py-2 flex items-center justify-between">
-                            <span className="font-semibold text-gray-900">Summary</span>
-                            {summaryDiff.identical ? (
-                              <span className="text-xs px-2 py-1 bg-gray-200 text-gray-600 rounded">Identical</span>
-                            ) : (
-                              <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">Different</span>
-                            )}
-                          </div>
-                          <div className="grid grid-cols-2 divide-x">
-                            <div className="p-4 bg-white">
-                              <div className="text-xs font-semibold text-gray-500 mb-2">Current Version</div>
-                              <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
-                                {summaryDiff.text1 || <span className="text-gray-400 italic">No summary</span>}
-                              </p>
-                            </div>
-                            <div className="p-4 bg-white">
-                              <div className="text-xs font-semibold text-gray-500 mb-2">Previous Version</div>
-                              <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
-                                {summaryDiff.text2 || <span className="text-gray-400 italic">No summary</span>}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="bg-gray-50 px-4 py-2 text-xs text-gray-600 border-t">
-                            <span className="inline-flex items-center gap-1 mr-3">
-                              <span className="w-3 h-3 bg-red-100 border border-red-300 rounded"></span> Removed
-                            </span>
-                            <span className="inline-flex items-center gap-1">
-                              <span className="w-3 h-3 bg-green-100 border border-green-300 rounded"></span> Added
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })()}
-
-                    {/* Skills Comparison with Highlighting */}
-                    {(comparisonData.fullData.resume1.skills?.length > 0 || comparisonData.fullData.resume2.skills?.length > 0) && (() => {
-                      const skills1Set = new Set(
-                        (comparisonData.fullData.resume1.skills || []).map(s => typeof s === 'string' ? s : s.name)
-                      );
-                      const skills2Set = new Set(
-                        (comparisonData.fullData.resume2.skills || []).map(s => typeof s === 'string' ? s : s.name)
-                      );
-                      
-                      return (
-                        <div className="border border-gray-200 rounded-lg overflow-hidden">
-                          <div className="bg-gray-100 px-4 py-2 flex items-center justify-between">
-                            <span className="font-semibold text-gray-900">Skills</span>
-                            {JSON.stringify([...skills1Set].sort()) === JSON.stringify([...skills2Set].sort()) ? (
-                              <span className="text-xs px-2 py-1 bg-gray-200 text-gray-600 rounded">Identical</span>
-                            ) : (
-                              <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">Different</span>
-                            )}
-                          </div>
-                          <div className="grid grid-cols-2 divide-x">
-                            <div className="p-4 bg-white">
-                              <div className="text-xs font-semibold text-gray-500 mb-2">Current Version</div>
-                              {comparisonData.fullData.resume1.skills?.length > 0 ? (
-                                <div className="flex flex-wrap gap-2">
-                                  {comparisonData.fullData.resume1.skills.map((skill, idx) => {
-                                    const skillName = typeof skill === 'string' ? skill : skill.name;
-                                    const inOther = skills2Set.has(skillName);
-                                    return (
-                                      <span 
-                                        key={idx} 
-                                        className={`px-2 py-1 rounded text-xs font-medium ${
-                                          inOther 
-                                            ? 'bg-gray-100 text-gray-800 border border-gray-300' 
-                                            : 'bg-red-100 text-red-800 border border-red-300'
-                                        }`}
-                                      >
-                                        {skillName}
-                                        {!inOther && <span className="ml-1 text-red-600">✕</span>}
-                                      </span>
-                                    );
-                                  })}
-                                </div>
-                              ) : (
-                                <span className="text-gray-400 italic text-sm">No skills</span>
-                              )}
-                            </div>
-                            <div className="p-4 bg-white">
-                              <div className="text-xs font-semibold text-gray-500 mb-2">Previous Version</div>
-                              {comparisonData.fullData.resume2.skills?.length > 0 ? (
-                                <div className="flex flex-wrap gap-2">
-                                  {comparisonData.fullData.resume2.skills.map((skill, idx) => {
-                                    const skillName = typeof skill === 'string' ? skill : skill.name;
-                                    const inOther = skills1Set.has(skillName);
-                                    return (
-                                      <span 
-                                        key={idx} 
-                                        className={`px-2 py-1 rounded text-xs font-medium ${
-                                          inOther 
-                                            ? 'bg-gray-100 text-gray-800 border border-gray-300' 
-                                            : 'bg-green-100 text-green-800 border border-green-300'
-                                        }`}
-                                      >
-                                        {skillName}
-                                        {!inOther && <span className="ml-1 text-green-600">✓</span>}
-                                      </span>
-                                    );
-                                  })}
-                                </div>
-                              ) : (
-                                <span className="text-gray-400 italic text-sm">No skills</span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="bg-gray-50 px-4 py-2 text-xs text-gray-600 border-t">
-                            <span className="inline-flex items-center gap-1 mr-3">
-                              <span className="w-3 h-3 bg-red-100 border border-red-300 rounded"></span> Only in current
-                            </span>
-                            <span className="inline-flex items-center gap-1 mr-3">
-                              <span className="w-3 h-3 bg-green-100 border border-green-300 rounded"></span> Only in previous
-                            </span>
-                            <span className="inline-flex items-center gap-1">
-                              <span className="w-3 h-3 bg-gray-100 border border-gray-300 rounded"></span> In both
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })()}
-
-                    {/* Experience Count Comparison */}
-                    <div className="border border-gray-200 rounded-lg overflow-hidden">
-                      <div className="bg-gray-100 px-4 py-2 font-semibold text-gray-900">
-                        Experience
-                      </div>
-                      <div className="grid grid-cols-2 divide-x">
-                        <div className="p-4 bg-white">
-                          <p className="text-sm text-gray-700">
-                            {comparisonData.differences.experienceCount.resume1} experience item(s)
-                          </p>
-                        </div>
-                        <div className="p-4 bg-white">
-                          <p className="text-sm text-gray-700">
-                            {comparisonData.differences.experienceCount.resume2} experience item(s)
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Merge Action */}
-                  <div className="bg-[#f7f6f2] border border-[#e6e6e1] rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-semibold text-purple-900 mb-1">Want to merge changes?</h4>
-                        <p className="text-sm text-purple-700">
-                          Copy selected sections from one resume to another
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => {
-                          // Switch to merge modal
-                          setSelectedMergeChanges([]);
-                          setShowMergeModal(true);
-                        }}
-                        className="px-4 py-2 bg-[#777C6D] text-white rounded-lg hover:bg-[#656A5C] transition flex items-center gap-2"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                        </svg>
-                        Merge Changes
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="bg-gray-50 px-6 py-4 border-t flex justify-end gap-3">
-              {comparisonData && (
-                <button
-                  onClick={() => {
-                    setCompareResumeId(null);
-                    setComparisonData(null);
-                  }}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
-                >
-                  Compare Different Resume
-                </button>
-              )}
-              <button
-                onClick={() => {
-                  setShowCompareModal(false);
-                  setCompareResumeId(null);
-                  setComparisonData(null);
-                }}
-                className="px-4 py-2 text-white rounded-lg transition"
-                style={{ backgroundColor: '#777C6D' }}
-                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-              >
-                Close
-              </button>
-            </div>
+            <ValidationPanel
+              validation={validationResults}
+              onClose={() => {
+                setShowValidationPanel(false);
+                // Keep validationResults so "View Issues" button stays visible
+              }}
+              onFixIssue={(issue, replacement) => {
+                console.log('Fix issue:', issue, 'with:', replacement);
+                // TODO: Implement auto-fix functionality
+              }}
+            />
           </div>
         </div>
       )}
+
+      {/* UC-52: Clone Resume Modal */}
+      <CloneModal
+        isOpen={showCloneModal && !!viewingResume}
+        onClose={() => setShowCloneModal(false)}
+        onClone={handleCloneResume}
+        resumeName={viewingResume?.name || ''}
+        cloneName={cloneName}
+        setCloneName={setCloneName}
+        cloneDescription={cloneDescription}
+        setCloneDescription={setCloneDescription}
+        isCloning={isCloning}
+      />
+
+      {/* UC-52: Compare Resume Modal */}
+      <CompareModal
+        show={showCompareModal}
+        viewingResume={viewingResume}
+        resumes={resumes}
+        comparisonData={comparisonData}
+        onClose={() => {
+          setShowCompareModal(false);
+          setCompareResumeId(null);
+          setComparisonData(null);
+        }}
+        onCompare={handleCompareResumes}
+        onRevert={handleRevertToPreviousVersion}
+        onMerge={() => {
+          setSelectedMergeChanges([]);
+          setShowMergeModal(true);
+        }}
+        onDelete={(resume) => {
+          setDeletingResume(resume);
+          setShowDeleteModal(true);
+        }}
+        onBackToSelector={() => {
+          setCompareResumeId(null);
+          setComparisonData(null);
+        }}
+      />
 
       {/* UC-52: Merge Resume Modal */}
       {showMergeModal && comparisonData && viewingResume && (
@@ -7079,7 +5053,16 @@ export default function ResumeTemplates() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {(() => {
                     // Deduplicate default templates - keep only one per style
-                    const defaultTemplateNames = ['Formal Professional', 'Modern Professional', 'Creative Expression', 'Technical Professional', 'Executive Leadership'];
+                    const defaultTemplateNames = [
+                      'Formal Professional', 
+                      'Modern Professional', 
+                      'Creative Expression', 
+                      'Technical Professional', 
+                      'Executive Leadership',
+                      'Technology Professional',
+                      'Business Professional',
+                      'Healthcare Professional'
+                    ];
                     const seenStyles = new Set();
                     const uniqueTemplates = coverLetterTemplates.filter(template => {
                       const isDefaultSystemTemplate = defaultTemplateNames.includes(template.name);
@@ -7132,17 +5115,17 @@ export default function ResumeTemplates() {
                             onClick={async () => {
                               try {
                                 await authWrap();
-                                await trackCoverLetterTemplateUsage(template._id);
                                 setSelectedCoverLetterTemplate(template);
                                 setShowCoverLetterBrowser(false);
                                 
                                 // Initialize the customization form
                                 setCustomCoverLetterName(`${template.name} - Customized`);
                                 setCustomCoverLetterContent(template.content);
+                                setCustomCoverLetterStyle(template.style || 'formal');
                                 setIsCreatingCoverLetterTemplate(false); // Using template to create cover letter
                                 setShowCoverLetterCustomize(true);
                               } catch (err) {
-                                console.error("Failed to track usage:", err);
+                                console.error("Failed to prepare template:", err);
                               }
                             }}
                           >
@@ -7250,16 +5233,17 @@ export default function ResumeTemplates() {
                   onClick={async () => {
                     try {
                       await authWrap();
-                      await trackCoverLetterTemplateUsage(selectedCoverLetterTemplate._id);
                       setShowCoverLetterPreview(false);
                       setShowCoverLetterBrowser(false);
                       
                       // Initialize the customization form
                       setCustomCoverLetterName(`${selectedCoverLetterTemplate.name} - Customized`);
                       setCustomCoverLetterContent(selectedCoverLetterTemplate.content);
+                      setCustomCoverLetterStyle(selectedCoverLetterTemplate.style || 'formal');
+                      setIsCreatingCoverLetterTemplate(false); // Using template to create cover letter
                       setShowCoverLetterCustomize(true);
                     } catch (err) {
-                      console.error("Failed to track usage:", err);
+                      console.error("Failed to prepare template:", err);
                     }
                   }}
                 >
@@ -7335,6 +5319,28 @@ export default function ResumeTemplates() {
                 </div>
               )}
 
+              {!isCreatingCoverLetterTemplate && (
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Cover Letter Style
+                  </label>
+                  <select
+                    className="w-full p-3 border border-gray-300 rounded-lg"
+                    value={customCoverLetterStyle}
+                    onChange={(e) => setCustomCoverLetterStyle(e.target.value)}
+                  >
+                    <option value="formal">Formal</option>
+                    <option value="modern">Modern</option>
+                    <option value="creative">Creative</option>
+                    <option value="technical">Technical</option>
+                    <option value="executive">Executive</option>
+                  </select>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Choose a style for your cover letter
+                  </p>
+                </div>
+              )}
+
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Cover Letter Content
@@ -7401,12 +5407,14 @@ export default function ResumeTemplates() {
                         await createCoverLetter({
                           name: customCoverLetterName,
                           content: customCoverLetterContent,
+                          style: customCoverLetterStyle,
                           templateId: selectedCoverLetterTemplate._id || null
                         });
                         
                         setShowCoverLetterCustomize(false);
                         setCustomCoverLetterName('');
                         setCustomCoverLetterContent('');
+                        setCustomCoverLetterStyle('formal');
                         setIsCreatingCoverLetterTemplate(false);
                         
                         await loadSavedCoverLetters();
@@ -7688,6 +5696,7 @@ export default function ResumeTemplates() {
                     });
                     setCustomCoverLetterName('My Cover Letter');
                     setCustomCoverLetterContent('');
+                    setCustomCoverLetterStyle('formal');
                     setIsCreatingCoverLetterTemplate(false); // Creating a cover letter, not a template
                     setShowCoverLetterCustomize(true);
                   }}
@@ -7798,7 +5807,16 @@ export default function ResumeTemplates() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {(() => {
                     // Deduplicate default templates - keep only one per style
-                    const defaultTemplateNames = ['Formal Professional', 'Modern Professional', 'Creative Expression', 'Technical Professional', 'Executive Leadership'];
+                    const defaultTemplateNames = [
+                      'Formal Professional', 
+                      'Modern Professional', 
+                      'Creative Expression', 
+                      'Technical Professional', 
+                      'Executive Leadership',
+                      'Technology Professional',
+                      'Business Professional',
+                      'Healthcare Professional'
+                    ];
                     const seenStyles = new Set();
                     const uniqueTemplates = coverLetterTemplates.filter(template => {
                       const isDefaultSystemTemplate = defaultTemplateNames.includes(template.name);
@@ -7894,6 +5912,322 @@ export default function ResumeTemplates() {
           </div>
         </div>
       )}
+
+      {/* Cover Letter Template Analytics Modal */}
+      {showCoverLetterAnalytics && coverLetterAnalytics && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={() => setShowCoverLetterAnalytics(false)}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              {/* Header */}
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold" style={{ color: "#4F5348" }}>
+                  Template Usage Analytics
+                </h2>
+                <button
+                  onClick={() => setShowCoverLetterAnalytics(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-blue-600 font-medium">Total Templates</p>
+                      <p className="text-3xl font-bold text-blue-900">{coverLetterAnalytics.summary.totalTemplates}</p>
+                    </div>
+                    <svg className="w-12 h-12 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                </div>
+
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-green-600 font-medium">Total Usage</p>
+                      <p className="text-3xl font-bold text-green-900">{coverLetterAnalytics.summary.totalUsage}</p>
+                    </div>
+                    <svg className="w-12 h-12 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                  </div>
+                </div>
+
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-purple-600 font-medium">Average Usage</p>
+                      <p className="text-3xl font-bold text-purple-900">{coverLetterAnalytics.summary.avgUsage}</p>
+                    </div>
+                    <svg className="w-12 h-12 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Most Used Template */}
+              {coverLetterAnalytics.mostUsedTemplate && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-3" style={{ color: "#4F5348" }}>
+                    Most Used Template
+                  </h3>
+                  <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xl font-bold text-yellow-900">{coverLetterAnalytics.mostUsedTemplate.name}</p>
+                        <div className="flex gap-2 mt-2">
+                          <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded capitalize">
+                            {coverLetterAnalytics.mostUsedTemplate.industry}
+                          </span>
+                          <span className="text-xs px-2 py-1 bg-orange-100 text-orange-700 rounded capitalize">
+                            {coverLetterAnalytics.mostUsedTemplate.style}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-3xl font-bold text-yellow-900">{coverLetterAnalytics.mostUsedTemplate.usageCount}</p>
+                        <p className="text-sm text-yellow-700">times used</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Top 5 Templates */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-3" style={{ color: "#4F5348" }}>
+                  Top 5 Templates by Usage
+                </h3>
+                <div className="space-y-2">
+                  {coverLetterAnalytics.topTemplates.map((template, index) => (
+                    <div key={template.id} className="flex items-center justify-between bg-gray-50 rounded-lg p-3 border border-gray-200">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 text-gray-700 font-bold">
+                          {index + 1}
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">{template.name}</p>
+                          <div className="flex gap-2 mt-1">
+                            <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded capitalize">
+                              {template.industry}
+                            </span>
+                            <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded capitalize">
+                              {template.style}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xl font-bold text-gray-900">{template.usageCount}</p>
+                        <p className="text-xs text-gray-600">uses</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Usage by Industry and Style */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                {/* By Industry */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3" style={{ color: "#4F5348" }}>
+                    Usage by Industry
+                  </h3>
+                  <div className="space-y-2">
+                    {Object.entries(coverLetterAnalytics.usageByIndustry).map(([industry, data]) => (
+                      <div key={industry} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium text-gray-900 capitalize">{industry}</span>
+                          <span className="text-sm text-gray-600">{data.usage} uses</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-blue-500 h-2 rounded-full" 
+                            style={{ width: `${(data.usage / coverLetterAnalytics.summary.totalUsage) * 100}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-gray-600 mt-1">{data.count} templates</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* By Style */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3" style={{ color: "#4F5348" }}>
+                    Usage by Style
+                  </h3>
+                  <div className="space-y-2">
+                    {Object.entries(coverLetterAnalytics.usageByStyle).map(([style, data]) => (
+                      <div key={style} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium text-gray-900 capitalize">{style}</span>
+                          <span className="text-sm text-gray-600">{data.usage} uses</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-purple-500 h-2 rounded-full" 
+                            style={{ width: `${(data.usage / coverLetterAnalytics.summary.totalUsage) * 100}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-gray-600 mt-1">{data.count} templates</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setShowCoverLetterAnalytics(false)}
+                  className="px-6 py-2 text-white rounded-lg transition"
+                  style={{ backgroundColor: '#777C6D' }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Cover Letter Modal */}
+      {showEditCoverLetterModal && editingCoverLetter && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={() => setShowEditCoverLetterModal(false)}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold" style={{ color: "#4F5348" }}>
+                  Edit Cover Letter
+                </h2>
+                <button
+                  onClick={() => setShowEditCoverLetterModal(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Cover Letter Name
+                </label>
+                <input
+                  type="text"
+                  className="w-full p-3 border border-gray-300 rounded-lg"
+                  value={customCoverLetterName}
+                  onChange={(e) => setCustomCoverLetterName(e.target.value)}
+                  placeholder="e.g., My Software Engineer Cover Letter"
+                />
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Cover Letter Style
+                </label>
+                <select
+                  className="w-full p-3 border border-gray-300 rounded-lg"
+                  value={customCoverLetterStyle}
+                  onChange={(e) => setCustomCoverLetterStyle(e.target.value)}
+                >
+                  <option value="formal">Formal</option>
+                  <option value="modern">Modern</option>
+                  <option value="creative">Creative</option>
+                  <option value="technical">Technical</option>
+                  <option value="executive">Executive</option>
+                </select>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Cover Letter Content
+                </label>
+                <textarea
+                  className="w-full h-96 p-4 border border-gray-300 rounded-lg font-sans text-sm"
+                  value={customCoverLetterContent}
+                  onChange={(e) => setCustomCoverLetterContent(e.target.value)}
+                  placeholder="Edit your cover letter here..."
+                />
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowEditCoverLetterModal(false)}
+                  className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      if (!customCoverLetterName.trim()) {
+                        alert("Please enter a name for your cover letter.");
+                        return;
+                      }
+                      if (!customCoverLetterContent.trim()) {
+                        alert("Please enter cover letter content.");
+                        return;
+                      }
+
+                      await authWrap();
+                      await apiUpdateCoverLetter(editingCoverLetter._id, {
+                        name: customCoverLetterName,
+                        content: customCoverLetterContent,
+                        style: customCoverLetterStyle
+                      });
+                      
+                      setShowEditCoverLetterModal(false);
+                      setEditingCoverLetter(null);
+                      setCustomCoverLetterName('');
+                      setCustomCoverLetterContent('');
+                      
+                      await loadSavedCoverLetters();
+                      alert("Cover letter updated successfully!");
+                    } catch (err) {
+                      console.error("Update failed:", err);
+                      alert("Failed to update cover letter. Please try again.");
+                    }
+                  }}
+                  className="px-6 py-2 text-white rounded-lg transition"
+                  style={{ backgroundColor: '#777C6D' }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                >
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+

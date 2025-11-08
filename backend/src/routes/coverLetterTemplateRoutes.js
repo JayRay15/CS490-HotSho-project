@@ -19,6 +19,7 @@ const router = express.Router();
 // Public/User routes
 router.get("/cover-letter-templates", checkJwt, listTemplates);
 router.get("/cover-letter-templates/industry-guidance", checkJwt, getIndustryGuidance);
+router.get("/cover-letter-templates/analytics/stats", checkJwt, getTemplateAnalytics);
 router.get("/cover-letter-templates/:id", checkJwt, getTemplateById);
 router.post("/cover-letter-templates/:id/use", checkJwt, trackTemplateUsage);
 
@@ -26,7 +27,6 @@ router.post("/cover-letter-templates/:id/use", checkJwt, trackTemplateUsage);
 router.post("/cover-letter-templates", checkJwt, createTemplate);
 router.put("/cover-letter-templates/:id", checkJwt, updateTemplate);
 router.delete("/cover-letter-templates/:id", checkJwt, deleteTemplate);
-router.get("/cover-letter-templates/analytics/stats", checkJwt, getTemplateAnalytics);
 
 // Import/Export routes
 router.post("/cover-letter-templates/import", checkJwt, importTemplate);

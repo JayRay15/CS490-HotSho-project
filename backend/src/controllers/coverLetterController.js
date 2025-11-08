@@ -12,7 +12,10 @@ const getUserId = (req) => {
 export const listCoverLetters = async (req, res) => {
   try {
     const userId = getUserId(req);
-    const coverLetters = await CoverLetter.find({ userId }).sort({ updatedAt: -1 }).lean();
+    const coverLetters = await CoverLetter.find({ userId })
+      .populate('templateId', 'name style industry')
+      .sort({ updatedAt: -1 })
+      .lean();
     
     // Add job usage count for each cover letter (similar to resumes)
     const coverLettersWithJobCount = await Promise.all(
@@ -38,12 +41,14 @@ export const listCoverLetters = async (req, res) => {
 export const createCoverLetterFromTemplate = async (req, res) => {
   try {
     const userId = getUserId(req);
-    const { templateId, name, content, jobId } = req.body || {};
+    const { templateId, name, content, style, jobId } = req.body || {};
     
     if (!name || !content) {
       const { response, statusCode } = errorResponse("name and content are required", 400, ERROR_CODES.MISSING_REQUIRED_FIELD);
       return sendResponse(res, response, statusCode);
     }
+    
+    let coverLetterStyle = style || 'formal';
     
     // If templateId is provided, verify the template exists and user has access
     if (templateId) {
@@ -58,6 +63,11 @@ export const createCoverLetterFromTemplate = async (req, res) => {
       // Increment usage count
       tpl.usageCount += 1;
       await tpl.save();
+      
+      // Use template's style if no style provided
+      if (!style) {
+        coverLetterStyle = tpl.style;
+      }
     }
     
     const coverLetter = await CoverLetter.create({ 
@@ -65,6 +75,7 @@ export const createCoverLetterFromTemplate = async (req, res) => {
       templateId: templateId || null, 
       name, 
       content,
+      style: coverLetterStyle,
       jobId: jobId || null
     });
     

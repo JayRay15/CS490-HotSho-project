@@ -6,6 +6,11 @@ const coverLetterSchema = new mongoose.Schema(
     templateId: { type: mongoose.Schema.Types.ObjectId, ref: "CoverLetterTemplate" },
     name: { type: String, required: true, trim: true },
     content: { type: String, required: true }, // Actual cover letter content
+    style: { 
+      type: String, 
+      enum: ["formal", "modern", "creative", "technical", "executive"], 
+      default: "formal"
+    },
     jobId: { type: mongoose.Schema.Types.ObjectId, ref: "Job" }, // Optional: link to job application
     metadata: { type: Object, default: {} }, // { clonedFrom?, clonedAt?, tailoredForJob?, etc. }
     isDefault: { type: Boolean, default: false }, // Mark default cover letter

@@ -108,6 +108,79 @@ Sincerely,
   }
 };
 
+// Industry-specific templates
+const industryTemplates = {
+  technology: {
+    name: "Technology Professional",
+    description: "Tech-focused cover letter highlighting technical expertise and innovation",
+    style: "technical",
+    content: `Dear [HIRING_MANAGER_NAME],
+
+I am excited to apply for the [POSITION] role at [COMPANY]. As a technology professional with [YEARS] years of experience in [TECH_FIELD], I am passionate about building innovative solutions that drive business value.
+
+Technical Skills & Experience:
+• Programming Languages: [LANGUAGES]
+• Frameworks & Tools: [FRAMEWORKS]
+• Cloud & DevOps: [CLOUD_PLATFORMS]
+• Methodologies: [AGILE/SCRUM/etc]
+
+At [PREVIOUS_COMPANY], I [TECHNICAL_ACHIEVEMENT]. This project involved [TECH_STACK] and resulted in [MEASURABLE_OUTCOME] such as [METRIC_1] and [METRIC_2].
+
+I am particularly drawn to [COMPANY]'s commitment to [TECH_INNOVATION/PRODUCT]. I am eager to contribute to [SPECIFIC_PROJECT] and help advance [COMPANY]'s technical objectives.
+
+I would welcome the opportunity to discuss how my technical expertise and passion for innovation can benefit your team.
+
+Best regards,
+[YOUR_NAME]`
+  },
+  business: {
+    name: "Business Professional",
+    description: "Business-focused cover letter emphasizing strategic impact and results",
+    style: "formal",
+    content: `Dear [HIRING_MANAGER_NAME],
+
+I am writing to express my interest in the [POSITION] position at [COMPANY]. With [YEARS] years of experience in [BUSINESS_AREA], I have consistently delivered measurable business results through strategic planning and execution.
+
+Key Achievements:
+• Revenue Growth: [REVENUE_METRIC]
+• Process Improvement: [EFFICIENCY_GAIN]
+• Team Leadership: [TEAM_SIZE/IMPACT]
+• Strategic Initiatives: [MAJOR_PROJECT]
+
+In my role as [CURRENT_TITLE] at [PREVIOUS_COMPANY], I [BUSINESS_ACHIEVEMENT]. This initiative resulted in [BUSINESS_OUTCOME] and demonstrated my ability to [CORE_COMPETENCY].
+
+I am impressed by [COMPANY]'s market position in [INDUSTRY_SECTOR] and excited about the opportunity to contribute to [BUSINESS_OBJECTIVE]. My experience in [RELEVANT_AREA] aligns well with your strategic goals.
+
+I look forward to discussing how my business acumen and track record of results can support [COMPANY]'s continued growth.
+
+Sincerely,
+[YOUR_NAME]`
+  },
+  healthcare: {
+    name: "Healthcare Professional",
+    description: "Healthcare-focused cover letter emphasizing patient care and clinical expertise",
+    style: "formal",
+    content: `Dear [HIRING_MANAGER_NAME],
+
+I am writing to apply for the [POSITION] position at [COMPANY]. As a dedicated healthcare professional with [YEARS] years of experience in [SPECIALTY], I am committed to providing exceptional patient care and advancing clinical excellence.
+
+Professional Qualifications:
+• Licensure: [LICENSE_TYPE] - [STATE]
+• Certifications: [CERTIFICATIONS]
+• Specializations: [CLINICAL_AREAS]
+• Clinical Experience: [PATIENT_POPULATION]
+
+Throughout my career at [PREVIOUS_FACILITY], I have [CLINICAL_ACHIEVEMENT]. My approach to patient care emphasizes [CARE_PHILOSOPHY], which has resulted in [PATIENT_OUTCOME_METRICS].
+
+I am particularly drawn to [COMPANY]'s reputation for [HEALTHCARE_EXCELLENCE/SPECIALTY] and commitment to [PATIENT_CARE_VALUE]. I am confident that my clinical expertise and dedication to compassionate care align with your mission.
+
+I would welcome the opportunity to discuss how I can contribute to your team's efforts to provide outstanding patient care.
+
+Respectfully,
+[YOUR_NAME]`
+  }
+};
+
 // Industry-specific guidance/suggestions (not actual templates)
 const industryGuidance = {
   technology: "Focus on technical skills, projects, and innovation. Mention specific technologies and methodologies.",
@@ -116,12 +189,18 @@ const industryGuidance = {
   general: "Focus on transferable skills, adaptability, and how your background fits the role."
 };
 
-// Helper to seed default templates for a new user
-const defaultCoverLetterTemplates = Object.keys(styleTemplates).map((style) => ({
-  ...styleTemplates[style],
-  industry: "general",
-  style: style
-}));
+// Helper to seed default templates for a new user (5 general + 3 industry-specific = 8 total)
+const defaultCoverLetterTemplates = [
+  ...Object.keys(styleTemplates).map((style) => ({
+    ...styleTemplates[style],
+    industry: "general",
+    style: style
+  })),
+  ...Object.keys(industryTemplates).map((industry) => ({
+    ...industryTemplates[industry],
+    industry: industry
+  }))
+];
 
 export const listTemplates = async (req, res) => {
   try {
@@ -353,24 +432,84 @@ export const getTemplateAnalytics = async (req, res) => {
   try {
     const userId = getUserId(req);
 
+    // Get all user's templates with usage counts
     const templates = await CoverLetterTemplate.find({ userId })
-      .select('name usageCount industry style createdAt')
+      .select('name industry style usageCount createdAt')
       .sort({ usageCount: -1 })
       .lean();
 
-    const totalUsage = templates.reduce((sum, t) => sum + t.usageCount, 0);
+    // Calculate analytics
+    const totalTemplates = templates.length;
+    const totalUsage = templates.reduce((sum, t) => sum + (t.usageCount || 0), 0);
+    const avgUsage = totalTemplates > 0 ? (totalUsage / totalTemplates).toFixed(1) : 0;
+
+    // Most used template
+    const mostUsedTemplate = templates.length > 0 ? templates[0] : null;
+
+    // Usage by industry
+    const usageByIndustry = templates.reduce((acc, t) => {
+      const industry = t.industry || 'general';
+      if (!acc[industry]) {
+        acc[industry] = { count: 0, usage: 0 };
+      }
+      acc[industry].count++;
+      acc[industry].usage += t.usageCount || 0;
+      return acc;
+    }, {});
+
+    // Usage by style
+    const usageByStyle = templates.reduce((acc, t) => {
+      const style = t.style || 'formal';
+      if (!acc[style]) {
+        acc[style] = { count: 0, usage: 0 };
+      }
+      acc[style].count++;
+      acc[style].usage += t.usageCount || 0;
+      return acc;
+    }, {});
+
+    // Recent templates (last 5)
+    const recentTemplates = templates
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 5);
+
     const analytics = {
-      totalTemplates: templates.length,
-      totalUsage,
-      templates,
-      mostUsed: templates[0] || null
+      summary: {
+        totalTemplates,
+        totalUsage,
+        avgUsage
+      },
+      mostUsedTemplate: mostUsedTemplate ? {
+        id: mostUsedTemplate._id,
+        name: mostUsedTemplate.name,
+        industry: mostUsedTemplate.industry,
+        style: mostUsedTemplate.style,
+        usageCount: mostUsedTemplate.usageCount
+      } : null,
+      usageByIndustry,
+      usageByStyle,
+      recentTemplates: recentTemplates.map(t => ({
+        id: t._id,
+        name: t.name,
+        industry: t.industry,
+        style: t.style,
+        usageCount: t.usageCount,
+        createdAt: t.createdAt
+      })),
+      topTemplates: templates.slice(0, 5).map(t => ({
+        id: t._id,
+        name: t.name,
+        industry: t.industry,
+        style: t.style,
+        usageCount: t.usageCount
+      }))
     };
 
-    const { response, statusCode } = successResponse("Analytics fetched", { analytics });
+    const { response, statusCode } = successResponse("Template analytics retrieved", { analytics });
     return sendResponse(res, response, statusCode);
   } catch (err) {
-    console.error("Error fetching analytics:", err);
-    const { response, statusCode } = errorResponse("Failed to fetch analytics", 500, ERROR_CODES.DATABASE_ERROR);
+    console.error("Error getting template analytics:", err);
+    const { response, statusCode } = errorResponse("Failed to get analytics", 500, ERROR_CODES.DATABASE_ERROR);
     return sendResponse(res, response, statusCode);
   }
 };
@@ -479,3 +618,4 @@ export const exportTemplate = async (req, res) => {
     return sendResponse(res, response, statusCode);
   }
 };
+
