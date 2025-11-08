@@ -8,10 +8,6 @@ import {
   fetchResumes, 
   updateResume as apiUpdateResume, 
   deleteResume as apiDeleteResume,
-  exportResumePDF,
-  exportResumeDOCX,
-  exportResumeHTML,
-  exportResumeText,
   cloneResume as apiCloneResume,
   compareResumes as apiCompareResumes,
   setDefaultResume as apiSetDefaultResume,
@@ -22,9 +18,7 @@ import {
 import { 
   generateAIResume, 
   generateResumeVariations, 
-  regenerateResumeSection,
-  optimizeResumeSkills,
-  tailorExperienceForJob
+  regenerateResumeSection
 } from "../../api/aiResume";
 import { getValidationStatus } from "../../api/resumeValidation";
 import api from "../../api/axios";
@@ -61,6 +55,10 @@ import ViewIssuesButton from "../../components/resume/ViewIssuesButton";
 import { THEME_PRESETS, getThemePresetNames, getThemePreset } from "../../utils/themePresets";
 import { TEMPLATE_TYPES, DEFAULT_SECTIONS, SECTION_PRESETS, formatDate } from "../../utils/resumeConstants";
 import { useResumeValidation } from "../../hooks/useResumeValidation";
+import { useResumeExport } from "../../components/resume/useResumeExport";
+import { useSkillsOptimization } from "../../hooks/useSkillsOptimization";
+import { useExperienceTailoring } from "../../hooks/useExperienceTailoring";
+import { useVersionManagement } from "../../hooks/useVersionManagement";
 
 export default function ResumeTemplates() {
   const { getToken } = useAuth();
@@ -114,52 +112,6 @@ export default function ResumeTemplates() {
   
   // Resume Display State
   const [showAllResumes, setShowAllResumes] = useState(false);
-  const [showArchivedResumes, setShowArchivedResumes] = useState(false); // UC-52: Archive filter
-  
-  // UC-49: Skills Optimization State
-  const [showSkillsOptimization, setShowSkillsOptimization] = useState(false);
-  const [skillsOptimizationData, setSkillsOptimizationData] = useState(null);
-  const [isOptimizingSkills, setIsOptimizingSkills] = useState(false);
-  const [selectedJobForSkills, setSelectedJobForSkills] = useState(''); // Store "title|company" string
-  const [selectedSkillsToAdd, setSelectedSkillsToAdd] = useState([]); // Skills user wants to add
-  const [currentResumeSkills, setCurrentResumeSkills] = useState([]); // Current skills in resume
-  const [isApplyingSkills, setIsApplyingSkills] = useState(false);
-  const [showSkillsSuccessBanner, setShowSkillsSuccessBanner] = useState(false);
-  
-  // UC-50: Experience Tailoring State
-  const [showExperienceTailoring, setShowExperienceTailoring] = useState(false);
-  const [experienceTailoringData, setExperienceTailoringData] = useState(null);
-  const [isTailoringExperience, setIsTailoringExperience] = useState(false);
-  const [selectedJobForExperience, setSelectedJobForExperience] = useState(''); // Store "title|company" string
-  const [selectedExperienceVariations, setSelectedExperienceVariations] = useState({}); // { "expIdx-bulletIdx": "achievement" | "technical" | "impact" | "original" }
-  const [isApplyingExperience, setIsApplyingExperience] = useState(false);
-  const [showExperienceSuccessBanner, setShowExperienceSuccessBanner] = useState(false);
-  
-  // UC-51: Export State
-  const [showExportMenu, setShowExportMenu] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
-  const [exportFormat, setExportFormat] = useState(null);
-  // Custom "Save As" modal for exports (replaces window.prompt)
-  const [showSaveAsModal, setShowSaveAsModal] = useState(false);
-  const [saveAsFilename, setSaveAsFilename] = useState('');
-  const [pendingExportFormat, setPendingExportFormat] = useState(null);
-  
-  // UC-51: Watermark options
-  const [watermarkEnabled, setWatermarkEnabled] = useState(false);
-  const [watermarkText, setWatermarkText] = useState('CONFIDENTIAL');
-  const [showWatermarkModal, setShowWatermarkModal] = useState(false);
-  
-  // UC-52: Version Management State
-  const [showCloneModal, setShowCloneModal] = useState(false);
-  const [cloneName, setCloneName] = useState('');
-  const [cloneDescription, setCloneDescription] = useState('');
-  const [isCloning, setIsCloning] = useState(false);
-  const [showCompareModal, setShowCompareModal] = useState(false);
-  const [compareResumeId, setCompareResumeId] = useState(null);
-  const [comparisonData, setComparisonData] = useState(null);
-  const [showMergeModal, setShowMergeModal] = useState(false);
-  const [selectedMergeChanges, setSelectedMergeChanges] = useState([]);
-  const [isMerging, setIsMerging] = useState(false);
   
     // Section Customization State (UC-048)
     const [visibleSections, setVisibleSections] = useState(DEFAULT_SECTIONS.map(s => s.key));
@@ -209,6 +161,103 @@ export default function ResumeTemplates() {
     const token = await getToken();
     setAuthToken(token);
   };
+
+  // UC-49: Skills Optimization State - Using custom hook (initialized after authWrap)
+  const skillsHook = useSkillsOptimization(authWrap);
+  const {
+    showSkillsOptimization,
+    setShowSkillsOptimization,
+    skillsOptimizationData,
+    isOptimizingSkills,
+    selectedJobForSkills,
+    setSelectedJobForSkills,
+    selectedSkillsToAdd,
+    currentResumeSkills,
+    setCurrentResumeSkills,
+    isApplyingSkills,
+    showSkillsSuccessBanner,
+    handleOptimizeSkills: handleOptimizeSkillsHook,
+    handleDeleteSkill: handleDeleteSkillHook,
+    handleApplySkillChanges: handleApplySkillChangesHook,
+    toggleSkillSelection,
+    handleRemoveSkill
+  } = skillsHook;
+
+  // UC-50: Experience Tailoring State - Using custom hook (initialized after authWrap)
+  const experienceHook = useExperienceTailoring(authWrap);
+  const {
+    showExperienceTailoring,
+    setShowExperienceTailoring,
+    experienceTailoringData,
+    isTailoringExperience,
+    selectedJobForExperience,
+    setSelectedJobForExperience,
+    selectedExperienceVariations,
+    isApplyingExperience,
+    showExperienceSuccessBanner,
+    handleTailorExperience: handleTailorExperienceHook,
+    toggleExperienceVariation,
+    handleApplyExperienceChanges: handleApplyExperienceChangesHook
+  } = experienceHook;
+
+  // UC-52: Version Management State - Using custom hook (initialized after authWrap)
+  const versionHook = useVersionManagement(authWrap);
+  const {
+    showCloneModal,
+    setShowCloneModal,
+    cloneName,
+    setCloneName,
+    cloneDescription,
+    setCloneDescription,
+    isCloning,
+    showCompareModal,
+    setShowCompareModal,
+    compareResumeId,
+    setCompareResumeId,
+    comparisonData,
+    setComparisonData,
+    showMergeModal,
+    setShowMergeModal,
+    selectedMergeChanges,
+    setSelectedMergeChanges,
+    isMerging,
+    showArchivedResumes,
+    setShowArchivedResumes,
+    handleCloneResume: handleCloneResumeHook,
+    handleSetDefaultResume: handleSetDefaultResumeHook,
+    handleCompareResumes: handleCompareResumesHook,
+    handleRevertToPreviousVersion: handleRevertToPreviousVersionHook,
+    handleArchiveResume: handleArchiveResumeHook,
+    handleUnarchiveResume: handleUnarchiveResumeHook,
+    handleMergeResumes: handleMergeResumesHook
+  } = versionHook;
+
+  // UC-51: Export State - Using custom hook (initialized after authWrap)
+  const exportHook = useResumeExport(authWrap, validationStatus);
+  const {
+    showExportMenu,
+    setShowExportMenu,
+    isExporting,
+    exportFormat,
+    setExportFormat,
+    showSaveAsModal,
+    setShowSaveAsModal,
+    saveAsFilename,
+    setSaveAsFilename,
+    pendingExportFormat,
+    watermarkEnabled,
+    setWatermarkEnabled,
+    watermarkText,
+    setWatermarkText,
+    showWatermarkModal,
+    handleExport: handleExportFromHook,
+    handleExportWithValidation: handleExportWithValidationFromHook,
+    confirmExport: confirmExportFromHook,
+    cancelExport: cancelExportFromHook,
+    handlePrintHtml: handlePrintHtmlFromHook,
+    toggleWatermarkModal,
+    saveWatermarkSettings
+  } = exportHook;
 
   // UC-052: Auto-save version snapshot before making changes
   const createAutoVersionSnapshot = async (resume, changeDescription) => {
@@ -514,9 +563,7 @@ export default function ResumeTemplates() {
     }
   };
 
-  // UC-51: Export handlers
-  // When user clicks an export option, open a themed "Save As" modal first.
-  // After they confirm filename, performExport will run the request and download.
+  // UC-51: Export handlers - Wrapping hook functions
   const handleExport = async (format) => {
     if (!viewingResume) return;
     setShowExportMenu(false);
@@ -525,8 +572,19 @@ export default function ResumeTemplates() {
     const ext = extMap[format] || '';
     const suggested = `${filenameBase}${ext}`;
     setSaveAsFilename(suggested);
-    setPendingExportFormat(format);
-    setShowSaveAsModal(true);
+    
+    await handleExportFromHook(
+      format,
+      viewingResume._id,
+      (message) => {
+        setSuccessMessage(message);
+        setTimeout(() => setSuccessMessage(null), 4000);
+      },
+      (error) => {
+        setSuccessMessage(error);
+        setTimeout(() => setSuccessMessage(null), 5000);
+      }
+    );
   };
 
   // Perform the server request and trigger file download
@@ -534,311 +592,121 @@ export default function ResumeTemplates() {
     if (!viewingResume) return;
     
     // UC-053: Check validation before export
-    const canExport = await handleExportWithValidation(viewingResume._id, format);
+    const canExport = await handleExportWithValidationFromHook(
+      viewingResume._id,
+      format,
+      (message) => {
+        setSuccessMessage(message);
+        setTimeout(() => setSuccessMessage(null), 4000);
+      },
+      (error) => {
+        setSuccessMessage(error);
+        setTimeout(() => setSuccessMessage(null), 5000);
+      }
+    );
+    
     if (!canExport) {
       setShowSaveAsModal(false);
-      setPendingExportFormat(null);
       return;
     }
     
-    setIsExporting(true);
-    setExportFormat(format);
-    setShowSaveAsModal(false);
-    try {
-      await authWrap();
-      // Ensure filename has proper extension
-      const extMap = { pdf: '.pdf', docx: '.docx', html: '.html', txt: '.txt' };
-      const ext = extMap[format] || '';
-      if (ext && filename && !filename.toLowerCase().endsWith(ext)) {
-        filename = filename + ext;
-      }
-      
-      // UC-51: Prepare watermark options
-      const watermarkOptions = watermarkEnabled ? { enabled: true, text: watermarkText } : null;
-      
-      let response;
-      switch (format) {
-        case 'pdf':
-          response = await exportResumePDF(viewingResume._id, watermarkOptions);
-          break;
-        case 'docx':
-          response = await exportResumeDOCX(viewingResume._id, watermarkOptions);
-          break;
-        case 'html':
-          response = await exportResumeHTML(viewingResume._id);
-          break;
-        case 'txt':
-          response = await exportResumeText(viewingResume._id);
-          break;
-        default:
-          throw new Error('Invalid export format');
-      }
-
-      const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/octet-stream' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-
-      setSuccessMessage(`Resume exported as ${format.toUpperCase()} successfully!`);
-      setTimeout(() => setSuccessMessage(null), 4000);
-    } catch (err) {
-      console.error('Export failed:', err);
-      let errorMsg = `Failed to export resume as ${format.toUpperCase()}. Please try again.`;
-      
-      // UC-053: Check if error is due to validation
-      if (err?.response?.status === 400 && err?.response?.data?.message?.includes('validat')) {
-        errorMsg = '⚠ ' + err.response.data.message;
-        setError(errorMsg);
-        // Don't show alert for validation errors, just set error state
-      } else {
-        try {
-          const data = err?.response?.data;
-          if (data instanceof Blob) {
-            const text = await data.text();
-            try {
-              const json = JSON.parse(text);
-              if (json?.message) errorMsg = json.message;
-            } catch {
-              if (text) errorMsg = text;
-            }
-          } else if (typeof err?.response?.data === 'object' && err.response.data?.message) {
-            errorMsg = err.response.data.message;
-          }
-        } catch {}
-        alert(errorMsg);
-      }
-    } finally {
-      setIsExporting(false);
-      setExportFormat(null);
-      setPendingExportFormat(null);
-    }
+    // Set filename and confirm export
+    setSaveAsFilename(filename);
+    await confirmExportFromHook();
   };
 
   // UC-51: Print as HTML (fetch HTML, open new window, print)
   const handlePrintHtml = async () => {
     if (!viewingResume) return;
     setShowExportMenu(false);
-    setIsExporting(true);
-    try {
-      await authWrap();
-      // Request server-rendered HTML for the resume
-      const response = await exportResumeHTML(viewingResume._id);
-
-      // response.data may be a Blob (because export API uses responseType: 'blob') or a string
-      let htmlContent = '';
-      if (response.data instanceof Blob) {
-        // Read blob as text
-        htmlContent = await response.data.text();
-      } else if (typeof response.data === 'string') {
-        htmlContent = response.data;
-      } else if (response.data && typeof response.data.html === 'string') {
-        htmlContent = response.data.html;
-      }
-
-      if (!htmlContent) {
-        throw new Error('No HTML content returned from server');
-      }
-
-      // Open a new window/tab and write the HTML into it, then trigger print()
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) {
-        alert('Unable to open print window. Please allow popups for this site.');
-        return;
-      }
-
-      printWindow.document.open();
-      printWindow.document.write(htmlContent);
-      printWindow.document.close();
-      // Wait a tick for resources to load, then invoke print
-      printWindow.focus();
-      // Give the browser a short moment to render before printing
-      setTimeout(() => {
-        try {
-          printWindow.print();
-        } catch (e) {
-          console.error('Print failed:', e);
-        }
-      }, 300);
-
-    } catch (err) {
-      console.error('Print (HTML) failed:', err);
-      alert('Failed to prepare printable view. Please try Export as HTML instead.');
-    } finally {
-      setIsExporting(false);
-    }
+    
+    await handlePrintHtmlFromHook(
+      viewingResume._id,
+      (message) => {
+        setSuccessMessage(message);
+        setTimeout(() => setSuccessMessage(null), 3000);
+      },
+      (error) => alert(error)
+    );
   };
 
-  // UC-52: Version management handlers
+  // UC-52: Version management handlers - Wrappers for hook
   const handleCloneResume = async () => {
-    if (!viewingResume || !cloneName.trim()) return;
-    
-    setIsCloning(true);
-    try {
-      await authWrap();
-      const response = await apiCloneResume(viewingResume._id, cloneName.trim(), cloneDescription.trim());
-      const clonedResume = response.data.data.resume;
-      
+    await handleCloneResumeHook(viewingResume, (clonedResume, message) => {
       setResumes(prev => [clonedResume, ...prev]);
-      setShowCloneModal(false);
-      setCloneName('');
-      setCloneDescription('');
-      setSuccessMessage(`Resume cloned successfully as "${clonedResume.name}"!`);
+      setSuccessMessage(message);
       setTimeout(() => setSuccessMessage(null), 4000);
-    } catch (err) {
-      console.error('Clone failed:', err);
-      alert('Failed to clone resume. Please try again.');
-    } finally {
-      setIsCloning(false);
-    }
+    });
   };
 
   const handleSetDefaultResume = async (resumeId) => {
-    try {
-      await authWrap();
-      await apiSetDefaultResume(resumeId);
-      
-      // Update resumes list
+    await handleSetDefaultResumeHook(resumeId, viewingResume?._id, (setResumeId, viewingResumeId) => {
       setResumes(prev => prev.map(r => ({
         ...r,
-        isDefault: r._id === resumeId
+        isDefault: r._id === setResumeId
       })));
       
-      // Update viewing resume if it's the one being set as default
-      if (viewingResume?._id === resumeId) {
+      if (viewingResumeId === setResumeId) {
         setViewingResume(prev => ({ ...prev, isDefault: true }));
       }
       
       setSuccessMessage('Default resume updated successfully!');
       setTimeout(() => setSuccessMessage(null), 4000);
-    } catch (err) {
-      console.error('Set default failed:', err);
-      alert('Failed to set default resume. Please try again.');
-    }
+    });
   };
 
   const handleCompareResumes = async (resumeId2) => {
-    if (!viewingResume || !resumeId2) return;
-    
-    try {
-      await authWrap();
-      const response = await apiCompareResumes(viewingResume._id, resumeId2);
-      setComparisonData(response.data.data.comparison);
-      setCompareResumeId(resumeId2);
-      setShowCompareModal(true);
-    } catch (err) {
-      console.error('Compare failed:', err);
-      alert('Failed to compare resumes. Please try again.');
-    }
+    await handleCompareResumesHook(viewingResume?._id, resumeId2);
   };
 
-  // UC-052: Revert to previous version
   const handleRevertToPreviousVersion = async () => {
-    if (!viewingResume || !compareResumeId) return;
-    
-    const confirm = window.confirm(
-      'Are you sure you want to revert to the previous version? This will create a new version snapshot of your current resume before reverting.'
-    );
-    
-    if (!confirm) return;
-    
-    try {
-      await authWrap();
-      
-      // Create snapshot of current version before reverting
-      await createAutoVersionSnapshot(viewingResume, 'Before Revert');
-      
-      // Get the previous version's full data
-      const previousResume = resumes.find(r => r._id === compareResumeId);
-      if (!previousResume) {
-        alert('Previous version not found.');
-        return;
+    await handleRevertToPreviousVersionHook(
+      viewingResume,
+      resumes,
+      createAutoVersionSnapshot,
+      async (revertedResume) => {
+        await loadAll();
+        setViewingResume(revertedResume);
+        setSuccessMessage('Successfully reverted to previous version!');
+        setTimeout(() => setSuccessMessage(null), 3000);
       }
-      
-      // Update current resume with previous version's content
-      const revertedResume = {
-        ...viewingResume,
-        sections: previousResume.sections,
-        sectionCustomization: previousResume.sectionCustomization
-      };
-      
-      await apiUpdateResume(viewingResume._id, revertedResume);
-      
-      // Refresh resumes and update viewing resume
-      await loadAll();
-      setViewingResume(revertedResume);
-      
-      // Close comparison modal
-      setShowCompareModal(false);
-      setComparisonData(null);
-      setCompareResumeId(null);
-      
-      setSuccessMessage('Successfully reverted to previous version!');
-      setTimeout(() => setSuccessMessage(null), 3000);
-      
-    } catch (err) {
-      console.error('Revert failed:', err);
-      alert('Failed to revert to previous version. Please try again.');
-    }
+    );
   };
 
-  // UC-52: Archive/Unarchive handlers
   const handleArchiveResume = async (resumeId) => {
-    try {
-      await authWrap();
-      await apiArchiveResume(resumeId);
-      
+    await handleArchiveResumeHook(resumeId, (archivedId, message) => {
       setResumes(prev => prev.map(r => 
-        r._id === resumeId ? { ...r, isArchived: true } : r
+        r._id === archivedId ? { ...r, isArchived: true } : r
       ));
       
-      if (viewingResume?._id === resumeId) {
+      if (viewingResume?._id === archivedId) {
         setViewingResume(prev => ({ ...prev, isArchived: true }));
       }
       
-      // If not showing all resumes and not showing archived, expand view to show 4 active resumes
       if (!showAllResumes && !showArchivedResumes) {
-        const nonArchivedCount = resumes.filter(r => !r.isArchived && r._id !== resumeId).length;
-        // If we had exactly 4 showing and now will have less, keep showing 4 if possible
-        if (nonArchivedCount >= 4) {
-          // Keep current collapsed view - filter will handle showing 4
-        }
+        const nonArchivedCount = resumes.filter(r => !r.isArchived && r._id !== archivedId).length;
       }
       
-      setSuccessMessage('Resume archived successfully!');
+      setSuccessMessage(message);
       setTimeout(() => setSuccessMessage(null), 4000);
-    } catch (err) {
-      console.error('Archive failed:', err);
-      alert('Failed to archive resume. Please try again.');
-    }
+    });
   };
 
   const handleUnarchiveResume = async (resumeId) => {
-    try {
-      await authWrap();
-      await apiUnarchiveResume(resumeId);
-      
+    await handleUnarchiveResumeHook(resumeId, (unarchivedId, message) => {
       setResumes(prev => prev.map(r => 
-        r._id === resumeId ? { ...r, isArchived: false } : r
+        r._id === unarchivedId ? { ...r, isArchived: false } : r
       ));
       
-      if (viewingResume?._id === resumeId) {
+      if (viewingResume?._id === unarchivedId) {
         setViewingResume(prev => ({ ...prev, isArchived: false }));
       }
       
-      setSuccessMessage('Resume unarchived successfully!');
+      setSuccessMessage(message);
       setTimeout(() => setSuccessMessage(null), 4000);
-    } catch (err) {
-      console.error('Unarchive failed:', err);
-      alert('Failed to unarchive resume. Please try again.');
-    }
+    });
   };
 
-  // UC-52: Merge resumes handler
   const handleMergeResumes = async () => {
     if (!viewingResume || !compareResumeId || selectedMergeChanges.length === 0) return;
     
@@ -958,56 +826,29 @@ export default function ResumeTemplates() {
     }
   };
 
-  // UC-49: Skills optimization handler
+  // UC-49: Skills optimization handler - Wrapper for hook
   const handleOptimizeSkills = async () => {
     if (!viewingResume) return;
     
-    // Parse selected job (format: "title|company")
     const jobSelector = selectedJobForSkills || selectedJobForExperience;
     
-    if (!jobSelector) {
-      alert('Please select a job posting to optimize skills against.');
-      return;
-    }
-
-    const [title, company] = jobSelector.split('|');
-    if (!title || !company) {
-      alert('Invalid job selection. Please select a valid job from the dropdown.');
-      console.error('Invalid job selector:', jobSelector);
-      return;
-    }
+    // Initialize current resume skills
+    const currentSkills = viewingResume.sections?.skills || [];
+    setCurrentResumeSkills(currentSkills.map(s => typeof s === 'string' ? s : s.name));
     
-    setIsOptimizingSkills(true);
-    try {
-      await authWrap();
-      const response = await optimizeResumeSkills(viewingResume._id, { title, company });
-      setSkillsOptimizationData(response.data.data);
-      
-      // Initialize current resume skills
-      const currentSkills = viewingResume.sections?.skills || [];
-      setCurrentResumeSkills(currentSkills.map(s => typeof s === 'string' ? s : s.name));
-      setSelectedSkillsToAdd([]);
-      
-      setShowSkillsOptimization(true);
-    } catch (err) {
-      console.error('Skills optimization failed:', err);
-      const errorMsg = err.response?.data?.message || 'Failed to optimize skills. Please try again.';
-      alert(errorMsg);
-    } finally {
-      setIsOptimizingSkills(false);
-    }
+    await handleOptimizeSkillsHook(viewingResume._id, jobSelector);
   };
 
-  // Delete individual skill
+  // Delete individual skill - Wrapper for hook
   const handleDeleteSkill = (skillToDelete) => {
     if (!viewingResume) return;
     
     const skillName = typeof skillToDelete === 'string' ? skillToDelete : skillToDelete.name;
+    const currentSkills = (viewingResume.sections?.skills || []).map(skill => 
+      typeof skill === 'string' ? skill : skill.name
+    );
     
-    const updatedSkills = (viewingResume.sections?.skills || []).filter(skill => {
-      const currentSkillName = typeof skill === 'string' ? skill : skill.name;
-      return currentSkillName !== skillName;
-    });
+    const updatedSkills = handleDeleteSkillHook(skillName, currentSkills);
     
     const updatedResume = {
       ...viewingResume,
@@ -1021,206 +862,31 @@ export default function ResumeTemplates() {
     setHasUnsavedChanges(true);
   };
 
-  // UC-49: Apply skill changes to resume
+  // UC-49: Apply skill changes to resume - Wrapper for hook
   const handleApplySkillChanges = async () => {
     if (!viewingResume) return;
     
-    setIsApplyingSkills(true);
-    try {
-      await authWrap();
-      
-      // Combine current skills with selected new skills (avoiding duplicates)
-      const newSkillsSet = new Set([...currentResumeSkills, ...selectedSkillsToAdd]);
-      const updatedSkills = Array.from(newSkillsSet).map(skillName => ({
-        name: skillName,
-        level: 'Intermediate' // Default level, user can adjust in resume editor
-      }));
-      
-      // Update resume with new skills (LOCAL STATE ONLY - not saved to DB yet)
-      const updatedResume = {
-        ...viewingResume,
-        sections: {
-          ...viewingResume.sections,
-          skills: updatedSkills
-        }
-      };
-      
-      // DON'T save to database yet - let user click "Save Changes"
-      // await apiUpdateResume(viewingResume._id, updatedResume);
-      
-      // Update local state only
-      setViewingResume(updatedResume);
-      
-      // Update current skills list
-      setCurrentResumeSkills(Array.from(newSkillsSet));
-      setSelectedSkillsToAdd([]);
-      
-      // Mark as having unsaved changes (user must click Save to create version)
-      setHasUnsavedChanges(true);
-      
-      // Show success banner
-      setShowSkillsSuccessBanner(true);
-      
-      // Auto-close modal after 2 seconds
-      setTimeout(() => {
-        setShowSkillsOptimization(false);
-        setShowSkillsSuccessBanner(false);
-      }, 2000);
-    } catch (err) {
-      console.error('Failed to apply skill changes:', err);
-      alert('Failed to update skills. Please try again.');
-    } finally {
-      setIsApplyingSkills(false);
-    }
+    await handleApplySkillChangesHook(
+      viewingResume,
+      (updatedResume) => {
+        setViewingResume(updatedResume);
+        setHasUnsavedChanges(true);
+      },
+      () => {} // Success callback - already handled in hook
+    );
   };
 
-  // UC-49: Toggle skill selection
-  const toggleSkillSelection = (skillName) => {
-    setSelectedSkillsToAdd(prev => {
-      if (prev.includes(skillName)) {
-        return prev.filter(s => s !== skillName);
-      } else {
-        return [...prev, skillName];
-      }
-    });
-  };
-
-  // UC-49: Remove skill from resume
-  const handleRemoveSkill = (skillName) => {
-    setCurrentResumeSkills(prev => prev.filter(s => s !== skillName));
-  };
-
-  // UC-50: Experience tailoring handler
+  // UC-50: Experience tailoring handler - Wrapper for hook
   const handleTailorExperience = async () => {
-    if (!viewingResume) return;
-    
-    // Parse selected job (format: "title|company")
-    const jobSelector = selectedJobForExperience || selectedJobForSkills;
-    
-    if (!jobSelector) {
-      alert('Please select a job posting to tailor experience for.');
-      return;
-    }
-
-    const [title, company] = jobSelector.split('|');
-    if (!title || !company) {
-      alert('Invalid job selection. Please select a valid job from the dropdown.');
-      console.error('Invalid job selector:', jobSelector);
-      return;
-    }
-    
-    setIsTailoringExperience(true);
-    try {
-      await authWrap();
-      const response = await tailorExperienceForJob(viewingResume._id, { title, company });
-      setExperienceTailoringData(response.data.data);
-      setSelectedExperienceVariations({}); // Reset selections
-      setShowExperienceTailoring(true);
-    } catch (err) {
-      console.error('Experience tailoring failed:', err);
-      const errorMsg = err.response?.data?.message || 'Failed to tailor experience. Please try again.';
-      alert(errorMsg);
-    } finally {
-      setIsTailoringExperience(false);
-    }
+    await handleTailorExperienceHook(viewingResume, selectedJobForSkills);
   };
 
-  // UC-50: Toggle experience variation selection
-  const toggleExperienceVariation = (expIdx, bulletIdx, variationType) => {
-    const key = `${expIdx}-${bulletIdx}`;
-    setSelectedExperienceVariations(prev => {
-      const newSelections = { ...prev };
-      // If clicking the same variation, deselect it (go back to original)
-      if (newSelections[key] === variationType) {
-        delete newSelections[key];
-      } else {
-        newSelections[key] = variationType;
-      }
-      return newSelections;
-    });
-  };
-
-  // UC-50: Apply selected experience variations to resume
+  // UC-50: Apply selected experience variations to resume - Wrapper for hook
   const handleApplyExperienceChanges = async () => {
-    if (!viewingResume || !experienceTailoringData) return;
-    
-    setIsApplyingExperience(true);
-    try {
-      await authWrap();
-      
-      // Build updated experience array with selected variations
-      const updatedExperience = viewingResume.sections?.experience?.map((job, expIdx) => {
-        const aiExperience = experienceTailoringData.tailoring?.experiences?.find(
-          exp => exp.experienceIndex === expIdx
-        );
-        
-        if (!aiExperience || !aiExperience.bullets) {
-          return job; // No AI suggestions for this experience, keep original
-        }
-        
-        // Map bullets with selected variations
-        const updatedBullets = job.bullets?.map((originalBullet, bulletIdx) => {
-          const key = `${expIdx}-${bulletIdx}`;
-          const selectedVariation = selectedExperienceVariations[key];
-          
-          if (!selectedVariation || selectedVariation === 'original') {
-            return originalBullet; // Keep original
-          }
-          
-          // Find the AI bullet suggestion
-          const aiBullet = aiExperience.bullets?.find(b => {
-            // Match by comparing original text (after cleaning)
-            const cleanOriginal = (b.originalBullet || '').trim().toLowerCase();
-            const cleanCurrent = originalBullet.trim().toLowerCase();
-            return cleanOriginal.includes(cleanCurrent) || cleanCurrent.includes(cleanOriginal);
-          });
-          
-          if (aiBullet && aiBullet.variations && aiBullet.variations[selectedVariation]) {
-            return aiBullet.variations[selectedVariation]; // Use selected variation
-          }
-          
-          return originalBullet; // Fallback to original
-        });
-        
-        return {
-          ...job,
-          bullets: updatedBullets || job.bullets
-        };
-      });
-      
-      // Update resume with new experience (LOCAL STATE ONLY - not saved to DB yet)
-      const updatedResume = {
-        ...viewingResume,
-        sections: {
-          ...viewingResume.sections,
-          experience: updatedExperience
-        }
-      };
-      
-      // DON'T save to database yet - let user click "Save Changes"
-      // await apiUpdateResume(viewingResume._id, updatedResume);
-      
-      // Update local state only
+    await handleApplyExperienceChangesHook(viewingResume, (updatedResume) => {
       setViewingResume(updatedResume);
-      
-      // Mark as having unsaved changes (user must click Save to create version)
       setHasUnsavedChanges(true);
-      
-      // Show success banner
-      setShowExperienceSuccessBanner(true);
-      
-      // Auto-close modal after 2 seconds
-      setTimeout(() => {
-        setShowExperienceTailoring(false);
-        setShowExperienceSuccessBanner(false);
-        setSelectedExperienceVariations({});
-      }, 2000);
-    } catch (err) {
-      console.error('Failed to apply experience changes:', err);
-      alert('Failed to update experience. Please try again.');
-    } finally {
-      setIsApplyingExperience(false);
-    }
+    });
   };
 
   // Resume handlers
@@ -1547,20 +1213,6 @@ export default function ResumeTemplates() {
       setSuccessMessage('❌ Failed to save changes');
       setTimeout(() => setSuccessMessage(null), 5000);
     }
-  };
-
-  // UC-053: Handle export with validation check
-  const handleExportWithValidation = async (resumeId, format) => {
-    const status = validationStatus[resumeId];
-    
-    if (!status || status.status !== 'valid') {
-      setSuccessMessage('⚠️ Please validate your resume before exporting');
-      setTimeout(() => setSuccessMessage(null), 5000);
-      // Auto-scroll to show validation button or open validation
-      return false;
-    }
-    
-    return true; // Allow export
   };
 
   const handleCancelDelete = () => {
