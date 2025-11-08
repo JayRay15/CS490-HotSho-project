@@ -628,3 +628,370 @@ Return ONLY valid JSON, no markdown formatting. Focus on maintaining factual acc
     throw new Error(`Failed to tailor experience: ${error.message}`);
   }
 }
+
+/**
+ * Generate AI cover letter content based on job posting and user profile
+ * @param {Object} params - Generation parameters
+ * @param {string} params.companyName - Name of the company
+ * @param {string} params.position - Job position title
+ * @param {string} params.jobDescription - Full job posting description
+ * @param {Object} params.userProfile - User's profile data
+ * @param {string} params.tone - Desired tone (formal, modern, creative, technical, executive)
+ * @param {number} params.variationCount - Number of variations to generate (1-3)
+ * @returns {Promise<Array>} Array of generated cover letter variations
+ */
+export async function generateCoverLetter({
+  companyName,
+  position,
+  jobDescription,
+  userProfile,
+  tone = 'formal',
+  variationCount = 1
+}) {
+  try {
+    const model = genAI.getGenerativeModel({ model: 'models/gemini-2.5-flash' });
+
+    // Build user profile summary
+    const profileSummary = buildProfileSummary(userProfile);
+    
+    // Log profile data for debugging
+    console.log('=== PROFILE DATA FOR AI ===');
+    console.log('Name:', userProfile.firstName, userProfile.lastName);
+    console.log('Email:', userProfile.email);
+    console.log('Phone:', userProfile.phone);
+    console.log('Location:', userProfile.location);
+    console.log('Profile Summary:\n', profileSummary);
+    console.log('=== END PROFILE DATA ===');
+
+    // Construct the prompt
+    const prompt = buildCoverLetterPrompt({
+      companyName,
+      position,
+      jobDescription,
+      profileSummary,
+      tone,
+      variationCount
+    });
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+
+    // Parse the response to extract variations
+    const variations = parseCoverLetterVariations(text, variationCount);
+
+    return variations;
+  } catch (error) {
+    console.error('AI Generation Error:', error);
+    throw new Error(`Failed to generate cover letter: ${error.message}`);
+  }
+}
+
+/**
+ * Build a comprehensive profile summary from user data
+ */
+function buildProfileSummary(profile) {
+  const parts = [];
+
+  // Add current date for the letter header
+  const currentDate = new Date().toLocaleDateString('en-US', { 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
+
+  // Contact information - to be used in letter header
+  const contactInfo = [];
+  contactInfo.push(`Current Date: ${currentDate}`);
+  
+  if (profile.firstName && profile.lastName) {
+    contactInfo.push(`Name: ${profile.firstName} ${profile.lastName}`);
+  } else if (profile.name) {
+    contactInfo.push(`Name: ${profile.name}`);
+  }
+  
+  if (profile.email) {
+    contactInfo.push(`Email: ${profile.email}`);
+  }
+  
+  if (profile.phone) {
+    contactInfo.push(`Phone: ${profile.phone}`);
+  }
+  
+  if (profile.location) {
+    contactInfo.push(`Location: ${profile.location}`);
+  }
+  
+  if (contactInfo.length > 1) { // More than just the date
+    parts.push('CONTACT INFORMATION (use this EXACT information in the letter header - DO NOT use placeholders):');
+    parts.push(contactInfo.join('\n'));
+  }
+
+  // Basic info
+  if (profile.headline) {
+    parts.push(`\nHeadline/Title: ${profile.headline}`);
+  }
+  if (profile.professionalSummary || profile.bio) {
+    parts.push(`\nProfessional Summary: ${profile.professionalSummary || profile.bio}`);
+  }
+
+  // Employment history
+  if (profile.employment && profile.employment.length > 0) {
+    parts.push('\n\nWork Experience:');
+    profile.employment.slice(0, 3).forEach(job => {
+      const position = job.position || job.jobTitle;
+      const current = job.isCurrentPosition ? ' (Current)' : '';
+      parts.push(`- ${position} at ${job.company}${current}`);
+      if (job.description) {
+        parts.push(`  ${job.description.substring(0, 200)}...`);
+      }
+    });
+  }
+
+  // Skills
+  if (profile.skills && profile.skills.length > 0) {
+    const topSkills = profile.skills
+      .filter(s => s.level === 'Expert' || s.level === 'Advanced')
+      .slice(0, 8)
+      .map(s => s.name);
+    if (topSkills.length > 0) {
+      parts.push(`\n\nTop Skills: ${topSkills.join(', ')}`);
+    }
+  }
+
+  // Education
+  if (profile.education && profile.education.length > 0) {
+    parts.push('\n\nEducation:');
+    profile.education.slice(0, 2).forEach(edu => {
+      parts.push(`- ${edu.degree} in ${edu.fieldOfStudy} from ${edu.institution}`);
+      if (edu.gpa && edu.gpa >= 3.5) {
+        parts.push(`  GPA: ${edu.gpa}`);
+      }
+    });
+  }
+
+  // Certifications
+  if (profile.certifications && profile.certifications.length > 0) {
+    const certs = profile.certifications.slice(0, 5).map(c => c.name);
+    parts.push(`\n\nCertifications: ${certs.join(', ')}`);
+  }
+
+  // Projects
+  if (profile.projects && profile.projects.length > 0) {
+    parts.push('\n\nNotable Projects:');
+    profile.projects.slice(0, 2).forEach(proj => {
+      parts.push(`- ${proj.name}: ${proj.description?.substring(0, 150)}...`);
+    });
+  }
+
+  return parts.join('\n');
+}
+
+/**
+ * Build the AI prompt for cover letter generation
+ */
+function buildCoverLetterPrompt({
+  companyName,
+  position,
+  jobDescription,
+  profileSummary,
+  tone,
+  variationCount
+}) {
+  const toneGuide = {
+    formal: 'professional, traditional, and respectful',
+    modern: 'contemporary, friendly yet professional, with conversational elements',
+    creative: 'expressive, engaging, and personality-driven',
+    technical: 'precise, detail-oriented, with technical terminology',
+    executive: 'strategic, leadership-focused, and high-level'
+  };
+
+  return `You are an expert cover letter writer. Generate ${variationCount} compelling cover letter${variationCount > 1 ? 's' : ''} for the following job application.
+
+**Job Details:**
+- Company: ${companyName}
+- Position: ${position}
+- Job Description: ${jobDescription}
+
+**Candidate Profile:**
+${profileSummary}
+
+**Tone:** ${toneGuide[tone] || toneGuide.formal}
+
+**Cover Letter Format:**
+The cover letter MUST start with a professional header. Use the EXACT information from the CONTACT INFORMATION section above.
+
+**HEADER FORMAT EXAMPLE:**
+John Smith
+john.smith@email.com
+(555) 123-4567
+New York, NY
+
+December 8, 2024
+
+Hiring Manager
+${companyName}
+[Company Location if known from job description]
+
+**CRITICAL INSTRUCTIONS:**
+1. The header MUST use the ACTUAL name, email, phone, and location from CONTACT INFORMATION
+2. Use the Current Date provided in CONTACT INFORMATION (do NOT write "[Date]" or "Current Date")
+3. NEVER write "[Your Name]", "[Your Email]", "[Your Phone]", "[Your Address]" - use ACTUAL values
+4. If a field is not provided in CONTACT INFORMATION, omit it entirely (don't use placeholders)
+5. The closing signature MUST use the actual candidate name (not "[Your Name]")
+
+**Requirements:**
+1. **Opening Paragraph:** 
+   - Start with a compelling hook that shows genuine interest
+   - Mention the specific position and company name
+   - Include a brief statement of why this role is a perfect fit
+   - Personalize with company-specific details if possible from the job description
+
+2. **Body Paragraphs (2-3):**
+   - Highlight 3-4 most relevant experiences from the candidate's background
+   - Connect specific achievements to job requirements
+   - Include quantifiable results and metrics where possible (e.g., "increased efficiency by 40%", "managed team of 10")
+   - Demonstrate understanding of company needs and how candidate can address them
+   - Show cultural fit and alignment with company values
+
+3. **Closing Paragraph:**
+   - Reaffirm enthusiasm for the position
+   - Include a clear call-to-action (request for interview/meeting)
+   - Express gratitude for consideration
+   - Professional sign-off: "Sincerely," followed by the actual candidate name from CONTACT INFORMATION
+
+**Important Guidelines:**
+- Keep total length between 300-400 words (excluding header)
+- Use active voice and strong action verbs
+- Avoid generic phrases and clichés
+- Make it personal and specific to this role
+- Show personality while maintaining professionalism
+- Include specific examples that demonstrate value
+
+**ABSOLUTELY FORBIDDEN:**
+❌ [Your Name] - Use actual name from CONTACT INFORMATION
+❌ [Your Email] - Use actual email from CONTACT INFORMATION  
+❌ [Your Phone Number] - Use actual phone from CONTACT INFORMATION
+❌ [Your Address] - Use actual location from CONTACT INFORMATION
+❌ [Date] - Use Current Date from CONTACT INFORMATION
+❌ [Company Address] - Use city from job description or omit
+
+${variationCount > 1 ? `\n**Format:** Separate each variation clearly with "===VARIATION [NUMBER]===" header.\n` : ''}
+
+Generate the cover letter${variationCount > 1 ? 's' : ''} now with ALL actual information filled in:`;
+}
+
+/**
+ * Parse AI response into structured variations
+ */
+function parseCoverLetterVariations(text, expectedCount) {
+  const variations = [];
+
+  if (expectedCount === 1) {
+    // Single variation - return as is
+    variations.push({
+      content: text.trim(),
+      openingParagraph: extractParagraph(text, 0),
+      bodyParagraphs: extractParagraphs(text, 1, -1),
+      closingParagraph: extractParagraph(text, -1)
+    });
+  } else {
+    // Multiple variations - split by separator
+    const parts = text.split(/===VARIATION\s+\d+===/i);
+    parts.forEach((part, index) => {
+      const content = part.trim();
+      if (content) {
+        variations.push({
+          content,
+          openingParagraph: extractParagraph(content, 0),
+          bodyParagraphs: extractParagraphs(content, 1, -1),
+          closingParagraph: extractParagraph(content, -1)
+        });
+      }
+    });
+  }
+
+  return variations.slice(0, expectedCount);
+}
+
+/**
+ * Extract a specific paragraph from text
+ */
+function extractParagraph(text, index) {
+  const paragraphs = text.split('\n\n').filter(p => p.trim());
+  if (index < 0) {
+    index = paragraphs.length + index;
+  }
+  return paragraphs[index] || '';
+}
+
+/**
+ * Extract multiple paragraphs from text
+ */
+function extractParagraphs(text, startIndex, endIndex) {
+  const paragraphs = text.split('\n\n').filter(p => p.trim());
+  if (endIndex < 0) {
+    endIndex = paragraphs.length + endIndex;
+  }
+  return paragraphs.slice(startIndex, endIndex).join('\n\n');
+}
+
+/**
+ * Analyze company culture from job description
+ * @param {string} jobDescription - Job posting text
+ * @returns {Promise<Object>} Culture analysis
+ */
+export async function analyzeCompanyCulture(jobDescription) {
+  try {
+    const model = genAI.getGenerativeModel({ model: 'models/gemini-2.5-flash' });
+
+    const prompt = `Analyze the following job description and provide insights about the company culture, values, and tone:
+
+${jobDescription}
+
+Provide a brief analysis (2-3 sentences) covering:
+1. Company culture indicators (e.g., innovative, traditional, collaborative)
+2. Key values mentioned or implied
+3. Recommended tone for application (formal, casual, creative)
+
+Keep the response concise and actionable.`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const analysis = response.text();
+
+    return {
+      analysis: analysis.trim(),
+      recommendedTone: detectRecommendedTone(analysis)
+    };
+  } catch (error) {
+    console.error('Culture Analysis Error:', error);
+    return {
+      analysis: 'Unable to analyze company culture at this time.',
+      recommendedTone: 'formal'
+    };
+  }
+}
+
+/**
+ * Detect recommended tone from culture analysis
+ */
+function detectRecommendedTone(analysis) {
+  const lowerAnalysis = analysis.toLowerCase();
+  
+  if (lowerAnalysis.includes('creative') || lowerAnalysis.includes('innovative') || lowerAnalysis.includes('startup')) {
+    return 'creative';
+  }
+  if (lowerAnalysis.includes('technical') || lowerAnalysis.includes('engineering') || lowerAnalysis.includes('data')) {
+    return 'technical';
+  }
+  if (lowerAnalysis.includes('executive') || lowerAnalysis.includes('leadership') || lowerAnalysis.includes('strategic')) {
+    return 'executive';
+  }
+  if (lowerAnalysis.includes('modern') || lowerAnalysis.includes('casual') || lowerAnalysis.includes('friendly')) {
+    return 'modern';
+  }
+  
+  return 'formal';
+}
+

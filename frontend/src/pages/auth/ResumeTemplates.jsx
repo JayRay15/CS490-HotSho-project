@@ -4,7 +4,7 @@ import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { setAuthToken } from "../../api/axios";
 import { fetchTemplates, createTemplate as apiCreateTemplate, updateTemplate as apiUpdateTemplate, deleteTemplate as apiDeleteTemplate, importTemplate as apiImportTemplate } from "../../api/resumeTemplates";
-import { fetchCoverLetterTemplates, createCoverLetterTemplate, updateCoverLetterTemplate, deleteCoverLetterTemplate, trackCoverLetterTemplateUsage, importCoverLetterTemplate, exportCoverLetterTemplate, shareCoverLetterTemplate, getIndustryGuidance, getCoverLetterTemplateAnalytics } from "../../api/coverLetterTemplates";
+import { fetchCoverLetterTemplates, createCoverLetterTemplate, updateCoverLetterTemplate, deleteCoverLetterTemplate, trackCoverLetterTemplateUsage, importCoverLetterTemplate, exportCoverLetterTemplate, shareCoverLetterTemplate, getIndustryGuidance, getCoverLetterTemplateAnalytics, generateAICoverLetter } from "../../api/coverLetterTemplates";
 import { fetchCoverLetters, createCoverLetter, updateCoverLetter as apiUpdateCoverLetter, deleteCoverLetter as apiDeleteCoverLetter, setDefaultCoverLetter, archiveCoverLetter, unarchiveCoverLetter, cloneCoverLetter as apiCloneCoverLetter } from "../../api/coverLetters";
 import { 
   fetchResumes, 
@@ -185,6 +185,16 @@ export default function ResumeTemplates() {
   const [showManageCoverLetterTemplates, setShowManageCoverLetterTemplates] = useState(false);
   const [editingCoverLetter, setEditingCoverLetter] = useState(null);
   const [showEditCoverLetterModal, setShowEditCoverLetterModal] = useState(false);
+
+  // AI Cover Letter Generation State
+  const [showAICoverLetterModal, setShowAICoverLetterModal] = useState(false);
+  const [aiJobId, setAiJobId] = useState('');
+  const [aiTone, setAiTone] = useState('formal');
+  const [aiVariationCount, setAiVariationCount] = useState(1);
+  const [aiGeneratedVariations, setAiGeneratedVariations] = useState([]);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [aiGenerationError, setAiGenerationError] = useState('');
+  const [selectedAIVariation, setSelectedAIVariation] = useState(0);
 
   const authWrap = async () => {
     const token = await getToken();
@@ -5655,7 +5665,52 @@ export default function ResumeTemplates() {
                   </div>
                 </button>
 
-                {/* Option 2: Create from Scratch */}
+                {/* Option 2: AI Generate */}
+                <button
+                  onClick={async () => {
+                    setShowAddCoverLetterModal(false);
+                    // Reset AI state
+                    setAiJobId('');
+                    setAiTone('formal');
+                    setAiVariationCount(1);
+                    setAiGeneratedVariations([]);
+                    setAiGenerationError('');
+                    setSelectedAIVariation(0);
+                    // Load jobs for the dropdown
+                    await loadJobs();
+                    setShowAICoverLetterModal(true);
+                  }}
+                  className="w-full p-6 border-2 border-gray-300 rounded-lg hover:border-[#777C6D] hover:bg-gray-50 transition text-left"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 rounded-lg bg-gradient-to-br from-purple-100 to-blue-100">
+                      <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="font-semibold text-lg" style={{ color: "#4F5348" }}>
+                          AI Generate
+                        </h3>
+                        <span className="px-2 py-0.5 text-xs font-semibold bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-full">
+                          NEW
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-2">
+                        Let AI create a personalized cover letter based on the job posting and your profile
+                      </p>
+                      <ul className="text-xs text-gray-500 space-y-1">
+                        <li>• Personalized content for any job</li>
+                        <li>• Highlights relevant experience</li>
+                        <li>• Multiple variations available</li>
+                        <li>• Company culture analysis</li>
+                      </ul>
+                    </div>
+                  </div>
+                </button>
+
+                {/* Option 3: Create from Scratch */}
                 <button
                   onClick={() => {
                     setShowAddCoverLetterModal(false);
@@ -5700,6 +5755,306 @@ export default function ResumeTemplates() {
                   Cancel
                 </Button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI Cover Letter Generation Modal */}
+      {showAICoverLetterModal && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={() => !isGeneratingAI && setShowAICoverLetterModal(false)}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-gradient-to-br from-purple-100 to-blue-100">
+                    <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold" style={{ color: "#4F5348" }}>
+                      AI Cover Letter Generator
+                    </h2>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Generate personalized cover letters based on job postings
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => !isGeneratingAI && setShowAICoverLetterModal(false)}
+                  disabled={isGeneratingAI}
+                  className="text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {!aiGeneratedVariations.length ? (
+                /* Input Form */
+                <div>
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Select Job to Tailor For *
+                    </label>
+                    <select
+                      className="w-full p-3 border border-gray-300 rounded-lg"
+                      value={aiJobId}
+                      onChange={(e) => {
+                        setAiJobId(e.target.value);
+                        // Clear any previous errors when job is selected
+                        if (e.target.value) {
+                          setAiGenerationError('');
+                        }
+                      }}
+                      disabled={isGeneratingAI}
+                    >
+                      <option value="">-- Select a job --</option>
+                      {jobs.map((job) => (
+                        <option key={job._id} value={job._id}>
+                          {job.title} at {job.company}
+                        </option>
+                      ))}
+                    </select>
+                    {!jobs.length && (
+                      <p className="text-sm text-orange-600 mt-2">
+                        ⚠️ You haven't added any jobs yet. Please add a job first to generate a cover letter.
+                      </p>
+                    )}
+                  </div>
+
+                  {aiJobId && (
+                    <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        <div>
+                          <p className="font-semibold text-blue-900 text-sm mb-1">Selected Job</p>
+                          <p className="text-blue-800 text-sm">
+                            <strong>{jobs.find(j => j._id === aiJobId)?.title}</strong> at{' '}
+                            <strong>{jobs.find(j => j._id === aiJobId)?.company}</strong>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Writing Tone
+                      </label>
+                      <select
+                        className="w-full p-3 border border-gray-300 rounded-lg"
+                        value={aiTone}
+                        onChange={(e) => setAiTone(e.target.value)}
+                        disabled={isGeneratingAI}
+                      >
+                        <option value="formal">Formal Professional</option>
+                        <option value="modern">Modern Professional</option>
+                        <option value="creative">Creative</option>
+                        <option value="technical">Technical</option>
+                        <option value="executive">Executive Leadership</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Number of Variations
+                      </label>
+                      <select
+                        className="w-full p-3 border border-gray-300 rounded-lg"
+                        value={aiVariationCount}
+                        onChange={(e) => setAiVariationCount(Number(e.target.value))}
+                        disabled={isGeneratingAI}
+                      >
+                        <option value={1}>1 Variation</option>
+                        <option value={2}>2 Variations</option>
+                        <option value={3}>3 Variations</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {aiGenerationError && (
+                    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-sm text-red-800">{aiGenerationError}</p>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-3">
+                    <Button
+                      variant="secondary"
+                      onClick={() => setShowAICoverLetterModal(false)}
+                      disabled={isGeneratingAI}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="primary"
+                      onClick={async () => {
+                        if (!aiJobId) {
+                          setAiGenerationError('Please select a job to generate a cover letter for');
+                          return;
+                        }
+
+                        try {
+                          setIsGeneratingAI(true);
+                          setAiGenerationError('');
+                          await authWrap();
+                          
+                          const response = await generateAICoverLetter({
+                            jobId: aiJobId,
+                            tone: aiTone,
+                            variationCount: aiVariationCount
+                          });
+
+                          setAiGeneratedVariations(response.data.data.variations);
+                          setSelectedAIVariation(0);
+                        } catch (err) {
+                          console.error('AI generation failed:', err);
+                          setAiGenerationError(err.response?.data?.message || 'Failed to generate cover letter. Please ensure your profile has work experience and try again.');
+                        } finally {
+                          setIsGeneratingAI(false);
+                        }
+                      }}
+                      disabled={isGeneratingAI || !aiJobId}
+                    >
+                      {isGeneratingAI ? (
+                        <>
+                          <svg className="animate-spin h-5 w-5 mr-2 inline-block" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-5 h-5 mr-2 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                          </svg>
+                          Generate Cover Letter
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                /* Results View */
+                <div>
+                  <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <p className="text-sm text-green-800 font-medium">
+                        Successfully generated {aiGeneratedVariations.length} variation{aiGeneratedVariations.length > 1 ? 's' : ''}!
+                      </p>
+                    </div>
+                  </div>
+
+                  {aiVariationCount > 1 && (
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Select Variation
+                      </label>
+                      <div className="flex gap-2">
+                        {aiGeneratedVariations.map((_, index) => (
+                          <button
+                            key={index}
+                            onClick={() => setSelectedAIVariation(index)}
+                            className={`flex-1 py-2 px-4 rounded-lg border-2 transition ${
+                              selectedAIVariation === index
+                                ? 'border-purple-500 bg-purple-50 text-purple-700'
+                                : 'border-gray-300 hover:border-gray-400'
+                            }`}
+                          >
+                            Variation {index + 1}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mb-6">
+                    <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 max-h-96 overflow-y-auto">
+                      <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
+                        {aiGeneratedVariations[selectedAIVariation]?.content}
+                      </pre>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between gap-3">
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        setAiGeneratedVariations([]);
+                        setSelectedAIVariation(0);
+                      }}
+                    >
+                      ← Generate Another
+                    </Button>
+                    <div className="flex gap-3">
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          setShowAICoverLetterModal(false);
+                          setAiGeneratedVariations([]);
+                          setAiCompanyName('');
+                          setAiPosition('');
+                          setAiJobDescription('');
+                          setCultureAnalysis(null);
+                        }}
+                      >
+                        Close
+                      </Button>
+                      <Button
+                        variant="primary"
+                        onClick={async () => {
+                          try {
+                            await authWrap();
+                            const selectedContent = aiGeneratedVariations[selectedAIVariation].content;
+                            
+                            // Find the selected job to get company and position
+                            const selectedJob = jobs.find(j => j._id === aiJobId);
+                            const coverLetterName = selectedJob 
+                              ? `${selectedJob.title} at ${selectedJob.company}`
+                              : 'AI Generated Cover Letter';
+                            
+                            await createCoverLetter({
+                              name: coverLetterName,
+                              content: selectedContent,
+                              style: aiTone,
+                              templateId: null
+                            });
+
+                            setShowAICoverLetterModal(false);
+                            setAiGeneratedVariations([]);
+                            setAiJobId('');
+                            
+                            await loadSavedCoverLetters();
+                            alert('AI-generated cover letter saved successfully!');
+                          } catch (err) {
+                            console.error('Save failed:', err);
+                            alert('Failed to save cover letter. Please try again.');
+                          }
+                        }}
+                      >
+                        Save Cover Letter
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
