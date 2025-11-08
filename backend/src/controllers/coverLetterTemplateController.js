@@ -210,9 +210,9 @@ export const listTemplates = async (req, res) => {
     // First, check if user has any templates at all
     const userTemplateCount = await CoverLetterTemplate.countDocuments({ userId });
     
-    // If user has no templates, seed the 5 default ones
+    // If user has no templates, seed all 8 default ones
     if (userTemplateCount === 0) {
-      console.log(`Seeding initial templates for user ${userId}`);
+      console.log(`Seeding initial 8 templates for user ${userId}`);
       await CoverLetterTemplate.insertMany(
         defaultCoverLetterTemplates.map((t, idx) => ({
           userId,
@@ -225,6 +225,33 @@ export const listTemplates = async (req, res) => {
           isShared: false
         }))
       );
+    } else {
+      // Migration: Add industry-specific templates if user doesn't have them
+      const industryTemplateNames = ['Technology Professional', 'Business Professional', 'Healthcare Professional'];
+      const existingTemplateNames = await CoverLetterTemplate.find({ userId })
+        .select('name')
+        .lean()
+        .then(templates => templates.map(t => t.name));
+      
+      const missingIndustryTemplates = defaultCoverLetterTemplates.filter(t => 
+        industryTemplateNames.includes(t.name) && !existingTemplateNames.includes(t.name)
+      );
+      
+      if (missingIndustryTemplates.length > 0) {
+        console.log(`Adding ${missingIndustryTemplates.length} industry templates for user ${userId}`);
+        await CoverLetterTemplate.insertMany(
+          missingIndustryTemplates.map(t => ({
+            userId,
+            name: t.name,
+            industry: t.industry,
+            style: t.style,
+            description: t.description,
+            content: t.content,
+            isDefault: false,
+            isShared: false
+          }))
+        );
+      }
     }
     
     // Build query for own templates or shared (global shared)

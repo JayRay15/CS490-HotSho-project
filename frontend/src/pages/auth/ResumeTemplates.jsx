@@ -4994,23 +4994,13 @@ export default function ResumeTemplates() {
               <div className="mb-6">
                 <div className="flex gap-4 mb-4">
                   <select
-                    value={selectedIndustry}
-                    onChange={(e) => setSelectedIndustry(e.target.value)}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
-                  >
-                    <option value="general">General</option>
-                    <option value="technology">Technology</option>
-                    <option value="business">Business</option>
-                    <option value="healthcare">Healthcare</option>
-                  </select>
-                  <select
                     value={coverLetterFilters.style}
                     onChange={(e) => {
                       const newFilters = { ...coverLetterFilters, style: e.target.value };
                       setCoverLetterFilters(newFilters);
                       loadCoverLetterTemplates(newFilters);
                     }}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                   >
                     <option value="">All Styles</option>
                     <option value="formal">Formal</option>
@@ -5020,24 +5010,6 @@ export default function ResumeTemplates() {
                     <option value="executive">Executive</option>
                   </select>
                 </div>
-                {/* Industry Guidance */}
-                {industryGuidance[selectedIndustry] && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex items-start gap-2">
-                      <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <div>
-                        <p className="font-semibold text-blue-900 text-sm mb-1">
-                          {selectedIndustry.charAt(0).toUpperCase() + selectedIndustry.slice(1)} Industry Tip:
-                        </p>
-                        <p className="text-blue-800 text-sm">
-                          {industryGuidance[selectedIndustry]}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Template Grid */}
@@ -5052,7 +5024,7 @@ export default function ResumeTemplates() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {(() => {
-                    // Deduplicate default templates - keep only one per style
+                    // Deduplicate default templates - keep only one per name
                     const defaultTemplateNames = [
                       'Formal Professional', 
                       'Modern Professional', 
@@ -5063,15 +5035,15 @@ export default function ResumeTemplates() {
                       'Business Professional',
                       'Healthcare Professional'
                     ];
-                    const seenStyles = new Set();
+                    const seenNames = new Set();
                     const uniqueTemplates = coverLetterTemplates.filter(template => {
                       const isDefaultSystemTemplate = defaultTemplateNames.includes(template.name);
                       
                       if (isDefaultSystemTemplate) {
-                        if (seenStyles.has(template.style)) {
-                          return false; // Skip duplicate
+                        if (seenNames.has(template.name)) {
+                          return false; // Skip duplicate by name
                         }
-                        seenStyles.add(template.style);
+                        seenNames.add(template.name);
                         return true;
                       }
                       return true; // Keep all custom templates
@@ -5806,7 +5778,7 @@ export default function ResumeTemplates() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {(() => {
-                    // Deduplicate default templates - keep only one per style
+                    // Deduplicate default templates - keep only one per name
                     const defaultTemplateNames = [
                       'Formal Professional', 
                       'Modern Professional', 
@@ -5817,15 +5789,15 @@ export default function ResumeTemplates() {
                       'Business Professional',
                       'Healthcare Professional'
                     ];
-                    const seenStyles = new Set();
+                    const seenNames = new Set();
                     const uniqueTemplates = coverLetterTemplates.filter(template => {
                       const isDefaultSystemTemplate = defaultTemplateNames.includes(template.name);
                       
                       if (isDefaultSystemTemplate) {
-                        if (seenStyles.has(template.style)) {
-                          return false; // Skip duplicate
+                        if (seenNames.has(template.name)) {
+                          return false; // Skip duplicate by name
                         }
-                        seenStyles.add(template.style);
+                        seenNames.add(template.name);
                         return true;
                       }
                       return true; // Keep all custom templates
