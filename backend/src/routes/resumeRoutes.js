@@ -28,6 +28,18 @@ import {
   exportResumeText,
 } from "../controllers/resumeController.js";
 import {
+  createShareLink,
+  listShares,
+  revokeShare,
+  getSharedResume,
+  createFeedback,
+  listFeedbackForResume,
+  listFeedbackForShare,
+  resolveFeedback,
+  exportFeedbackSummary,
+} from "../controllers/resumeShareController.js";
+import { ensureShareAccess } from "../middleware/shareAccess.js";
+import {
   validateResumeEndpoint,
   getValidationStatus
 } from "../controllers/resumeValidationController.js";
@@ -76,5 +88,19 @@ router.post("/resumes/:id/merge", checkJwt, mergeResumes);
 router.put("/resumes/:id/set-default", checkJwt, setDefaultResume);
 router.put("/resumes/:id/archive", checkJwt, archiveResume);
 router.put("/resumes/:id/unarchive", checkJwt, unarchiveResume);
+
+// UC-054: Resume sharing & feedback
+// Owner actions
+router.post("/resumes/:id/share", checkJwt, createShareLink);
+router.get("/resumes/:id/shares", checkJwt, listShares);
+router.patch("/resumes/:id/shares/:token/revoke", checkJwt, revokeShare);
+router.get("/resumes/:id/feedback", checkJwt, listFeedbackForResume);
+router.patch("/feedback/:feedbackId/resolve", checkJwt, resolveFeedback);
+router.get("/resumes/:id/feedback/export", checkJwt, exportFeedbackSummary);
+
+// Public share endpoints
+router.get("/share/:token", ensureShareAccess, getSharedResume);
+router.get("/share/:token/feedback", ensureShareAccess, listFeedbackForShare);
+router.post("/share/:token/feedback", ensureShareAccess, createFeedback);
 
 export default router;
