@@ -6,9 +6,9 @@ import { setAuthToken } from "../../api/axios";
 import { fetchTemplates, createTemplate as apiCreateTemplate, updateTemplate as apiUpdateTemplate, deleteTemplate as apiDeleteTemplate, importTemplate as apiImportTemplate } from "../../api/resumeTemplates";
 import { fetchCoverLetterTemplates, createCoverLetterTemplate, updateCoverLetterTemplate, deleteCoverLetterTemplate, trackCoverLetterTemplateUsage, importCoverLetterTemplate, exportCoverLetterTemplate, shareCoverLetterTemplate, getIndustryGuidance, getCoverLetterTemplateAnalytics, generateAICoverLetter } from "../../api/coverLetterTemplates";
 import { fetchCoverLetters, createCoverLetter, updateCoverLetter as apiUpdateCoverLetter, deleteCoverLetter as apiDeleteCoverLetter, setDefaultCoverLetter, archiveCoverLetter, unarchiveCoverLetter, cloneCoverLetter as apiCloneCoverLetter } from "../../api/coverLetters";
-import { 
-  fetchResumes, 
-  updateResume as apiUpdateResume, 
+import {
+  fetchResumes,
+  updateResume as apiUpdateResume,
   deleteResume as apiDeleteResume,
   cloneResume as apiCloneResume,
   compareResumes as apiCompareResumes,
@@ -17,9 +17,9 @@ import {
   unarchiveResume as apiUnarchiveResume,
   mergeResumes as apiMergeResumes
 } from "../../api/resumes";
-import { 
-  generateAIResume, 
-  generateResumeVariations, 
+import {
+  generateAIResume,
+  generateResumeVariations,
   regenerateResumeSection
 } from "../../api/aiResume";
 import { getValidationStatus } from "../../api/resumeValidation";
@@ -61,13 +61,21 @@ import { useResumeExport } from "../../components/resume/useResumeExport";
 import { useSkillsOptimization } from "../../hooks/useSkillsOptimization";
 import { useExperienceTailoring } from "../../hooks/useExperienceTailoring";
 import { useVersionManagement } from "../../hooks/useVersionManagement";
+import {
+  createShare as apiCreateShare,
+  listShares as apiListShares,
+  revokeShare as apiRevokeShare,
+  listFeedbackOwner as apiListFeedbackOwner,
+  resolveFeedback as apiResolveFeedback,
+  exportFeedbackSummary as apiExportFeedbackSummary
+} from "../../api/resumeShare";
 
 export default function ResumeTemplates() {
   const { getToken } = useAuth();
   const [loading, setLoading] = useState(true);
   const [templates, setTemplates] = useState([]);
   const [resumes, setResumes] = useState([]);
-  
+
   // Template Management Modal State
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [customizeTemplate, setCustomizeTemplate] = useState(null);
@@ -78,20 +86,20 @@ export default function ResumeTemplates() {
   const [pendingImport, setPendingImport] = useState(null); // Template pending customization
   const [showCustomizeImport, setShowCustomizeImport] = useState(false);
   const [previewTemplate, setPreviewTemplate] = useState(null);
-  
+
   // Delete confirmation modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingResume, setDeletingResume] = useState(null);
   const [showDeleteTemplateModal, setShowDeleteTemplateModal] = useState(false);
   const [deletingTemplate, setDeletingTemplate] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  
+
   // Rename resume modal state
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [renamingResume, setRenamingResume] = useState(null);
   const [renameValue, setRenameValue] = useState("");
   const [isRenaming, setIsRenaming] = useState(false);
-  
+
   // AI Resume Creation Modal State
   const [showAIResumeModal, setShowAIResumeModal] = useState(false);
   const [jobs, setJobs] = useState([]);
@@ -106,38 +114,56 @@ export default function ResumeTemplates() {
   const [selectedVariation, setSelectedVariation] = useState(null);
   const [showVariations, setShowVariations] = useState(false);
   const [isGeneratingVariations, setIsGeneratingVariations] = useState(false);
-  
+
   // View Resume Modal State
   const [showViewResumeModal, setShowViewResumeModal] = useState(false);
   const [viewingResume, setViewingResume] = useState(null);
   const [regeneratingSection, setRegeneratingSection] = useState(null);
-  
+
   // Resume Display State
   const [showAllResumes, setShowAllResumes] = useState(false);
-  
-    // Section Customization State (UC-048)
-    const [visibleSections, setVisibleSections] = useState(DEFAULT_SECTIONS.map(s => s.key));
-    const [sectionOrder, setSectionOrder] = useState(DEFAULT_SECTIONS.map(s => s.key));
-    const [sectionFormatting, setSectionFormatting] = useState({});
-    const [selectedJobType, setSelectedJobType] = useState('general');
-    const [isSavingCustomization, setIsSavingCustomization] = useState(false);
-    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-    const [showPresetMenu, setShowPresetMenu] = useState(false);
-    const [showSavePresetModal, setShowSavePresetModal] = useState(false);
-    const [presetName, setPresetName] = useState('');
-    const [customPresets, setCustomPresets] = useState([]);
-    const [showFormattingPanel, setShowFormattingPanel] = useState(false);
-    const [formattingSection, setFormattingSection] = useState(null);
-    const [showCustomizationPanel, setShowCustomizationPanel] = useState(false);
-  
+
+  // Section Customization State (UC-048)
+  const [visibleSections, setVisibleSections] = useState(DEFAULT_SECTIONS.map(s => s.key));
+  const [sectionOrder, setSectionOrder] = useState(DEFAULT_SECTIONS.map(s => s.key));
+  const [sectionFormatting, setSectionFormatting] = useState({});
+  const [selectedJobType, setSelectedJobType] = useState('general');
+  const [isSavingCustomization, setIsSavingCustomization] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showPresetMenu, setShowPresetMenu] = useState(false);
+  const [showSavePresetModal, setShowSavePresetModal] = useState(false);
+  const [presetName, setPresetName] = useState('');
+  const [customPresets, setCustomPresets] = useState([]);
+  const [showFormattingPanel, setShowFormattingPanel] = useState(false);
+  const [formattingSection, setFormattingSection] = useState(null);
+  const [showCustomizationPanel, setShowCustomizationPanel] = useState(false);
+
   // Removed PDF experimental feature states
   // const [viewingAsPdf, setViewingAsPdf] = useState(false);
   // const [pdfUrl, setPdfUrl] = useState(null);
   // const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   // const [experimentalFeaturesEnabled, setExperimentalFeaturesEnabled] = useState(false);
-  
+
   // Success message state
   const [successMessage, setSuccessMessage] = useState(null);
+
+  // Share & Feedback Management State (Owner-side)
+  const [showSharePanel, setShowSharePanel] = useState(false);
+  const [shareForResume, setShareForResume] = useState(null);
+  const [shareLinks, setShareLinks] = useState([]); // existing shares for selected resume
+  const [isLoadingShares, setIsLoadingShares] = useState(false);
+  const [shareActionLoading, setShareActionLoading] = useState(false);
+  const [createdShareUrl, setCreatedShareUrl] = useState("");
+  const [shareForm, setShareForm] = useState({
+    privacy: 'unlisted',
+    allowComments: true,
+    canViewContact: false,
+    allowedReviewersText: '', // comma-separated emails
+    note: '',
+    expiresInDays: '' // optional number
+  });
+  const [ownerFeedback, setOwnerFeedback] = useState([]);
+  const [isLoadingOwnerFeedback, setIsLoadingOwnerFeedback] = useState(false);
 
   // UC-053: Validation State (using custom hook)
   const {
@@ -149,7 +175,7 @@ export default function ResumeTemplates() {
     handleValidateResume: validateResumeHook,
     checkValidationStatus
   } = useResumeValidation(showViewResumeModal, viewingResume);
-  
+
   const [showValidationPanel, setShowValidationPanel] = useState(false);
   const [showValidationIssuesPanel, setShowValidationIssuesPanel] = useState(false); // Inline issues panel
 
@@ -298,50 +324,183 @@ export default function ResumeTemplates() {
     saveWatermarkSettings
   } = exportHook;
 
+  // Helpers to unwrap API payloads safely
+  const getPayload = (resp) => resp?.data?.data || resp?.data || {};
+
+  // Open Share panel for a resume and load shares + feedback
+  const handleOpenShare = async (resume) => {
+    setShareForResume(resume);
+    setCreatedShareUrl("");
+    setShowSharePanel(true);
+    await Promise.all([loadShares(resume._id), loadOwnerFeedback(resume._id)]);
+  };
+
+  const loadShares = async (resumeId) => {
+    try {
+      setIsLoadingShares(true);
+      await authWrap();
+      const resp = await apiListShares(resumeId);
+      const payload = getPayload(resp);
+      setShareLinks(payload.shares || []);
+    } catch (e) {
+      console.error('Failed to load shares', e);
+    } finally {
+      setIsLoadingShares(false);
+    }
+  };
+
+  const loadOwnerFeedback = async (resumeId) => {
+    try {
+      setIsLoadingOwnerFeedback(true);
+      await authWrap();
+      const resp = await apiListFeedbackOwner(resumeId);
+      const payload = getPayload(resp);
+      setOwnerFeedback(payload.feedback || []);
+    } catch (e) {
+      console.error('Failed to load feedback', e);
+    } finally {
+      setIsLoadingOwnerFeedback(false);
+    }
+  };
+
+  const handleGenerateShare = async () => {
+    if (!shareForResume) return;
+    try {
+      setShareActionLoading(true);
+      await authWrap();
+      const allowedReviewers = (shareForm.allowedReviewersText || '')
+        .split(',')
+        .map(e => e.trim())
+        .filter(Boolean)
+        .map(email => ({ email }));
+      let expiresAt = null;
+      if (shareForm.expiresInDays) {
+        const days = parseInt(shareForm.expiresInDays, 10);
+        if (!isNaN(days) && days > 0) {
+          const d = new Date();
+          d.setDate(d.getDate() + days);
+          expiresAt = d.toISOString();
+        }
+      }
+      const resp = await apiCreateShare(shareForResume._id, {
+        privacy: shareForm.privacy,
+        allowComments: !!shareForm.allowComments,
+        canViewContact: !!shareForm.canViewContact,
+        allowedReviewers,
+        note: shareForm.note || null,
+        expiresAt
+      });
+      const payload = getPayload(resp);
+      // Append new share and expose URL
+      if (payload.share) setShareLinks(prev => [payload.share, ...(prev || [])]);
+      setCreatedShareUrl(payload.url || '');
+      setSuccessMessage('Share link created');
+      setTimeout(() => setSuccessMessage(null), 2500);
+    } catch (e) {
+      console.error('Create share failed', e);
+    } finally {
+      setShareActionLoading(false);
+    }
+  };
+
+  const handleRevokeShare = async (token) => {
+    if (!shareForResume) return;
+    try {
+      setShareActionLoading(true);
+      await authWrap();
+      await apiRevokeShare(shareForResume._id, token);
+      setShareLinks(prev => (prev || []).map(s => s.token === token ? { ...s, status: 'revoked' } : s));
+    } catch (e) {
+      console.error('Revoke share failed', e);
+    } finally {
+      setShareActionLoading(false);
+    }
+  };
+
+  const handleResolveFeedback = async (fb) => {
+    try {
+      await authWrap();
+      const note = window.prompt('Add a resolution note (optional):', '');
+      const resp = await apiResolveFeedback(fb._id, { resolutionNote: note || '' });
+      const payload = getPayload(resp);
+      const updated = payload.feedback || payload;
+      setOwnerFeedback(prev => prev.map(it => it._id === updated._id ? updated : it));
+    } catch (e) {
+      console.error('Resolve feedback failed', e);
+    }
+  };
+  const handleExportFeedback = async (format = 'csv') => {
+    if (!shareForResume) return;
+    try {
+      await authWrap();
+      const resp = await apiExportFeedbackSummary(shareForResume._id, format);
+      if (format === 'csv') {
+        const blob = new Blob([resp.data], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${(shareForResume.name || 'resume')}_feedback.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      } else {
+        const payload = getPayload(resp);
+        const jsonBlob = new Blob([JSON.stringify(payload.feedback || [], null, 2)], { type: 'application/json' });
+        const url = window.URL.createObjectURL(jsonBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${(shareForResume.name || 'resume')}_feedback.json`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      }
+    } catch (e) {
+      console.error('Export feedback failed', e);
+    }
+  };
+
   // UC-052: Auto-save version snapshot before making changes
   const createAutoVersionSnapshot = async (resume, changeDescription) => {
     try {
       // Create a snapshot with timestamp
-      const timestamp = new Date().toLocaleString('en-US', { 
-        month: 'short', 
-        day: 'numeric', 
+      const timestamp = new Date().toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
         year: 'numeric',
-        hour: 'numeric', 
+        hour: 'numeric',
         minute: '2-digit',
-        hour12: true 
+        hour12: true
       });
       const snapshotName = `${resume.name} (${timestamp})`;
-      
+
       console.log('Creating auto-version snapshot:', snapshotName);
-      
+
       // Clone the resume as a version snapshot
       const cloneResponse = await apiCloneResume(
-        resume._id, 
+        resume._id,
         snapshotName,
         `Auto-saved before: ${changeDescription}`
       );
-      
+
       console.log('Clone response:', cloneResponse);
-      
+
       const clonedResumeId = cloneResponse.data?.resume?._id || cloneResponse.data?.data?.resume?._id;
-      
+
       if (!clonedResumeId) {
         console.error('No resume ID in clone response:', cloneResponse);
         return null;
       }
-      
+
       console.log('Cloned resume ID:', clonedResumeId);
-      
+
       // Archive it immediately so it doesn't clutter the main list
       console.log('Archiving snapshot...');
       const archiveResponse = await apiArchiveResume(clonedResumeId);
       console.log('Archive response:', archiveResponse);
-      
+
       // Refresh resumes list to include the new archived version
       console.log('Refreshing resumes list...');
       await loadAll();
       console.log('✅ Auto-version snapshot created and archived:', snapshotName);
-      
+
       return cloneResponse.data?.resume || cloneResponse.data?.data?.resume;
     } catch (err) {
       console.error('❌ Failed to create auto-version snapshot:', err);
@@ -436,16 +595,16 @@ export default function ResumeTemplates() {
   useEffect(() => {
     if (!showViewResumeModal || !viewingResume) return;
     const existing = viewingResume.sectionCustomization || {};
-    
+
     console.log('Loading resume customization:', existing);
-    
+
     // Use consistent field names (match what we save)
     const order = existing.sectionOrder || existing.order || (templates.find(t => t._id === viewingResume.templateId)?.layout?.sectionsOrder) || DEFAULT_SECTIONS.map(s => s.key);
     const vis = existing.visibleSections || existing.visible || order;
     const formatting = existing.sectionFormatting || existing.formatting || {};
     const jobType = existing.selectedJobType || existing.jobType || 'general';
     const presets = existing.customPresets || [];
-    
+
     setSectionOrder(order);
     setVisibleSections(vis);
     setSectionFormatting(formatting);
@@ -453,7 +612,7 @@ export default function ResumeTemplates() {
     setCustomPresets(presets);
     // DON'T reset hasUnsavedChanges here - this effect runs every time viewingResume updates
     // (including after regeneration), which would incorrectly clear the unsaved flag
-    
+
     console.log('Loaded customization - Order:', order, 'Visible:', vis);
   }, [showViewResumeModal, viewingResume]);
 
@@ -463,7 +622,7 @@ export default function ResumeTemplates() {
     setTemplates(tpls.data.data.templates || []);
     const loadedResumes = res.data.data.resumes || [];
     setResumes(loadedResumes);
-    
+
     // UC-053: Check validation status for each resume
     loadedResumes.forEach(resume => {
       checkValidationStatus(resume._id);
@@ -544,49 +703,49 @@ export default function ResumeTemplates() {
   // UC-048: Save all section customization changes
   const handleSaveCustomization = async () => {
     if (!viewingResume) return;
-    
+
     setIsSavingCustomization(true);
     try {
       await authWrap();
-      
+
       // STEP 1: Find the CURRENT database version from resumes state (before our local changes)
       // The resumes array contains the unmodified database versions
       console.log('Finding current database version for snapshot...');
       const currentDbVersion = resumes.find(r => r._id === viewingResume._id);
-      
+
       if (!currentDbVersion) {
         console.warn('Current resume not found in resumes list, skipping snapshot');
       } else {
         // STEP 2: Create a snapshot of the OLD database version (before changes)
         console.log('Creating snapshot of old version:', currentDbVersion.name);
-        const timestamp = new Date().toLocaleString('en-US', { 
-          month: 'short', 
-          day: 'numeric', 
+        const timestamp = new Date().toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
           year: 'numeric',
-          hour: 'numeric', 
+          hour: 'numeric',
           minute: '2-digit',
-          hour12: true 
+          hour12: true
         });
         const snapshotName = `${currentDbVersion.name} (${timestamp})`;
-        
+
         const cloneResponse = await apiCloneResume(
-          currentDbVersion._id, 
+          currentDbVersion._id,
           snapshotName,
           'Version snapshot before save'
         );
-        
+
         const clonedResumeId = cloneResponse.data?.resume?._id || cloneResponse.data?.data?.resume?._id;
-        
+
         if (clonedResumeId) {
           // Archive it immediately so it doesn't clutter the main list
           await apiArchiveResume(clonedResumeId);
           console.log('✅ Archived snapshot:', clonedResumeId);
         }
       }
-      
+
       // STEP 3: Now save the NEW changes to the main resume
       console.log('Saving new changes to main resume...');
-      
+
       // Build the update object with ALL changes (sections + customization)
       const updateData = {
         sections: viewingResume.sections, // Include section content changes (from AI regen, etc)
@@ -598,33 +757,33 @@ export default function ResumeTemplates() {
           customPresets
         }
       };
-      
+
       const response = await apiUpdateResume(viewingResume._id, updateData);
-      
+
       // Get the updated resume from the response
       const savedResume = response.data?.resume || response.data?.data?.resume;
-      
+
       // Update the viewing resume with the saved data from backend
       if (savedResume) {
         setViewingResume(savedResume);
-        
+
         // Refresh the resumes list to include the new archived version
         await loadAll();
       } else {
         // Fallback: reload all resumes
         await loadAll();
       }
-      
+
       // Clear unsaved changes flag
       setHasUnsavedChanges(false);
-      
+
       // Close validation issues panel on save
       setShowValidationIssuesPanel(false);
-      
+
       // Show success message
       setSuccessMessage('✅ Resume saved successfully! Previous version archived.');
       setTimeout(() => setSuccessMessage(null), 3000);
-      
+
     } catch (err) {
       console.error('Failed to save customization:', err);
       alert(`Failed to save changes: ${err.message || 'Please try again'}`);
@@ -642,7 +801,7 @@ export default function ResumeTemplates() {
     const ext = extMap[format] || '';
     const suggested = `${filenameBase}${ext}`;
     setSaveAsFilename(suggested);
-    
+
     await handleExportFromHook(
       format,
       viewingResume._id,
@@ -660,7 +819,7 @@ export default function ResumeTemplates() {
   // Perform the server request and trigger file download
   const performExport = async (format, filename) => {
     if (!viewingResume) return;
-    
+
     // UC-053: Check validation before export
     const canExport = await handleExportWithValidationFromHook(
       viewingResume._id,
@@ -674,12 +833,12 @@ export default function ResumeTemplates() {
         setTimeout(() => setSuccessMessage(null), 5000);
       }
     );
-    
+
     if (!canExport) {
       setShowSaveAsModal(false);
       return;
     }
-    
+
     // Set filename and confirm export
     setSaveAsFilename(filename);
     await confirmExportFromHook();
@@ -689,7 +848,7 @@ export default function ResumeTemplates() {
   const handlePrintHtml = async () => {
     if (!viewingResume) return;
     setShowExportMenu(false);
-    
+
     await handlePrintHtmlFromHook(
       viewingResume._id,
       (message) => {
@@ -715,11 +874,11 @@ export default function ResumeTemplates() {
         ...r,
         isDefault: r._id === setResumeId
       })));
-      
+
       if (viewingResumeId === setResumeId) {
         setViewingResume(prev => ({ ...prev, isDefault: true }));
       }
-      
+
       setSuccessMessage('Default resume updated successfully!');
       setTimeout(() => setSuccessMessage(null), 4000);
     });
@@ -745,18 +904,18 @@ export default function ResumeTemplates() {
 
   const handleArchiveResume = async (resumeId) => {
     await handleArchiveResumeHook(resumeId, (archivedId, message) => {
-      setResumes(prev => prev.map(r => 
+      setResumes(prev => prev.map(r =>
         r._id === archivedId ? { ...r, isArchived: true } : r
       ));
-      
+
       if (viewingResume?._id === archivedId) {
         setViewingResume(prev => ({ ...prev, isArchived: true }));
       }
-      
+
       if (!showAllResumes && !showArchivedResumes) {
         const nonArchivedCount = resumes.filter(r => !r.isArchived && r._id !== archivedId).length;
       }
-      
+
       setSuccessMessage(message);
       setTimeout(() => setSuccessMessage(null), 4000);
     });
@@ -764,14 +923,14 @@ export default function ResumeTemplates() {
 
   const handleUnarchiveResume = async (resumeId) => {
     await handleUnarchiveResumeHook(resumeId, (unarchivedId, message) => {
-      setResumes(prev => prev.map(r => 
+      setResumes(prev => prev.map(r =>
         r._id === unarchivedId ? { ...r, isArchived: false } : r
       ));
-      
+
       if (viewingResume?._id === unarchivedId) {
         setViewingResume(prev => ({ ...prev, isArchived: false }));
       }
-      
+
       setSuccessMessage(message);
       setTimeout(() => setSuccessMessage(null), 4000);
     });
@@ -779,21 +938,21 @@ export default function ResumeTemplates() {
 
   const handleMergeResumes = async () => {
     if (!viewingResume || !compareResumeId || selectedMergeChanges.length === 0) return;
-    
+
     setIsMerging(true);
     try {
       await authWrap();
-      
+
       // Get the source resume (the old version we're pulling from)
       const sourceResume = resumes.find(r => r._id === compareResumeId);
       if (!sourceResume) {
         alert('Source resume not found');
         return;
       }
-      
+
       // Create updated resume by merging selected sections
       const updatedResume = { ...viewingResume };
-      
+
       selectedMergeChanges.forEach(change => {
         if (change === 'summary' && sourceResume.sections?.summary) {
           // Summary: replace entirely
@@ -802,35 +961,35 @@ export default function ResumeTemplates() {
           // Skills: MERGE (add missing skills, don't replace)
           const currentSkills = updatedResume.sections?.skills || [];
           const sourceSkills = sourceResume.sections.skills;
-          
+
           // Get skill names from current resume
           const currentSkillNames = new Set(
             currentSkills.map(s => typeof s === 'string' ? s : s.name)
           );
-          
+
           // Add skills from source that aren't already in current
           const newSkills = sourceSkills.filter(skill => {
             const skillName = typeof skill === 'string' ? skill : skill.name;
             return !currentSkillNames.has(skillName);
           });
-          
+
           // Combine current + new skills
           updatedResume.sections.skills = [...currentSkills, ...newSkills];
         } else if (change.startsWith('skill.')) {
           // Individual skill selection: skill.0, skill.1, etc.
           const skillIndex = parseInt(change.split('.')[1]);
           const skillToAdd = sourceResume.sections?.skills?.[skillIndex];
-          
+
           if (skillToAdd) {
             const currentSkills = updatedResume.sections?.skills || [];
             const skillName = typeof skillToAdd === 'string' ? skillToAdd : skillToAdd.name;
-            
+
             // Check if skill already exists
             const skillExists = currentSkills.some(s => {
               const existingName = typeof s === 'string' ? s : s.name;
               return existingName === skillName;
             });
-            
+
             if (!skillExists) {
               updatedResume.sections.skills = [...currentSkills, skillToAdd];
             }
@@ -842,15 +1001,15 @@ export default function ResumeTemplates() {
           // Individual experience item: experience.0, experience.1, etc.
           const expIndex = parseInt(change.split('.')[1]);
           const expToAdd = sourceResume.sections?.experience?.[expIndex];
-          
+
           if (expToAdd) {
             const currentExperience = updatedResume.sections?.experience || [];
-            
+
             // Check if this exact experience already exists (by title + company)
-            const expExists = currentExperience.some(e => 
+            const expExists = currentExperience.some(e =>
               e.title === expToAdd.title && e.company === expToAdd.company
             );
-            
+
             if (!expExists) {
               updatedResume.sections.experience = [...currentExperience, expToAdd];
             }
@@ -872,20 +1031,20 @@ export default function ResumeTemplates() {
           }
         }
       });
-      
+
       // Update the viewing resume locally (DON'T save to DB yet)
       setViewingResume(updatedResume);
-      
+
       // Mark as having unsaved changes
       setHasUnsavedChanges(true);
-      
+
       // Close modals and reset state
       setShowMergeModal(false);
       setShowCompareModal(false);
       setSelectedMergeChanges([]);
       setComparisonData(null);
       setCompareResumeId(null);
-      
+
       setSuccessMessage('Changes merged! Click Save to apply.');
       setTimeout(() => setSuccessMessage(null), 4000);
     } catch (err) {
@@ -899,27 +1058,27 @@ export default function ResumeTemplates() {
   // UC-49: Skills optimization handler - Wrapper for hook
   const handleOptimizeSkills = async () => {
     if (!viewingResume) return;
-    
+
     const jobSelector = selectedJobForSkills || selectedJobForExperience;
-    
+
     // Initialize current resume skills
     const currentSkills = viewingResume.sections?.skills || [];
     setCurrentResumeSkills(currentSkills.map(s => typeof s === 'string' ? s : s.name));
-    
+
     await handleOptimizeSkillsHook(viewingResume._id, jobSelector);
   };
 
   // Delete individual skill - Wrapper for hook
   const handleDeleteSkill = (skillToDelete) => {
     if (!viewingResume) return;
-    
+
     const skillName = typeof skillToDelete === 'string' ? skillToDelete : skillToDelete.name;
-    const currentSkills = (viewingResume.sections?.skills || []).map(skill => 
+    const currentSkills = (viewingResume.sections?.skills || []).map(skill =>
       typeof skill === 'string' ? skill : skill.name
     );
-    
+
     const updatedSkills = handleDeleteSkillHook(skillName, currentSkills);
-    
+
     const updatedResume = {
       ...viewingResume,
       sections: {
@@ -927,7 +1086,7 @@ export default function ResumeTemplates() {
         skills: updatedSkills
       }
     };
-    
+
     setViewingResume(updatedResume);
     setHasUnsavedChanges(true);
   };
@@ -935,14 +1094,14 @@ export default function ResumeTemplates() {
   // UC-49: Apply skill changes to resume - Wrapper for hook
   const handleApplySkillChanges = async () => {
     if (!viewingResume) return;
-    
+
     await handleApplySkillChangesHook(
       viewingResume,
       (updatedResume) => {
         setViewingResume(updatedResume);
         setHasUnsavedChanges(true);
       },
-      () => {} // Success callback - already handled in hook
+      () => { } // Success callback - already handled in hook
     );
   };
 
@@ -977,18 +1136,18 @@ export default function ResumeTemplates() {
       await authWrap();
       const token = await getToken();
       setAuthToken(token);
-      
+
       console.log('Loading PDF for resume:', resumeId);
       const response = await api.get(`/api/resume/resumes/${resumeId}/pdf`, {
         responseType: 'blob',
         timeout: 30000 // 30 second timeout for PDF generation
       });
-      
+
       // Verify we got a PDF blob
       if (!response.data || response.data.size === 0) {
         throw new Error('Empty PDF response');
       }
-      
+
       // Create object URL for the PDF blob
       const blob = new Blob([response.data], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
@@ -999,7 +1158,7 @@ export default function ResumeTemplates() {
       // Fall back to HTML view if PDF generation fails
       setViewingAsPdf(false);
       setPdfUrl(null);
-      
+
       const errorMessage = err.response?.data?.message || err.message || 'Unknown error';
       if (err.response?.status === 400 || err.response?.status === 404) {
         alert(`PDF generation not available: ${errorMessage}\n\nShowing HTML view instead.`);
@@ -1013,22 +1172,22 @@ export default function ResumeTemplates() {
 
   const handleRegenerateSection = async (section) => {
     if (!viewingResume || !viewingResume.metadata?.generatedAt) return;
-    
+
     setRegeneratingSection(section);
     try {
       await authWrap();
       const response = await regenerateResumeSection(viewingResume._id, section);
-      
+
       // Update the viewing resume with new content
       const updatedResume = response.data.data.resume;
       setViewingResume(updatedResume);
-      
+
       // Also update in the resumes list
       setResumes(prev => prev.map(r => r._id === updatedResume._id ? updatedResume : r));
-      
+
       // Mark as having unsaved changes (user must click Save to create version)
       setHasUnsavedChanges(true);
-      
+
       // Show success banner
       setSuccessMessage(`${section.charAt(0).toUpperCase() + section.slice(1)} regenerated successfully! Click Save to create a version.`);
       setTimeout(() => setSuccessMessage(null), 4000);
@@ -1064,7 +1223,7 @@ export default function ResumeTemplates() {
         aiFormData.jobId,
         aiFormData.templateId
       );
-      
+
       setVariations(response.data.data.variations || []);
       setShowVariations(true);
     } catch (err) {
@@ -1080,7 +1239,7 @@ export default function ResumeTemplates() {
   const handleGenerateAIResume = async (e) => {
     e.preventDefault();
     setGenerationError(null);
-    
+
     if (!aiFormData.name || !aiFormData.jobId || !aiFormData.templateId) {
       setGenerationError("Please fill in all fields");
       return;
@@ -1101,7 +1260,7 @@ export default function ResumeTemplates() {
         aiFormData.name,
         selectedVariation || null // Pass selected variation if available
       );
-      
+
       // Success!
       setShowAIResumeModal(false);
       setAIFormData({ name: "", jobId: "", templateId: "" });
@@ -1109,7 +1268,7 @@ export default function ResumeTemplates() {
       setSelectedVariation(null);
       setShowVariations(false);
       await loadAll();
-      
+
       // Show success banner
       setSuccessMessage(`Resume "${aiFormData.name}" generated successfully with AI!`);
       setTimeout(() => setSuccessMessage(null), 5000);
@@ -1130,7 +1289,7 @@ export default function ResumeTemplates() {
 
   const handleConfirmDelete = async () => {
     if (!deletingResume) return;
-    
+
     setIsDeleting(true);
     try {
       await authWrap();
@@ -1148,7 +1307,7 @@ export default function ResumeTemplates() {
 
   const handleRenameResume = async () => {
     if (!renamingResume || !renameValue.trim()) return;
-    
+
     setIsRenaming(true);
     try {
       await authWrap();
@@ -1174,10 +1333,10 @@ export default function ResumeTemplates() {
       const validation = await validateResumeHook(resume, {
         onSuccess: async (validation) => {
           setShowValidationPanel(true);
-          
+
           // Refresh resumes to get updated metadata
           await loadAll();
-          
+
           if (validation.isValid) {
             setSuccessMessage('✓ Resume validation passed! You can now export your resume.');
             setTimeout(() => setSuccessMessage(null), 5000);
@@ -1219,11 +1378,11 @@ export default function ResumeTemplates() {
       setShowEditDropdown(false);
       return;
     }
-    
+
     try {
       await authWrap();
       const updatedSections = { ...viewingResume.sections };
-      
+
       // Apply edited content to sections
       Object.keys(editedContent).forEach(key => {
         const parts = key.split('.');
@@ -1232,7 +1391,7 @@ export default function ResumeTemplates() {
           updatedSections[parts[0]] = editedContent[key];
         } else if (parts.length === 2) {
           const [section, indexOrField] = parts;
-          
+
           // Check if it's an array of strings (like skills)
           if (Array.isArray(updatedSections[section]) && !isNaN(indexOrField)) {
             // Array item (e.g., skills.0, skills.1)
@@ -1253,15 +1412,15 @@ export default function ResumeTemplates() {
           }
         }
       });
-      
+
       await apiUpdateResume(viewingResume._id, { sections: updatedSections });
-      
+
       // Update viewing resume
       setViewingResume({ ...viewingResume, sections: updatedSections });
-      
+
       // Clear edited content
       setEditedContent({});
-      
+
       // Mark validation as stale
       if (validationStatus[viewingResume._id]?.status === 'valid') {
         setValidationStatus(prev => ({
@@ -1272,7 +1431,7 @@ export default function ResumeTemplates() {
           }
         }));
       }
-      
+
       setSuccessMessage('✓ Resume updated successfully');
       setTimeout(() => setSuccessMessage(null), 3000);
       setIsEditMode(false); // Exit edit mode
@@ -1326,7 +1485,7 @@ export default function ResumeTemplates() {
 
   const handleConfirmDeleteTemplate = async () => {
     if (!deletingTemplate) return;
-    
+
     setIsDeleting(true);
     try {
       await authWrap();
@@ -1354,12 +1513,12 @@ export default function ResumeTemplates() {
     try {
       // Simple template creation with filename
       const templateName = file.name.replace(/\.[^/.]+$/, "") + " Template";
-      
+
       // Default theme with professional styling
       let theme = {
         colors: { primary: "#4F5348", text: "#222", muted: "#666" },
-        fonts: { 
-          body: "Inter, sans-serif", 
+        fonts: {
+          body: "Inter, sans-serif",
           heading: "Inter, sans-serif",
           sizes: {
             name: "36px",
@@ -1371,7 +1530,7 @@ export default function ResumeTemplates() {
         },
         spacing: 8
       };
-      
+
       let type = "chronological"; // Default type
       let extractedStructure = null; // Store extracted PDF structure
       let extractedLayout = null; // Store extracted PDF layout
@@ -1379,13 +1538,13 @@ export default function ResumeTemplates() {
       let pdfBuffer = null;
       let detailedLayout = null;
       let sectionMapping = null;
-      
+
       // Try to analyze PDF if it's a PDF file
       if (file.type === 'application/pdf') {
         try {
           const formData = new FormData();
           formData.append('file', file);
-          
+
           // Acquire a Clerk JWT without specifying a template;
           // if token is unavailable, skip PDF analysis gracefully.
           let token = null;
@@ -1402,12 +1561,12 @@ export default function ResumeTemplates() {
           // Use axios client with configured baseURL
           const { data: analysis } = await api.post('/api/pdf-analysis/analyze', formData);
           console.info('PDF analysis received', analysis?.suggestions);
-          
+
           // Store PDF buffer and detailed layout for pixel-perfect generation
           pdfBuffer = analysis?.pdfBuffer || null;
           detailedLayout = analysis?.detailedLayout || null;
           sectionMapping = analysis?.sectionMapping || null;
-          
+
           // Use suggestions from PDF analysis if available
           if (analysis?.suggestions) {
             theme = {
@@ -1419,12 +1578,12 @@ export default function ResumeTemplates() {
             // Mark that PDF analysis suggestions were applied
             // This will be propagated via the returned object
             var __analysis = { used: true, suggestions: analysis.suggestions };
-            
+
             // Use extracted structure if available
             if (analysis.suggestions.structure?.sectionsOrder?.length > 0) {
               extractedStructure = analysis.suggestions.structure;
             }
-            
+
             // Store layout information (alignment, spacing, etc.)
             if (analysis.suggestions.layout) {
               extractedLayout = analysis.suggestions.layout;
@@ -1435,7 +1594,7 @@ export default function ResumeTemplates() {
           // Continue with default theme - not a critical error
         }
       }
-      
+
       // If no PDF analysis, use existing resumes/templates as fallback
       if (resumes.length > 0 && resumes[0].templateId) {
         const firstResumeTemplate = templates.find(t => t._id === resumes[0].templateId);
@@ -1448,20 +1607,20 @@ export default function ResumeTemplates() {
       } else if (templates.length > 0 && templates[0].theme && file.type !== 'application/pdf') {
         theme = templates[0].theme;
       }
-      
+
       // Smart template type detection from filename (overrides PDF analysis if explicit)
       const lowerName = templateName.toLowerCase();
       const lowerFileName = file.name.toLowerCase();
-      
-      if (lowerName.includes("functional") || lowerFileName.includes("functional") || 
-          lowerName.includes("skills-based") || lowerFileName.includes("skills")) {
+
+      if (lowerName.includes("functional") || lowerFileName.includes("functional") ||
+        lowerName.includes("skills-based") || lowerFileName.includes("skills")) {
         type = "functional";
       } else if (lowerName.includes("hybrid") || lowerFileName.includes("hybrid") ||
-                 lowerName.includes("combination") || lowerFileName.includes("combination") ||
-                 lowerName.includes("combined")) {
+        lowerName.includes("combination") || lowerFileName.includes("combination") ||
+        lowerName.includes("combined")) {
         type = "hybrid";
       } else if (lowerName.includes("chronological") || lowerFileName.includes("chronological") ||
-                 lowerName.includes("reverse") || lowerFileName.includes("timeline")) {
+        lowerName.includes("reverse") || lowerFileName.includes("timeline")) {
         type = "chronological";
       }
       // If no explicit type in filename and no PDF analysis, check user's existing templates
@@ -1470,12 +1629,12 @@ export default function ResumeTemplates() {
           acc[t.type] = (acc[t.type] || 0) + 1;
           return acc;
         }, {});
-        const mostCommonType = Object.keys(typeCounts).reduce((a, b) => 
+        const mostCommonType = Object.keys(typeCounts).reduce((a, b) =>
           typeCounts[a] > typeCounts[b] ? a : b, 'chronological'
         );
         type = mostCommonType;
       }
-      
+
       // Set sections order - prioritize extracted structure from PDF, otherwise use type-based defaults
       let sectionsOrder;
       if (extractedStructure?.sectionsOrder?.length > 0) {
@@ -1500,7 +1659,7 @@ export default function ResumeTemplates() {
             break;
         }
       }
-      
+
       // Store section names mapping if extracted from PDF
       const sectionStyles = {};
       if (extractedStructure?.sectionNames) {
@@ -1509,7 +1668,7 @@ export default function ResumeTemplates() {
           sectionStyles[standardName] = { displayName: actualName };
         });
       }
-      
+
       // Add layout properties to sectionStyles or layout
       if (extractedLayout) {
         // Store layout properties at the template level
@@ -1517,16 +1676,16 @@ export default function ResumeTemplates() {
           theme.spacing = extractedLayout.sectionSpacing || 8;
         }
       }
-      
+
       // Store education format if extracted from PDF (already included in extractedLayout)
       let educationFormat = extractedLayout?.educationFormat || null;
-      
+
       // Store project and experience formats if extracted from PDF
       const projectFormat = extractedLayout?.projectFormat || null;
       const experienceFormat = extractedLayout?.experienceFormat || null;
-      
+
       console.log('Storing layout formats:', { educationFormat, projectFormat, experienceFormat });
-      
+
       return {
         name: templateName,
         type: type,
@@ -1562,7 +1721,7 @@ export default function ResumeTemplates() {
     e.preventDefault();
     try {
       let templateData;
-      
+
       if (importMethod === "file" && importFile) {
         // Handle file upload
         templateData = await handleFileUpload(importFile);
@@ -1592,7 +1751,7 @@ export default function ResumeTemplates() {
 
   const handleFinalizeImport = async () => {
     if (!pendingImport) return;
-    
+
     try {
       await authWrap();
       const response = await apiImportTemplate(pendingImport);
@@ -1636,9 +1795,9 @@ export default function ResumeTemplates() {
                   View, create, and manage your resumes, cover letters, and templates.
                 </p>
               </div>
-              
+
             </div>
-            
+
             {/* Removed Experimental Features Toggle */}
           </div>
 
@@ -1687,7 +1846,7 @@ export default function ResumeTemplates() {
                 </button>
               </div>
             </div>
-            
+
             {resumes.length === 0 ? (
               <Card variant="elevated" className="text-center py-12">
                 <div className="text-gray-500 mb-4">
@@ -1706,22 +1865,23 @@ export default function ResumeTemplates() {
                     .filter(r => showArchivedResumes ? true : !r.isArchived)
                     .slice(0, showAllResumes ? undefined : 4)
                     .map((resume) => (
-                    <ResumeTile
-                      key={resume._id}
-                      resume={resume}
-                      template={templates.find(t => t._id === resume.templateId)}
-                      validationStatus={validationStatus[resume._id]?.status}
-                      onView={() => handleViewResume(resume)}
-                      onRename={() => {
-                        setRenamingResume(resume);
-                        setRenameValue(resume.name);
-                        setShowRenameModal(true);
-                      }}
-                      onDelete={() => handleDeleteResumeClick(resume)}
-                    />
-                  ))}
+                      <ResumeTile
+                        key={resume._id}
+                        resume={resume}
+                        template={templates.find(t => t._id === resume.templateId)}
+                        validationStatus={validationStatus[resume._id]?.status}
+                        onView={() => handleViewResume(resume)}
+                        onShare={() => handleOpenShare(resume)}
+                        onRename={() => {
+                          setRenamingResume(resume);
+                          setRenameValue(resume.name);
+                          setShowRenameModal(true);
+                        }}
+                        onDelete={() => handleDeleteResumeClick(resume)}
+                      />
+                    ))}
                 </div>
-                
+
                 {/* View All / View Less Button */}
                 {resumes.length > 4 && (
                   <div className="mt-6 text-center">
@@ -1798,7 +1958,7 @@ export default function ResumeTemplates() {
                 </button>
               </div>
             </div>
-            
+
             {savedCoverLetters.length === 0 ? (
               <Card variant="elevated" className="text-center py-12">
                 <div className="text-gray-500 mb-4">
@@ -1815,61 +1975,61 @@ export default function ResumeTemplates() {
                   {savedCoverLetters
                     .slice(0, showAllCoverLetters ? undefined : 4)
                     .map((letter) => (
-                    <Card
-                      key={letter._id}
-                      variant="elevated"
-                      className="p-4 hover:shadow-lg transition-shadow"
-                    >
-                      <div className="mb-3">
-                        <h3 className="font-semibold text-lg truncate" style={{ color: "#4F5348" }}>
-                          {letter.name}
-                        </h3>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-3 line-clamp-3">
-                        {letter.content.substring(0, 100)}...
-                      </p>
-                      <p className="text-xs text-gray-500 mb-3">
-                        Modified {new Date(letter.updatedAt).toLocaleDateString()}
-                      </p>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => {
-                            setEditingCoverLetter(letter);
-                            setCustomCoverLetterName(letter.name);
-                            setCustomCoverLetterContent(letter.content);
-                            setCustomCoverLetterStyle(letter.style || 'formal');
-                            setShowEditCoverLetterModal(true);
-                          }}
-                          className="flex-1 px-3 py-1.5 text-sm rounded transition"
-                          style={{ backgroundColor: "#777C6D", color: "white" }}
-                          onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                          onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-                        >
-                          View
-                        </button>
-                        <button
-                          onClick={async () => {
-                            if (confirm(`Delete "${letter.name}"?`)) {
-                              try {
-                                await authWrap();
-                                await apiDeleteCoverLetter(letter._id);
-                                await loadSavedCoverLetters();
-                                alert("Cover letter deleted successfully!");
-                              } catch (err) {
-                                console.error("Delete failed:", err);
-                                alert("Failed to delete cover letter.");
+                      <Card
+                        key={letter._id}
+                        variant="elevated"
+                        className="p-4 hover:shadow-lg transition-shadow"
+                      >
+                        <div className="mb-3">
+                          <h3 className="font-semibold text-lg truncate" style={{ color: "#4F5348" }}>
+                            {letter.name}
+                          </h3>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-3 line-clamp-3">
+                          {letter.content.substring(0, 100)}...
+                        </p>
+                        <p className="text-xs text-gray-500 mb-3">
+                          Modified {new Date(letter.updatedAt).toLocaleDateString()}
+                        </p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              setEditingCoverLetter(letter);
+                              setCustomCoverLetterName(letter.name);
+                              setCustomCoverLetterContent(letter.content);
+                              setCustomCoverLetterStyle(letter.style || 'formal');
+                              setShowEditCoverLetterModal(true);
+                            }}
+                            className="flex-1 px-3 py-1.5 text-sm rounded transition"
+                            style={{ backgroundColor: "#777C6D", color: "white" }}
+                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                          >
+                            View
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (confirm(`Delete "${letter.name}"?`)) {
+                                try {
+                                  await authWrap();
+                                  await apiDeleteCoverLetter(letter._id);
+                                  await loadSavedCoverLetters();
+                                  alert("Cover letter deleted successfully!");
+                                } catch (err) {
+                                  console.error("Delete failed:", err);
+                                  alert("Failed to delete cover letter.");
+                                }
                               }
-                            }
-                          }}
-                          className="px-3 py-1.5 text-sm text-red-600 hover:text-red-700 border border-red-300 rounded transition"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </Card>
-                  ))}
+                            }}
+                            className="px-3 py-1.5 text-sm text-red-600 hover:text-red-700 border border-red-300 rounded transition"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </Card>
+                    ))}
                 </div>
-                
+
                 {savedCoverLetters.length > 4 && (
                   <div className="mt-6 text-center">
                     <button
@@ -1891,12 +2051,12 @@ export default function ResumeTemplates() {
 
       {/* Template Management Modal */}
       {showTemplateModal && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
           onClick={() => setShowTemplateModal(false)}
         >
-          <div 
+          <div
             className="bg-white rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto border border-gray-200"
             onClick={(e) => e.stopPropagation()}
           >
@@ -1906,7 +2066,7 @@ export default function ResumeTemplates() {
                 <p className="font-medium" style={{ color: '#166534' }}>{successMessage}</p>
               </div>
             )}
-            
+
             <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
               <h3 className="text-2xl font-heading font-semibold">Manage Templates</h3>
               <div className="flex gap-3 items-center">
@@ -1967,12 +2127,12 @@ export default function ResumeTemplates() {
 
       {/* Import Template Modal */}
       {showImport && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-[60] p-4" 
+        <div
+          className="fixed inset-0 flex items-center justify-center z-[60] p-4"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
           onClick={() => setShowImport(false)}
         >
-          <div 
+          <div
             className="bg-white rounded-lg shadow-2xl max-w-2xl w-full border border-gray-200"
             onClick={(e) => e.stopPropagation()}
           >
@@ -2060,12 +2220,12 @@ export default function ResumeTemplates() {
                     <label htmlFor="importJson" className="block text-sm font-medium text-gray-700 mb-2">
                       Paste Template JSON <span className="text-red-500">*</span>
                     </label>
-                    <textarea 
+                    <textarea
                       id="importJson"
-                      className="w-full border border-gray-300 rounded-lg p-4 h-64 font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                      placeholder='{"name":"My Template","type":"hybrid","layout":{"sectionsOrder":["summary","skills","experience"]},"theme":{"colors":{"primary":"#2a7"}}}' 
-                      value={importJson} 
-                      onChange={(e) => setImportJson(e.target.value)} 
+                      className="w-full border border-gray-300 rounded-lg p-4 h-64 font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder='{"name":"My Template","type":"hybrid","layout":{"sectionsOrder":["summary","skills","experience"]},"theme":{"colors":{"primary":"#2a7"}}}'
+                      value={importJson}
+                      onChange={(e) => setImportJson(e.target.value)}
                       required
                     />
                   </div>
@@ -2102,8 +2262,8 @@ export default function ResumeTemplates() {
 
       {/* Customize Import Modal */}
       {showCustomizeImport && pendingImport && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
           onClick={() => {
             setShowCustomizeImport(false);
@@ -2111,7 +2271,7 @@ export default function ResumeTemplates() {
             setImportFile(null);
           }}
         >
-          <div 
+          <div
             className="bg-white rounded-lg shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-gray-200"
             onClick={(e) => e.stopPropagation()}
           >
@@ -2356,12 +2516,12 @@ export default function ResumeTemplates() {
                           ...pendingImport,
                           theme: {
                             ...pendingImport.theme,
-                            fonts: { 
-                              ...pendingImport.theme?.fonts, 
-                              sizes: { 
-                                ...pendingImport.theme?.fonts?.sizes, 
-                                name: `${e.target.value}px` 
-                              } 
+                            fonts: {
+                              ...pendingImport.theme?.fonts,
+                              sizes: {
+                                ...pendingImport.theme?.fonts?.sizes,
+                                name: `${e.target.value}px`
+                              }
                             }
                           }
                         })}
@@ -2383,12 +2543,12 @@ export default function ResumeTemplates() {
                           ...pendingImport,
                           theme: {
                             ...pendingImport.theme,
-                            fonts: { 
-                              ...pendingImport.theme?.fonts, 
-                              sizes: { 
-                                ...pendingImport.theme?.fonts?.sizes, 
-                                sectionHeader: `${e.target.value}px` 
-                              } 
+                            fonts: {
+                              ...pendingImport.theme?.fonts,
+                              sizes: {
+                                ...pendingImport.theme?.fonts?.sizes,
+                                sectionHeader: `${e.target.value}px`
+                              }
                             }
                           }
                         })}
@@ -2410,12 +2570,12 @@ export default function ResumeTemplates() {
                           ...pendingImport,
                           theme: {
                             ...pendingImport.theme,
-                            fonts: { 
-                              ...pendingImport.theme?.fonts, 
-                              sizes: { 
-                                ...pendingImport.theme?.fonts?.sizes, 
-                                jobTitle: `${e.target.value}px` 
-                              } 
+                            fonts: {
+                              ...pendingImport.theme?.fonts,
+                              sizes: {
+                                ...pendingImport.theme?.fonts?.sizes,
+                                jobTitle: `${e.target.value}px`
+                              }
                             }
                           }
                         })}
@@ -2437,12 +2597,12 @@ export default function ResumeTemplates() {
                           ...pendingImport,
                           theme: {
                             ...pendingImport.theme,
-                            fonts: { 
-                              ...pendingImport.theme?.fonts, 
-                              sizes: { 
-                                ...pendingImport.theme?.fonts?.sizes, 
-                                body: `${e.target.value}px` 
-                              } 
+                            fonts: {
+                              ...pendingImport.theme?.fonts,
+                              sizes: {
+                                ...pendingImport.theme?.fonts?.sizes,
+                                body: `${e.target.value}px`
+                              }
                             }
                           }
                         })}
@@ -2464,12 +2624,12 @@ export default function ResumeTemplates() {
                           ...pendingImport,
                           theme: {
                             ...pendingImport.theme,
-                            fonts: { 
-                              ...pendingImport.theme?.fonts, 
-                              sizes: { 
-                                ...pendingImport.theme?.fonts?.sizes, 
-                                small: `${e.target.value}px` 
-                              } 
+                            fonts: {
+                              ...pendingImport.theme?.fonts,
+                              sizes: {
+                                ...pendingImport.theme?.fonts?.sizes,
+                                small: `${e.target.value}px`
+                              }
                             }
                           }
                         })}
@@ -2485,9 +2645,9 @@ export default function ResumeTemplates() {
               <div>
                 <h4 className="text-lg font-semibold mb-3">Preview</h4>
                 <div className="border border-gray-300 rounded-lg p-6 bg-white">
-                  <h2 
+                  <h2
                     className="font-bold mb-2"
-                    style={{ 
+                    style={{
                       color: pendingImport.theme?.colors?.primary || "#4F5348",
                       fontFamily: pendingImport.theme?.fonts?.heading || "Inter, sans-serif",
                       fontSize: pendingImport.theme?.fonts?.sizes?.name || "36px"
@@ -2495,9 +2655,9 @@ export default function ResumeTemplates() {
                   >
                     Your Name
                   </h2>
-                  <p 
+                  <p
                     className="mb-4"
-                    style={{ 
+                    style={{
                       color: pendingImport.theme?.colors?.muted || "#666",
                       fontFamily: pendingImport.theme?.fonts?.body || "Inter, sans-serif",
                       fontSize: pendingImport.theme?.fonts?.sizes?.small || "12px"
@@ -2505,9 +2665,9 @@ export default function ResumeTemplates() {
                   >
                     email@example.com • (555) 123-4567
                   </p>
-                  <h3 
+                  <h3
                     className="font-semibold mb-2 uppercase"
-                    style={{ 
+                    style={{
                       color: pendingImport.theme?.colors?.primary || "#4F5348",
                       fontFamily: pendingImport.theme?.fonts?.heading || "Inter, sans-serif",
                       fontSize: pendingImport.theme?.fonts?.sizes?.sectionHeader || "18px"
@@ -2515,9 +2675,9 @@ export default function ResumeTemplates() {
                   >
                     Experience
                   </h3>
-                  <h4 
+                  <h4
                     className="font-bold mb-1"
-                    style={{ 
+                    style={{
                       color: pendingImport.theme?.colors?.text || "#222",
                       fontFamily: pendingImport.theme?.fonts?.heading || "Inter, sans-serif",
                       fontSize: pendingImport.theme?.fonts?.sizes?.jobTitle || "16px"
@@ -2525,8 +2685,8 @@ export default function ResumeTemplates() {
                   >
                     Senior Developer
                   </h4>
-                  <p 
-                    style={{ 
+                  <p
+                    style={{
                       color: pendingImport.theme?.colors?.text || "#222",
                       fontFamily: pendingImport.theme?.fonts?.body || "Inter, sans-serif",
                       fontSize: pendingImport.theme?.fonts?.sizes?.body || "14px"
@@ -2567,20 +2727,20 @@ export default function ResumeTemplates() {
 
       {/* Template Preview Modal */}
       {previewTemplate && (
-        <TemplatePreviewModal 
-          template={previewTemplate} 
-          onClose={() => setPreviewTemplate(null)} 
+        <TemplatePreviewModal
+          template={previewTemplate}
+          onClose={() => setPreviewTemplate(null)}
         />
       )}
 
       {/* AI Resume Creation Modal */}
       {showAIResumeModal && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
           onClick={() => !isGenerating && setShowAIResumeModal(false)}
         >
-          <div 
+          <div
             className="bg-white rounded-lg shadow-2xl max-w-2xl w-full border border-gray-200"
             onClick={(e) => e.stopPropagation()}
           >
@@ -2611,7 +2771,7 @@ export default function ResumeTemplates() {
                     type="text"
                     id="resumeName"
                     value={aiFormData.name}
-                    onChange={(e) => setAIFormData({...aiFormData, name: e.target.value})}
+                    onChange={(e) => setAIFormData({ ...aiFormData, name: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="e.g., Software Engineer at Google"
                     required
@@ -2634,7 +2794,7 @@ export default function ResumeTemplates() {
                     <select
                       id="jobSelect"
                       value={aiFormData.jobId}
-                      onChange={(e) => setAIFormData({...aiFormData, jobId: e.target.value})}
+                      onChange={(e) => setAIFormData({ ...aiFormData, jobId: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       required
                       disabled={isGenerating}
@@ -2657,7 +2817,7 @@ export default function ResumeTemplates() {
                   <select
                     id="templateSelect"
                     value={aiFormData.templateId}
-                    onChange={(e) => setAIFormData({...aiFormData, templateId: e.target.value})}
+                    onChange={(e) => setAIFormData({ ...aiFormData, templateId: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
                     disabled={isGenerating}
@@ -2695,11 +2855,10 @@ export default function ResumeTemplates() {
                         <div
                           key={idx}
                           onClick={() => setSelectedVariation(variation)}
-                          className={`border-2 rounded-lg p-4 cursor-pointer transition ${
-                            selectedVariation?.variationNumber === variation.variationNumber
+                          className={`border-2 rounded-lg p-4 cursor-pointer transition ${selectedVariation?.variationNumber === variation.variationNumber
                               ? 'border-blue-500 bg-blue-50'
                               : 'border-gray-200 hover:border-gray-300'
-                          }`}
+                            }`}
                         >
                           <div className="flex items-start justify-between mb-2">
                             <div>
@@ -2854,6 +3013,207 @@ export default function ResumeTemplates() {
         format={pendingExportFormat}
       />
 
+      {/* Share & Feedback Panel (Owner) */}
+      {showSharePanel && shareForResume && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={() => setShowSharePanel(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto border border-gray-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
+              <h3 className="text-2xl font-heading font-semibold">Share & Feedback — {shareForResume.name}</h3>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowSharePanel(false)}
+                  className="text-gray-400 hover:text-gray-600 transition"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {successMessage && (
+              <div className="mx-6 mt-6 p-4 border rounded-lg" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }}>
+                <p className="font-medium" style={{ color: '#166534' }}>{successMessage}</p>
+              </div>
+            )}
+
+            <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Create New Share */}
+              <Card variant="outlined">
+                <div className="p-4">
+                  <h4 className="text-lg font-heading font-semibold mb-3">Create new share link</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm text-gray-700 block mb-1">Privacy</label>
+                      <select
+                        className="w-full border rounded px-3 py-2"
+                        value={shareForm.privacy}
+                        onChange={(e) => setShareForm(prev => ({ ...prev, privacy: e.target.value }))}
+                      >
+                        <option value="unlisted">Unlisted (anyone with link)</option>
+                        <option value="private">Private (allow-listed reviewers only)</option>
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input id="allowComments" type="checkbox" className="h-4 w-4" checked={shareForm.allowComments} onChange={(e) => setShareForm(prev => ({ ...prev, allowComments: e.target.checked }))} />
+                      <label htmlFor="allowComments" className="text-sm">Allow comments</label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input id="canViewContact" type="checkbox" className="h-4 w-4" checked={shareForm.canViewContact} onChange={(e) => setShareForm(prev => ({ ...prev, canViewContact: e.target.checked }))} />
+                      <label htmlFor="canViewContact" className="text-sm">Show contact info</label>
+                    </div>
+                    {shareForm.privacy === 'private' && (
+                      <div>
+                        <label className="text-sm text-gray-700 block mb-1">Allowed reviewer emails (comma-separated)</label>
+                        <input
+                          type="text"
+                          className="w-full border rounded px-3 py-2"
+                          placeholder="name@example.com, other@example.com"
+                          value={shareForm.allowedReviewersText}
+                          onChange={(e) => setShareForm(prev => ({ ...prev, allowedReviewersText: e.target.value }))}
+                        />
+                      </div>
+                    )}
+                    <div>
+                      <label className="text-sm text-gray-700 block mb-1">Note (optional)</label>
+                      <input
+                        type="text"
+                        className="w-full border rounded px-3 py-2"
+                        placeholder="e.g., For Design team review"
+                        value={shareForm.note}
+                        onChange={(e) => setShareForm(prev => ({ ...prev, note: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-700 block mb-1">Expiry (days, optional)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        className="w-full border rounded px-3 py-2"
+                        placeholder="e.g., 7"
+                        value={shareForm.expiresInDays}
+                        onChange={(e) => setShareForm(prev => ({ ...prev, expiresInDays: e.target.value }))}
+                      />
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={handleGenerateShare}
+                        disabled={shareActionLoading}
+                        className="px-4 py-2 text-white rounded-lg transition focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50"
+                        style={{ backgroundColor: '#2563EB' }}
+                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#1D4ED8'}
+                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#2563EB'}
+                      >
+                        {shareActionLoading ? 'Creating…' : 'Create link'}
+                      </button>
+                      {createdShareUrl && (
+                        <button
+                          onClick={() => navigator.clipboard.writeText(createdShareUrl)}
+                          className="px-3 py-2 border rounded text-sm"
+                          title={createdShareUrl}
+                        >Copy URL</button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Existing Share Links */}
+              <Card variant="outlined">
+                <div className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-lg font-heading font-semibold">Existing links</h4>
+                    <button
+                      onClick={() => loadShares(shareForResume._id)}
+                      className="text-sm px-3 py-1 border rounded"
+                    >Refresh</button>
+                  </div>
+                  {isLoadingShares ? (
+                    <div className="text-sm text-gray-500">Loading…</div>
+                  ) : (shareLinks && shareLinks.length > 0 ? (
+                    <div className="space-y-2">
+                      {shareLinks.map((s) => (
+                        <div key={s.token} className={`p-3 border rounded flex items-center justify-between ${s.status === 'revoked' ? 'opacity-60' : ''}`}>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium">{s.privacy === 'private' ? 'Private' : 'Unlisted'} • {s.allowComments ? 'Comments on' : 'Comments off'} {s.canViewContact ? '• Contact visible' : ''}</p>
+                            <p className="text-xs text-gray-600 truncate">Token: {s.token}</p>
+                            {s.expiresAt && (
+                              <p className="text-xs text-gray-500">Expires: {new Date(s.expiresAt).toLocaleString()}</p>
+                            )}
+                            <p className="text-xs text-gray-500">Status: {s.status}</p>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {s.status !== 'revoked' && (
+                              <>
+                                <button
+                                  onClick={() => navigator.clipboard.writeText(`${window.location.origin}/share/${s.token}`)}
+                                  className="px-2 py-1 border rounded text-xs"
+                                >Copy URL</button>
+                                <button
+                                  onClick={() => handleRevokeShare(s.token)}
+                                  className="px-2 py-1 border rounded text-xs text-red-600 border-red-300"
+                                >Revoke</button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500">No share links yet.</p>
+                  ))}
+                </div>
+              </Card>
+
+              {/* Feedback Management */}
+              <Card variant="outlined" className="lg:col-span-2">
+                <div className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-lg font-heading font-semibold">Feedback</h4>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => loadOwnerFeedback(shareForResume._id)} className="text-sm px-3 py-1 border rounded">Refresh</button>
+                      <button onClick={() => handleExportFeedback('csv')} className="text-sm px-3 py-1 border rounded">Export CSV</button>
+                      <button onClick={() => handleExportFeedback('json')} className="text-sm px-3 py-1 border rounded">Export JSON</button>
+                    </div>
+                  </div>
+                  {isLoadingOwnerFeedback ? (
+                    <div className="text-sm text-gray-500">Loading…</div>
+                  ) : (ownerFeedback && ownerFeedback.length > 0 ? (
+                    <div className="divide-y">
+                      {ownerFeedback.map(fb => (
+                        <div key={fb._id} className="py-3 flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <p className="text-sm"><span className="font-medium">{fb.authorName || fb.authorEmail || 'Anonymous'}</span> — <span className="text-gray-600 text-xs">{new Date(fb.createdAt).toLocaleString()}</span></p>
+                            <p className="text-sm text-gray-800 whitespace-pre-wrap">{fb.comment}</p>
+                            {fb.status === 'resolved' && (
+                              <p className="text-xs text-green-700 mt-1">Resolved {fb.resolvedAt ? new Date(fb.resolvedAt).toLocaleString() : ''}{fb.resolutionNote ? ` • ${fb.resolutionNote}` : ''}</p>
+                            )}
+                          </div>
+                          <div className="flex-shrink-0">
+                            {fb.status !== 'resolved' && (
+                              <button onClick={() => handleResolveFeedback(fb)} className="px-3 py-1 border rounded text-sm">Mark Resolved</button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500">No feedback yet.</p>
+                  ))}
+                </div>
+              </Card>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* UC-51: Watermark Configuration Modal */}
       <WatermarkModal
         isOpen={showWatermarkModal}
@@ -2868,8 +3228,8 @@ export default function ResumeTemplates() {
         const resumeTemplate = templates.find(t => t._id === viewingResume.templateId) || {};
         const theme = resumeTemplate.theme || {
           colors: { primary: "#4F5348", text: "#222", muted: "#666" },
-          fonts: { 
-            body: "Inter, sans-serif", 
+          fonts: {
+            body: "Inter, sans-serif",
             heading: "Inter, sans-serif",
             sizes: {
               name: "36px",
@@ -2880,23 +3240,23 @@ export default function ResumeTemplates() {
             }
           }
         };
-        
-  // Order is controlled by 'sectionOrder' state (hydrated from template or resume)
-        
+
+        // Order is controlled by 'sectionOrder' state (hydrated from template or resume)
+
         // Get section display names from template (preserved from PDF)
         const sectionStyles = resumeTemplate.layout?.sectionStyles || {};
         const getSectionName = (sectionType) => {
-          return sectionStyles[sectionType]?.displayName || 
-                 (sectionType === 'summary' ? 'Professional Summary' :
-                  sectionType === 'experience' ? 'Professional Experience' :
-                  sectionType === 'skills' ? 'Technical Skills' :
+          return sectionStyles[sectionType]?.displayName ||
+            (sectionType === 'summary' ? 'Professional Summary' :
+              sectionType === 'experience' ? 'Professional Experience' :
+                sectionType === 'skills' ? 'Technical Skills' :
                   sectionType === 'education' ? 'Education' :
-                  sectionType === 'projects' ? 'Projects' :
-                  sectionType === 'awards' ? 'Awards' :
-                  sectionType === 'certifications' ? 'Certifications' :
-                  sectionType.charAt(0).toUpperCase() + sectionType.slice(1)); // Capitalize first letter as fallback
+                    sectionType === 'projects' ? 'Projects' :
+                      sectionType === 'awards' ? 'Awards' :
+                        sectionType === 'certifications' ? 'Certifications' :
+                          sectionType.charAt(0).toUpperCase() + sectionType.slice(1)); // Capitalize first letter as fallback
         };
-        
+
         // Helper function to render a section by type
         const renderSection = (sectionType) => {
           switch (sectionType) {
@@ -2908,11 +3268,11 @@ export default function ResumeTemplates() {
               return (
                 <div key="summary" style={{ marginBottom: `${summaryFmt.spacing ?? sectionSpacing}px` }}>
                   <div className="flex justify-between items-center mb-3">
-                    <h2 
-                      className="font-bold uppercase tracking-wide" 
-                      style={{ 
-                        color: theme.colors.primary, 
-                        fontFamily: theme.fonts.heading, 
+                    <h2
+                      className="font-bold uppercase tracking-wide"
+                      style={{
+                        color: theme.colors.primary,
+                        fontFamily: theme.fonts.heading,
                         fontSize: theme.fonts.sizes?.sectionHeader || "18px",
                         borderBottom: headerStyle === 'underline' ? `2px solid ${theme.colors.primary}` : 'none',
                         paddingBottom: headerStyle === 'underline' ? '4px' : '0'
@@ -2944,12 +3304,12 @@ export default function ResumeTemplates() {
                       }}
                     />
                   ) : (
-                    <p 
-                      className="leading-relaxed" 
-                      style={{ 
-                        color: summaryFmt.color || theme.colors.text, 
-                        textAlign: resumeTemplate.layout?.textAlignment || 'justify', 
-                        fontFamily: theme.fonts.body, 
+                    <p
+                      className="leading-relaxed"
+                      style={{
+                        color: summaryFmt.color || theme.colors.text,
+                        textAlign: resumeTemplate.layout?.textAlignment || 'justify',
+                        fontFamily: theme.fonts.body,
                         fontSize: theme.fonts.sizes?.body || "14px",
                         lineHeight: resumeTemplate.layout?.lineHeight || 1.5
                       }}
@@ -2959,7 +3319,7 @@ export default function ResumeTemplates() {
                   )}
                 </div>
               );
-            
+
             case 'experience':
               if (!viewingResume.sections?.experience || viewingResume.sections.experience.length === 0) return null;
               const expSectionSpacing = resumeTemplate.layout?.sectionSpacing || 24;
@@ -2967,11 +3327,11 @@ export default function ResumeTemplates() {
               return (
                 <div key="experience" style={{ marginBottom: `${expSectionSpacing}px` }}>
                   <div className="flex justify-between items-center mb-3">
-                    <h2 
-                      className="font-bold uppercase tracking-wide" 
-                      style={{ 
-                        color: theme.colors.primary, 
-                        fontFamily: theme.fonts.heading, 
+                    <h2
+                      className="font-bold uppercase tracking-wide"
+                      style={{
+                        color: theme.colors.primary,
+                        fontFamily: theme.fonts.heading,
                         fontSize: theme.fonts.sizes?.sectionHeader || "18px",
                         borderBottom: expHeaderStyle === 'underline' ? `2px solid ${theme.colors.primary}` : 'none',
                         paddingBottom: expHeaderStyle === 'underline' ? '4px' : '0'
@@ -3025,12 +3385,12 @@ export default function ResumeTemplates() {
                           ) : (
                             <ul className="space-y-1 ml-5" style={{ listStyleType: 'disc' }}>
                               {job.bullets.map((bullet, bulletIdx) => (
-                                <li 
-                                  key={bulletIdx} 
-                                  className="leading-relaxed" 
-                                  style={{ 
-                                    color: theme.colors.text, 
-                                    fontFamily: theme.fonts.body, 
+                                <li
+                                  key={bulletIdx}
+                                  className="leading-relaxed"
+                                  style={{
+                                    color: theme.colors.text,
+                                    fontFamily: theme.fonts.body,
                                     fontSize: theme.fonts.sizes?.body || "14px",
                                     lineHeight: resumeTemplate.layout?.lineHeight || 1.5,
                                     marginBottom: `${(resumeTemplate.layout?.paragraphSpacing || 8) / 2}px`
@@ -3047,7 +3407,7 @@ export default function ResumeTemplates() {
                   </div>
                 </div>
               );
-            
+
             case 'skills':
               if (!viewingResume.sections?.skills || viewingResume.sections.skills.length === 0) return null;
               const skillsSectionSpacing = resumeTemplate.layout?.sectionSpacing || 24;
@@ -3056,11 +3416,11 @@ export default function ResumeTemplates() {
               return (
                 <div key="skills" style={{ marginBottom: `${skillsFmt.spacing ?? skillsSectionSpacing}px` }}>
                   <div className="flex justify-between items-center mb-3">
-                    <h2 
-                      className="font-bold uppercase tracking-wide" 
-                      style={{ 
-                        color: theme.colors.primary, 
-                        fontFamily: theme.fonts.heading, 
+                    <h2
+                      className="font-bold uppercase tracking-wide"
+                      style={{
+                        color: theme.colors.primary,
+                        fontFamily: theme.fonts.heading,
                         fontSize: theme.fonts.sizes?.sectionHeader || "18px",
                         borderBottom: skillsHeaderStyle === 'underline' ? `2px solid ${theme.colors.primary}` : 'none',
                         paddingBottom: skillsHeaderStyle === 'underline' ? '4px' : '0'
@@ -3093,7 +3453,7 @@ export default function ResumeTemplates() {
                       {viewingResume.sections.skills.map((skill, idx) => {
                         const skillName = typeof skill === 'string' ? skill : skill.name || skill;
                         return (
-                          <div 
+                          <div
                             key={idx}
                             className="group inline-flex items-center gap-1 px-2 py-1 print:px-1 print:py-0.5 rounded print:rounded-sm bg-gray-100 print:bg-transparent"
                             style={{
@@ -3120,7 +3480,7 @@ export default function ResumeTemplates() {
                   )}
                 </div>
               );
-            
+
             case 'education':
               if (!viewingResume.sections?.education || viewingResume.sections.education.length === 0) return null;
               const eduSectionSpacing = resumeTemplate.layout?.sectionSpacing || 24;
@@ -3128,11 +3488,11 @@ export default function ResumeTemplates() {
               const educationFmt = sectionFormatting['education'] || {};
               return (
                 <div key="education" style={{ marginBottom: `${educationFmt.spacing ?? eduSectionSpacing}px` }}>
-                  <h2 
-                    className="font-bold mb-3 uppercase tracking-wide" 
-                    style={{ 
-                      color: theme.colors.primary, 
-                      fontFamily: theme.fonts.heading, 
+                  <h2
+                    className="font-bold mb-3 uppercase tracking-wide"
+                    style={{
+                      color: theme.colors.primary,
+                      fontFamily: theme.fonts.heading,
                       fontSize: theme.fonts.sizes?.sectionHeader || "18px",
                       borderBottom: eduHeaderStyle === 'underline' ? `2px solid ${theme.colors.primary}` : 'none',
                       paddingBottom: eduHeaderStyle === 'underline' ? '4px' : '0'
@@ -3148,7 +3508,7 @@ export default function ResumeTemplates() {
                         locationAfterInstitution: true,
                         gpaSeparateLine: true
                       };
-                      
+
                       // UC-053: Edit mode for education
                       if (isEditMode) {
                         return (
@@ -3162,18 +3522,18 @@ export default function ResumeTemplates() {
                           />
                         );
                       }
-                      
+
                       // Render fields based on template format
                       const renderEducationField = (fieldType) => {
                         switch (fieldType) {
                           case 'degree':
                             return (
-                              <h3 
+                              <h3
                                 key="degree"
-                                className="font-bold" 
-                                style={{ 
-                                  color: theme.colors.text, 
-                                  fontFamily: theme.fonts.heading, 
+                                className="font-bold"
+                                style={{
+                                  color: theme.colors.text,
+                                  fontFamily: theme.fonts.heading,
                                   fontSize: theme.fonts.sizes?.jobTitle || "16px"
                                 }}
                               >
@@ -3182,12 +3542,12 @@ export default function ResumeTemplates() {
                             );
                           case 'institution':
                             return (
-                              <div 
+                              <div
                                 key="institution"
                                 className="italic"
-                                style={{ 
-                                  color: theme.colors.muted, 
-                                  fontFamily: theme.fonts.heading, 
+                                style={{
+                                  color: theme.colors.muted,
+                                  fontFamily: theme.fonts.heading,
                                   fontSize: theme.fonts.sizes?.body || "14px",
                                   lineHeight: resumeTemplate.layout?.lineHeight || 1.5
                                 }}
@@ -3201,12 +3561,12 @@ export default function ResumeTemplates() {
                           case 'location':
                             if (!eduFormat.locationAfterInstitution && edu.location) {
                               return (
-                                <div 
+                                <div
                                   key="location"
                                   className="italic"
-                                  style={{ 
-                                    color: theme.colors.muted, 
-                                    fontFamily: theme.fonts.heading, 
+                                  style={{
+                                    color: theme.colors.muted,
+                                    fontFamily: theme.fonts.heading,
                                     fontSize: theme.fonts.sizes?.body || "14px",
                                     lineHeight: resumeTemplate.layout?.lineHeight || 1.5
                                   }}
@@ -3219,12 +3579,12 @@ export default function ResumeTemplates() {
                           case 'dates':
                             const datesText = `${formatDate(edu.startDate)} - ${edu.current ? 'Present' : formatDate(edu.endDate)}`;
                             return (
-                              <span 
+                              <span
                                 key="dates"
-                                className="font-semibold" 
-                                style={{ 
-                                  color: theme.colors.muted, 
-                                  fontFamily: theme.fonts.body, 
+                                className="font-semibold"
+                                style={{
+                                  color: theme.colors.muted,
+                                  fontFamily: theme.fonts.body,
                                   fontSize: theme.fonts.sizes?.small || "12px"
                                 }}
                               >
@@ -3234,12 +3594,12 @@ export default function ResumeTemplates() {
                           case 'gpa':
                             if (edu.gpa && (!edu.gpaPrivate)) {
                               return (
-                                <p 
+                                <p
                                   key="gpa"
                                   className={eduFormat.gpaSeparateLine ? "mt-1" : ""}
-                                  style={{ 
-                                    color: theme.colors.text, 
-                                    fontFamily: theme.fonts.body, 
+                                  style={{
+                                    color: theme.colors.text,
+                                    fontFamily: theme.fonts.body,
                                     fontSize: theme.fonts.sizes?.small || "12px",
                                     lineHeight: resumeTemplate.layout?.lineHeight || 1.5
                                   }}
@@ -3253,12 +3613,12 @@ export default function ResumeTemplates() {
                             return null;
                         }
                       };
-                      
+
                       // Determine if dates should be on same line (right-aligned) with degree/institution
                       const datesIndex = eduFormat.order.indexOf('dates');
                       const degreeIndex = eduFormat.order.indexOf('degree');
                       const institutionIndex = eduFormat.order.indexOf('institution');
-                      
+
                       // Find first field (degree or institution)
                       let firstFieldType = null;
                       let firstFieldIndex = Infinity;
@@ -3270,20 +3630,20 @@ export default function ResumeTemplates() {
                         firstFieldIndex = institutionIndex;
                         firstFieldType = 'institution';
                       }
-                      
+
                       // Dates on right if flag is set AND dates come right after first field
-                      const hasDatesOnRight = eduFormat.datesOnRight && 
-                        datesIndex !== -1 && 
+                      const hasDatesOnRight = eduFormat.datesOnRight &&
+                        datesIndex !== -1 &&
                         firstFieldIndex !== Infinity &&
                         datesIndex === firstFieldIndex + 1;
-                      
+
                       // Render all fields in order
                       const renderedFields = [];
                       let datesField = null;
-                      
+
                       for (let i = 0; i < eduFormat.order.length; i++) {
                         const field = eduFormat.order[i];
-                        
+
                         if (field === 'dates') {
                           if (hasDatesOnRight) {
                             datesField = renderEducationField('dates');
@@ -3306,11 +3666,11 @@ export default function ResumeTemplates() {
                           }
                         }
                       }
-                      
+
                       // Separate first field from rest
                       const firstField = renderedFields.find(f => f.type === 'first');
                       const otherFields = renderedFields.filter(f => f.type !== 'first');
-                      
+
                       return (
                         <div key={idx}>
                           {firstField && (
@@ -3336,7 +3696,7 @@ export default function ResumeTemplates() {
                   </div>
                 </div>
               );
-            
+
             case 'projects':
               if (!viewingResume.sections?.projects || viewingResume.sections.projects.length === 0) return null;
               const projSectionSpacing = resumeTemplate.layout?.sectionSpacing || 24;
@@ -3344,11 +3704,11 @@ export default function ResumeTemplates() {
               const projectsFmt = sectionFormatting['projects'] || {};
               return (
                 <div key="projects" style={{ marginBottom: `${projectsFmt.spacing ?? projSectionSpacing}px` }}>
-                  <h2 
-                    className="font-bold mb-3 uppercase tracking-wide" 
-                    style={{ 
-                      color: theme.colors.primary, 
-                      fontFamily: theme.fonts.heading, 
+                  <h2
+                    className="font-bold mb-3 uppercase tracking-wide"
+                    style={{
+                      color: theme.colors.primary,
+                      fontFamily: theme.fonts.heading,
                       fontSize: theme.fonts.sizes?.sectionHeader || "18px",
                       borderBottom: projHeaderStyle === 'underline' ? `2px solid ${theme.colors.primary}` : 'none',
                       paddingBottom: projHeaderStyle === 'underline' ? '4px' : '0'
@@ -3362,11 +3722,11 @@ export default function ResumeTemplates() {
                         <h3 className="font-bold" style={{ color: theme.colors.text, fontFamily: theme.fonts.heading, fontSize: theme.fonts.sizes?.jobTitle || "16px" }}>
                           {proj.name}
                         </h3>
-                        <p 
-                          className="leading-relaxed mb-1" 
-                          style={{ 
-                            color: projectsFmt.color || theme.colors.text, 
-                            fontFamily: theme.fonts.body, 
+                        <p
+                          className="leading-relaxed mb-1"
+                          style={{
+                            color: projectsFmt.color || theme.colors.text,
+                            fontFamily: theme.fonts.body,
                             fontSize: theme.fonts.sizes?.body || "14px",
                             textAlign: resumeTemplate.layout?.textAlignment || 'left',
                             lineHeight: resumeTemplate.layout?.lineHeight || 1.5
@@ -3374,25 +3734,25 @@ export default function ResumeTemplates() {
                         >
                           {proj.description}
                         </p>
-                          {proj.technologies && proj.technologies.length > 0 && (
-                            <p 
-                              className="italic" 
-                              style={{ 
-                                color: theme.colors.muted, 
-                                fontFamily: theme.fonts.body, 
-                                fontSize: theme.fonts.sizes?.small || "12px",
-                                lineHeight: resumeTemplate.layout?.lineHeight || 1.5
-                              }}
-                            >
-                              Technologies: {proj.technologies.join(', ')}
-                            </p>
-                          )}
+                        {proj.technologies && proj.technologies.length > 0 && (
+                          <p
+                            className="italic"
+                            style={{
+                              color: theme.colors.muted,
+                              fontFamily: theme.fonts.body,
+                              fontSize: theme.fonts.sizes?.small || "12px",
+                              lineHeight: resumeTemplate.layout?.lineHeight || 1.5
+                            }}
+                          >
+                            Technologies: {proj.technologies.join(', ')}
+                          </p>
+                        )}
                       </div>
                     ))}
                   </div>
                 </div>
               );
-            
+
             case 'awards':
               if (!viewingResume.sections?.awards || viewingResume.sections.awards.length === 0) return null;
               const awardsSectionSpacing = resumeTemplate.layout?.sectionSpacing || 24;
@@ -3400,11 +3760,11 @@ export default function ResumeTemplates() {
               const awardsFmt = sectionFormatting['awards'] || {};
               return (
                 <div key="awards" style={{ marginBottom: `${awardsFmt.spacing ?? awardsSectionSpacing}px` }}>
-                  <h2 
-                    className="font-bold mb-3 uppercase tracking-wide" 
-                    style={{ 
-                      color: theme.colors.primary, 
-                      fontFamily: theme.fonts.heading, 
+                  <h2
+                    className="font-bold mb-3 uppercase tracking-wide"
+                    style={{
+                      color: theme.colors.primary,
+                      fontFamily: theme.fonts.heading,
                       fontSize: theme.fonts.sizes?.sectionHeader || "18px",
                       borderBottom: awardsHeaderStyle === 'underline' ? `2px solid ${theme.colors.primary}` : 'none',
                       paddingBottom: awardsHeaderStyle === 'underline' ? '4px' : '0'
@@ -3414,11 +3774,11 @@ export default function ResumeTemplates() {
                   </h2>
                   <div className="space-y-2">
                     {viewingResume.sections.awards.map((award, idx) => (
-                      <div 
-                        key={idx} 
-                        style={{ 
-                          color: awardsFmt.color || theme.colors.text, 
-                          fontFamily: theme.fonts.body, 
+                      <div
+                        key={idx}
+                        style={{
+                          color: awardsFmt.color || theme.colors.text,
+                          fontFamily: theme.fonts.body,
                           fontSize: theme.fonts.sizes?.body || "14px",
                           textAlign: resumeTemplate.layout?.textAlignment || 'left',
                           lineHeight: resumeTemplate.layout?.lineHeight || 1.5,
@@ -3431,7 +3791,7 @@ export default function ResumeTemplates() {
                   </div>
                 </div>
               );
-            
+
             case 'certifications':
               if (!viewingResume.sections?.certifications || viewingResume.sections.certifications.length === 0) return null;
               const certSectionSpacing = resumeTemplate.layout?.sectionSpacing || 24;
@@ -3439,11 +3799,11 @@ export default function ResumeTemplates() {
               const certFmt = sectionFormatting['certifications'] || {};
               return (
                 <div key="certifications" style={{ marginBottom: `${certFmt.spacing ?? certSectionSpacing}px` }}>
-                  <h2 
-                    className="font-bold mb-3 uppercase tracking-wide" 
-                    style={{ 
-                      color: theme.colors.primary, 
-                      fontFamily: theme.fonts.heading, 
+                  <h2
+                    className="font-bold mb-3 uppercase tracking-wide"
+                    style={{
+                      color: theme.colors.primary,
+                      fontFamily: theme.fonts.heading,
                       fontSize: theme.fonts.sizes?.sectionHeader || "18px",
                       borderBottom: certHeaderStyle === 'underline' ? `2px solid ${theme.colors.primary}` : 'none',
                       paddingBottom: certHeaderStyle === 'underline' ? '4px' : '0'
@@ -3453,11 +3813,11 @@ export default function ResumeTemplates() {
                   </h2>
                   <div className="space-y-2">
                     {viewingResume.sections.certifications.map((cert, idx) => (
-                      <div 
-                        key={idx} 
-                        style={{ 
-                          color: certFmt.color || theme.colors.text, 
-                          fontFamily: theme.fonts.body, 
+                      <div
+                        key={idx}
+                        style={{
+                          color: certFmt.color || theme.colors.text,
+                          fontFamily: theme.fonts.body,
                           fontSize: theme.fonts.sizes?.body || "14px",
                           textAlign: resumeTemplate.layout?.textAlignment || 'left',
                           lineHeight: resumeTemplate.layout?.lineHeight || 1.5,
@@ -3470,430 +3830,429 @@ export default function ResumeTemplates() {
                   </div>
                 </div>
               );
-            
+
             default:
               return null;
           }
         };
-        
+
         return (
-        <>
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-50 print:hidden" 
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
-          onClick={() => setShowViewResumeModal(false)}
-        >
-          <div 
-            className="bg-white rounded-lg shadow-2xl w-full mx-4 border border-gray-200 overflow-hidden flex flex-col" 
-            style={{ maxWidth: '960px', height: '95vh' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="bg-gray-50 border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-              <div className="flex items-center space-x-3">
-                <svg className="w-6 h-6 text-[#777C6D]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <h3 className="text-lg font-heading font-semibold text-gray-900">{viewingResume.name}</h3>
-              </div>
-              <div className="flex items-center gap-3">
-                {/* UC-053: View Issues Button */}
-                <ViewIssuesButton 
-                  validationResults={validationResults}
-                  onClick={() => setShowValidationIssuesPanel(v => !v)}
-                />
-                
-                {/* UC-053: Validate Button */}
-                <button
-                  onClick={() => handleValidateResume(viewingResume)}
-                  disabled={isValidating}
-                  className="px-4 py-2 text-white rounded-lg transition flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{ backgroundColor: isValidating ? '#9CA3AF' : '#10B981' }}
-                  onMouseOver={(e) => !isValidating && (e.currentTarget.style.backgroundColor = '#059669')}
-                  onMouseOut={(e) => !isValidating && (e.currentTarget.style.backgroundColor = '#10B981')}
-                  title="Validate resume before export"
-                >
-                  {isValidating ? (
-                    <>
-                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      <span>Validating...</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <span>Validate</span>
-                    </>
-                  )}
-                </button>
-                
-                {/* UC-053: Edit Mode Toggle with Dropdown */}
-                <FinishEditDropdown
-                  isEditMode={isEditMode}
-                  showDropdown={showEditDropdown}
-                  setShowDropdown={setShowEditDropdown}
-                  onToggleEditMode={toggleEditMode}
-                  onSaveAndExit={handleSaveEditedContent}
-                  onExitWithoutSaving={exitEditModeWithoutSaving}
-                />
-                
-                <button
-                  onClick={() => setShowCustomizationPanel(v => !v)}
-                  className="px-4 py-2 text-white rounded-lg transition flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
-                  style={{ backgroundColor: '#777C6D' }}
-                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                  </svg>
-                  <span>{showCustomizationPanel ? 'Hide Customization' : 'Customize Sections'}</span>
-                </button>
-                <button
-                  onClick={() => setShowViewResumeModal(false)}
-                  className="text-gray-400 hover:text-gray-600 transition"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            {/* Modal Content - HTML View only (PDF experimental removed) */}
-            <div className="flex-1 overflow-y-auto py-4 px-4" style={{ backgroundColor: '#525252' }}>
-              {/* Customization Panel */}
-              <CustomizationPanel
-                showCustomizationPanel={showCustomizationPanel}
-                selectedJobType={selectedJobType}
-                applyJobTypeConfig={applyJobTypeConfig}
-                showPresetMenu={showPresetMenu}
-                setShowPresetMenu={setShowPresetMenu}
-                SECTION_PRESETS={SECTION_PRESETS}
-                applyPreset={applyPreset}
-                customPresets={customPresets}
-                setShowSavePresetModal={setShowSavePresetModal}
-                sectionOrder={sectionOrder}
-                DEFAULT_SECTIONS={DEFAULT_SECTIONS}
-                visibleSections={visibleSections}
-                sectionFormatting={sectionFormatting}
-                viewingResume={viewingResume}
-                moveSection={moveSection}
-                handleToggleSection={handleToggleSection}
-                openSectionFormatting={openSectionFormatting}
-                getSectionStatus={getSectionStatus}
-                jobs={jobs}
-                selectedJobForSkills={selectedJobForSkills}
-                selectedJobForExperience={selectedJobForExperience}
-                setSelectedJobForSkills={setSelectedJobForSkills}
-                setSelectedJobForExperience={setSelectedJobForExperience}
-                handleOptimizeSkills={handleOptimizeSkills}
-                isOptimizingSkills={isOptimizingSkills}
-                handleTailorExperience={handleTailorExperience}
-                isTailoringExperience={isTailoringExperience}
-              />
-
-              {/* UC-053: Validation Issues Panel - Inline view below customization */}
-              {showValidationIssuesPanel && validationResults && (
-                <InlineValidationIssuesPanel
-                  validationResults={validationResults}
-                  onClose={() => setShowValidationIssuesPanel(false)}
-                />
-              )}
-
-              <div 
-                className="resume-printable mx-auto bg-white shadow-2xl print:shadow-none" 
-                style={{ 
-                  width: '8.5in', 
-                  minHeight: '11in', 
-                  padding: '0.75in',
-                  boxShadow: '0 0 0.5cm rgba(0,0,0,0.5)'
-                }}
+          <>
+            <div
+              className="fixed inset-0 flex items-center justify-center z-50 print:hidden"
+              style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+              onClick={() => setShowViewResumeModal(false)}
+            >
+              <div
+                className="bg-white rounded-lg shadow-2xl w-full mx-4 border border-gray-200 overflow-hidden flex flex-col"
+                style={{ maxWidth: '960px', height: '95vh' }}
+                onClick={(e) => e.stopPropagation()}
               >
-              
-              {/* Resume Header */}
-              <div 
-                className="pb-6 border-b-2"
-                style={{ 
-                  borderColor: theme.colors.primary,
-                  textAlign: resumeTemplate.layout?.headerAlignment || 'center',
-                  marginBottom: `${resumeTemplate.layout?.sectionSpacing || 32}px`
-                }}
-              >
-                {/* UC-053: Editable Contact Info in Edit Mode */}
-                {isEditMode ? (
-                  <EditableContactInfo
-                    contactInfo={viewingResume.sections?.contactInfo}
-                    editedContent={editedContent}
-                    setEditedContent={setEditedContent}
-                    theme={theme}
-                  />
-                ) : (
-                  <>
-                    <h1 className="font-bold mb-2" style={{ color: theme.colors.text, fontFamily: theme.fonts.heading, fontSize: theme.fonts.sizes?.name || "36px" }}>
-                      {viewingResume.sections?.contactInfo?.name || 'Your Name'}
-                    </h1>
-                    <div 
-                      className="flex flex-wrap gap-2 justify-center" 
-                      style={{ 
-                        color: theme.colors.muted, 
-                        fontFamily: theme.fonts.body, 
-                        fontSize: theme.fonts.sizes?.small || "12px"
-                      }}
+                {/* Modal Header */}
+                <div className="bg-gray-50 border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+                  <div className="flex items-center space-x-3">
+                    <svg className="w-6 h-6 text-[#777C6D]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <h3 className="text-lg font-heading font-semibold text-gray-900">{viewingResume.name}</h3>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {/* UC-053: View Issues Button */}
+                    <ViewIssuesButton
+                      validationResults={validationResults}
+                      onClick={() => setShowValidationIssuesPanel(v => !v)}
+                    />
+
+                    {/* UC-053: Validate Button */}
+                    <button
+                      onClick={() => handleValidateResume(viewingResume)}
+                      disabled={isValidating}
+                      className="px-4 py-2 text-white rounded-lg transition flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ backgroundColor: isValidating ? '#9CA3AF' : '#10B981' }}
+                      onMouseOver={(e) => !isValidating && (e.currentTarget.style.backgroundColor = '#059669')}
+                      onMouseOut={(e) => !isValidating && (e.currentTarget.style.backgroundColor = '#10B981')}
+                      title="Validate resume before export"
                     >
-                      {viewingResume.sections?.contactInfo?.email && (
-                        <span>{viewingResume.sections.contactInfo.email}</span>
-                      )}
-                      {viewingResume.sections?.contactInfo?.phone && (
+                      {isValidating ? (
                         <>
-                          {viewingResume.sections?.contactInfo?.email && <span>•</span>}
-                          <span>{viewingResume.sections.contactInfo.phone}</span>
+                          <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <span>Validating...</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <span>Validate</span>
                         </>
                       )}
-                      {viewingResume.sections?.contactInfo?.location && (
+                    </button>
+
+                    {/* UC-053: Edit Mode Toggle with Dropdown */}
+                    <FinishEditDropdown
+                      isEditMode={isEditMode}
+                      showDropdown={showEditDropdown}
+                      setShowDropdown={setShowEditDropdown}
+                      onToggleEditMode={toggleEditMode}
+                      onSaveAndExit={handleSaveEditedContent}
+                      onExitWithoutSaving={exitEditModeWithoutSaving}
+                    />
+
+                    <button
+                      onClick={() => setShowCustomizationPanel(v => !v)}
+                      className="px-4 py-2 text-white rounded-lg transition flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                      style={{ backgroundColor: '#777C6D' }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                      </svg>
+                      <span>{showCustomizationPanel ? 'Hide Customization' : 'Customize Sections'}</span>
+                    </button>
+                    <button
+                      onClick={() => setShowViewResumeModal(false)}
+                      className="text-gray-400 hover:text-gray-600 transition"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Modal Content - HTML View only (PDF experimental removed) */}
+                <div className="flex-1 overflow-y-auto py-4 px-4" style={{ backgroundColor: '#525252' }}>
+                  {/* Customization Panel */}
+                  <CustomizationPanel
+                    showCustomizationPanel={showCustomizationPanel}
+                    selectedJobType={selectedJobType}
+                    applyJobTypeConfig={applyJobTypeConfig}
+                    showPresetMenu={showPresetMenu}
+                    setShowPresetMenu={setShowPresetMenu}
+                    SECTION_PRESETS={SECTION_PRESETS}
+                    applyPreset={applyPreset}
+                    customPresets={customPresets}
+                    setShowSavePresetModal={setShowSavePresetModal}
+                    sectionOrder={sectionOrder}
+                    DEFAULT_SECTIONS={DEFAULT_SECTIONS}
+                    visibleSections={visibleSections}
+                    sectionFormatting={sectionFormatting}
+                    viewingResume={viewingResume}
+                    moveSection={moveSection}
+                    handleToggleSection={handleToggleSection}
+                    openSectionFormatting={openSectionFormatting}
+                    getSectionStatus={getSectionStatus}
+                    jobs={jobs}
+                    selectedJobForSkills={selectedJobForSkills}
+                    selectedJobForExperience={selectedJobForExperience}
+                    setSelectedJobForSkills={setSelectedJobForSkills}
+                    setSelectedJobForExperience={setSelectedJobForExperience}
+                    handleOptimizeSkills={handleOptimizeSkills}
+                    isOptimizingSkills={isOptimizingSkills}
+                    handleTailorExperience={handleTailorExperience}
+                    isTailoringExperience={isTailoringExperience}
+                  />
+
+                  {/* UC-053: Validation Issues Panel - Inline view below customization */}
+                  {showValidationIssuesPanel && validationResults && (
+                    <InlineValidationIssuesPanel
+                      validationResults={validationResults}
+                      onClose={() => setShowValidationIssuesPanel(false)}
+                    />
+                  )}
+
+                  <div
+                    className="resume-printable mx-auto bg-white shadow-2xl print:shadow-none"
+                    style={{
+                      width: '8.5in',
+                      minHeight: '11in',
+                      padding: '0.75in',
+                      boxShadow: '0 0 0.5cm rgba(0,0,0,0.5)'
+                    }}
+                  >
+
+                    {/* Resume Header */}
+                    <div
+                      className="pb-6 border-b-2"
+                      style={{
+                        borderColor: theme.colors.primary,
+                        textAlign: resumeTemplate.layout?.headerAlignment || 'center',
+                        marginBottom: `${resumeTemplate.layout?.sectionSpacing || 32}px`
+                      }}
+                    >
+                      {/* UC-053: Editable Contact Info in Edit Mode */}
+                      {isEditMode ? (
+                        <EditableContactInfo
+                          contactInfo={viewingResume.sections?.contactInfo}
+                          editedContent={editedContent}
+                          setEditedContent={setEditedContent}
+                          theme={theme}
+                        />
+                      ) : (
                         <>
-                          {(viewingResume.sections?.contactInfo?.email || viewingResume.sections?.contactInfo?.phone) && <span>•</span>}
-                          <span>{viewingResume.sections.contactInfo.location}</span>
+                          <h1 className="font-bold mb-2" style={{ color: theme.colors.text, fontFamily: theme.fonts.heading, fontSize: theme.fonts.sizes?.name || "36px" }}>
+                            {viewingResume.sections?.contactInfo?.name || 'Your Name'}
+                          </h1>
+                          <div
+                            className="flex flex-wrap gap-2 justify-center"
+                            style={{
+                              color: theme.colors.muted,
+                              fontFamily: theme.fonts.body,
+                              fontSize: theme.fonts.sizes?.small || "12px"
+                            }}
+                          >
+                            {viewingResume.sections?.contactInfo?.email && (
+                              <span>{viewingResume.sections.contactInfo.email}</span>
+                            )}
+                            {viewingResume.sections?.contactInfo?.phone && (
+                              <>
+                                {viewingResume.sections?.contactInfo?.email && <span>•</span>}
+                                <span>{viewingResume.sections.contactInfo.phone}</span>
+                              </>
+                            )}
+                            {viewingResume.sections?.contactInfo?.location && (
+                              <>
+                                {(viewingResume.sections?.contactInfo?.email || viewingResume.sections?.contactInfo?.phone) && <span>•</span>}
+                                <span>{viewingResume.sections.contactInfo.location}</span>
+                              </>
+                            )}
+                          </div>
+                          {/* Links row */}
+                          {(viewingResume.sections?.contactInfo?.linkedin ||
+                            viewingResume.sections?.contactInfo?.github ||
+                            viewingResume.sections?.contactInfo?.website) && (
+                              <div
+                                className="text-xs flex flex-wrap gap-2 mt-1 justify-center"
+                                style={{
+                                  color: '#4A5568'
+                                }}
+                              >
+                                {viewingResume.sections?.contactInfo?.linkedin && (
+                                  <a
+                                    href={viewingResume.sections.contactInfo.linkedin}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="hover:underline"
+                                  >
+                                    LinkedIn
+                                  </a>
+                                )}
+                                {viewingResume.sections?.contactInfo?.github && (
+                                  <>
+                                    {viewingResume.sections?.contactInfo?.linkedin && <span>•</span>}
+                                    <a
+                                      href={viewingResume.sections.contactInfo.github}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="hover:underline"
+                                    >
+                                      GitHub
+                                    </a>
+                                  </>
+                                )}
+                                {viewingResume.sections?.contactInfo?.website && (
+                                  <>
+                                    {(viewingResume.sections?.contactInfo?.linkedin || viewingResume.sections?.contactInfo?.github) && <span>•</span>}
+                                    <a
+                                      href={viewingResume.sections.contactInfo.website}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                    >
+                                      Portfolio
+                                    </a>
+                                  </>
+                                )}
+                              </div>
+                            )}
                         </>
                       )}
                     </div>
-                    {/* Links row */}
-                    {(viewingResume.sections?.contactInfo?.linkedin || 
-                      viewingResume.sections?.contactInfo?.github || 
-                      viewingResume.sections?.contactInfo?.website) && (
-                      <div 
-                        className="text-xs flex flex-wrap gap-2 mt-1 justify-center" 
-                        style={{ 
-                          color: '#4A5568'
-                        }}
-                      >
-                        {viewingResume.sections?.contactInfo?.linkedin && (
-                          <a 
-                            href={viewingResume.sections.contactInfo.linkedin} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="hover:underline"
-                          >
-                            LinkedIn
-                          </a>
-                        )}
-                        {viewingResume.sections?.contactInfo?.github && (
-                          <>
-                            {viewingResume.sections?.contactInfo?.linkedin && <span>•</span>}
-                            <a 
-                              href={viewingResume.sections.contactInfo.github} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="hover:underline"
-                            >
-                              GitHub
-                            </a>
-                          </>
-                        )}
-                        {viewingResume.sections?.contactInfo?.website && (
-                          <>
-                            {(viewingResume.sections?.contactInfo?.linkedin || viewingResume.sections?.contactInfo?.github) && <span>•</span>}
-                            <a 
-                              href={viewingResume.sections.contactInfo.website} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                            >
-                              Portfolio
-                            </a>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
 
-              {/* Render sections in current customized order and visibility */}
-              {sectionOrder
-                .filter(sectionKey => visibleSections.includes(sectionKey))
-                .map(sectionType => renderSection(sectionType))}
+                    {/* Render sections in current customized order and visibility */}
+                    {sectionOrder
+                      .filter(sectionKey => visibleSections.includes(sectionKey))
+                      .map(sectionType => renderSection(sectionType))}
 
-              </div>
-            </div>
-
-            {/* Save Preset Modal */}
-            <SavePresetModal
-              showModal={showSavePresetModal}
-              onClose={() => setShowSavePresetModal(false)}
-              presetName={presetName}
-              setPresetName={setPresetName}
-              onSave={saveCustomPreset}
-            />
-
-            {/* Section Formatting Panel */}
-            <SectionFormattingModal
-              showModal={showFormattingPanel}
-              onClose={() => setShowFormattingPanel(false)}
-              formattingSection={formattingSection}
-              sectionFormatting={sectionFormatting}
-              updateSectionFormatting={updateSectionFormatting}
-              setSectionFormatting={setSectionFormatting}
-              DEFAULT_SECTIONS={DEFAULT_SECTIONS}
-            />
-
-            {/* Success Message Banner */}
-            {successMessage && (
-              <div className="bg-green-50 border-l-4 border-green-500 px-6 py-3 print:hidden">
-                <div className="flex items-center gap-2">
-                  <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <p className="text-sm font-medium text-green-800">{successMessage}</p>
+                  </div>
                 </div>
-              </div>
-            )}
 
-            {/* Unsaved Changes Indicator */}
-            {hasUnsavedChanges && !successMessage && (
-              <div className="bg-yellow-50 border-l-4 border-yellow-400 px-6 py-3 print:hidden">
-                <div className="flex items-center gap-2">
-                  <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                  <p className="text-sm font-medium text-yellow-800">You have unsaved changes. Click "Save Changes" to keep your customization.</p>
-                </div>
-              </div>
-            )}
+                {/* Save Preset Modal */}
+                <SavePresetModal
+                  showModal={showSavePresetModal}
+                  onClose={() => setShowSavePresetModal(false)}
+                  presetName={presetName}
+                  setPresetName={setPresetName}
+                  onSave={saveCustomPreset}
+                />
 
-            {/* Modal Footer */}
-            <div className="bg-gray-50 px-6 py-4 flex justify-between items-center border-t print:hidden">
-              <div className="flex items-center gap-3">
-                <p className="text-[9px] text-gray-500">
-                  Last modified: {new Date(viewingResume.updatedAt).toLocaleString()}
-                </p>
-                {viewingResume.isDefault && (
-                  <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">
-                    Default
-                  </span>
-                )}
-              </div>
-              <div className="flex gap-3">
-                {/* UC-52: Compare Button */}
-                <button
-                  onClick={() => {
-                    // Show selector to choose which resume to compare with
-                    setCompareResumeId(null);
-                    setComparisonData(null);
-                    setShowCompareModal(true);
-                  }}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition flex items-center gap-2"
-                  title="Compare with another resume"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
-                  </svg>
-                  Compare
-                </button>
-                
-                {/* UC-048: Save Customization Button */}
-                <button
-                  onClick={handleSaveCustomization}
-                  disabled={!hasUnsavedChanges || isSavingCustomization}
-                  className={`px-4 py-2 rounded-lg transition flex items-center gap-2 ${
-                    hasUnsavedChanges && !isSavingCustomization
-                      ? 'bg-[#777C6D] text-white hover:bg-[#656A5C]'
-                      : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                  }`}
-                  title={hasUnsavedChanges ? "Save section customization changes" : "No unsaved changes"}
-                >
-                  {isSavingCustomization ? (
-                    <>
-                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                {/* Section Formatting Panel */}
+                <SectionFormattingModal
+                  showModal={showFormattingPanel}
+                  onClose={() => setShowFormattingPanel(false)}
+                  formattingSection={formattingSection}
+                  sectionFormatting={sectionFormatting}
+                  updateSectionFormatting={updateSectionFormatting}
+                  setSectionFormatting={setSectionFormatting}
+                  DEFAULT_SECTIONS={DEFAULT_SECTIONS}
+                />
+
+                {/* Success Message Banner */}
+                {successMessage && (
+                  <div className="bg-green-50 border-l-4 border-green-500 px-6 py-3 print:hidden">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      Saving...
-                    </>
-                  ) : (
-                    <>
+                      <p className="text-sm font-medium text-green-800">{successMessage}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Unsaved Changes Indicator */}
+                {hasUnsavedChanges && !successMessage && (
+                  <div className="bg-yellow-50 border-l-4 border-yellow-400 px-6 py-3 print:hidden">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      <p className="text-sm font-medium text-yellow-800">You have unsaved changes. Click "Save Changes" to keep your customization.</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Modal Footer */}
+                <div className="bg-gray-50 px-6 py-4 flex justify-between items-center border-t print:hidden">
+                  <div className="flex items-center gap-3">
+                    <p className="text-[9px] text-gray-500">
+                      Last modified: {new Date(viewingResume.updatedAt).toLocaleString()}
+                    </p>
+                    {viewingResume.isDefault && (
+                      <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">
+                        Default
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-3">
+                    {/* UC-52: Compare Button */}
+                    <button
+                      onClick={() => {
+                        // Show selector to choose which resume to compare with
+                        setCompareResumeId(null);
+                        setComparisonData(null);
+                        setShowCompareModal(true);
+                      }}
+                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition flex items-center gap-2"
+                      title="Compare with another resume"
+                    >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
                       </svg>
-                      {hasUnsavedChanges ? 'Save Changes' : 'Saved'}
-                    </>
-                  )}
-                </button>
-                
-                {/* UC-52: Set Default Button */}
-                {!viewingResume.isDefault && (
-                  <button
-                    onClick={() => handleSetDefaultResume(viewingResume._id)}
-                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition flex items-center gap-2"
-                    title="Set as default resume"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Set Default
-                  </button>
-                )}
-                
-                {/* UC-52: Archive/Unarchive Button */}
-                <button
-                  onClick={() => viewingResume.isArchived 
-                    ? handleUnarchiveResume(viewingResume._id) 
-                    : handleArchiveResume(viewingResume._id)
-                  }
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition flex items-center gap-2"
-                  title={viewingResume.isArchived ? "Unarchive resume" : "Archive resume"}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                  </svg>
-                  {viewingResume.isArchived ? 'Unarchive' : 'Archive'}
-                </button>
-                
-                {/* UC-51: Export Dropdown */}
-                <div className="relative">
-                  <button
-                    onClick={() => setShowExportMenu(!showExportMenu)}
-                    disabled={isExporting}
-                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition flex items-center gap-2 disabled:opacity-50"
-                  >
-                    {isExporting ? (
-                      <>
-                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Exporting...
-                      </>
-                    ) : (
-                      <>
+                      Compare
+                    </button>
+
+                    {/* UC-048: Save Customization Button */}
+                    <button
+                      onClick={handleSaveCustomization}
+                      disabled={!hasUnsavedChanges || isSavingCustomization}
+                      className={`px-4 py-2 rounded-lg transition flex items-center gap-2 ${hasUnsavedChanges && !isSavingCustomization
+                          ? 'bg-[#777C6D] text-white hover:bg-[#656A5C]'
+                          : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                        }`}
+                      title={hasUnsavedChanges ? "Save section customization changes" : "No unsaved changes"}
+                    >
+                      {isSavingCustomization ? (
+                        <>
+                          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                          </svg>
+                          {hasUnsavedChanges ? 'Save Changes' : 'Saved'}
+                        </>
+                      )}
+                    </button>
+
+                    {/* UC-52: Set Default Button */}
+                    {!viewingResume.isDefault && (
+                      <button
+                        onClick={() => handleSetDefaultResume(viewingResume._id)}
+                        className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition flex items-center gap-2"
+                        title="Set as default resume"
+                      >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
-                        Export
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </>
+                        Set Default
+                      </button>
                     )}
-                  </button>
-                  
-                  <ExportMenu
-                    isOpen={showExportMenu}
-                    onClose={() => setShowExportMenu(false)}
-                    onExport={handleExport}
-                    onPrintHtml={handlePrintHtml}
-                    isExporting={isExporting}
-                    watermarkEnabled={watermarkEnabled}
-                    setWatermarkEnabled={setWatermarkEnabled}
-                    watermarkText={watermarkText}
-                    onConfigureWatermark={() => setShowWatermarkModal(true)}
-                  />
-                </div>
-                
-                {/* <button
+
+                    {/* UC-52: Archive/Unarchive Button */}
+                    <button
+                      onClick={() => viewingResume.isArchived
+                        ? handleUnarchiveResume(viewingResume._id)
+                        : handleArchiveResume(viewingResume._id)
+                      }
+                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition flex items-center gap-2"
+                      title={viewingResume.isArchived ? "Unarchive resume" : "Archive resume"}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                      </svg>
+                      {viewingResume.isArchived ? 'Unarchive' : 'Archive'}
+                    </button>
+
+                    {/* UC-51: Export Dropdown */}
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowExportMenu(!showExportMenu)}
+                        disabled={isExporting}
+                        className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition flex items-center gap-2 disabled:opacity-50"
+                      >
+                        {isExporting ? (
+                          <>
+                            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Exporting...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            Export
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </>
+                        )}
+                      </button>
+
+                      <ExportMenu
+                        isOpen={showExportMenu}
+                        onClose={() => setShowExportMenu(false)}
+                        onExport={handleExport}
+                        onPrintHtml={handlePrintHtml}
+                        isExporting={isExporting}
+                        watermarkEnabled={watermarkEnabled}
+                        setWatermarkEnabled={setWatermarkEnabled}
+                        watermarkText={watermarkText}
+                        onConfigureWatermark={() => setShowWatermarkModal(true)}
+                      />
+                    </div>
+
+                    {/* <button
                   onClick={() => window.print()}
                   className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition flex items-center gap-2"
                 >
@@ -3902,37 +4261,37 @@ export default function ResumeTemplates() {
                   </svg>
                   Print
                 </button> */}
-                <button
-                  onClick={() => setShowViewResumeModal(false)}
-                  className="px-4 py-2 text-white rounded-lg transition"
-                  style={{ backgroundColor: '#777C6D' }}
-                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-                >
-                  Close
-                </button>
+                    <button
+                      onClick={() => setShowViewResumeModal(false)}
+                      className="px-4 py-2 text-white rounded-lg transition"
+                      style={{ backgroundColor: '#777C6D' }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-        </>
+          </>
         );
       })()}
 
       {/* UC-053: Validation Panel Modal */}
       {showValidationPanel && validationResults && (
-        <div 
+        <div
           className="fixed inset-0 flex items-center justify-center p-4"
-          style={{ 
+          style={{
             backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            zIndex: 9999 
+            zIndex: 9999
           }}
           onClick={() => {
             setShowValidationPanel(false);
             // Keep validationResults so "View Issues" button stays visible
           }}
         >
-          <div 
+          <div
             className="max-w-4xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
@@ -3993,16 +4352,16 @@ export default function ResumeTemplates() {
 
       {/* UC-52: Merge Resume Modal */}
       {showMergeModal && comparisonData && viewingResume && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
           onClick={() => {
             setShowMergeModal(false);
             setSelectedMergeChanges([]);
           }}
         >
-          <div 
-            className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-gray-200" 
+          <div
+            className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-gray-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -4139,11 +4498,11 @@ export default function ResumeTemplates() {
                 {comparisonData.fullData.resume2.skills?.length > 0 && (() => {
                   // Get current resume skills to show which are new/different
                   const currentSkillNames = new Set(
-                    (comparisonData.fullData.resume1.skills || []).map(s => 
+                    (comparisonData.fullData.resume1.skills || []).map(s =>
                       typeof s === 'string' ? s : s.name
                     )
                   );
-                  
+
                   return (
                     <div className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition">
                       <label className="flex items-start gap-3 cursor-pointer">
@@ -4174,15 +4533,14 @@ export default function ResumeTemplates() {
                         {comparisonData.fullData.resume2.skills.map((skill, idx) => {
                           const skillName = typeof skill === 'string' ? skill : skill.name;
                           const isInCurrent = currentSkillNames.has(skillName);
-                          
+
                           return (
-                            <label 
-                              key={idx} 
-                              className={`flex items-center gap-2 px-3 py-1.5 rounded cursor-pointer transition ${
-                                isInCurrent 
-                                  ? 'bg-gray-100 text-gray-500' 
+                            <label
+                              key={idx}
+                              className={`flex items-center gap-2 px-3 py-1.5 rounded cursor-pointer transition ${isInCurrent
+                                  ? 'bg-gray-100 text-gray-500'
                                   : 'bg-purple-50 hover:bg-purple-100 text-purple-900'
-                              }`}
+                                }`}
                             >
                               <input
                                 type="checkbox"
@@ -4345,13 +4703,13 @@ export default function ResumeTemplates() {
 
       {/* UC-49: Skills Optimization Modal */}
       {showSkillsOptimization && skillsOptimizationData && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
           onClick={() => setShowSkillsOptimization(false)}
         >
-          <div 
-            className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" 
+          <div
+            className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -4455,19 +4813,18 @@ export default function ResumeTemplates() {
                     {skillsOptimizationData.optimization.technicalSkills.map((skill, idx) => {
                       const isInResume = currentResumeSkills.includes(skill);
                       const isSelected = selectedSkillsToAdd.includes(skill);
-                      
+
                       return (
                         <button
                           key={idx}
                           onClick={() => !isInResume && toggleSkillSelection(skill)}
                           disabled={isInResume}
-                          className={`px-3 py-1.5 rounded-full text-sm border transition-all flex items-center gap-2 ${
-                            isInResume 
-                              ? 'bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed' 
+                          className={`px-3 py-1.5 rounded-full text-sm border transition-all flex items-center gap-2 ${isInResume
+                              ? 'bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed'
                               : isSelected
-                              ? 'bg-blue-600 text-white border-blue-600 shadow-md'
-                              : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 cursor-pointer'
-                          }`}
+                                ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                                : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 cursor-pointer'
+                            }`}
                         >
                           {isSelected && (
                             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -4495,19 +4852,18 @@ export default function ResumeTemplates() {
                     {skillsOptimizationData.optimization.softSkills.map((skill, idx) => {
                       const isInResume = currentResumeSkills.includes(skill);
                       const isSelected = selectedSkillsToAdd.includes(skill);
-                      
+
                       return (
                         <button
                           key={idx}
                           onClick={() => !isInResume && toggleSkillSelection(skill)}
                           disabled={isInResume}
-                          className={`px-3 py-1.5 rounded-full text-sm border transition-all flex items-center gap-2 ${
-                            isInResume 
-                              ? 'bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed' 
+                          className={`px-3 py-1.5 rounded-full text-sm border transition-all flex items-center gap-2 ${isInResume
+                              ? 'bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed'
                               : isSelected
-                              ? 'bg-purple-600 text-white border-purple-600 shadow-md'
-                              : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 cursor-pointer'
-                          }`}
+                                ? 'bg-purple-600 text-white border-purple-600 shadow-md'
+                                : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 cursor-pointer'
+                            }`}
                         >
                           {isSelected && (
                             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -4541,7 +4897,7 @@ export default function ResumeTemplates() {
                       const skillName = typeof skill === 'string' ? skill : skill.name;
                       const importance = skill.importance || null;
                       const suggestion = skill.suggestion || null;
-                      
+
                       return (
                         <div
                           key={idx}
@@ -4604,7 +4960,7 @@ export default function ResumeTemplates() {
                       // Handle both string and object formats
                       const skillName = typeof rec === 'string' ? rec : (rec.skill || rec.name);
                       const reason = rec.reason || null;
-                      
+
                       return (
                         <div key={idx} className="bg-white rounded-lg p-3 border border-gray-200">
                           <div className="flex items-start gap-2">
@@ -4683,13 +5039,13 @@ export default function ResumeTemplates() {
 
       {/* UC-50: Experience Tailoring Modal - Coming in next update */}
       {showExperienceTailoring && experienceTailoringData && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
           onClick={() => setShowExperienceTailoring(false)}
         >
-          <div 
-            className="bg-white rounded-lg shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto" 
+          <div
+            className="bg-white rounded-lg shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -4744,16 +5100,15 @@ export default function ResumeTemplates() {
                       <h4 className="text-md font-semibold text-gray-900">
                         Experience #{exp.experienceIndex + 1}
                       </h4>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        exp.relevanceScore >= 80 ? 'bg-green-100 text-green-800' :
-                        exp.relevanceScore >= 60 ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${exp.relevanceScore >= 80 ? 'bg-green-100 text-green-800' :
+                          exp.relevanceScore >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-gray-100 text-gray-800'
+                        }`}>
                         {exp.relevanceScore}% Relevant
                       </span>
                     </div>
                   </div>
-                  
+
                   <div className="p-5 space-y-4">
                     {exp.bullets?.map((bullet, bulletIdx) => (
                       <div key={bulletIdx} className="border-l-4 border-purple-300 pl-4 space-y-3">
@@ -4769,7 +5124,7 @@ export default function ResumeTemplates() {
                             <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                               AI-Generated Variations (Click to Select)
                             </div>
-                            
+
                             {/* Original Option */}
                             <button
                               onClick={() => {
@@ -4782,18 +5137,17 @@ export default function ResumeTemplates() {
                                   setSelectedExperienceVariations(prev => ({ ...prev, [key]: 'original' }));
                                 }
                               }}
-                              className={`w-full text-left bg-gray-50 rounded p-3 border-2 transition cursor-pointer ${
-                                !selectedExperienceVariations[`${expIdx}-${bulletIdx}`] || selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'original'
+                              className={`w-full text-left bg-gray-50 rounded p-3 border-2 transition cursor-pointer ${!selectedExperienceVariations[`${expIdx}-${bulletIdx}`] || selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'original'
                                   ? 'border-gray-400 bg-gray-100'
                                   : 'border-gray-200 hover:border-gray-300'
-                              }`}
+                                }`}
                             >
                               <div className="flex items-start gap-2">
                                 <input
                                   type="radio"
                                   name={`variation-${expIdx}-${bulletIdx}`}
                                   checked={!selectedExperienceVariations[`${expIdx}-${bulletIdx}`] || selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'original'}
-                                  onChange={() => {}}
+                                  onChange={() => { }}
                                   className="mt-1"
                                 />
                                 <div className="flex-1">
@@ -4802,22 +5156,21 @@ export default function ResumeTemplates() {
                                 </div>
                               </div>
                             </button>
-                            
+
                             {bullet.variations.achievement && (
                               <button
                                 onClick={() => toggleExperienceVariation(expIdx, bulletIdx, 'achievement')}
-                                className={`w-full text-left bg-blue-50 rounded p-3 border-2 transition cursor-pointer ${
-                                  selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'achievement'
+                                className={`w-full text-left bg-blue-50 rounded p-3 border-2 transition cursor-pointer ${selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'achievement'
                                     ? 'border-blue-600 bg-blue-100 shadow-md'
                                     : 'border-blue-200 hover:border-blue-400'
-                                }`}
+                                  }`}
                               >
                                 <div className="flex items-start gap-2">
                                   <input
                                     type="radio"
                                     name={`variation-${expIdx}-${bulletIdx}`}
                                     checked={selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'achievement'}
-                                    onChange={() => {}}
+                                    onChange={() => { }}
                                     className="mt-1"
                                   />
                                   <div className="flex-1">
@@ -4827,22 +5180,21 @@ export default function ResumeTemplates() {
                                 </div>
                               </button>
                             )}
-                            
+
                             {bullet.variations.technical && (
                               <button
                                 onClick={() => toggleExperienceVariation(expIdx, bulletIdx, 'technical')}
-                                className={`w-full text-left bg-green-50 rounded p-3 border-2 transition cursor-pointer ${
-                                  selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'technical'
+                                className={`w-full text-left bg-green-50 rounded p-3 border-2 transition cursor-pointer ${selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'technical'
                                     ? 'border-green-600 bg-green-100 shadow-md'
                                     : 'border-green-200 hover:border-green-400'
-                                }`}
+                                  }`}
                               >
                                 <div className="flex items-start gap-2">
                                   <input
                                     type="radio"
                                     name={`variation-${expIdx}-${bulletIdx}`}
                                     checked={selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'technical'}
-                                    onChange={() => {}}
+                                    onChange={() => { }}
                                     className="mt-1"
                                   />
                                   <div className="flex-1">
@@ -4852,22 +5204,21 @@ export default function ResumeTemplates() {
                                 </div>
                               </button>
                             )}
-                            
+
                             {bullet.variations.impact && (
                               <button
                                 onClick={() => toggleExperienceVariation(expIdx, bulletIdx, 'impact')}
-                                className={`w-full text-left bg-purple-50 rounded p-3 border-2 transition cursor-pointer ${
-                                  selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'impact'
+                                className={`w-full text-left bg-purple-50 rounded p-3 border-2 transition cursor-pointer ${selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'impact'
                                     ? 'border-purple-600 bg-purple-100 shadow-md'
                                     : 'border-purple-200 hover:border-purple-400'
-                                }`}
+                                  }`}
                               >
                                 <div className="flex items-start gap-2">
                                   <input
                                     type="radio"
                                     name={`variation-${expIdx}-${bulletIdx}`}
                                     checked={selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'impact'}
-                                    onChange={() => {}}
+                                    onChange={() => { }}
                                     className="mt-1"
                                   />
                                   <div className="flex-1">
@@ -4895,7 +5246,7 @@ export default function ResumeTemplates() {
                                 </div>
                               </div>
                             )}
-                            
+
                             {bullet.keywordsToAdd?.length > 0 && (
                               <div>
                                 <div className="text-xs font-medium text-gray-600 mb-1">Keywords to Add:</div>
@@ -4976,12 +5327,12 @@ export default function ResumeTemplates() {
 
       {/* Cover Letter Template Browser Modal */}
       {showCoverLetterBrowser && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
           onClick={() => setShowCoverLetterBrowser(false)}
         >
-          <div 
+          <div
             className="bg-white rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
@@ -5036,10 +5387,10 @@ export default function ResumeTemplates() {
                   {(() => {
                     // Deduplicate default templates - keep only one per name
                     const defaultTemplateNames = [
-                      'Formal Professional', 
-                      'Modern Professional', 
-                      'Creative Expression', 
-                      'Technical Professional', 
+                      'Formal Professional',
+                      'Modern Professional',
+                      'Creative Expression',
+                      'Technical Professional',
                       'Executive Leadership',
                       'Technology Professional',
                       'Business Professional',
@@ -5048,7 +5399,7 @@ export default function ResumeTemplates() {
                     const seenNames = new Set();
                     const uniqueTemplates = coverLetterTemplates.filter(template => {
                       const isDefaultSystemTemplate = defaultTemplateNames.includes(template.name);
-                      
+
                       if (isDefaultSystemTemplate) {
                         if (seenNames.has(template.name)) {
                           return false; // Skip duplicate by name
@@ -5058,98 +5409,98 @@ export default function ResumeTemplates() {
                       }
                       return true; // Keep all custom templates
                     });
-                    
+
                     return uniqueTemplates.map((template) => (
-                    <Card 
-                      key={template._id} 
-                      variant="outlined" 
-                      interactive 
-                      className="p-4 hover:border-[#777C6D] transition"
-                    >
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <h3 className="font-semibold text-lg">{template.name}</h3>
-                          <div className="flex gap-2 mt-1">
-                            <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded capitalize">
-                              {template.style} Style
-                            </span>
+                      <Card
+                        key={template._id}
+                        variant="outlined"
+                        interactive
+                        className="p-4 hover:border-[#777C6D] transition"
+                      >
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <h3 className="font-semibold text-lg">{template.name}</h3>
+                            <div className="flex gap-2 mt-1">
+                              <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded capitalize">
+                                {template.style} Style
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                        {template.description}
-                      </p>
-                      <div className="flex flex-col gap-2">
-                        <div className="flex gap-2">
-                          <Button
-                            variant="secondary"
-                            size="small"
-                            onClick={() => {
-                              setSelectedCoverLetterTemplate(template);
-                              setShowCoverLetterPreview(true);
-                            }}
-                          >
-                            Preview
-                          </Button>
-                          <Button
-                            variant="primary"
-                            size="small"
-                            onClick={async () => {
-                              try {
-                                await authWrap();
+                        <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                          {template.description}
+                        </p>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex gap-2">
+                            <Button
+                              variant="secondary"
+                              size="small"
+                              onClick={() => {
                                 setSelectedCoverLetterTemplate(template);
-                                setShowCoverLetterBrowser(false);
-                                
-                                // Initialize the customization form
-                                setCustomCoverLetterName(`${template.name} - Customized`);
-                                setCustomCoverLetterContent(template.content);
-                                setCustomCoverLetterStyle(template.style || 'formal');
-                                setIsCreatingCoverLetterTemplate(false); // Using template to create cover letter
-                                setShowCoverLetterCustomize(true);
-                              } catch (err) {
-                                console.error("Failed to prepare template:", err);
-                              }
-                            }}
-                          >
-                            Use
-                          </Button>
+                                setShowCoverLetterPreview(true);
+                              }}
+                            >
+                              Preview
+                            </Button>
+                            <Button
+                              variant="primary"
+                              size="small"
+                              onClick={async () => {
+                                try {
+                                  await authWrap();
+                                  setSelectedCoverLetterTemplate(template);
+                                  setShowCoverLetterBrowser(false);
+
+                                  // Initialize the customization form
+                                  setCustomCoverLetterName(`${template.name} - Customized`);
+                                  setCustomCoverLetterContent(template.content);
+                                  setCustomCoverLetterStyle(template.style || 'formal');
+                                  setIsCreatingCoverLetterTemplate(false); // Using template to create cover letter
+                                  setShowCoverLetterCustomize(true);
+                                } catch (err) {
+                                  console.error("Failed to prepare template:", err);
+                                }
+                              }}
+                            >
+                              Use
+                            </Button>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await authWrap();
+                                  const response = await exportCoverLetterTemplate(template._id);
+                                  const dataStr = JSON.stringify(response.data.data.template, null, 2);
+                                  const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                                  const url = URL.createObjectURL(dataBlob);
+                                  const link = document.createElement('a');
+                                  link.href = url;
+                                  link.download = `${template.name.replace(/\s+/g, '_')}_template.json`;
+                                  link.click();
+                                  URL.revokeObjectURL(url);
+                                } catch (err) {
+                                  console.error("Export failed:", err);
+                                  alert("Failed to export template");
+                                }
+                              }}
+                              className="flex-1 text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50 transition"
+                            >
+                              Export
+                            </button>
+                            <button
+                              onClick={() => {
+                                setShareTemplateId(template._id);
+                                setShowCoverLetterShare(true);
+                              }}
+                              className="flex-1 text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50 transition"
+                            >
+                              Share
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={async () => {
-                              try {
-                                await authWrap();
-                                const response = await exportCoverLetterTemplate(template._id);
-                                const dataStr = JSON.stringify(response.data.data.template, null, 2);
-                                const dataBlob = new Blob([dataStr], { type: 'application/json' });
-                                const url = URL.createObjectURL(dataBlob);
-                                const link = document.createElement('a');
-                                link.href = url;
-                                link.download = `${template.name.replace(/\s+/g, '_')}_template.json`;
-                                link.click();
-                                URL.revokeObjectURL(url);
-                              } catch (err) {
-                                console.error("Export failed:", err);
-                                alert("Failed to export template");
-                              }
-                            }}
-                            className="flex-1 text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50 transition"
-                          >
-                            Export
-                          </button>
-                          <button
-                            onClick={() => {
-                              setShareTemplateId(template._id);
-                              setShowCoverLetterShare(true);
-                            }}
-                            className="flex-1 text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50 transition"
-                          >
-                            Share
-                          </button>
-                        </div>
-                      </div>
-                    </Card>
-                  ));
+                      </Card>
+                    ));
                   })()}
                 </div>
               )}
@@ -5160,12 +5511,12 @@ export default function ResumeTemplates() {
 
       {/* Cover Letter Preview Modal */}
       {showCoverLetterPreview && selectedCoverLetterTemplate && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
           onClick={() => setShowCoverLetterPreview(false)}
         >
-          <div 
+          <div
             className="bg-white rounded-lg shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
@@ -5217,7 +5568,7 @@ export default function ResumeTemplates() {
                       await authWrap();
                       setShowCoverLetterPreview(false);
                       setShowCoverLetterBrowser(false);
-                      
+
                       // Initialize the customization form
                       setCustomCoverLetterName(`${selectedCoverLetterTemplate.name} - Customized`);
                       setCustomCoverLetterContent(selectedCoverLetterTemplate.content);
@@ -5239,12 +5590,12 @@ export default function ResumeTemplates() {
 
       {/* Cover Letter Customize Modal */}
       {showCoverLetterCustomize && selectedCoverLetterTemplate && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
           onClick={() => setShowCoverLetterCustomize(false)}
         >
-          <div 
+          <div
             className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
@@ -5332,7 +5683,7 @@ export default function ResumeTemplates() {
                 </p>
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
                   <p className="text-sm text-yellow-800">
-                    <strong>Tip:</strong> Common placeholders include [YOUR_NAME], [POSITION], [COMPANY], [HIRING_MANAGER_NAME], 
+                    <strong>Tip:</strong> Common placeholders include [YOUR_NAME], [POSITION], [COMPANY], [HIRING_MANAGER_NAME],
                     [FIELD], [SKILLS], [ACHIEVEMENT], etc.
                   </p>
                 </div>
@@ -5365,7 +5716,7 @@ export default function ResumeTemplates() {
                       }
 
                       await authWrap();
-                      
+
                       if (isCreatingCoverLetterTemplate) {
                         // Creating a reusable template
                         await createCoverLetterTemplate({
@@ -5375,12 +5726,12 @@ export default function ResumeTemplates() {
                           description: `Custom ${selectedCoverLetterTemplate.style || 'formal'} cover letter template`,
                           content: customCoverLetterContent
                         });
-                        
+
                         setShowCoverLetterCustomize(false);
                         setCustomCoverLetterName('');
                         setCustomCoverLetterContent('');
                         setIsCreatingCoverLetterTemplate(false);
-                        
+
                         await loadCoverLetterTemplates();
                         setShowManageCoverLetterTemplates(true); // Reopen Manage Templates modal
                         alert("Cover letter template created successfully!");
@@ -5392,13 +5743,13 @@ export default function ResumeTemplates() {
                           style: customCoverLetterStyle,
                           templateId: selectedCoverLetterTemplate._id || null
                         });
-                        
+
                         setShowCoverLetterCustomize(false);
                         setCustomCoverLetterName('');
                         setCustomCoverLetterContent('');
                         setCustomCoverLetterStyle('formal');
                         setIsCreatingCoverLetterTemplate(false);
-                        
+
                         await loadSavedCoverLetters();
                         alert("Cover letter saved successfully!");
                       }
@@ -5418,12 +5769,12 @@ export default function ResumeTemplates() {
 
       {/* Cover Letter Import Modal */}
       {showCoverLetterImport && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
           onClick={() => setShowCoverLetterImport(false)}
         >
-          <div 
+          <div
             className="bg-white rounded-lg shadow-2xl max-w-2xl w-full"
             onClick={(e) => e.stopPropagation()}
           >
@@ -5488,7 +5839,7 @@ export default function ResumeTemplates() {
                       }
 
                       await authWrap();
-                      
+
                       // Create template from plain text
                       const templateName = customCoverLetterName.trim() || 'Imported Cover Letter';
                       await createCoverLetterTemplate({
@@ -5499,7 +5850,7 @@ export default function ResumeTemplates() {
                         content: importCoverLetterJson.trim(),
                         isTemplate: true  // Import as a reusable template
                       });
-                      
+
                       setShowCoverLetterImport(false);
                       setImportCoverLetterJson('');
                       setCustomCoverLetterName('');
@@ -5521,12 +5872,12 @@ export default function ResumeTemplates() {
 
       {/* Cover Letter Share Modal */}
       {showCoverLetterShare && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
           onClick={() => setShowCoverLetterShare(false)}
         >
-          <div 
+          <div
             className="bg-white rounded-lg shadow-2xl max-w-md w-full"
             onClick={(e) => e.stopPropagation()}
           >
@@ -5604,12 +5955,12 @@ export default function ResumeTemplates() {
 
       {/* Add Cover Letter Modal */}
       {showAddCoverLetterModal && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
           onClick={() => setShowAddCoverLetterModal(false)}
         >
-          <div 
+          <div
             className="bg-white rounded-lg shadow-2xl max-w-lg w-full"
             onClick={(e) => e.stopPropagation()}
           >
@@ -6062,12 +6413,12 @@ export default function ResumeTemplates() {
 
       {/* Manage Cover Letter Templates Modal */}
       {showManageCoverLetterTemplates && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
           style={{ backgroundColor: 'rgba(0, 0 0, 0.48)' }}
           onClick={() => setShowManageCoverLetterTemplates(false)}
         >
-          <div 
+          <div
             className="bg-white rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
@@ -6135,10 +6486,10 @@ export default function ResumeTemplates() {
                   {(() => {
                     // Deduplicate default templates - keep only one per name
                     const defaultTemplateNames = [
-                      'Formal Professional', 
-                      'Modern Professional', 
-                      'Creative Expression', 
-                      'Technical Professional', 
+                      'Formal Professional',
+                      'Modern Professional',
+                      'Creative Expression',
+                      'Technical Professional',
                       'Executive Leadership',
                       'Technology Professional',
                       'Business Professional',
@@ -6147,7 +6498,7 @@ export default function ResumeTemplates() {
                     const seenNames = new Set();
                     const uniqueTemplates = coverLetterTemplates.filter(template => {
                       const isDefaultSystemTemplate = defaultTemplateNames.includes(template.name);
-                      
+
                       if (isDefaultSystemTemplate) {
                         if (seenNames.has(template.name)) {
                           return false; // Skip duplicate by name
@@ -6157,80 +6508,80 @@ export default function ResumeTemplates() {
                       }
                       return true; // Keep all custom templates
                     });
-                    
+
                     return uniqueTemplates.map((template) => {
-                    // Check if this is a default system template
-                    const isDefaultSystemTemplate = defaultTemplateNames.includes(template.name);
-                    
-                    return (
-                      <div
-                        key={template._id}
-                        className="border-2 border-gray-300 rounded-lg overflow-hidden hover:border-[#777C6D] transition"
-                      >
-                        <div className="bg-white p-4 h-64 overflow-hidden">
-                          <div className="text-xs font-mono whitespace-pre-wrap text-gray-700 line-clamp-[14]">
-                            {template.content}
-                          </div>
-                        </div>
-                        <div className="border-t border-gray-200 p-4 bg-gray-50">
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex-1">
-                              <h3 className="font-semibold truncate" style={{ color: "#4F5348" }}>
-                                {template.name}
-                              </h3>
-                              <p className="text-xs text-gray-600 mt-1">{template.description || template.style}</p>
+                      // Check if this is a default system template
+                      const isDefaultSystemTemplate = defaultTemplateNames.includes(template.name);
+
+                      return (
+                        <div
+                          key={template._id}
+                          className="border-2 border-gray-300 rounded-lg overflow-hidden hover:border-[#777C6D] transition"
+                        >
+                          <div className="bg-white p-4 h-64 overflow-hidden">
+                            <div className="text-xs font-mono whitespace-pre-wrap text-gray-700 line-clamp-[14]">
+                              {template.content}
                             </div>
-                            {template.isDefault && (
-                              <span className="ml-2 px-2 py-1 text-xs rounded" style={{ backgroundColor: "#E8EAE3", color: "#4F5348" }}>
-                                Default
-                              </span>
-                            )}
                           </div>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => {
-                                setSelectedCoverLetterTemplate(template);
-                                setCustomCoverLetterName(`${template.name} - Copy`);
-                                setCustomCoverLetterContent(template.content);
-                                setIsCreatingCoverLetterTemplate(false);
-                                setShowManageCoverLetterTemplates(false);
-                                setShowCoverLetterCustomize(true);
-                              }}
-                              className={`${isDefaultSystemTemplate ? 'w-full' : 'flex-1'} px-3 py-2 text-sm text-white rounded transition`}
-                              style={{ backgroundColor: '#777C6D' }}
-                              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-                            >
-                              Use Template
-                            </button>
-                            {!isDefaultSystemTemplate && (
+                          <div className="border-t border-gray-200 p-4 bg-gray-50">
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex-1">
+                                <h3 className="font-semibold truncate" style={{ color: "#4F5348" }}>
+                                  {template.name}
+                                </h3>
+                                <p className="text-xs text-gray-600 mt-1">{template.description || template.style}</p>
+                              </div>
+                              {template.isDefault && (
+                                <span className="ml-2 px-2 py-1 text-xs rounded" style={{ backgroundColor: "#E8EAE3", color: "#4F5348" }}>
+                                  Default
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex gap-2">
                               <button
-                                onClick={async () => {
-                                  if (confirm(`Delete "${template.name}"?`)) {
-                                    try {
-                                      await authWrap();
-                                      await deleteCoverLetterTemplate(template._id);
-                                      await loadCoverLetterTemplates();
-                                      setShowManageCoverLetterTemplates(true);
-                                      alert("Template deleted successfully!");
-                                    } catch (err) {
-                                      console.error("Delete failed:", err);
-                                      alert("Failed to delete template");
-                                    }
-                                  }
+                                onClick={() => {
+                                  setSelectedCoverLetterTemplate(template);
+                                  setCustomCoverLetterName(`${template.name} - Copy`);
+                                  setCustomCoverLetterContent(template.content);
+                                  setIsCreatingCoverLetterTemplate(false);
+                                  setShowManageCoverLetterTemplates(false);
+                                  setShowCoverLetterCustomize(true);
                                 }}
-                                className="px-3 py-2 text-sm text-red-600 hover:text-red-700 border border-red-300 rounded transition"
-                                title="Delete Template"
+                                className={`${isDefaultSystemTemplate ? 'w-full' : 'flex-1'} px-3 py-2 text-sm text-white rounded transition`}
+                                style={{ backgroundColor: '#777C6D' }}
+                                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
                               >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
+                                Use Template
                               </button>
-                            )}
+                              {!isDefaultSystemTemplate && (
+                                <button
+                                  onClick={async () => {
+                                    if (confirm(`Delete "${template.name}"?`)) {
+                                      try {
+                                        await authWrap();
+                                        await deleteCoverLetterTemplate(template._id);
+                                        await loadCoverLetterTemplates();
+                                        setShowManageCoverLetterTemplates(true);
+                                        alert("Template deleted successfully!");
+                                      } catch (err) {
+                                        console.error("Delete failed:", err);
+                                        alert("Failed to delete template");
+                                      }
+                                    }
+                                  }}
+                                  className="px-3 py-2 text-sm text-red-600 hover:text-red-700 border border-red-300 rounded transition"
+                                  title="Delete Template"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
+                      );
                     });
                   })()}
                 </div>
@@ -6242,12 +6593,12 @@ export default function ResumeTemplates() {
 
       {/* Cover Letter Template Analytics Modal */}
       {showCoverLetterAnalytics && coverLetterAnalytics && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
           onClick={() => setShowCoverLetterAnalytics(false)}
         >
-          <div 
+          <div
             className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
@@ -6382,8 +6733,8 @@ export default function ResumeTemplates() {
                           <span className="text-sm text-gray-600">{data.usage} uses</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="bg-blue-500 h-2 rounded-full" 
+                          <div
+                            className="bg-blue-500 h-2 rounded-full"
                             style={{ width: `${(data.usage / coverLetterAnalytics.summary.totalUsage) * 100}%` }}
                           />
                         </div>
@@ -6406,8 +6757,8 @@ export default function ResumeTemplates() {
                           <span className="text-sm text-gray-600">{data.usage} uses</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="bg-purple-500 h-2 rounded-full" 
+                          <div
+                            className="bg-purple-500 h-2 rounded-full"
                             style={{ width: `${(data.usage / coverLetterAnalytics.summary.totalUsage) * 100}%` }}
                           />
                         </div>
@@ -6437,12 +6788,12 @@ export default function ResumeTemplates() {
 
       {/* Edit Cover Letter Modal */}
       {showEditCoverLetterModal && editingCoverLetter && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
           onClick={() => setShowEditCoverLetterModal(false)}
         >
-          <div 
+          <div
             className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
@@ -6528,12 +6879,12 @@ export default function ResumeTemplates() {
                         content: customCoverLetterContent,
                         style: customCoverLetterStyle
                       });
-                      
+
                       setShowEditCoverLetterModal(false);
                       setEditingCoverLetter(null);
                       setCustomCoverLetterName('');
                       setCustomCoverLetterContent('');
-                      
+
                       await loadSavedCoverLetters();
                       alert("Cover letter updated successfully!");
                     } catch (err) {

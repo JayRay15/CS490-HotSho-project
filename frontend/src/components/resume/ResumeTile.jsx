@@ -7,7 +7,7 @@ import ValidationBadge from './ValidationBadge';
  * Shows resume preview, name, dates, actions (view/rename/delete), badges (archived, validation)
  * Part of UC-052 (Resume Versioning) and UC-053 (Validation)
  */
-function ResumeTile({ resume, template, onView, onDelete, onRename, validationStatus }) {
+function ResumeTile({ resume, template, onView, onDelete, onRename, onShare, validationStatus }) {
   const theme = template?.theme || { colors: { primary: "#4F5348", text: "#222" } };
   const fonts = theme?.fonts || { heading: "Inter, sans-serif", body: "Inter, sans-serif", sizes: {} };
 
@@ -15,7 +15,7 @@ function ResumeTile({ resume, template, onView, onDelete, onRename, validationSt
   return (
     <Card variant="outlined" interactive className={`overflow-hidden !p-0 ${resume.isArchived ? 'opacity-60' : ''}`}>
       {/* Preview Area */}
-      <div 
+      <div
         className="h-64 p-4 flex flex-col justify-start border-b cursor-pointer"
         style={{ backgroundColor: "#F9F9F9" }}
         onClick={onView}
@@ -24,38 +24,38 @@ function ResumeTile({ resume, template, onView, onDelete, onRename, validationSt
           {resume.name || "Untitled Resume"}
         </div>
         <div className="flex-1 space-y-2 overflow-hidden">
-            {/* Simple preview of resume sections */}
-            {resume.sections?.contactInfo && (
-              <div className="text-[8px] text-gray-700 font-semibold" style={{ fontFamily: fonts.heading }}>
-                {resume.sections.contactInfo.name || "Name"}
+          {/* Simple preview of resume sections */}
+          {resume.sections?.contactInfo && (
+            <div className="text-[8px] text-gray-700 font-semibold" style={{ fontFamily: fonts.heading }}>
+              {resume.sections.contactInfo.name || "Name"}
+            </div>
+          )}
+          {resume.sections?.summary && (
+            <div className="text-[7px] text-gray-600 leading-tight line-clamp-2" style={{ fontFamily: fonts.body }}>
+              {resume.sections.summary.substring(0, 100)}...
+            </div>
+          )}
+          {resume.sections?.experience && resume.sections.experience.length > 0 && (
+            <div className="mt-2">
+              <div className="text-[7px] text-gray-700 font-semibold" style={{ fontFamily: fonts.heading }}>
+                {resume.sections.experience[0].company}
               </div>
-            )}
-            {resume.sections?.summary && (
-              <div className="text-[7px] text-gray-600 leading-tight line-clamp-2" style={{ fontFamily: fonts.body }}>
-                {resume.sections.summary.substring(0, 100)}...
+              <div className="text-[6px] text-gray-500 italic" style={{ fontFamily: fonts.heading }}>
+                {resume.sections.experience[0].title}
               </div>
-            )}
-            {resume.sections?.experience && resume.sections.experience.length > 0 && (
-              <div className="mt-2">
-                <div className="text-[7px] text-gray-700 font-semibold" style={{ fontFamily: fonts.heading }}>
-                  {resume.sections.experience[0].company}
-                </div>
-                <div className="text-[6px] text-gray-500 italic" style={{ fontFamily: fonts.heading }}>
-                  {resume.sections.experience[0].title}
-                </div>
-              </div>
-            )}
-            {resume.sections?.skills && resume.sections.skills.length > 0 && (
-              <div className="mt-2 text-[6px] text-gray-600" style={{ fontFamily: fonts.body }}>
-                {resume.sections.skills.slice(0, 3).join(' • ')}
-                {resume.sections.skills.length > 3 && ' ...'}
-              </div>
-            )}
-            {resume.sections?.education && resume.sections.education.length > 0 && (
-              <div className="mt-2 text-[6px] text-gray-600" style={{ fontFamily: fonts.body }}>
-                {resume.sections.education[0].school} ({resume.sections.education[0].degree})
-              </div>
-            )}
+            </div>
+          )}
+          {resume.sections?.skills && resume.sections.skills.length > 0 && (
+            <div className="mt-2 text-[6px] text-gray-600" style={{ fontFamily: fonts.body }}>
+              {resume.sections.skills.slice(0, 3).join(' • ')}
+              {resume.sections.skills.length > 3 && ' ...'}
+            </div>
+          )}
+          {resume.sections?.education && resume.sections.education.length > 0 && (
+            <div className="mt-2 text-[6px] text-gray-600" style={{ fontFamily: fonts.body }}>
+              {resume.sections.education[0].school} ({resume.sections.education[0].degree})
+            </div>
+          )}
         </div>
       </div>
       {/* Info & Actions */}
@@ -70,9 +70,9 @@ function ResumeTile({ resume, template, onView, onDelete, onRename, validationSt
           )}
           {/* UC-053: Validation badge */}
           {validationStatus && (
-            <ValidationBadge 
-              status={validationStatus} 
-              size="sm" 
+            <ValidationBadge
+              status={validationStatus}
+              size="sm"
             />
           )}
           <button
@@ -130,6 +130,26 @@ function ResumeTile({ resume, template, onView, onDelete, onRename, validationSt
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
               </svg>
             </button>
+            {onShare && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onShare(); }}
+                className="p-1 rounded-lg transition flex-shrink-0 flex items-center justify-center"
+                style={{ color: '#6B7280' }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.color = '#2563EB';
+                  e.currentTarget.style.backgroundColor = '#EFF6FF';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.color = '#6B7280';
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+                title="Share"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 9l-5 3 5 3m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </button>
+            )}
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
               className="p-1 rounded-lg transition flex-shrink-0 flex items-center justify-center"
