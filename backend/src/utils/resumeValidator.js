@@ -544,7 +544,18 @@ export const checkMissingInformation = (resume) => {
     });
   } else {
     sections.experience.forEach((exp, idx) => {
-      if (!exp.description && (!exp.responsibilities || exp.responsibilities.length === 0)) {
+      // Check if description exists and has content
+      const hasDescription = exp.description && exp.description.trim().length > 0;
+      
+      // Check if responsibilities exists and has meaningful content (support both 'responsibilities' and 'bullets')
+      const responsibilitiesArray = exp.responsibilities || exp.bullets;
+      const hasResponsibilities = responsibilitiesArray && 
+                                  Array.isArray(responsibilitiesArray) && 
+                                  responsibilitiesArray.length > 0 &&
+                                  responsibilitiesArray.some(r => r && r.trim().length > 0);
+      
+      // Warn only if BOTH are missing
+      if (!hasDescription && !hasResponsibilities) {
         warnings.push({
           type: 'missing_info',
           section: 'experience',
@@ -553,14 +564,19 @@ export const checkMissingInformation = (resume) => {
           severity: 'warning'
         });
       }
-      if (exp.responsibilities && exp.responsibilities.length < 2) {
-        warnings.push({
-          type: 'missing_info',
-          section: 'experience',
-          field: `experience_${idx}`,
-          message: `Experience entry "${exp.company || 'Untitled'}" should have at least 2-3 bullet points`,
-          severity: 'info'
-        });
+      
+      // Check if responsibilities has at least 2 meaningful bullet points
+      if (hasResponsibilities) {
+        const meaningfulResponsibilities = responsibilitiesArray.filter(r => r && r.trim().length > 0);
+        if (meaningfulResponsibilities.length < 2) {
+          warnings.push({
+            type: 'missing_info',
+            section: 'experience',
+            field: `experience_${idx}`,
+            message: `Experience entry "${exp.company || 'Untitled'}" should have at least 2-3 bullet points`,
+            severity: 'info'
+          });
+        }
       }
     });
   }
