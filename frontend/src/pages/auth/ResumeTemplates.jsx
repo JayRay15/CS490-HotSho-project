@@ -4,6 +4,8 @@ import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { setAuthToken } from "../../api/axios";
 import { fetchTemplates, createTemplate as apiCreateTemplate, updateTemplate as apiUpdateTemplate, deleteTemplate as apiDeleteTemplate, importTemplate as apiImportTemplate } from "../../api/resumeTemplates";
+import { fetchCoverLetterTemplates, createCoverLetterTemplate, updateCoverLetterTemplate, deleteCoverLetterTemplate, trackCoverLetterTemplateUsage, importCoverLetterTemplate, exportCoverLetterTemplate, shareCoverLetterTemplate, getIndustryGuidance, getCoverLetterTemplateAnalytics } from "../../api/coverLetterTemplates";
+import { fetchCoverLetters, createCoverLetter, updateCoverLetter as apiUpdateCoverLetter, deleteCoverLetter as apiDeleteCoverLetter, setDefaultCoverLetter, archiveCoverLetter, unarchiveCoverLetter, cloneCoverLetter as apiCloneCoverLetter } from "../../api/coverLetters";
 import { 
   fetchResumes, 
   updateResume as apiUpdateResume, 
@@ -156,6 +158,33 @@ export default function ResumeTemplates() {
   const [editingSection, setEditingSection] = useState(null); // Which section is being edited
   const [editedContent, setEditedContent] = useState({}); // Temporary edited content before saving
   const [showEditDropdown, setShowEditDropdown] = useState(false); // Dropdown for Finish Edit button
+
+  // Cover Letter State
+  const [coverLetterTemplates, setCoverLetterTemplates] = useState([]);
+  const [savedCoverLetters, setSavedCoverLetters] = useState([]);
+  const [showCoverLetterBrowser, setShowCoverLetterBrowser] = useState(false);
+  const [selectedCoverLetterTemplate, setSelectedCoverLetterTemplate] = useState(null);
+  const [showCoverLetterPreview, setShowCoverLetterPreview] = useState(false);
+  const [showCoverLetterCustomize, setShowCoverLetterCustomize] = useState(false);
+  const [coverLetterFilters, setCoverLetterFilters] = useState({ industry: '', style: '' });
+  const [coverLetterLoading, setCoverLetterLoading] = useState(false);
+  const [showCoverLetterImport, setShowCoverLetterImport] = useState(false);
+  const [importCoverLetterJson, setImportCoverLetterJson] = useState('');
+  const [showCoverLetterShare, setShowCoverLetterShare] = useState(false);
+  const [shareTemplateId, setShareTemplateId] = useState(null);
+  const [industryGuidance, setIndustryGuidance] = useState({});
+  const [selectedIndustry, setSelectedIndustry] = useState('general');
+  const [customCoverLetterName, setCustomCoverLetterName] = useState('');
+  const [customCoverLetterContent, setCustomCoverLetterContent] = useState('');
+  const [customCoverLetterStyle, setCustomCoverLetterStyle] = useState('formal');
+  const [isCreatingCoverLetterTemplate, setIsCreatingCoverLetterTemplate] = useState(false); // Track if creating template vs cover letter
+  const [showAllCoverLetters, setShowAllCoverLetters] = useState(false);
+  const [showCoverLetterAnalytics, setShowCoverLetterAnalytics] = useState(false);
+  const [coverLetterAnalytics, setCoverLetterAnalytics] = useState(null);
+  const [showAddCoverLetterModal, setShowAddCoverLetterModal] = useState(false);
+  const [showManageCoverLetterTemplates, setShowManageCoverLetterTemplates] = useState(false);
+  const [editingCoverLetter, setEditingCoverLetter] = useState(null);
+  const [showEditCoverLetterModal, setShowEditCoverLetterModal] = useState(false);
 
   const authWrap = async () => {
     const token = await getToken();
@@ -447,11 +476,42 @@ export default function ResumeTemplates() {
     }
   };
 
+  const loadCoverLetterTemplates = async (filters = {}) => {
+    try {
+      setCoverLetterLoading(true);
+      await authWrap();
+      console.log('Loading templates with filters:', filters); // Debug log
+      const [templatesResponse, guidanceResponse] = await Promise.all([
+        fetchCoverLetterTemplates(filters), // Fetch templates (no isTemplate filter needed)
+        getIndustryGuidance()
+      ]);
+      console.log('Received templates:', templatesResponse.data.data.templates.length); // Debug log
+      setCoverLetterTemplates(templatesResponse.data.data.templates || []);
+      setIndustryGuidance(guidanceResponse.data.data.guidance || {});
+    } catch (err) {
+      console.error("Failed to load cover letter templates:", err);
+      setCoverLetterTemplates([]);
+    } finally {
+      setCoverLetterLoading(false);
+    }
+  };
+
+  const loadSavedCoverLetters = async () => {
+    try {
+      await authWrap();
+      const response = await fetchCoverLetters(); // Fetch actual cover letters from /api/cover-letters
+      setSavedCoverLetters(response.data.data.coverLetters || []);
+    } catch (err) {
+      console.error("Failed to load saved cover letters:", err);
+      setSavedCoverLetters([]);
+    }
+  };
+
   useEffect(() => {
     (async () => {
       try {
         setLoading(true);
-        await loadAll();
+        await Promise.all([loadAll(), loadSavedCoverLetters()]);
       } catch (e) {
         console.error(e);
         alert("Failed to load resume data");
@@ -1672,18 +1732,149 @@ export default function ResumeTemplates() {
 
           {/* Cover Letters Section */}
           <div className="mb-12">
-            <h2 className="text-2xl font-heading font-bold mb-4" style={{ color: "#4F5348" }}>
-              My Cover Letters
-            </h2>
-            <Card variant="elevated" className="text-center py-12">
-              <div className="text-gray-500 mb-4">
-                <svg className="w-16 h-16 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <p className="text-lg font-medium">Cover letters coming soon</p>
-                <p className="text-sm">This feature will be available in a future update</p>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-heading font-bold" style={{ color: "#4F5348" }}>
+                My Cover Letters
+              </h2>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowAddCoverLetterModal(true)}
+                  className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                  style={{ backgroundColor: '#777C6D' }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span>Add Cover Letter</span>
+                </button>
+                <button
+                  onClick={() => {
+                    loadCoverLetterTemplates();
+                    setShowManageCoverLetterTemplates(true);
+                  }}
+                  className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                  style={{ backgroundColor: '#777C6D' }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+                  </svg>
+                  <span>Manage Templates</span>
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      await authWrap();
+                      const response = await getCoverLetterTemplateAnalytics();
+                      setCoverLetterAnalytics(response.data.data.analytics);
+                      setShowCoverLetterAnalytics(true);
+                    } catch (err) {
+                      console.error("Failed to load analytics:", err);
+                      alert("Failed to load template analytics");
+                    }
+                  }}
+                  className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                  style={{ backgroundColor: '#777C6D' }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                  <span>View Analytics</span>
+                </button>
               </div>
-            </Card>
+            </div>
+            
+            {savedCoverLetters.length === 0 ? (
+              <Card variant="elevated" className="text-center py-12">
+                <div className="text-gray-500 mb-4">
+                  <svg className="w-16 h-16 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <p className="text-lg font-medium">No cover letters yet</p>
+                  <p className="text-sm">Click "Add Cover Letter" to create your first cover letter</p>
+                </div>
+              </Card>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {savedCoverLetters
+                    .slice(0, showAllCoverLetters ? undefined : 4)
+                    .map((letter) => (
+                    <Card
+                      key={letter._id}
+                      variant="elevated"
+                      className="p-4 hover:shadow-lg transition-shadow"
+                    >
+                      <div className="mb-3">
+                        <h3 className="font-semibold text-lg truncate" style={{ color: "#4F5348" }}>
+                          {letter.name}
+                        </h3>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-3 line-clamp-3">
+                        {letter.content.substring(0, 100)}...
+                      </p>
+                      <p className="text-xs text-gray-500 mb-3">
+                        Modified {new Date(letter.updatedAt).toLocaleDateString()}
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            setEditingCoverLetter(letter);
+                            setCustomCoverLetterName(letter.name);
+                            setCustomCoverLetterContent(letter.content);
+                            setCustomCoverLetterStyle(letter.style || 'formal');
+                            setShowEditCoverLetterModal(true);
+                          }}
+                          className="flex-1 px-3 py-1.5 text-sm rounded transition"
+                          style={{ backgroundColor: "#777C6D", color: "white" }}
+                          onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                          onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                        >
+                          View
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (confirm(`Delete "${letter.name}"?`)) {
+                              try {
+                                await authWrap();
+                                await apiDeleteCoverLetter(letter._id);
+                                await loadSavedCoverLetters();
+                                alert("Cover letter deleted successfully!");
+                              } catch (err) {
+                                console.error("Delete failed:", err);
+                                alert("Failed to delete cover letter.");
+                              }
+                            }
+                          }}
+                          className="px-3 py-1.5 text-sm text-red-600 hover:text-red-700 border border-red-300 rounded transition"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+                
+                {savedCoverLetters.length > 4 && (
+                  <div className="mt-6 text-center">
+                    <button
+                      onClick={() => setShowAllCoverLetters(!showAllCoverLetters)}
+                      className="px-6 py-2 text-white rounded-lg transition focus:outline-none focus:ring-2 focus:ring-offset-2"
+                      style={{ backgroundColor: '#777C6D' }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                    >
+                      {showAllCoverLetters ? 'View Less' : 'View All'}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       </Container>
@@ -4772,6 +4963,1243 @@ export default function ResumeTemplates() {
           </div>
         </div>
       )}
+
+      {/* Cover Letter Template Browser Modal */}
+      {showCoverLetterBrowser && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={() => setShowCoverLetterBrowser(false)}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold" style={{ color: "#4F5348" }}>
+                  Cover Letter Templates
+                </h2>
+                <button
+                  onClick={() => setShowCoverLetterBrowser(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Filters */}
+              <div className="mb-6">
+                <div className="flex gap-4 mb-4">
+                  <select
+                    value={coverLetterFilters.style}
+                    onChange={(e) => {
+                      const newFilters = { ...coverLetterFilters, style: e.target.value };
+                      setCoverLetterFilters(newFilters);
+                      loadCoverLetterTemplates(newFilters);
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  >
+                    <option value="">All Styles</option>
+                    <option value="formal">Formal</option>
+                    <option value="modern">Modern</option>
+                    <option value="creative">Creative</option>
+                    <option value="technical">Technical</option>
+                    <option value="executive">Executive</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Template Grid */}
+              {coverLetterLoading ? (
+                <div className="text-center py-12">
+                  <LoadingSpinner />
+                </div>
+              ) : coverLetterTemplates.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <p>No templates found</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {(() => {
+                    // Deduplicate default templates - keep only one per name
+                    const defaultTemplateNames = [
+                      'Formal Professional', 
+                      'Modern Professional', 
+                      'Creative Expression', 
+                      'Technical Professional', 
+                      'Executive Leadership',
+                      'Technology Professional',
+                      'Business Professional',
+                      'Healthcare Professional'
+                    ];
+                    const seenNames = new Set();
+                    const uniqueTemplates = coverLetterTemplates.filter(template => {
+                      const isDefaultSystemTemplate = defaultTemplateNames.includes(template.name);
+                      
+                      if (isDefaultSystemTemplate) {
+                        if (seenNames.has(template.name)) {
+                          return false; // Skip duplicate by name
+                        }
+                        seenNames.add(template.name);
+                        return true;
+                      }
+                      return true; // Keep all custom templates
+                    });
+                    
+                    return uniqueTemplates.map((template) => (
+                    <Card 
+                      key={template._id} 
+                      variant="outlined" 
+                      interactive 
+                      className="p-4 hover:border-[#777C6D] transition"
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h3 className="font-semibold text-lg">{template.name}</h3>
+                          <div className="flex gap-2 mt-1">
+                            <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded capitalize">
+                              {template.style} Style
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                        {template.description}
+                      </p>
+                      <div className="flex flex-col gap-2">
+                        <div className="flex gap-2">
+                          <Button
+                            variant="secondary"
+                            size="small"
+                            onClick={() => {
+                              setSelectedCoverLetterTemplate(template);
+                              setShowCoverLetterPreview(true);
+                            }}
+                          >
+                            Preview
+                          </Button>
+                          <Button
+                            variant="primary"
+                            size="small"
+                            onClick={async () => {
+                              try {
+                                await authWrap();
+                                setSelectedCoverLetterTemplate(template);
+                                setShowCoverLetterBrowser(false);
+                                
+                                // Initialize the customization form
+                                setCustomCoverLetterName(`${template.name} - Customized`);
+                                setCustomCoverLetterContent(template.content);
+                                setCustomCoverLetterStyle(template.style || 'formal');
+                                setIsCreatingCoverLetterTemplate(false); // Using template to create cover letter
+                                setShowCoverLetterCustomize(true);
+                              } catch (err) {
+                                console.error("Failed to prepare template:", err);
+                              }
+                            }}
+                          >
+                            Use
+                          </Button>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={async () => {
+                              try {
+                                await authWrap();
+                                const response = await exportCoverLetterTemplate(template._id);
+                                const dataStr = JSON.stringify(response.data.data.template, null, 2);
+                                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                                const url = URL.createObjectURL(dataBlob);
+                                const link = document.createElement('a');
+                                link.href = url;
+                                link.download = `${template.name.replace(/\s+/g, '_')}_template.json`;
+                                link.click();
+                                URL.revokeObjectURL(url);
+                              } catch (err) {
+                                console.error("Export failed:", err);
+                                alert("Failed to export template");
+                              }
+                            }}
+                            className="flex-1 text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50 transition"
+                          >
+                            Export
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShareTemplateId(template._id);
+                              setShowCoverLetterShare(true);
+                            }}
+                            className="flex-1 text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50 transition"
+                          >
+                            Share
+                          </button>
+                        </div>
+                      </div>
+                    </Card>
+                  ));
+                  })()}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cover Letter Preview Modal */}
+      {showCoverLetterPreview && selectedCoverLetterTemplate && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={() => setShowCoverLetterPreview(false)}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold" style={{ color: "#4F5348" }}>
+                    {selectedCoverLetterTemplate.name}
+                  </h2>
+                  <div className="flex gap-2 mt-2">
+                    <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
+                      {selectedCoverLetterTemplate.industry}
+                    </span>
+                    <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded">
+                      {selectedCoverLetterTemplate.style}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowCoverLetterPreview(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="mb-6">
+                <p className="text-gray-600 mb-4">{selectedCoverLetterTemplate.description}</p>
+                <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                  <pre className="whitespace-pre-wrap font-sans text-sm">
+                    {selectedCoverLetterTemplate.content}
+                  </pre>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowCoverLetterPreview(false)}
+                >
+                  Close
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={async () => {
+                    try {
+                      await authWrap();
+                      setShowCoverLetterPreview(false);
+                      setShowCoverLetterBrowser(false);
+                      
+                      // Initialize the customization form
+                      setCustomCoverLetterName(`${selectedCoverLetterTemplate.name} - Customized`);
+                      setCustomCoverLetterContent(selectedCoverLetterTemplate.content);
+                      setCustomCoverLetterStyle(selectedCoverLetterTemplate.style || 'formal');
+                      setIsCreatingCoverLetterTemplate(false); // Using template to create cover letter
+                      setShowCoverLetterCustomize(true);
+                    } catch (err) {
+                      console.error("Failed to prepare template:", err);
+                    }
+                  }}
+                >
+                  Use This Template
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cover Letter Customize Modal */}
+      {showCoverLetterCustomize && selectedCoverLetterTemplate && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={() => setShowCoverLetterCustomize(false)}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold" style={{ color: "#4F5348" }}>
+                  Customize Cover Letter
+                </h2>
+                <button
+                  onClick={() => setShowCoverLetterCustomize(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Template Name
+                </label>
+                <input
+                  type="text"
+                  className="w-full p-3 border border-gray-300 rounded-lg"
+                  value={customCoverLetterName}
+                  onChange={(e) => setCustomCoverLetterName(e.target.value)}
+                  placeholder="e.g., My Software Engineer Cover Letter"
+                />
+              </div>
+
+              {isCreatingCoverLetterTemplate && (
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Template Style
+                  </label>
+                  <select
+                    className="w-full p-3 border border-gray-300 rounded-lg"
+                    value={selectedCoverLetterTemplate.style || 'formal'}
+                    onChange={(e) => setSelectedCoverLetterTemplate({
+                      ...selectedCoverLetterTemplate,
+                      style: e.target.value
+                    })}
+                  >
+                    <option value="formal">Formal</option>
+                    <option value="modern">Modern</option>
+                    <option value="creative">Creative</option>
+                    <option value="technical">Technical</option>
+                    <option value="executive">Executive</option>
+                  </select>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Choose a style that best represents this template
+                  </p>
+                </div>
+              )}
+
+              {!isCreatingCoverLetterTemplate && (
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Cover Letter Style
+                  </label>
+                  <select
+                    className="w-full p-3 border border-gray-300 rounded-lg"
+                    value={customCoverLetterStyle}
+                    onChange={(e) => setCustomCoverLetterStyle(e.target.value)}
+                  >
+                    <option value="formal">Formal</option>
+                    <option value="modern">Modern</option>
+                    <option value="creative">Creative</option>
+                    <option value="technical">Technical</option>
+                    <option value="executive">Executive</option>
+                  </select>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Choose a style for your cover letter
+                  </p>
+                </div>
+              )}
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Cover Letter Content
+                </label>
+                <p className="text-sm text-gray-600 mb-4">
+                  Replace the placeholders in brackets (e.g., [POSITION], [COMPANY]) with your specific information.
+                </p>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-yellow-800">
+                    <strong>Tip:</strong> Common placeholders include [YOUR_NAME], [POSITION], [COMPANY], [HIRING_MANAGER_NAME], 
+                    [FIELD], [SKILLS], [ACHIEVEMENT], etc.
+                  </p>
+                </div>
+                <textarea
+                  className="w-full h-96 p-4 border border-gray-300 rounded-lg font-sans text-sm"
+                  value={customCoverLetterContent}
+                  onChange={(e) => setCustomCoverLetterContent(e.target.value)}
+                  placeholder="Customize your cover letter here..."
+                />
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowCoverLetterCustomize(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={async () => {
+                    try {
+                      if (!customCoverLetterName.trim()) {
+                        alert("Please enter a name for your cover letter.");
+                        return;
+                      }
+                      if (!customCoverLetterContent.trim()) {
+                        alert("Please enter cover letter content.");
+                        return;
+                      }
+
+                      await authWrap();
+                      
+                      if (isCreatingCoverLetterTemplate) {
+                        // Creating a reusable template
+                        await createCoverLetterTemplate({
+                          name: customCoverLetterName,
+                          industry: selectedCoverLetterTemplate.industry || 'general',
+                          style: selectedCoverLetterTemplate.style || 'formal',
+                          description: `Custom ${selectedCoverLetterTemplate.style || 'formal'} cover letter template`,
+                          content: customCoverLetterContent
+                        });
+                        
+                        setShowCoverLetterCustomize(false);
+                        setCustomCoverLetterName('');
+                        setCustomCoverLetterContent('');
+                        setIsCreatingCoverLetterTemplate(false);
+                        
+                        await loadCoverLetterTemplates();
+                        setShowManageCoverLetterTemplates(true); // Reopen Manage Templates modal
+                        alert("Cover letter template created successfully!");
+                      } else {
+                        // Creating a saved cover letter (one-time use)
+                        await createCoverLetter({
+                          name: customCoverLetterName,
+                          content: customCoverLetterContent,
+                          style: customCoverLetterStyle,
+                          templateId: selectedCoverLetterTemplate._id || null
+                        });
+                        
+                        setShowCoverLetterCustomize(false);
+                        setCustomCoverLetterName('');
+                        setCustomCoverLetterContent('');
+                        setCustomCoverLetterStyle('formal');
+                        setIsCreatingCoverLetterTemplate(false);
+                        
+                        await loadSavedCoverLetters();
+                        alert("Cover letter saved successfully!");
+                      }
+                    } catch (err) {
+                      console.error("Save failed:", err);
+                      alert("Failed to save. Please try again.");
+                    }
+                  }}
+                >
+                  {isCreatingCoverLetterTemplate ? 'Create Template' : 'Save Cover Letter'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cover Letter Import Modal */}
+      {showCoverLetterImport && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={() => setShowCoverLetterImport(false)}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl max-w-2xl w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold" style={{ color: "#4F5348" }}>
+                  Import Cover Letter Template
+                </h2>
+                <button
+                  onClick={() => setShowCoverLetterImport(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="mb-6">
+                <p className="text-sm text-gray-600 mb-4">
+                  Paste your cover letter text below. We'll create a template from it.
+                </p>
+                <textarea
+                  className="w-full h-64 p-4 border border-gray-300 rounded-lg text-sm"
+                  value={importCoverLetterJson}
+                  onChange={(e) => setImportCoverLetterJson(e.target.value)}
+                  placeholder="Dear Hiring Manager,&#10;&#10;I am writing to express my interest in...&#10;&#10;Paste your cover letter text here and we'll create a template from it."
+                />
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Template Name (Optional)
+                </label>
+                <input
+                  type="text"
+                  className="w-full p-3 border border-gray-300 rounded-lg"
+                  value={customCoverLetterName}
+                  onChange={(e) => setCustomCoverLetterName(e.target.value)}
+                  placeholder="e.g., My Marketing Cover Letter"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setShowCoverLetterImport(false);
+                    setImportCoverLetterJson('');
+                    setCustomCoverLetterName('');
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={async () => {
+                    try {
+                      if (!importCoverLetterJson.trim()) {
+                        alert("Please paste your cover letter text.");
+                        return;
+                      }
+
+                      await authWrap();
+                      
+                      // Create template from plain text
+                      const templateName = customCoverLetterName.trim() || 'Imported Cover Letter';
+                      await createCoverLetterTemplate({
+                        name: templateName,
+                        industry: 'general',
+                        style: 'formal',
+                        description: 'Imported from text',
+                        content: importCoverLetterJson.trim(),
+                        isTemplate: true  // Import as a reusable template
+                      });
+                      
+                      setShowCoverLetterImport(false);
+                      setImportCoverLetterJson('');
+                      setCustomCoverLetterName('');
+                      await loadCoverLetterTemplates();
+                      alert("Cover letter template imported successfully!");
+                    } catch (err) {
+                      console.error("Import failed:", err);
+                      alert("Failed to import cover letter. Please try again.");
+                    }
+                  }}
+                >
+                  Import Template
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cover Letter Share Modal */}
+      {showCoverLetterShare && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={() => setShowCoverLetterShare(false)}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl max-w-md w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold" style={{ color: "#4F5348" }}>
+                  Share Template
+                </h2>
+                <button
+                  onClick={() => setShowCoverLetterShare(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="mb-6">
+                <p className="text-sm text-gray-600 mb-4">
+                  Choose how you want to share this template:
+                </p>
+                <div className="space-y-3">
+                  <button
+                    onClick={async () => {
+                      try {
+                        await authWrap();
+                        await shareCoverLetterTemplate(shareTemplateId, { isShared: true });
+                        setShowCoverLetterShare(false);
+                        loadCoverLetterTemplates();
+                        alert("Template is now publicly shared!");
+                      } catch (err) {
+                        console.error("Share failed:", err);
+                        alert("Failed to share template");
+                      }
+                    }}
+                    className="w-full p-4 border-2 border-gray-300 rounded-lg hover:border-[#777C6D] transition text-left"
+                  >
+                    <div className="font-semibold mb-1">Make Public</div>
+                    <div className="text-sm text-gray-600">Anyone can view and use this template</div>
+                  </button>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await authWrap();
+                        await shareCoverLetterTemplate(shareTemplateId, { isShared: false });
+                        setShowCoverLetterShare(false);
+                        loadCoverLetterTemplates();
+                        alert("Template is now private");
+                      } catch (err) {
+                        console.error("Unshare failed:", err);
+                        alert("Failed to update sharing settings");
+                      }
+                    }}
+                    className="w-full p-4 border-2 border-gray-300 rounded-lg hover:border-[#777C6D] transition text-left"
+                  >
+                    <div className="font-semibold mb-1">Make Private</div>
+                    <div className="text-sm text-gray-600">Only you can see this template</div>
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowCoverLetterShare(false)}
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Cover Letter Modal */}
+      {showAddCoverLetterModal && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={() => setShowAddCoverLetterModal(false)}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl max-w-lg w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold" style={{ color: "#4F5348" }}>
+                    Create Cover Letter
+                  </h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Choose how you want to create your cover letter
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowAddCoverLetterModal(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Option 1: Select Template */}
+                <button
+                  onClick={() => {
+                    setShowAddCoverLetterModal(false);
+                    loadCoverLetterTemplates();
+                    setShowCoverLetterBrowser(true);
+                  }}
+                  className="w-full p-6 border-2 border-gray-300 rounded-lg hover:border-[#777C6D] hover:bg-gray-50 transition text-left"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 rounded-lg" style={{ backgroundColor: "#E8EAE3" }}>
+                      <svg className="w-6 h-6" style={{ color: "#4F5348" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-lg mb-2" style={{ color: "#4F5348" }}>
+                        Use a Template
+                      </h3>
+                      <p className="text-sm text-gray-600 mb-2">
+                        Choose from professional templates designed for different industries and styles
+                      </p>
+                      <ul className="text-xs text-gray-500 space-y-1">
+                        <li>• 5 professional writing styles</li>
+                        <li>• Industry-specific guidance</li>
+                        <li>• Customizable placeholders</li>
+                      </ul>
+                    </div>
+                  </div>
+                </button>
+
+                {/* Option 2: Create from Scratch */}
+                <button
+                  onClick={() => {
+                    setShowAddCoverLetterModal(false);
+                    setSelectedCoverLetterTemplate({
+                      name: 'New Cover Letter',
+                      industry: 'general',
+                      style: 'formal',
+                      content: '',
+                      description: ''
+                    });
+                    setCustomCoverLetterName('My Cover Letter');
+                    setCustomCoverLetterContent('');
+                    setCustomCoverLetterStyle('formal');
+                    setIsCreatingCoverLetterTemplate(false); // Creating a cover letter, not a template
+                    setShowCoverLetterCustomize(true);
+                  }}
+                  className="w-full p-6 border-2 border-gray-300 rounded-lg hover:border-[#777C6D] hover:bg-gray-50 transition text-left"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 rounded-lg" style={{ backgroundColor: "#E8EAE3" }}>
+                      <svg className="w-6 h-6" style={{ color: "#4F5348" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-lg mb-2" style={{ color: "#4F5348" }}>
+                        Create from Scratch
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Start with a blank canvas and write your own custom cover letter
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              </div>
+
+              <div className="mt-6 flex justify-end">
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowAddCoverLetterModal(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manage Cover Letter Templates Modal */}
+      {showManageCoverLetterTemplates && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+          style={{ backgroundColor: 'rgba(0, 0 0, 0.48)' }}
+          onClick={() => setShowManageCoverLetterTemplates(false)}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold" style={{ color: "#4F5348" }}>
+                  Manage Templates
+                </h2>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setShowManageCoverLetterTemplates(false);
+                      setSelectedCoverLetterTemplate({
+                        name: 'New Template',
+                        industry: 'general',
+                        style: 'formal',
+                        content: '',
+                        description: ''
+                      });
+                      setCustomCoverLetterName('My Custom Template');
+                      setCustomCoverLetterContent('');
+                      setIsCreatingCoverLetterTemplate(true); // Creating a template, not a cover letter
+                      setShowCoverLetterCustomize(true);
+                    }}
+                    className="px-4 py-2 text-white rounded-lg transition"
+                    style={{ backgroundColor: '#777C6D' }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                  >
+                    Create Template
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowManageCoverLetterTemplates(false);
+                      setShowCoverLetterImport(true);
+                    }}
+                    className="px-4 py-2 text-white rounded-lg transition"
+                    style={{ backgroundColor: '#777C6D' }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                  >
+                    Import Template
+                  </button>
+                  <button
+                    onClick={() => setShowManageCoverLetterTemplates(false)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {coverLetterLoading ? (
+                <div className="text-center py-12">
+                  <LoadingSpinner />
+                </div>
+              ) : coverLetterTemplates.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-600">No templates available</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {(() => {
+                    // Deduplicate default templates - keep only one per name
+                    const defaultTemplateNames = [
+                      'Formal Professional', 
+                      'Modern Professional', 
+                      'Creative Expression', 
+                      'Technical Professional', 
+                      'Executive Leadership',
+                      'Technology Professional',
+                      'Business Professional',
+                      'Healthcare Professional'
+                    ];
+                    const seenNames = new Set();
+                    const uniqueTemplates = coverLetterTemplates.filter(template => {
+                      const isDefaultSystemTemplate = defaultTemplateNames.includes(template.name);
+                      
+                      if (isDefaultSystemTemplate) {
+                        if (seenNames.has(template.name)) {
+                          return false; // Skip duplicate by name
+                        }
+                        seenNames.add(template.name);
+                        return true;
+                      }
+                      return true; // Keep all custom templates
+                    });
+                    
+                    return uniqueTemplates.map((template) => {
+                    // Check if this is a default system template
+                    const isDefaultSystemTemplate = defaultTemplateNames.includes(template.name);
+                    
+                    return (
+                      <div
+                        key={template._id}
+                        className="border-2 border-gray-300 rounded-lg overflow-hidden hover:border-[#777C6D] transition"
+                      >
+                        <div className="bg-white p-4 h-64 overflow-hidden">
+                          <div className="text-xs font-mono whitespace-pre-wrap text-gray-700 line-clamp-[14]">
+                            {template.content}
+                          </div>
+                        </div>
+                        <div className="border-t border-gray-200 p-4 bg-gray-50">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1">
+                              <h3 className="font-semibold truncate" style={{ color: "#4F5348" }}>
+                                {template.name}
+                              </h3>
+                              <p className="text-xs text-gray-600 mt-1">{template.description || template.style}</p>
+                            </div>
+                            {template.isDefault && (
+                              <span className="ml-2 px-2 py-1 text-xs rounded" style={{ backgroundColor: "#E8EAE3", color: "#4F5348" }}>
+                                Default
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                setSelectedCoverLetterTemplate(template);
+                                setCustomCoverLetterName(`${template.name} - Copy`);
+                                setCustomCoverLetterContent(template.content);
+                                setIsCreatingCoverLetterTemplate(false);
+                                setShowManageCoverLetterTemplates(false);
+                                setShowCoverLetterCustomize(true);
+                              }}
+                              className={`${isDefaultSystemTemplate ? 'w-full' : 'flex-1'} px-3 py-2 text-sm text-white rounded transition`}
+                              style={{ backgroundColor: '#777C6D' }}
+                              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                            >
+                              Use Template
+                            </button>
+                            {!isDefaultSystemTemplate && (
+                              <button
+                                onClick={async () => {
+                                  if (confirm(`Delete "${template.name}"?`)) {
+                                    try {
+                                      await authWrap();
+                                      await deleteCoverLetterTemplate(template._id);
+                                      await loadCoverLetterTemplates();
+                                      setShowManageCoverLetterTemplates(true);
+                                      alert("Template deleted successfully!");
+                                    } catch (err) {
+                                      console.error("Delete failed:", err);
+                                      alert("Failed to delete template");
+                                    }
+                                  }
+                                }}
+                                className="px-3 py-2 text-sm text-red-600 hover:text-red-700 border border-red-300 rounded transition"
+                                title="Delete Template"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                    });
+                  })()}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cover Letter Template Analytics Modal */}
+      {showCoverLetterAnalytics && coverLetterAnalytics && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={() => setShowCoverLetterAnalytics(false)}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              {/* Header */}
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold" style={{ color: "#4F5348" }}>
+                  Template Usage Analytics
+                </h2>
+                <button
+                  onClick={() => setShowCoverLetterAnalytics(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-blue-600 font-medium">Total Templates</p>
+                      <p className="text-3xl font-bold text-blue-900">{coverLetterAnalytics.summary.totalTemplates}</p>
+                    </div>
+                    <svg className="w-12 h-12 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                </div>
+
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-green-600 font-medium">Total Usage</p>
+                      <p className="text-3xl font-bold text-green-900">{coverLetterAnalytics.summary.totalUsage}</p>
+                    </div>
+                    <svg className="w-12 h-12 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                  </div>
+                </div>
+
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-purple-600 font-medium">Average Usage</p>
+                      <p className="text-3xl font-bold text-purple-900">{coverLetterAnalytics.summary.avgUsage}</p>
+                    </div>
+                    <svg className="w-12 h-12 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Most Used Template */}
+              {coverLetterAnalytics.mostUsedTemplate && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-3" style={{ color: "#4F5348" }}>
+                    Most Used Template
+                  </h3>
+                  <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xl font-bold text-yellow-900">{coverLetterAnalytics.mostUsedTemplate.name}</p>
+                        <div className="flex gap-2 mt-2">
+                          <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded capitalize">
+                            {coverLetterAnalytics.mostUsedTemplate.industry}
+                          </span>
+                          <span className="text-xs px-2 py-1 bg-orange-100 text-orange-700 rounded capitalize">
+                            {coverLetterAnalytics.mostUsedTemplate.style}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-3xl font-bold text-yellow-900">{coverLetterAnalytics.mostUsedTemplate.usageCount}</p>
+                        <p className="text-sm text-yellow-700">times used</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Top 5 Templates */}
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-3" style={{ color: "#4F5348" }}>
+                  Top 5 Templates by Usage
+                </h3>
+                <div className="space-y-2">
+                  {coverLetterAnalytics.topTemplates.map((template, index) => (
+                    <div key={template.id} className="flex items-center justify-between bg-gray-50 rounded-lg p-3 border border-gray-200">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 text-gray-700 font-bold">
+                          {index + 1}
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">{template.name}</p>
+                          <div className="flex gap-2 mt-1">
+                            <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded capitalize">
+                              {template.industry}
+                            </span>
+                            <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded capitalize">
+                              {template.style}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xl font-bold text-gray-900">{template.usageCount}</p>
+                        <p className="text-xs text-gray-600">uses</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Usage by Industry and Style */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                {/* By Industry */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3" style={{ color: "#4F5348" }}>
+                    Usage by Industry
+                  </h3>
+                  <div className="space-y-2">
+                    {Object.entries(coverLetterAnalytics.usageByIndustry).map(([industry, data]) => (
+                      <div key={industry} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium text-gray-900 capitalize">{industry}</span>
+                          <span className="text-sm text-gray-600">{data.usage} uses</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-blue-500 h-2 rounded-full" 
+                            style={{ width: `${(data.usage / coverLetterAnalytics.summary.totalUsage) * 100}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-gray-600 mt-1">{data.count} templates</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* By Style */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3" style={{ color: "#4F5348" }}>
+                    Usage by Style
+                  </h3>
+                  <div className="space-y-2">
+                    {Object.entries(coverLetterAnalytics.usageByStyle).map(([style, data]) => (
+                      <div key={style} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium text-gray-900 capitalize">{style}</span>
+                          <span className="text-sm text-gray-600">{data.usage} uses</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-purple-500 h-2 rounded-full" 
+                            style={{ width: `${(data.usage / coverLetterAnalytics.summary.totalUsage) * 100}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-gray-600 mt-1">{data.count} templates</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setShowCoverLetterAnalytics(false)}
+                  className="px-6 py-2 text-white rounded-lg transition"
+                  style={{ backgroundColor: '#777C6D' }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Cover Letter Modal */}
+      {showEditCoverLetterModal && editingCoverLetter && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={() => setShowEditCoverLetterModal(false)}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold" style={{ color: "#4F5348" }}>
+                  Edit Cover Letter
+                </h2>
+                <button
+                  onClick={() => setShowEditCoverLetterModal(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Cover Letter Name
+                </label>
+                <input
+                  type="text"
+                  className="w-full p-3 border border-gray-300 rounded-lg"
+                  value={customCoverLetterName}
+                  onChange={(e) => setCustomCoverLetterName(e.target.value)}
+                  placeholder="e.g., My Software Engineer Cover Letter"
+                />
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Cover Letter Style
+                </label>
+                <select
+                  className="w-full p-3 border border-gray-300 rounded-lg"
+                  value={customCoverLetterStyle}
+                  onChange={(e) => setCustomCoverLetterStyle(e.target.value)}
+                >
+                  <option value="formal">Formal</option>
+                  <option value="modern">Modern</option>
+                  <option value="creative">Creative</option>
+                  <option value="technical">Technical</option>
+                  <option value="executive">Executive</option>
+                </select>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Cover Letter Content
+                </label>
+                <textarea
+                  className="w-full h-96 p-4 border border-gray-300 rounded-lg font-sans text-sm"
+                  value={customCoverLetterContent}
+                  onChange={(e) => setCustomCoverLetterContent(e.target.value)}
+                  placeholder="Edit your cover letter here..."
+                />
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowEditCoverLetterModal(false)}
+                  className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      if (!customCoverLetterName.trim()) {
+                        alert("Please enter a name for your cover letter.");
+                        return;
+                      }
+                      if (!customCoverLetterContent.trim()) {
+                        alert("Please enter cover letter content.");
+                        return;
+                      }
+
+                      await authWrap();
+                      await apiUpdateCoverLetter(editingCoverLetter._id, {
+                        name: customCoverLetterName,
+                        content: customCoverLetterContent,
+                        style: customCoverLetterStyle
+                      });
+                      
+                      setShowEditCoverLetterModal(false);
+                      setEditingCoverLetter(null);
+                      setCustomCoverLetterName('');
+                      setCustomCoverLetterContent('');
+                      
+                      await loadSavedCoverLetters();
+                      alert("Cover letter updated successfully!");
+                    } catch (err) {
+                      console.error("Update failed:", err);
+                      alert("Failed to update cover letter. Please try again.");
+                    }
+                  }}
+                  className="px-6 py-2 text-white rounded-lg transition"
+                  style={{ backgroundColor: '#777C6D' }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                >
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+
