@@ -834,6 +834,27 @@ export const generateResumePDF = async (req, res) => {
 
     // Fetch resume
     const resume = await Resume.findOne({ _id: id, userId }).lean();
+    
+    // UC-053: Check validation status before allowing export
+    if (!resume.metadata?.lastValidation || !resume.metadata.lastValidation.isValid) {
+      const { response, statusCode } = errorResponse(
+        "Resume must be validated before export. Please validate your resume first.",
+        400,
+        ERROR_CODES.VALIDATION_ERROR
+      );
+      return sendResponse(res, response, statusCode);
+    }
+    
+    // Check if resume was modified after last validation
+    const validatedAt = resume.metadata?.validatedAt;
+    if (validatedAt && new Date(resume.updatedAt) > new Date(validatedAt)) {
+      const { response, statusCode } = errorResponse(
+        "Resume has been modified since last validation. Please validate again before export.",
+        400,
+        ERROR_CODES.VALIDATION_ERROR
+      );
+      return sendResponse(res, response, statusCode);
+    }
     if (!resume) {
       const { response, statusCode } = errorResponse("Resume not found", 404, ERROR_CODES.NOT_FOUND);
       return sendResponse(res, response, statusCode);
@@ -1471,6 +1492,27 @@ export const exportResumeDocx = async (req, res) => {
       return sendResponse(res, response, statusCode);
     }
 
+    // UC-053: Check validation status before allowing export
+    if (!resume.metadata?.lastValidation || !resume.metadata.lastValidation.isValid) {
+      const { response, statusCode } = errorResponse(
+        "Resume must be validated before export. Please validate your resume first.",
+        400,
+        ERROR_CODES.VALIDATION_ERROR
+      );
+      return sendResponse(res, response, statusCode);
+    }
+    
+    // Check if resume was modified after last validation
+    const validatedAt = resume.metadata?.validatedAt;
+    if (validatedAt && new Date(resume.updatedAt) > new Date(validatedAt)) {
+      const { response, statusCode } = errorResponse(
+        "Resume has been modified since last validation. Please validate again before export.",
+        400,
+        ERROR_CODES.VALIDATION_ERROR
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
     const template = await ResumeTemplate.findById(resume.templateId).lean();
 
     const docxBuffer = await exportToDocx(resume, template, watermarkOptions);
@@ -1502,6 +1544,27 @@ export const exportResumeHtml = async (req, res) => {
       return sendResponse(res, response, statusCode);
     }
 
+    // UC-053: Check validation status before allowing export
+    if (!resume.metadata?.lastValidation || !resume.metadata.lastValidation.isValid) {
+      const { response, statusCode } = errorResponse(
+        "Resume must be validated before export. Please validate your resume first.",
+        400,
+        ERROR_CODES.VALIDATION_ERROR
+      );
+      return sendResponse(res, response, statusCode);
+    }
+    
+    // Check if resume was modified after last validation
+    const validatedAt = resume.metadata?.validatedAt;
+    if (validatedAt && new Date(resume.updatedAt) > new Date(validatedAt)) {
+      const { response, statusCode } = errorResponse(
+        "Resume has been modified since last validation. Please validate again before export.",
+        400,
+        ERROR_CODES.VALIDATION_ERROR
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
     const template = await ResumeTemplate.findById(resume.templateId).lean();
 
     const html = exportToHtml(resume, template);
@@ -1529,6 +1592,27 @@ export const exportResumeText = async (req, res) => {
     const resume = await Resume.findOne({ _id: resumeId, userId }).lean();
     if (!resume) {
       const { response, statusCode } = errorResponse("Resume not found", 404, ERROR_CODES.RESOURCE_NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    // UC-053: Check validation status before allowing export
+    if (!resume.metadata?.lastValidation || !resume.metadata.lastValidation.isValid) {
+      const { response, statusCode } = errorResponse(
+        "Resume must be validated before export. Please validate your resume first.",
+        400,
+        ERROR_CODES.VALIDATION_ERROR
+      );
+      return sendResponse(res, response, statusCode);
+    }
+    
+    // Check if resume was modified after last validation
+    const validatedAt = resume.metadata?.validatedAt;
+    if (validatedAt && new Date(resume.updatedAt) > new Date(validatedAt)) {
+      const { response, statusCode } = errorResponse(
+        "Resume has been modified since last validation. Please validate again before export.",
+        400,
+        ERROR_CODES.VALIDATION_ERROR
+      );
       return sendResponse(res, response, statusCode);
     }
 
