@@ -13,6 +13,7 @@ import Portfolio from "./pages/auth/Portfolio";
 import ProjectPublic from "./pages/auth/ProjectPublic";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ResumeTemplates from "./pages/auth/ResumeTemplates";
+import SharedResumeView from "./pages/public/SharedResumeView";
 import SalaryResearch from "./components/SalaryResearch";
 import SalaryBenchmarksExplorer from "./components/SalaryBenchmarksExplorer";
 
@@ -36,6 +37,7 @@ function App() {
           <Route path="/portfolio/project/:id" element={<ProtectedRoute><Portfolio /></ProtectedRoute>} />
           <Route path="/projects/:id" element={<ProjectPublic />} />
           <Route path="/resumes" element={<ProtectedRoute><ResumeTemplates /></ProtectedRoute>} />
+          <Route path="/share/:token" element={<SharedResumeView />} />
           <Route path="/salary-research/:jobId" element={<ProtectedRoute><SalaryResearch /></ProtectedRoute>} />
           <Route path="/salary-benchmarks" element={<ProtectedRoute><SalaryBenchmarksExplorer /></ProtectedRoute>} />
         </Routes>

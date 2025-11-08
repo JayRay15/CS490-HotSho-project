@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from "uuid";
 // Custom validators
 const validators = {
   phone: {
-    validator: function(v) {
+    validator: function (v) {
       if (!v) return true; // Optional field
       // E.164 format or common formats: +1234567890, (123) 456-7890, 123-456-7890, 1234567890
       return /^[\+]?[(]?[0-9]{1,4}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,9}$/.test(v);
@@ -13,7 +13,7 @@ const validators = {
     message: 'Please enter a valid phone number'
   },
   url: {
-    validator: function(v) {
+    validator: function (v) {
       if (!v) return true; // Optional field
       // Allow http://, https://, or no protocol
       return /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/.test(v);
@@ -21,7 +21,7 @@ const validators = {
     message: 'Please enter a valid URL'
   },
   gpa: {
-    validator: function(v) {
+    validator: function (v) {
       if (!v) return true; // Optional field
       return v >= 0 && v <= 4.0;
     },
@@ -35,10 +35,10 @@ const employmentSchema = new mongoose.Schema({
   company: { type: String, required: true, trim: true },
   location: { type: String, trim: true },
   startDate: { type: Date, required: true },
-  endDate: { 
+  endDate: {
     type: Date,
     validate: {
-      validator: function(v) {
+      validator: function (v) {
         // End date must be after start date if both exist
         if (!v || !this.startDate) return true;
         return v >= this.startDate;
@@ -47,8 +47,8 @@ const employmentSchema = new mongoose.Schema({
     }
   },
   isCurrentPosition: { type: Boolean, default: false },
-  salary: { 
-    type: Number, 
+  salary: {
+    type: Number,
     min: [0, 'Salary must be at least 0'],
     max: [10000000, 'Salary must not exceed 10,000,000']
   },
@@ -56,12 +56,12 @@ const employmentSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Virtual field to handle backward compatibility: use position if available, otherwise jobTitle
-employmentSchema.virtual('displayPosition').get(function() {
+employmentSchema.virtual('displayPosition').get(function () {
   return this.position || this.jobTitle;
 });
 
 // Pre-save hook to ensure position is set (migrate from jobTitle if needed)
-employmentSchema.pre('save', function(next) {
+employmentSchema.pre('save', function (next) {
   if (!this.position && this.jobTitle) {
     this.position = this.jobTitle;
   }
@@ -82,10 +82,10 @@ const educationSchema = new mongoose.Schema({
   degree: { type: String, required: true, trim: true },
   fieldOfStudy: { type: String, required: true, trim: true },
   startDate: { type: Date, required: true },
-  endDate: { 
+  endDate: {
     type: Date,
     validate: {
-      validator: function(v) {
+      validator: function (v) {
         // End date must be after start date if both exist
         if (!v || !this.startDate) return true;
         return v >= this.startDate;
@@ -94,7 +94,7 @@ const educationSchema = new mongoose.Schema({
     }
   },
   current: { type: Boolean, default: false },
-  gpa: { 
+  gpa: {
     type: Number,
     min: [0, 'GPA must be at least 0.0'],
     max: [4.0, 'GPA must not exceed 4.0'],
@@ -110,10 +110,10 @@ const projectSchema = new mongoose.Schema({
   description: { type: String, required: true, trim: true, maxlength: 2000 },
   technologies: [{ type: String, trim: true, maxlength: 50 }],
   startDate: { type: Date, required: true },
-  endDate: { 
+  endDate: {
     type: Date,
     validate: {
-      validator: function(v) {
+      validator: function (v) {
         // End date must be after start date if both exist
         if (!v || !this.startDate) return true;
         return v >= this.startDate;
@@ -123,32 +123,32 @@ const projectSchema = new mongoose.Schema({
   },
   current: { type: Boolean, default: false },
   // Links - URL validation
-  url: { 
-    type: String, 
+  url: {
+    type: String,
     trim: true,
     validate: validators.url
   },
-  githubUrl: { 
-    type: String, 
+  githubUrl: {
+    type: String,
     trim: true,
     validate: {
-      validator: function(v) {
+      validator: function (v) {
         if (!v) return true;
         // GitHub URL format validation
-        return /^(https?:\/\/)?(www\.)?github\.com\/[\w-]+\/[\w.-]+\/?$/.test(v) || 
-               /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/.test(v);
+        return /^(https?:\/\/)?(www\.)?github\.com\/[\w-]+\/[\w.-]+\/?$/.test(v) ||
+          /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/.test(v);
       },
       message: 'Please enter a valid GitHub URL'
     }
   },
-  projectUrl: { 
-    type: String, 
+  projectUrl: {
+    type: String,
     trim: true,
     validate: validators.url
   },
   // Extended fields to support current UI
   role: { type: String, trim: true, maxlength: 100 },
-  teamSize: { 
+  teamSize: {
     type: Number,
     min: [1, 'Team size must be at least 1'],
     max: [1000, 'Team size seems unrealistic']
@@ -167,12 +167,12 @@ const projectSchema = new mongoose.Schema({
 const certificationSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true, maxlength: 200 },
   organization: { type: String, required: true, trim: true, maxlength: 200 },
-  certId: { 
-    type: String, 
+  certId: {
+    type: String,
     trim: true,
     maxlength: 100,
     validate: {
-      validator: function(v) {
+      validator: function (v) {
         if (!v) return true;
         // Allow alphanumeric, hyphens, underscores, and spaces
         return /^[a-zA-Z0-9\s\-_]+$/.test(v);
@@ -180,11 +180,11 @@ const certificationSchema = new mongoose.Schema({
       message: 'Certification ID can only contain letters, numbers, hyphens, underscores, and spaces'
     }
   },
-  dateEarned: { 
-    type: Date, 
+  dateEarned: {
+    type: Date,
     required: true,
     validate: {
-      validator: function(v) {
+      validator: function (v) {
         // Date earned cannot be in the future
         return v <= new Date();
       },
@@ -192,10 +192,10 @@ const certificationSchema = new mongoose.Schema({
     }
   },
   doesNotExpire: { type: Boolean, default: false },
-  expirationDate: { 
+  expirationDate: {
     type: Date,
     validate: {
-      validator: function(v) {
+      validator: function (v) {
         // If doesn't expire, expiration date should not be set
         if (this.doesNotExpire && v) return false;
         // Expiration date must be after date earned
@@ -212,8 +212,8 @@ const certificationSchema = new mongoose.Schema({
     data: { type: String } // base64 data URL if uploaded client-side
   },
   // Reminder fields used by frontend UI
-  reminderDays: { 
-    type: Number, 
+  reminderDays: {
+    type: Number,
     default: 30,
     min: [1, 'Reminder days must be at least 1'],
     max: [365, 'Reminder days cannot exceed 365']
@@ -224,33 +224,33 @@ const certificationSchema = new mongoose.Schema({
 
 const userSchema = new mongoose.Schema(
   {
-    uuid: { 
-      type: String, 
-      unique: true, 
+    uuid: {
+      type: String,
+      unique: true,
       default: uuidv4, // Automatically generates UUID v4 on document creation
       immutable: true, // Cannot be changed after creation
       index: true // For fast lookups
     },
     auth0Id: { type: String, unique: true, required: true, trim: true }, // Clerk user ID (stored as auth0Id for compatibility)
-    email: { 
-      type: String, 
-      lowercase: true, 
-      required: true, 
+    email: {
+      type: String,
+      lowercase: true,
+      required: true,
       unique: true,
       trim: true,
       validate: {
-        validator: function(v) {
+        validator: function (v) {
           // Email format validation per UC-001
           return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
         },
         message: 'Please enter a valid email address'
       }
     },
-    password: { 
+    password: {
       type: String,
       minlength: [8, 'Password must be at least 8 characters'], // Per UC-001
       validate: {
-        validator: function(v) {
+        validator: function (v) {
           if (!v) return true; // Optional for OAuth users
           // Must contain: 1 uppercase, 1 lowercase, 1 number (per UC-001)
           return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(v);
@@ -259,11 +259,11 @@ const userSchema = new mongoose.Schema(
       }
     },
     name: { type: String, required: true, trim: true, minlength: 1, maxlength: 100 },
-    picture: { 
-      type: String, 
+    picture: {
+      type: String,
       trim: true,
       validate: {
-        validator: function(v) {
+        validator: function (v) {
           if (!v) return true; // Optional
           // Allow standard URLs OR data URL images (JPG/PNG/GIF) used for inline storage
           const isDataUrl = /^data:image\/(jpeg|jpg|png|gif);base64,[A-Za-z0-9+/=]+$/.test(v);
@@ -275,40 +275,40 @@ const userSchema = new mongoose.Schema(
     headline: { type: String, trim: true, maxlength: 120 }, // Professional title/headline (per UC-021)
     bio: { type: String, maxlength: 500, trim: true }, // Brief summary (500 char limit per UC-021)
     location: { type: String, trim: true, maxlength: 100 },
-    phone: { 
-      type: String, 
+    phone: {
+      type: String,
       trim: true,
       validate: validators.phone
     },
     industry: { type: String, enum: ['Technology', 'Healthcare', 'Finance', 'Education', 'Construction', 'Real Estate'], trim: true },
     experienceLevel: { type: String, enum: ['Entry', 'Mid', 'Senior', 'Executive'], trim: true }, // Per UC-021
-    website: { 
-      type: String, 
+    website: {
+      type: String,
       trim: true,
       validate: validators.url
     },
-    linkedin: { 
-      type: String, 
+    linkedin: {
+      type: String,
       trim: true,
       validate: {
-        validator: function(v) {
+        validator: function (v) {
           if (!v) return true;
           // LinkedIn URL format validation
-          return /^(https?:\/\/)?(www\.)?linkedin\.com\/(in|company)\/[\w-]+\/?$/.test(v) || 
-                 /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/.test(v);
+          return /^(https?:\/\/)?(www\.)?linkedin\.com\/(in|company)\/[\w-]+\/?$/.test(v) ||
+            /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/.test(v);
         },
         message: 'Please enter a valid LinkedIn URL'
       }
     },
-    github: { 
-      type: String, 
+    github: {
+      type: String,
       trim: true,
       validate: {
-        validator: function(v) {
+        validator: function (v) {
           if (!v) return true;
           // GitHub profile URL format validation
-          return /^(https?:\/\/)?(www\.)?github\.com\/[\w-]+\/?$/.test(v) || 
-                 /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/.test(v);
+          return /^(https?:\/\/)?(www\.)?github\.com\/[\w-]+\/?$/.test(v) ||
+            /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/.test(v);
         },
         message: 'Please enter a valid GitHub URL'
       }
@@ -328,12 +328,27 @@ const userSchema = new mongoose.Schema(
 userSchema.add({
   deadlineReminderLastSent: { type: Date }
 });
+// UC-054: Simple notifications array (lightweight, not separate collection)
+userSchema.add({
+  notifications: [
+    new mongoose.Schema(
+      {
+        type: { type: String, enum: ["feedback:new", "feedback:resolved"], required: true },
+        resumeId: { type: mongoose.Schema.Types.ObjectId, ref: "Resume" },
+        feedbackId: { type: mongoose.Schema.Types.ObjectId, ref: "ResumeFeedback" },
+        message: { type: String, required: true },
+        isRead: { type: Boolean, default: false },
+      },
+      { timestamps: true, _id: false }
+    )
+  ]
+});
 
 // Hash password before saving (only if password exists)
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function (next) {
   // Only hash the password if it has been modified (or is new) AND exists
   if (!this.isModified('password') || !this.password) return next();
-  
+
   try {
     // Hash password with cost of 12
     const salt = await bcrypt.genSalt(12);
@@ -345,7 +360,7 @@ userSchema.pre('save', async function(next) {
 });
 
 // Compare password method
-userSchema.methods.comparePassword = async function(candidatePassword) {
+userSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
