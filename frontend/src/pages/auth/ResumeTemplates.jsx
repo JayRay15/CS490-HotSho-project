@@ -29,6 +29,7 @@ import Card from "../../components/Card";
 import Button from "../../components/Button";
 import InputField from "../../components/InputField";
 import LoadingSpinner from "../../components/LoadingSpinner";
+import CoverLetterExportModal from "../../components/CoverLetterExportModal";
 import ValidationPanel from "../../components/resume/ValidationPanel";
 import ValidationBadge from "../../components/resume/ValidationBadge";
 import RichTextEditor from "../../components/resume/RichTextEditor";
@@ -211,6 +212,10 @@ export default function ResumeTemplates() {
   const [showManageCoverLetterTemplates, setShowManageCoverLetterTemplates] = useState(false);
   const [editingCoverLetter, setEditingCoverLetter] = useState(null);
   const [showEditCoverLetterModal, setShowEditCoverLetterModal] = useState(false);
+
+  // UC-054: Cover Letter Export State
+  const [showCoverLetterExportModal, setShowCoverLetterExportModal] = useState(false);
+  const [exportingCoverLetter, setExportingCoverLetter] = useState(null);
 
   // AI Cover Letter Generation State
   const [showAICoverLetterModal, setShowAICoverLetterModal] = useState(false);
@@ -1991,39 +1996,58 @@ export default function ResumeTemplates() {
                         <p className="text-xs text-gray-500 mb-3">
                           Modified {new Date(letter.updatedAt).toLocaleDateString()}
                         </p>
-                        <div className="flex gap-2">
+                        <div className="flex flex-col gap-2">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                setEditingCoverLetter(letter);
+                                setCustomCoverLetterName(letter.name);
+                                setCustomCoverLetterContent(letter.content);
+                                setCustomCoverLetterStyle(letter.style || 'formal');
+                                setShowEditCoverLetterModal(true);
+                              }}
+                              className="flex-1 px-3 py-1.5 text-sm rounded transition"
+                              style={{ backgroundColor: "#777C6D", color: "white" }}
+                              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                            >
+                              View
+                            </button>
+                            <button
+                              onClick={async () => {
+                                if (confirm(`Delete "${letter.name}"?`)) {
+                                  try {
+                                    await authWrap();
+                                    await apiDeleteCoverLetter(letter._id);
+                                    await loadSavedCoverLetters();
+                                    alert("Cover letter deleted successfully!");
+                                  } catch (err) {
+                                    console.error("Delete failed:", err);
+                                    alert("Failed to delete cover letter.");
+                                  }
+                                }
+                              }}
+                              className="px-3 py-1.5 text-sm text-red-600 hover:text-red-700 border border-red-300 rounded transition"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                          {/* UC-054: Export Button */}
                           <button
                             onClick={() => {
-                              setEditingCoverLetter(letter);
-                              setCustomCoverLetterName(letter.name);
-                              setCustomCoverLetterContent(letter.content);
-                              setCustomCoverLetterStyle(letter.style || 'formal');
-                              setShowEditCoverLetterModal(true);
+                              setExportingCoverLetter(letter);
+                              setShowCoverLetterExportModal(true);
                             }}
-                            className="flex-1 px-3 py-1.5 text-sm rounded transition"
-                            style={{ backgroundColor: "#777C6D", color: "white" }}
-                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                            className="w-full px-3 py-1.5 text-sm text-white rounded transition flex items-center justify-center gap-2"
+                            style={{ backgroundColor: "#4F5348" }}
+                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#3a3d34'}
+                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#4F5348'}
+                            title="Export cover letter"
                           >
-                            View
-                          </button>
-                          <button
-                            onClick={async () => {
-                              if (confirm(`Delete "${letter.name}"?`)) {
-                                try {
-                                  await authWrap();
-                                  await apiDeleteCoverLetter(letter._id);
-                                  await loadSavedCoverLetters();
-                                  alert("Cover letter deleted successfully!");
-                                } catch (err) {
-                                  console.error("Delete failed:", err);
-                                  alert("Failed to delete cover letter.");
-                                }
-                              }
-                            }}
-                            className="px-3 py-1.5 text-sm text-red-600 hover:text-red-700 border border-red-300 rounded transition"
-                          >
-                            Delete
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            Export
                           </button>
                         </div>
                       </Card>
@@ -2856,8 +2880,8 @@ export default function ResumeTemplates() {
                           key={idx}
                           onClick={() => setSelectedVariation(variation)}
                           className={`border-2 rounded-lg p-4 cursor-pointer transition ${selectedVariation?.variationNumber === variation.variationNumber
-                              ? 'border-blue-500 bg-blue-50'
-                              : 'border-gray-200 hover:border-gray-300'
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300'
                             }`}
                         >
                           <div className="flex items-start justify-between mb-2">
@@ -4159,8 +4183,8 @@ export default function ResumeTemplates() {
                       onClick={handleSaveCustomization}
                       disabled={!hasUnsavedChanges || isSavingCustomization}
                       className={`px-4 py-2 rounded-lg transition flex items-center gap-2 ${hasUnsavedChanges && !isSavingCustomization
-                          ? 'bg-[#777C6D] text-white hover:bg-[#656A5C]'
-                          : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                        ? 'bg-[#777C6D] text-white hover:bg-[#656A5C]'
+                        : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                         }`}
                       title={hasUnsavedChanges ? "Save section customization changes" : "No unsaved changes"}
                     >
@@ -4538,8 +4562,8 @@ export default function ResumeTemplates() {
                             <label
                               key={idx}
                               className={`flex items-center gap-2 px-3 py-1.5 rounded cursor-pointer transition ${isInCurrent
-                                  ? 'bg-gray-100 text-gray-500'
-                                  : 'bg-purple-50 hover:bg-purple-100 text-purple-900'
+                                ? 'bg-gray-100 text-gray-500'
+                                : 'bg-purple-50 hover:bg-purple-100 text-purple-900'
                                 }`}
                             >
                               <input
@@ -4820,10 +4844,10 @@ export default function ResumeTemplates() {
                           onClick={() => !isInResume && toggleSkillSelection(skill)}
                           disabled={isInResume}
                           className={`px-3 py-1.5 rounded-full text-sm border transition-all flex items-center gap-2 ${isInResume
-                              ? 'bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed'
-                              : isSelected
-                                ? 'bg-blue-600 text-white border-blue-600 shadow-md'
-                                : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 cursor-pointer'
+                            ? 'bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed'
+                            : isSelected
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                              : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 cursor-pointer'
                             }`}
                         >
                           {isSelected && (
@@ -4859,10 +4883,10 @@ export default function ResumeTemplates() {
                           onClick={() => !isInResume && toggleSkillSelection(skill)}
                           disabled={isInResume}
                           className={`px-3 py-1.5 rounded-full text-sm border transition-all flex items-center gap-2 ${isInResume
-                              ? 'bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed'
-                              : isSelected
-                                ? 'bg-purple-600 text-white border-purple-600 shadow-md'
-                                : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 cursor-pointer'
+                            ? 'bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed'
+                            : isSelected
+                              ? 'bg-purple-600 text-white border-purple-600 shadow-md'
+                              : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 cursor-pointer'
                             }`}
                         >
                           {isSelected && (
@@ -5101,8 +5125,8 @@ export default function ResumeTemplates() {
                         Experience #{exp.experienceIndex + 1}
                       </h4>
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${exp.relevanceScore >= 80 ? 'bg-green-100 text-green-800' :
-                          exp.relevanceScore >= 60 ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-gray-100 text-gray-800'
+                        exp.relevanceScore >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-gray-100 text-gray-800'
                         }`}>
                         {exp.relevanceScore}% Relevant
                       </span>
@@ -5138,8 +5162,8 @@ export default function ResumeTemplates() {
                                 }
                               }}
                               className={`w-full text-left bg-gray-50 rounded p-3 border-2 transition cursor-pointer ${!selectedExperienceVariations[`${expIdx}-${bulletIdx}`] || selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'original'
-                                  ? 'border-gray-400 bg-gray-100'
-                                  : 'border-gray-200 hover:border-gray-300'
+                                ? 'border-gray-400 bg-gray-100'
+                                : 'border-gray-200 hover:border-gray-300'
                                 }`}
                             >
                               <div className="flex items-start gap-2">
@@ -5161,8 +5185,8 @@ export default function ResumeTemplates() {
                               <button
                                 onClick={() => toggleExperienceVariation(expIdx, bulletIdx, 'achievement')}
                                 className={`w-full text-left bg-blue-50 rounded p-3 border-2 transition cursor-pointer ${selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'achievement'
-                                    ? 'border-blue-600 bg-blue-100 shadow-md'
-                                    : 'border-blue-200 hover:border-blue-400'
+                                  ? 'border-blue-600 bg-blue-100 shadow-md'
+                                  : 'border-blue-200 hover:border-blue-400'
                                   }`}
                               >
                                 <div className="flex items-start gap-2">
@@ -5185,8 +5209,8 @@ export default function ResumeTemplates() {
                               <button
                                 onClick={() => toggleExperienceVariation(expIdx, bulletIdx, 'technical')}
                                 className={`w-full text-left bg-green-50 rounded p-3 border-2 transition cursor-pointer ${selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'technical'
-                                    ? 'border-green-600 bg-green-100 shadow-md'
-                                    : 'border-green-200 hover:border-green-400'
+                                  ? 'border-green-600 bg-green-100 shadow-md'
+                                  : 'border-green-200 hover:border-green-400'
                                   }`}
                               >
                                 <div className="flex items-start gap-2">
@@ -5209,8 +5233,8 @@ export default function ResumeTemplates() {
                               <button
                                 onClick={() => toggleExperienceVariation(expIdx, bulletIdx, 'impact')}
                                 className={`w-full text-left bg-purple-50 rounded p-3 border-2 transition cursor-pointer ${selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'impact'
-                                    ? 'border-purple-600 bg-purple-100 shadow-md'
-                                    : 'border-purple-200 hover:border-purple-400'
+                                  ? 'border-purple-600 bg-purple-100 shadow-md'
+                                  : 'border-purple-200 hover:border-purple-400'
                                   }`}
                               >
                                 <div className="flex items-start gap-2">
@@ -6903,6 +6927,19 @@ export default function ResumeTemplates() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* UC-054: Cover Letter Export Modal */}
+      {showCoverLetterExportModal && exportingCoverLetter && (
+        <CoverLetterExportModal
+          coverLetter={exportingCoverLetter}
+          onClose={() => {
+            setShowCoverLetterExportModal(false);
+            setExportingCoverLetter(null);
+          }}
+          contactInfo={null} // Will be fetched from user profile in modal
+          linkedJob={null} // Could be populated if cover letter is linked to a job
+        />
       )}
     </div>
   );

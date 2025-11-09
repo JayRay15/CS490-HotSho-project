@@ -51,6 +51,53 @@ describe('api axios helpers', () => {
     await expect(retryRequest(fn, 3)).rejects.toThrow('fail');
     expect(fn).toHaveBeenCalledTimes(1);
   });
+
+  test('response interceptor shapes server error and handles account deletion', async () => {
+    // find the response rejected handler
+    const respHandlers = api.interceptors.response.handlers;
+    const rejected = respHandlers.find(h => !!h.rejected).rejected;
+
+    // Simulate 403 deletion response
+    const err403 = { response: { status: 403, data: { message: 'Account deletion detected', errorCode: 4001, errors: [{ field: 'email', message: 'bad' }] } } };
+    // Clear sessionStorage first
+    sessionStorage.removeItem('logoutMessage');
+
+    await expect(rejected(err403)).rejects.toThrow();
+    try {
+      await rejected(err403);
+    } catch (e) {
+      expect(e.customError).toBeDefined();
+      expect(e.customError.statusCode).toBe(403);
+      expect(e.customError.isAccountDeleted).toBe(true);
+      expect(sessionStorage.getItem('logoutMessage')).toBe('Account deletion detected');
+      expect(e.customError.errorCode).toBe(4001);
+      expect(Array.isArray(e.customError.errors)).toBe(true);
+    }
+  });
+
+  test('response interceptor marks retryable for server errors and network errors', async () => {
+    const respHandlers = api.interceptors.response.handlers;
+    const rejected = respHandlers.find(h => !!h.rejected).rejected;
+
+    // Simulate 500 server error -> canRetry true
+    const err500 = { response: { status: 500, data: { message: 'Server boom' } } };
+    await expect(rejected(err500)).rejects.toThrow();
+    try { await rejected(err500); } catch (e) { expect(e.customError.canRetry).toBe(true); expect(e.customError.statusCode).toBe(500); }
+
+    // Simulate network error (request made but no response)
+    const errNet = { request: {} };
+    await expect(rejected(errNet)).rejects.toThrow();
+    try { await rejected(errNet); } catch (e) { expect(e.customError.isNetworkError).toBe(true); expect(e.customError.errorCode).toBe(6001); expect(e.customError.canRetry).toBe(true); }
+  });
+
+  test('request interceptor adds X-Request-Time header', () => {
+    const reqHandlers = api.interceptors.request.handlers;
+    const fulfilled = reqHandlers.find(h => !!h.fulfilled).fulfilled;
+
+    const cfg = { headers: {} };
+    const out = fulfilled(cfg);
+    expect(out.headers['X-Request-Time']).toBeDefined();
+  });
 });
 
 

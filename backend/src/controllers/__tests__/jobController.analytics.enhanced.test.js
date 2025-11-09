@@ -4,38 +4,42 @@
  */
 
 import { jest } from '@jest/globals';
-import { getJobAnalytics } from '../jobController.js';
-import { Job } from '../../models/Job.js';
 
-// Mock the Job model
-jest.mock('../../models/Job.js', () => ({
+// Use ESM-friendly module mocking for Job
+await jest.unstable_mockModule('../../models/Job.js', () => ({
   __esModule: true,
   Job: {
     find: jest.fn(),
+    countDocuments: jest.fn(),
   },
 }));
 
 describe('Job Controller - Enhanced Analytics (UC-072)', () => {
   let mockReq, mockRes, mockJobs;
+  // Expose controller function and mocked Job reference to all tests
+  let getJobAnalytics;
+  let Job;
 
-  beforeEach(() => {
-    // Reset mocks
+  beforeEach(async () => {
+    // Reset modules and mocks
+    jest.resetModules();
     jest.clearAllMocks();
-    // Ensure Job.find is a mock function
-    Job.find = jest.fn();
+
+  // Dynamically import mocked Job module and ensure mocks exist
+  const jobMod = await import('../../models/Job.js');
+  Job = jobMod.Job;
+  Job.find = jest.fn();
+  Job.countDocuments = jest.fn();
+
+  // Dynamically import controller under test and grab the function
+  const controller = await import('../jobController.js');
+  getJobAnalytics = controller.getJobAnalytics;
 
     // Setup mock request
-    mockReq = {
-      auth: {
-        userId: 'test-user-123'
-      }
-    };
+    mockReq = { auth: { userId: 'test-user-123' } };
 
     // Setup mock response
-    mockRes = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn()
-    };
+    mockRes = { status: jest.fn().mockReturnThis(), json: jest.fn() };
 
     // Setup mock jobs data
     mockJobs = [
@@ -111,6 +115,7 @@ describe('Job Controller - Enhanced Analytics (UC-072)', () => {
       }
     ];
 
+    // Set default mock implementations for find and countDocuments
     Job.find = jest.fn().mockResolvedValue(mockJobs);
     Job.countDocuments = jest.fn().mockResolvedValue(mockJobs.length);
   });
@@ -121,6 +126,7 @@ describe('Job Controller - Enhanced Analytics (UC-072)', () => {
 
   describe('Application Funnel Analytics', () => {
     it('should calculate funnel stages correctly', async () => {
+      const { getJobAnalytics } = await import('../jobController.js');
       await getJobAnalytics(mockReq, mockRes);
 
       expect(mockRes.json).toHaveBeenCalled();
@@ -134,7 +140,8 @@ describe('Job Controller - Enhanced Analytics (UC-072)', () => {
     });
 
     it('should calculate conversion rates correctly', async () => {
-      await getJobAnalytics(mockReq, mockRes);
+  const { getJobAnalytics } = await import('../jobController.js');
+  await getJobAnalytics(mockReq, mockRes);
 
       const response = mockRes.json.mock.calls[0][0];
       const conversionRates = response.data.funnelAnalytics.conversionRates;
@@ -152,7 +159,8 @@ describe('Job Controller - Enhanced Analytics (UC-072)', () => {
 
   describe('Company Analytics', () => {
     it('should track response times by company', async () => {
-      await getJobAnalytics(mockReq, mockRes);
+  const { getJobAnalytics } = await import('../jobController.js');
+  await getJobAnalytics(mockReq, mockRes);
 
       const response = mockRes.json.mock.calls[0][0];
       
@@ -161,7 +169,8 @@ describe('Job Controller - Enhanced Analytics (UC-072)', () => {
     });
 
     it('should calculate company success rates', async () => {
-      await getJobAnalytics(mockReq, mockRes);
+  const { getJobAnalytics } = await import('../jobController.js');
+  await getJobAnalytics(mockReq, mockRes);
 
       const response = mockRes.json.mock.calls[0][0];
       const companies = response.data.companyAnalytics;
@@ -177,7 +186,8 @@ describe('Job Controller - Enhanced Analytics (UC-072)', () => {
     });
 
     it('should sort companies by application count', async () => {
-      await getJobAnalytics(mockReq, mockRes);
+  const { getJobAnalytics } = await import('../jobController.js');
+  await getJobAnalytics(mockReq, mockRes);
 
       const response = mockRes.json.mock.calls[0][0];
       const companies = response.data.companyAnalytics;
@@ -192,7 +202,8 @@ describe('Job Controller - Enhanced Analytics (UC-072)', () => {
 
   describe('Industry Analytics', () => {
     it('should provide industry-specific insights', async () => {
-      await getJobAnalytics(mockReq, mockRes);
+  const { getJobAnalytics } = await import('../jobController.js');
+  await getJobAnalytics(mockReq, mockRes);
 
       const response = mockRes.json.mock.calls[0][0];
       
@@ -201,7 +212,8 @@ describe('Job Controller - Enhanced Analytics (UC-072)', () => {
     });
 
     it('should calculate industry response times', async () => {
-      await getJobAnalytics(mockReq, mockRes);
+  const { getJobAnalytics } = await import('../jobController.js');
+  await getJobAnalytics(mockReq, mockRes);
 
       const response = mockRes.json.mock.calls[0][0];
       const industries = response.data.industryAnalytics;
@@ -219,7 +231,8 @@ describe('Job Controller - Enhanced Analytics (UC-072)', () => {
 
   describe('Success Rate by Approach', () => {
     it('should analyze success by work mode', async () => {
-      await getJobAnalytics(mockReq, mockRes);
+  const { getJobAnalytics } = await import('../jobController.js');
+  await getJobAnalytics(mockReq, mockRes);
 
       const response = mockRes.json.mock.calls[0][0];
       
@@ -227,7 +240,8 @@ describe('Job Controller - Enhanced Analytics (UC-072)', () => {
     });
 
     it('should calculate rates for each work mode', async () => {
-      await getJobAnalytics(mockReq, mockRes);
+  const { getJobAnalytics } = await import('../jobController.js');
+  await getJobAnalytics(mockReq, mockRes);
 
       const response = mockRes.json.mock.calls[0][0];
       const approaches = response.data.approachAnalytics;
@@ -243,7 +257,8 @@ describe('Job Controller - Enhanced Analytics (UC-072)', () => {
 
   describe('Application Frequency Trends', () => {
     it('should provide weekly trends', async () => {
-      await getJobAnalytics(mockReq, mockRes);
+  const { getJobAnalytics } = await import('../jobController.js');
+  await getJobAnalytics(mockReq, mockRes);
 
       const response = mockRes.json.mock.calls[0][0];
       

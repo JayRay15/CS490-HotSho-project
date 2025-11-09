@@ -7,7 +7,15 @@ const mockNodemailer = {
 
 jest.unstable_mockModule('nodemailer', () => ({ default: mockNodemailer }));
 
-const { sendDeletionEmail, sendFinalDeletionEmail } = await import('../../utils/email.js');
+const {
+  sendDeletionEmail,
+  sendFinalDeletionEmail,
+  sendDeadlineReminderEmail,
+  sendInterviewConfirmationEmail,
+  sendInterviewReminderEmail,
+  sendInterviewCancellationEmail,
+  sendInterviewRescheduledEmail,
+} = await import('../../utils/email.js');
 
 describe('email utility', () => {
   let mockTransporter;
@@ -253,6 +261,57 @@ describe('email utility', () => {
           auth: undefined,
         })
       );
+    });
+  });
+
+  describe('other email helpers', () => {
+    it('should send deadline reminder email via transporter', async () => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      const items = [{ title: 'Dev', company: 'X', deadline: new Date(), days: 1 }];
+
+      await sendDeadlineReminderEmail('to@example.com', 'Name', items);
+
+      expect(mockTransporter.sendMail).toHaveBeenCalledWith(expect.objectContaining({ to: 'to@example.com', subject: expect.any(String) }));
+    });
+
+    it('should log deadline reminder when transporter is missing', async () => {
+      delete process.env.SMTP_HOST;
+
+      await sendDeadlineReminderEmail('to@example.com', 'Name', []);
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('[MOCK EMAIL] Deadline Reminders'));
+    });
+
+    it('should send interview confirmation email via transporter', async () => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      const interview = { title: 'SWE', company: 'Acme', scheduledDate: new Date(), duration: 45, interviewType: 'onsite' };
+
+      await sendInterviewConfirmationEmail('to@example.com', 'Name', interview);
+      expect(mockTransporter.sendMail).toHaveBeenCalledWith(expect.objectContaining({ to: 'to@example.com', subject: expect.stringContaining('Interview') }));
+    });
+
+    it('should send interview reminder and include incomplete tasks text path', async () => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      const interview = { title: 'SWE', company: 'Acme', scheduledDate: new Date(), interviewType: 'onsite', preparationTasks: [{ title: 'prep', completed: false }] };
+
+      await sendInterviewReminderEmail('to@example.com', 'Name', interview, 2);
+      expect(mockTransporter.sendMail).toHaveBeenCalledWith(expect.objectContaining({ to: 'to@example.com', subject: expect.stringContaining('Interview Reminder') }));
+    });
+
+    it('should log interview cancellation when transporter missing', async () => {
+      delete process.env.SMTP_HOST;
+      const interview = { title: 'SWE', company: 'Acme', scheduledDate: new Date() };
+
+      await sendInterviewCancellationEmail('to@example.com', 'Name', interview);
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('[MOCK EMAIL] Interview Cancellation'));
+    });
+
+    it('should send interview rescheduled email via transporter', async () => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      const interview = { title: 'SWE', company: 'Acme', scheduledDate: new Date(), interviewType: 'onsite' };
+
+      await sendInterviewRescheduledEmail('to@example.com', 'Name', interview, new Date(Date.now() - 3600 * 1000));
+      expect(mockTransporter.sendMail).toHaveBeenCalledWith(expect.objectContaining({ to: 'to@example.com', subject: expect.stringContaining('Interview Rescheduled') }));
     });
   });
 });
