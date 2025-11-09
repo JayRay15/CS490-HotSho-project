@@ -14,6 +14,8 @@ const mockImportTemplate = jest.fn((req, res) => res.json({ success: true }));
 const mockShareTemplate = jest.fn((req, res) => res.json({ success: true }));
 const mockExportTemplate = jest.fn((req, res) => res.json({ success: true }));
 const mockGetIndustryGuidance = jest.fn((req, res) => res.json({ success: true }));
+const mockGenerateAICoverLetter = jest.fn((req, res) => res.json({ success: true }));
+const mockAnalyzeCulture = jest.fn((req, res) => res.json({ success: true }));
 
 jest.unstable_mockModule('../../controllers/coverLetterTemplateController.js', () => ({
   listTemplates: mockListTemplates,
@@ -27,6 +29,8 @@ jest.unstable_mockModule('../../controllers/coverLetterTemplateController.js', (
   shareTemplate: mockShareTemplate,
   exportTemplate: mockExportTemplate,
   getIndustryGuidance: mockGetIndustryGuidance,
+  generateAICoverLetter: mockGenerateAICoverLetter,
+  analyzeCulture: mockAnalyzeCulture,
 }));
 
 // Mock the middleware
@@ -200,6 +204,40 @@ describe('coverLetterTemplateRoutes', () => {
 
     it('should protect the route with checkJwt', async () => {
       await request(app).put('/api/cover-letter-templates/template-123/share').send({});
+      expect(mockCheckJwt).toHaveBeenCalled();
+    });
+  });
+
+  describe('POST /api/cover-letter/ai/generate', () => {
+    it('should call generateAICoverLetter controller', async () => {
+      const response = await request(app)
+        .post('/api/cover-letter/ai/generate')
+        .send({ 
+          jobId: 'job-123',
+          tone: 'formal',
+          variationCount: 1
+        });
+      expect(response.status).toBe(200);
+      expect(mockGenerateAICoverLetter).toHaveBeenCalled();
+    });
+
+    it('should protect the route with checkJwt', async () => {
+      await request(app).post('/api/cover-letter/ai/generate').send({});
+      expect(mockCheckJwt).toHaveBeenCalled();
+    });
+  });
+
+  describe('POST /api/cover-letter/ai/analyze-culture', () => {
+    it('should call analyzeCulture controller', async () => {
+      const response = await request(app)
+        .post('/api/cover-letter/ai/analyze-culture')
+        .send({ jobDescription: 'Test job description' });
+      expect(response.status).toBe(200);
+      expect(mockAnalyzeCulture).toHaveBeenCalled();
+    });
+
+    it('should protect the route with checkJwt', async () => {
+      await request(app).post('/api/cover-letter/ai/analyze-culture').send({});
       expect(mockCheckJwt).toHaveBeenCalled();
     });
   });
