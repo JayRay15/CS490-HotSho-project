@@ -1,4 +1,4 @@
-﻿import { jest } from '@jest/globals';
+import { jest } from '@jest/globals';
 
 // Mock models and email util
 const mockInterview = { find: jest.fn() };
@@ -19,7 +19,7 @@ const {
   getUpcomingInterviewSummary,
 } = await import('../interviewReminders.js');
 
-describe('interviewReminders util', () => {
+describe('interviewReminders util (fixed)', () => {
   let logSpy;
   let errSpy;
 
@@ -38,20 +38,15 @@ describe('interviewReminders util', () => {
   });
 
   it('returns success with zero reminders when none found', async () => {
-    // Interview.find will be called three times (one per threshold)
-    // For sendInterviewRemindersNow, populate should resolve directly to an array
     mockInterview.find.mockImplementation(() => ({ populate: () => Promise.resolve([]) }));
-
     const res = await sendInterviewRemindersNow();
-
     expect(res.success).toBe(true);
     expect(res.remindersSent).toBe(0);
   });
 
   it('sends a reminder when interview in window and user exists', async () => {
     const now = new Date();
-    const scheduledDate = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24h
-
+    const scheduledDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     const interviewObj = {
       _id: 'i1',
       userId: 'u1',
@@ -60,8 +55,6 @@ describe('interviewReminders util', () => {
       reminders: { enabled: true, remindersSent: [] },
       save: jest.fn().mockResolvedValue(true),
     };
-
-    // First threshold returns the interview, others return empty
     mockInterview.find
       .mockImplementationOnce(() => ({ populate: () => Promise.resolve([interviewObj]) }))
       .mockImplementation(() => ({ populate: () => Promise.resolve([]) }));
@@ -79,7 +72,6 @@ describe('interviewReminders util', () => {
   it('skips reminders already sent today', async () => {
     const now = new Date();
     const scheduledDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-
     const interviewObj = {
       _id: 'i2',
       userId: 'u2',
@@ -88,13 +80,11 @@ describe('interviewReminders util', () => {
       reminders: { enabled: true, remindersSent: [{ type: '24h', sentAt: now.toISOString() }] },
       save: jest.fn().mockResolvedValue(true),
     };
-
     mockInterview.find
       .mockImplementationOnce(() => ({ populate: () => Promise.resolve([interviewObj]) }))
       .mockImplementation(() => ({ populate: () => Promise.resolve([]) }));
 
     const res = await sendInterviewRemindersNow();
-
     expect(res.success).toBe(true);
     expect(res.remindersSent).toBe(0);
   });
@@ -103,10 +93,8 @@ describe('interviewReminders util', () => {
     const proposed = new Date();
     const conflicts = [{ _id: 'c1', scheduledDate: proposed }];
     mockInterview.find.mockImplementation(() => ({ populate: () => ({ sort: () => Promise.resolve(conflicts) }) }));
-
     const res = await checkForConflicts('user1', proposed, 60, null);
     expect(res).toEqual(conflicts);
-    expect(mockInterview.find).toHaveBeenCalled();
   });
 
   it('getUpcomingInterviewSummary groups and computes stats', async () => {
@@ -115,11 +103,8 @@ describe('interviewReminders util', () => {
     const interviews = [
       { _id: 'i1', userId: 'u1', title: 'A', company: 'X', scheduledDate: future, interviewType: 'phone', status: 'Scheduled', preparationTasks: [{ title: 't1', completed: false }], conflictWarning: { hasConflict: true } },
     ];
-
     mockInterview.find.mockImplementation(() => ({ populate: () => ({ sort: () => Promise.resolve(interviews) }) }));
-
     const res = await getUpcomingInterviewSummary('u1', 7);
-
     expect(res.interviews).toEqual(interviews);
     expect(res.stats.total).toBe(1);
     expect(res.stats.withIncompleteTasks).toBe(1);
