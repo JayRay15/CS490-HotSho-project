@@ -17,6 +17,52 @@ const jobSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    // UC-062: Company information for job opportunities
+    companyInfo: {
+      size: {
+        type: String,
+        enum: ["1-10", "11-50", "51-200", "201-500", "501-1000", "1001-5000", "5001-10000", "10000+", ""],
+        default: "",
+      },
+      website: {
+        type: String,
+        trim: true,
+      },
+      description: {
+        type: String,
+        trim: true,
+      },
+      mission: {
+        type: String,
+        trim: true,
+      },
+      logo: {
+        type: String,
+        trim: true,
+      },
+      contactInfo: {
+        email: String,
+        phone: String,
+        address: String,
+      },
+      glassdoorRating: {
+        rating: {
+          type: Number,
+          min: 0,
+          max: 5,
+        },
+        reviewCount: Number,
+        url: String,
+      },
+      recentNews: [
+        {
+          title: String,
+          summary: String,
+          url: String,
+          date: Date,
+        },
+      ],
+    },
     status: {
       type: String,
       required: true,
