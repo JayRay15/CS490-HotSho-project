@@ -162,4 +162,67 @@ describe('geminiService', () => {
     const outC = await modC.generateResumeContent(jobPosting, detailedProfile, tplC);
     expect(outC.summary).toBe('C');
   });
+
+  test('generateResumeContent repairs trailing commas and parses', async () => {
+    const badJson = '{"summary":"fixed",}';
+    const mod = await importWithMock({ text: badJson });
+    const out = await mod.generateResumeContent(jobPosting, userProfile, template);
+    expect(out.summary).toBe('fixed');
+  });
+
+  test('generateResumeContent rejects when response is unrecoverable invalid JSON', async () => {
+    const mod = await importWithMock({ text: 'not a json at all!!!' });
+    await expect(mod.generateResumeContent(jobPosting, userProfile, template)).rejects.toThrow(/Failed to generate resume content/);
+  });
+
+  test('analyzeATSCompatibility rejects on invalid JSON (no repair path)', async () => {
+    const bad = '{"score":85,}';
+    const mod = await importWithMock({ text: bad });
+    await expect(mod.analyzeATSCompatibility({ summary: 's', relevantSkills: [] }, jobPosting)).rejects.toThrow(/Failed to analyze ATS compatibility/);
+  });
+
+  test('optimizeResumeSkills surfaces model errors as thrown Error', async () => {
+    const mod = await importWithMock({ shouldThrow: true });
+    await expect(mod.optimizeResumeSkills({ sections: { skills: [] } }, jobPosting, userProfile)).rejects.toThrow(/Failed to optimize skills/);
+  });
+
+  test('tailorExperience throws when model returns invalid JSON', async () => {
+    const mod = await importWithMock({ text: '### not json ###' });
+    await expect(mod.tailorExperience({ sections: { experience: [] } }, jobPosting, userProfile)).rejects.toThrow(/Failed to tailor experience/);
+  });
+
+  test('analyzeATSCompatibility handles fenced ```json response', async () => {
+    const mockText = '```json' + JSON.stringify({ score: 90, missingKeywords: [], keywordDensity: 'good', suggestions: [], matchedKeywords: [] }) + '```';
+    const mod = await importWithMock({ text: mockText });
+    const out = await mod.analyzeATSCompatibility({ summary: 's', relevantSkills: [] }, jobPosting);
+    expect(out.score).toBe(90);
+  });
+
+  test('optimizeResumeSkills handles fenced ``` response', async () => {
+    const mockText = '```' + JSON.stringify({ matchScore: 77, optimizedSkills: [] }) + '```';
+    const mod = await importWithMock({ text: mockText });
+    const out = await mod.optimizeResumeSkills({ sections: { skills: [] } }, jobPosting, userProfile);
+    expect(out.matchScore).toBe(77);
+  });
+
+  test('tailorExperience handles fenced ```json response', async () => {
+    const mockText = '```json' + JSON.stringify({ experiences: [{ experienceIndex: 0, jobTitle: 'Z', relevanceScore: 50 }], summary: 'ok2' }) + '```';
+    const mod = await importWithMock({ text: mockText });
+    const out = await mod.tailorExperience({ sections: { experience: [] } }, jobPosting, { employment: [] });
+    expect(out.summary).toBe('ok2');
+  });
+
+  test('regenerateSection experience handles fenced code block JSON', async () => {
+    const mockText = '```json' + JSON.stringify({ job0: ['f1', 'f2'] }) + '```';
+    const mod = await importWithMock({ text: mockText });
+    const out = await mod.regenerateSection('experience', jobPosting, userProfile, {});
+    expect(out.job0).toEqual(['f1', 'f2']);
+  });
+
+  test('regenerateSection summary handles fenced code block JSON', async () => {
+    const mockText = '```json' + JSON.stringify({ summary: 'fenced summary' }) + '```';
+    const mod = await importWithMock({ text: mockText });
+    const out = await mod.regenerateSection('summary', jobPosting, userProfile, { summary: 'old' });
+    expect(out.summary).toBe('fenced summary');
+  });
 });
