@@ -653,15 +653,6 @@ export async function generateCoverLetter({
 
     // Build user profile summary
     const profileSummary = buildProfileSummary(userProfile);
-    
-    // Log profile data for debugging
-    console.log('=== PROFILE DATA FOR AI ===');
-    console.log('Name:', userProfile.firstName, userProfile.lastName);
-    console.log('Email:', userProfile.email);
-    console.log('Phone:', userProfile.phone);
-    console.log('Location:', userProfile.location);
-    console.log('Profile Summary:\n', profileSummary);
-    console.log('=== END PROFILE DATA ===');
 
     // Construct the prompt
     const prompt = buildCoverLetterPrompt({
@@ -840,33 +831,54 @@ ${companyName}
 4. If a field is not provided in CONTACT INFORMATION, omit it entirely (don't use placeholders)
 5. The closing signature MUST use the actual candidate name (not "[Your Name]")
 
+**COMPANY RESEARCH REQUIREMENTS:**
+Before writing, analyze the job description and company information to identify:
+1. Company's mission, values, and culture (extract from job description)
+2. Recent projects, initiatives, or achievements mentioned
+3. Technologies, methodologies, or approaches the company uses
+4. Industry trends or challenges the company is addressing
+5. Company's competitive advantages or unique selling points
+
 **Requirements:**
 1. **Opening Paragraph:** 
-   - Start with a compelling hook that shows genuine interest
-   - Mention the specific position and company name
-   - Include a brief statement of why this role is a perfect fit
-   - Personalize with company-specific details if possible from the job description
+   - Start with a compelling hook that demonstrates knowledge of ${companyName}
+   - Reference specific company initiatives, projects, or achievements if mentioned in job description
+   - Mention the specific position and show understanding of its strategic importance
+   - Connect your interest to company's mission or recent developments
+   - Personalize with company-specific details from the job description
 
 2. **Body Paragraphs (2-3):**
-   - Highlight 3-4 most relevant experiences from the candidate's background
-   - Connect specific achievements to job requirements
-   - Include quantifiable results and metrics where possible (e.g., "increased efficiency by 40%", "managed team of 10")
-   - Demonstrate understanding of company needs and how candidate can address them
-   - Show cultural fit and alignment with company values
+   - **First Body Paragraph**: Highlight your most relevant experience that directly addresses company needs
+     * Connect specific achievements to job requirements with quantifiable results
+     * Use metrics (e.g., "increased efficiency by 40%", "managed team of 10", "reduced costs by $50K")
+     * Reference technologies or methodologies mentioned in the job description
+   
+   - **Second Body Paragraph**: Demonstrate cultural fit and alignment with company values
+     * Show understanding of company's industry position and challenges
+     * Explain how your approach aligns with their culture and work style
+     * Mention relevant skills that match their tech stack or requirements
+   
+   - **Third Body Paragraph (if needed)**: Additional relevant qualifications
+     * Certifications, education, or projects that demonstrate expertise
+     * Leadership experience or collaborative achievements
+     * Innovation or problem-solving examples relevant to their needs
 
 3. **Closing Paragraph:**
-   - Reaffirm enthusiasm for the position
+   - Reaffirm enthusiasm specifically for ${companyName} and this role
+   - Reference how you can contribute to their specific goals or challenges mentioned in job description
    - Include a clear call-to-action (request for interview/meeting)
    - Express gratitude for consideration
    - Professional sign-off: "Sincerely," followed by the actual candidate name from CONTACT INFORMATION
 
 **Important Guidelines:**
 - Keep total length between 300-400 words (excluding header)
-- Use active voice and strong action verbs
+- Use active voice and strong action verbs (led, achieved, developed, implemented, delivered)
 - Avoid generic phrases and clichés
-- Make it personal and specific to this role
+- Make it personal and specific to ${companyName} and this exact role
 - Show personality while maintaining professionalism
 - Include specific examples that demonstrate value
+- Reference company-specific information from the job description at least 2-3 times
+- Demonstrate you've researched and understand the company's context
 
 **ABSOLUTELY FORBIDDEN:**
 ❌ [Your Name] - Use actual name from CONTACT INFORMATION
@@ -875,10 +887,12 @@ ${companyName}
 ❌ [Your Address] - Use actual location from CONTACT INFORMATION
 ❌ [Date] - Use Current Date from CONTACT INFORMATION
 ❌ [Company Address] - Use city from job description or omit
+❌ Generic statements like "I am a hard worker" without specific examples
+❌ Phrases like "I believe I would be a good fit" without explaining why with specifics
 
-${variationCount > 1 ? `\n**Format:** Separate each variation clearly with "===VARIATION [NUMBER]===" header.\n` : ''}
+${variationCount > 1 ? `\n**Format:** Separate each variation clearly with "===VARIATION [NUMBER]===" header. Each variation should emphasize different aspects of the candidate's background while maintaining all requirements above.\n` : ''}
 
-Generate the cover letter${variationCount > 1 ? 's' : ''} now with ALL actual information filled in:`;
+Generate the cover letter${variationCount > 1 ? 's' : ''} now with ALL actual information filled in and company-specific personalization:`;
 }
 
 /**

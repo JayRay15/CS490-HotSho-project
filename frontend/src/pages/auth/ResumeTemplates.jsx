@@ -642,7 +642,6 @@ export default function ResumeTemplates() {
       const savedAppliedJobs = response.data.data.jobs.filter(
         job => job.status === "Interested" || job.status === "Applied"
       );
-      console.log('Loaded jobs:', savedAppliedJobs); // Debug: check job structure
       setJobs(savedAppliedJobs);
     } catch (err) {
       console.error("Failed to load jobs:", err);
@@ -654,12 +653,10 @@ export default function ResumeTemplates() {
     try {
       setCoverLetterLoading(true);
       await authWrap();
-      console.log('Loading templates with filters:', filters); // Debug log
       const [templatesResponse, guidanceResponse] = await Promise.all([
         fetchCoverLetterTemplates(filters), // Fetch templates (no isTemplate filter needed)
         getIndustryGuidance()
       ]);
-      console.log('Received templates:', templatesResponse.data.data.templates.length); // Debug log
       setCoverLetterTemplates(templatesResponse.data.data.templates || []);
       setIndustryGuidance(guidanceResponse.data.data.guidance || {});
     } catch (err) {

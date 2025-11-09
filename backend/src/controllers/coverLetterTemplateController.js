@@ -215,7 +215,6 @@ export const listTemplates = async (req, res) => {
     
     // If user has no templates, seed all 8 default ones
     if (userTemplateCount === 0) {
-      console.log(`Seeding initial 8 templates for user ${userId}`);
       await CoverLetterTemplate.insertMany(
         defaultCoverLetterTemplates.map((t, idx) => ({
           userId,
