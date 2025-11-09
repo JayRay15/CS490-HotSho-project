@@ -266,3 +266,12 @@ export const cloneCoverLetter = async (req, res) => {
     return sendResponse(res, response, statusCode);
   }
 };
+
+// Export cover letter as DOCX (stub)
+// Some consumers/tests expect this named export to exist. Provide a minimal stub
+// that returns 501 Not Implemented to avoid import-time failures. Implement full
+// functionality later if needed.
+export const exportCoverLetterAsDocx = async (req, res) => {
+  const { response, statusCode } = errorResponse('Export cover letter as DOCX is not implemented', 501);
+  return sendResponse(res, response, statusCode);
+};
