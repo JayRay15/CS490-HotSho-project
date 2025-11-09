@@ -1,4 +1,4 @@
-import { jest } from '@jest/globals';
+﻿import { jest } from '@jest/globals';
 
 // Mock models and email util
 const mockInterview = { find: jest.fn() };
@@ -38,11 +38,11 @@ describe('interviewReminders util', () => {
   });
 
   it('returns success with zero reminders when none found', async () => {
-  // Interview.find will be called three times (one per threshold)
-  // For sendInterviewRemindersNow, populate should resolve directly to an array
-  mockInterview.find.mockImplementation(() => ({ populate: () => Promise.resolve([]) }));
+    // Interview.find will be called three times (one per threshold)
+    // For sendInterviewRemindersNow, populate should resolve directly to an array
+    mockInterview.find.mockImplementation(() => ({ populate: () => Promise.resolve([]) }));
 
-  const res = await sendInterviewRemindersNow();
+    const res = await sendInterviewRemindersNow();
 
     expect(res.success).toBe(true);
     expect(res.remindersSent).toBe(0);
@@ -101,10 +101,10 @@ describe('interviewReminders util', () => {
 
   it('checkForConflicts returns matching interviews', async () => {
     const proposed = new Date();
-  const conflicts = [{ _id: 'c1', scheduledDate: proposed }];
-  mockInterview.find.mockImplementation(() => ({ populate: () => ({ sort: () => Promise.resolve(conflicts) }) }));
+    const conflicts = [{ _id: 'c1', scheduledDate: proposed }];
+    mockInterview.find.mockImplementation(() => ({ populate: () => ({ sort: () => Promise.resolve(conflicts) }) }));
 
-  const res = await checkForConflicts('user1', proposed, 60, null);
+    const res = await checkForConflicts('user1', proposed, 60, null);
     expect(res).toEqual(conflicts);
     expect(mockInterview.find).toHaveBeenCalled();
   });
@@ -116,9 +116,9 @@ describe('interviewReminders util', () => {
       { _id: 'i1', userId: 'u1', title: 'A', company: 'X', scheduledDate: future, interviewType: 'phone', status: 'Scheduled', preparationTasks: [{ title: 't1', completed: false }], conflictWarning: { hasConflict: true } },
     ];
 
-  mockInterview.find.mockImplementation(() => ({ populate: () => ({ sort: () => Promise.resolve(interviews) }) }));
+    mockInterview.find.mockImplementation(() => ({ populate: () => ({ sort: () => Promise.resolve(interviews) }) }));
 
-  const res = await getUpcomingInterviewSummary('u1', 7);
+    const res = await getUpcomingInterviewSummary('u1', 7);
 
     expect(res.interviews).toEqual(interviews);
     expect(res.stats.total).toBe(1);

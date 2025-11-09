@@ -36,6 +36,64 @@ describe('profileCompleteness', () => {
     expect(formatFieldName('email')).toBe('Email Address');
     expect(formatFieldName('unknown_field')).toBe('unknown_field');
   });
+
+  test('awards custom badges when thresholds met', () => {
+    const data = {
+      employment: [{}, {}, {}], // 3 entries -> work-history
+      skills: Array.from({ length: 10 }).map((_, i) => ({ name: `s${i}`, category: i % 3 })),
+      projects: [{}, {}, {}], // 3 projects -> project-showcase
+      certifications: [{}, {}], // 2 certifications -> certified-professional
+      name: 'A',
+      email: 'a@b.com',
+      headline: 'Dev',
+      industry: 'Technology',
+      experienceLevel: 'Senior'
+    };
+
+    const res = calculateProfileCompleteness(data);
+    const ids = res.earnedBadges.map(b => b.id);
+    expect(ids).toContain('work-history');
+    expect(ids).toContain('skill-master');
+    expect(ids).toContain('project-showcase');
+    expect(ids).toContain('certified-professional');
+  });
+
+  test('handles malformed projects gracefully (projects try/catch)', () => {
+    // craft a projects-like object that will throw when .filter is called
+    const badProjects = { length: 1, filter: () => { throw new Error('boom'); } };
+
+    const data = {
+      projects: badProjects,
+      name: 'A',
+      email: 'a@b.com',
+      headline: 'Dev',
+      industry: 'Technology',
+      experienceLevel: 'Senior'
+    };
+
+    const res = calculateProfileCompleteness(data);
+    // projects should be treated as empty fallback when exception occurs
+    expect(res.sections.projects.score).toBe(0);
+    expect(res.suggestions.some(s => /projects/i.test(s.section) || /projects/i.test(s.message))).toBe(true);
+  });
+
+  test('handles malformed certifications gracefully (certifications try/catch)', () => {
+    // Use a Proxy that throws on property access to trigger the catch block
+    const badCerts = new Proxy({}, { get: () => { throw new Error('boom'); } });
+
+    const data = {
+      certifications: badCerts,
+      name: 'A',
+      email: 'a@b.com',
+      headline: 'Dev',
+      industry: 'Technology',
+      experienceLevel: 'Senior'
+    };
+
+    const res = calculateProfileCompleteness(data);
+    expect(res.sections.certifications.score).toBe(0);
+    expect(res.suggestions.some(s => /certifications/i.test(s.section) || /certifications/i.test(s.message))).toBe(true);
+  });
 });
 
 

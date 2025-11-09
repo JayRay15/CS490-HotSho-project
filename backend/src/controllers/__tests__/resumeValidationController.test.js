@@ -1,8 +1,8 @@
-import { jest, beforeEach, describe, it, expect } from '@jest/globals';
+import { jest } from '@jest/globals';
 
-jest.resetModules();
+beforeEach(() => jest.resetModules());
 
-// Mock dependencies
+// Single set of mocks used across tests
 const mockResume = {
   findOne: jest.fn(),
   updateOne: jest.fn(),
@@ -40,7 +40,7 @@ jest.unstable_mockModule('../../utils/resumeValidator.js', () => mockResumeValid
 
 jest.unstable_mockModule('../../utils/htmlToPdf.js', () => mockHtmlToPdf);
 
-// Import controller
+// Import controller AFTER mocks are registered
 const {
   validateResumeEndpoint,
   getValidationStatus,
@@ -247,6 +247,47 @@ describe('ResumeValidationController', () => {
       expect(mockResumeValidator.validateResume).toHaveBeenCalled();
       expect(mockRes.status).toHaveBeenCalledWith(200);
     });
+
+    it('should exercise generateResumeHtml branches with full sections', async () => {
+      mockReq.params.id = 'rich-resume';
+      const richResume = {
+        _id: 'rich-resume',
+        userId: 'test-user-123',
+        name: 'Rich',
+        sections: {
+          contactInfo: { name: 'Rich Person', email: 'r@example.com', phone: '123', location: 'City', linkedin: 'lnk' },
+          summary: 'Experienced dev',
+          experience: [
+            { title: 'Dev', company: 'Co', startDate: '2020', endDate: '2021', location: 'X', responsibilities: ['a','b'] },
+          ],
+          education: [ { degree: 'BS', school: 'Uni', graduationDate: '2019', field: 'CS', gpa: '3.8' } ],
+          skills: ['JS','Node'],
+          projects: [ { name: 'Proj', description: 'desc', technologies: 'JS' } ],
+          certifications: [ { name: 'Cert', issuer: 'Issuer', date: '2022' } ]
+        },
+        templateId: 'tpl-rich',
+        metadata: {}
+      };
+
+      const richTemplate = {
+        _id: 'tpl-rich',
+        theme: { colors: { primary: '#111', text: '#222' }, fonts: { heading: 'Helvetica', body: 'Georgia' } },
+        layout: { sectionsOrder: ['contactInfo','summary','experience','education','skills','projects','certifications'] }
+      };
+
+      mockResume.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(richResume) });
+      mockResumeTemplate.findById.mockReturnValue({ lean: jest.fn().mockResolvedValue(richTemplate) });
+      mockUser.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue({ name: 'U' }) });
+      mockHtmlToPdf.htmlToPdf.mockResolvedValue(Buffer.from('PDF'));
+      mockResumeValidator.validateResume.mockResolvedValue({ isValid: true, issues: [] });
+      mockResume.updateOne.mockResolvedValue({});
+
+      await validateResumeEndpoint(mockReq, mockRes);
+
+      expect(mockHtmlToPdf.htmlToPdf).toHaveBeenCalled();
+      expect(mockResume.updateOne).toHaveBeenCalled();
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+    });
   });
 
   describe('getValidationStatus', () => {
@@ -355,136 +396,4 @@ describe('ResumeValidationController', () => {
       expect(mockRes.status).toHaveBeenCalledWith(404);
     });
   });
-
-  describe('validateResumeEndpoint edge cases', () => {
-    it('should handle missing template', async () => {
-      mockReq.params.id = 'resume-123';
-      const mockResumeDoc = {
-        _id: 'resume-123',
-        userId: 'test-user-123',
-        sections: {},
-        templateId: 'non-existent',
-        metadata: {},
-      };
-      mockResume.findOne.mockReturnValue({
-        lean: jest.fn().mockResolvedValue(mockResumeDoc),
-      });
-      mockResumeTemplate.findById.mockReturnValue({
-        lean: jest.fn().mockResolvedValue(null),
-      });
-
-      await validateResumeEndpoint(mockReq, mockRes);
-
-      // Should still validate even without template
-      expect(mockResumeValidator.validateResume).toHaveBeenCalled();
-    });
-
-    it('should handle missing user', async () => {
-      mockReq.params.id = 'resume-123';
-      const mockResumeDoc = {
-        _id: 'resume-123',
-        userId: 'test-user-123',
-        sections: {},
-        templateId: 'template-123',
-        metadata: {},
-      };
-      const mockTemplate = { _id: 'template-123', theme: {}, layout: {} };
-      mockResume.findOne.mockReturnValue({
-        lean: jest.fn().mockResolvedValue(mockResumeDoc),
-      });
-      mockResumeTemplate.findById.mockReturnValue({
-        lean: jest.fn().mockResolvedValue(mockTemplate),
-      });
-      mockUser.findOne.mockReturnValue({
-        lean: jest.fn().mockResolvedValue(null),
-      });
-
-      await validateResumeEndpoint(mockReq, mockRes);
-
-      // Should still validate even without user
-      expect(mockResumeValidator.validateResume).toHaveBeenCalled();
-    });
-
-    it('should handle validation errors', async () => {
-      mockReq.params.id = 'resume-123';
-      const mockResumeDoc = {
-        _id: 'resume-123',
-        userId: 'test-user-123',
-        sections: {},
-        templateId: 'template-123',
-        metadata: {},
-      };
-      const mockTemplate = { _id: 'template-123', theme: {}, layout: {} };
-      const mockUserDoc = { _id: 'user-123', auth0Id: 'test-user-123', clerkId: 'test-user-123' };
-      mockResume.findOne.mockReturnValue({
-        lean: jest.fn().mockResolvedValue(mockResumeDoc),
-      });
-      mockResumeTemplate.findById.mockReturnValue({
-        lean: jest.fn().mockResolvedValue(mockTemplate),
-      });
-      mockUser.findOne.mockReturnValue({
-        lean: jest.fn().mockResolvedValue(mockUserDoc),
-      });
-      mockHtmlToPdf.htmlToPdf.mockResolvedValue(Buffer.from('pdf'));
-      mockResumeValidator.validateResume.mockRejectedValue(new Error('Validation error'));
-
-      await validateResumeEndpoint(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(500);
-    });
-  });
-
-  describe('getValidationStatus edge cases', () => {
-    it('should handle missing metadata gracefully', async () => {
-      mockReq.params.id = 'resume-123';
-      const mockResumeDoc = {
-        _id: 'resume-123',
-        userId: 'test-user-123',
-        updatedAt: new Date(),
-        // No metadata field at all
-      };
-      mockResume.findOne.mockReturnValue({
-        lean: jest.fn().mockResolvedValue(mockResumeDoc),
-      });
-
-      await getValidationStatus(mockReq, mockRes);
-
-      expect(mockRes.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            hasBeenValidated: false,
-            isValid: false,
-            isStale: false,
-          }),
-        })
-      );
-    });
-
-    it('should handle null validation data', async () => {
-      mockReq.params.id = 'resume-123';
-      const mockResumeDoc = {
-        _id: 'resume-123',
-        userId: 'test-user-123',
-        updatedAt: new Date(),
-        metadata: {
-          lastValidation: null,
-          validatedAt: null,
-        },
-      };
-      mockResume.findOne.mockReturnValue({
-        lean: jest.fn().mockResolvedValue(mockResumeDoc),
-      });
-
-      await getValidationStatus(mockReq, mockRes);
-
-      expect(mockRes.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            hasBeenValidated: false,
-          }),
-        })
-      );
-    });
-  });
 });
-

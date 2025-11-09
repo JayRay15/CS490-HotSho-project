@@ -44,6 +44,130 @@ describe('imageUtils', () => {
     await expect(resizeImage(new File([new Blob()], 'x.jpg', { type: 'image/jpeg' }))).rejects.toThrow('Failed to read file');
     global.FileReader = realFileReader;
   });
+
+  test('resizeImage resolves and returns a Blob (width scaling)', async () => {
+    const realFileReader = global.FileReader;
+    const realImage = global.Image;
+    const realCreateElement = document.createElement;
+
+    // Mock FileReader to trigger onload
+    class FRMock {
+      constructor() { this.onload = null; this.onerror = null; }
+      readAsDataURL() { setTimeout(() => { this.onload && this.onload({ target: { result: 'data:fake' } }); }, 0); }
+    }
+
+    // Mock Image to set large width -> triggers width scaling branch
+    class ImgMock {
+      constructor() { this.onload = null; this.onerror = null; this.width = 2000; this.height = 1000; }
+      set src(_) { setTimeout(() => { this.onload && this.onload(); }, 0); }
+    }
+
+    // Mock canvas and toBlob
+    function CanvasMock() {
+      this.width = 0; this.height = 0;
+      this.getContext = () => ({ drawImage: () => {} });
+      this.toBlob = (cb, type) => { cb(new Blob(['x'], { type: type || 'image/png' })); };
+    }
+
+    // Apply mocks
+    // @ts-ignore
+    global.FileReader = FRMock;
+    // @ts-ignore
+    global.Image = ImgMock;
+    document.createElement = (tag) => { if (tag === 'canvas') return new CanvasMock(); return realCreateElement.call(document, tag); };
+
+    const file = new File(['data'], 'pic.png', { type: 'image/png' });
+    const blob = await resizeImage(file, 512, 512, 0.8);
+    expect(blob).toBeInstanceOf(Blob);
+    expect(blob.type).toBe('image/png');
+
+    // restore
+    global.FileReader = realFileReader;
+    global.Image = realImage;
+    document.createElement = realCreateElement;
+  });
+
+  test('resizeImage resolves and returns a Blob (height scaling)', async () => {
+    const realFileReader = global.FileReader;
+    const realImage = global.Image;
+    const realCreateElement = document.createElement;
+
+    // Mock FileReader to trigger onload
+    class FRMock {
+      constructor() { this.onload = null; this.onerror = null; }
+      readAsDataURL() { setTimeout(() => { this.onload && this.onload({ target: { result: 'data:fake' } }); }, 0); }
+    }
+
+    // Mock Image to set tall height -> triggers height scaling branch
+    class ImgMock {
+      constructor() { this.onload = null; this.onerror = null; this.width = 300; this.height = 2000; }
+      set src(_) { setTimeout(() => { this.onload && this.onload(); }, 0); }
+    }
+
+    // Mock canvas and toBlob
+    function CanvasMock() {
+      this.width = 0; this.height = 0;
+      this.getContext = () => ({ drawImage: () => {} });
+      this.toBlob = (cb, type) => { cb(new Blob(['y'], { type: type || 'image/png' })); };
+    }
+
+    // Apply mocks
+    // @ts-ignore
+    global.FileReader = FRMock;
+    // @ts-ignore
+    global.Image = ImgMock;
+    document.createElement = (tag) => { if (tag === 'canvas') return new CanvasMock(); return realCreateElement.call(document, tag); };
+
+    const file = new File(['data'], 'portrait.png', { type: 'image/png' });
+    const blob = await resizeImage(file, 512, 512, 0.8);
+    expect(blob).toBeInstanceOf(Blob);
+    expect(blob.type).toBe('image/png');
+
+    // restore
+    global.FileReader = realFileReader;
+    global.Image = realImage;
+    document.createElement = realCreateElement;
+  });
+
+  test('resizeImage rejects when canvas.toBlob returns null', async () => {
+    const realFileReader = global.FileReader;
+    const realImage = global.Image;
+    const realCreateElement = document.createElement;
+
+    class FRMock { constructor() { this.onload = null; this.onerror = null; } readAsDataURL() { setTimeout(() => { this.onload && this.onload({ target: { result: 'data:fake' } }); }, 0); } }
+    class ImgMock { constructor() { this.onload = null; this.onerror = null; this.width = 100; this.height = 50; } set src(_) { setTimeout(() => { this.onload && this.onload(); }, 0); } }
+    function CanvasMock() { this.width = 0; this.height = 0; this.getContext = () => ({ drawImage: () => {} }); this.toBlob = (cb) => { cb(null); }; }
+
+    // @ts-ignore
+    global.FileReader = FRMock;
+    // @ts-ignore
+    global.Image = ImgMock;
+    document.createElement = (tag) => { if (tag === 'canvas') return new CanvasMock(); return realCreateElement.call(document, tag); };
+
+    await expect(resizeImage(new File(['data'], 'pic.png', { type: 'image/png' }))).rejects.toThrow('Failed to create blob from canvas');
+
+    global.FileReader = realFileReader;
+    global.Image = realImage;
+    document.createElement = realCreateElement;
+  });
+
+  test('resizeImage rejects when image load fails', async () => {
+    const realFileReader = global.FileReader;
+    const realImage = global.Image;
+
+    class FRMock { constructor() { this.onload = null; this.onerror = null; } readAsDataURL() { setTimeout(() => { this.onload && this.onload({ target: { result: 'data:fake' } }); }, 0); } }
+    class ImgMock { constructor() { this.onload = null; this.onerror = null; } set src(_) { setTimeout(() => { this.onerror && this.onerror(); }, 0); } }
+
+    // @ts-ignore
+    global.FileReader = FRMock;
+    // @ts-ignore
+    global.Image = ImgMock;
+
+    await expect(resizeImage(new File(['data'], 'pic.png', { type: 'image/png' }))).rejects.toThrow('Failed to load image');
+
+    global.FileReader = realFileReader;
+    global.Image = realImage;
+  });
 });
 
 

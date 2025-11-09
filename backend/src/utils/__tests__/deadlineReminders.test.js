@@ -129,5 +129,57 @@ describe('deadlineReminders util', () => {
       startDeadlineReminderSchedule();
       expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Deadline reminders are disabled'));
     });
+
+    it('starts schedule when enabled and runs initial send (no jobs)', async () => {
+      process.env.ENABLE_DEADLINE_REMINDERS = 'true';
+      // no jobs so initial run will return processed 0
+      Job.find.mockResolvedValue([]);
+
+      // Temporarily use real timers so the module's setImmediate/setInterval run
+      jest.useRealTimers();
+      try {
+        // Prevent setInterval from creating a real scheduled timer handle
+        const origSetInterval = global.setInterval;
+        global.setInterval = jest.fn();
+
+        startDeadlineReminderSchedule();
+        // allow the initial async call to resolve
+        await new Promise((res) => setImmediate(res));
+
+        expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Deadline reminder schedule started'));
+        // The initial run logs with two args (label and result object); check the first arg of calls
+        const hadInitial = logSpy.mock.calls.some(c => String(c[0]).includes('Initial deadline reminder run'));
+        expect(hadInitial).toBe(true);
+
+        // restore original setInterval
+        global.setInterval = origSetInterval;
+      } finally {
+        // restore fake timers for other tests
+        jest.useFakeTimers();
+      }
+    });
+  });
+
+  it('skips users with no user record or missing email', async () => {
+    const inWindow = new Date();
+    inWindow.setDate(inWindow.getDate() + 1);
+    Job.find.mockResolvedValue([{ _id: 'j1', userId: 'uX', title: 'Job X', company: 'C', deadline: inWindow }]);
+    // no user returned
+    User.find.mockResolvedValue([]);
+
+    const res = await sendDeadlineRemindersNow({ windowDays: 2 });
+    expect(res).toEqual({ processed: 1, emailed: 0 });
+  });
+
+  it('skips sending if deadlineReminderLastSent is same local day', async () => {
+    const inWindow = new Date();
+    inWindow.setDate(inWindow.getDate() + 1);
+    Job.find.mockResolvedValue([{ _id: 'j1', userId: 'u1', title: 'Job 1', company: 'Co', deadline: inWindow }]);
+
+    const today = new Date();
+    User.find.mockResolvedValue([{ auth0Id: 'u1', email: 'u1@example.com', name: 'U One', deadlineReminderLastSent: today }]);
+
+    const res = await sendDeadlineRemindersNow({ windowDays: 2 });
+    expect(res).toEqual({ processed: 1, emailed: 0 });
   });
 });

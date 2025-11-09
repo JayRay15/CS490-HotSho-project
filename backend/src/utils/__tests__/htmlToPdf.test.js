@@ -1,5 +1,7 @@
 import { jest } from '@jest/globals';
 
+beforeEach(() => jest.resetModules());
+
 // Mock puppeteer before importing the module under test
 const mockPage = {
   setViewport: jest.fn().mockResolvedValue(undefined),
