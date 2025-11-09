@@ -1,5 +1,8 @@
 import { CoverLetterTemplate } from "../models/CoverLetterTemplate.js";
+import { User } from "../models/User.js";
+import { Job } from "../models/Job.js";
 import { errorResponse, sendResponse, successResponse, ERROR_CODES } from "../utils/responseFormat.js";
+import { generateCoverLetter, analyzeCompanyCulture } from "../utils/geminiService.js";
 
 const getUserId = (req) => {
   const auth = typeof req.auth === 'function' ? req.auth() : req.auth;
@@ -212,7 +215,6 @@ export const listTemplates = async (req, res) => {
     
     // If user has no templates, seed all 8 default ones
     if (userTemplateCount === 0) {
-      console.log(`Seeding initial 8 templates for user ${userId}`);
       await CoverLetterTemplate.insertMany(
         defaultCoverLetterTemplates.map((t, idx) => ({
           userId,
@@ -645,4 +647,158 @@ export const exportTemplate = async (req, res) => {
     return sendResponse(res, response, statusCode);
   }
 };
+
+/**
+ * Generate AI-powered cover letter based on job posting and user profile
+ */
+export const generateAICoverLetter = async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const {
+      jobId, // Required: ID of saved job posting
+      tone = 'formal',
+      variationCount = 1
+    } = req.body;
+
+    // Validate required fields
+    if (!jobId) {
+      const { response, statusCode } = errorResponse(
+        "Job ID is required. Please select a job from your saved jobs.",
+        400,
+        ERROR_CODES.MISSING_REQUIRED_FIELD
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Fetch the job posting from database
+    const job = await Job.findOne({ _id: jobId, userId });
+    
+    if (!job) {
+      const { response, statusCode } = errorResponse(
+        "Job posting not found",
+        404,
+        ERROR_CODES.NOT_FOUND
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Build comprehensive job description from job posting
+    const jobDescriptionParts = [];
+    if (job.description) jobDescriptionParts.push(job.description);
+    if (job.requirements && job.requirements.length > 0) {
+      jobDescriptionParts.push('\n\nRequirements:');
+      job.requirements.forEach(req => jobDescriptionParts.push(`• ${req}`));
+    }
+    if (job.location) jobDescriptionParts.push(`\n\nLocation: ${job.location}`);
+    if (job.jobType) jobDescriptionParts.push(`Job Type: ${job.jobType}`);
+    if (job.workMode) jobDescriptionParts.push(`Work Mode: ${job.workMode}`);
+    if (job.salary && (job.salary.min || job.salary.max)) {
+      const salaryStr = job.salary.min && job.salary.max 
+        ? `${job.salary.currency} ${job.salary.min} - ${job.salary.max}`
+        : job.salary.min 
+          ? `${job.salary.currency} ${job.salary.min}+`
+          : `Up to ${job.salary.currency} ${job.salary.max}`;
+      jobDescriptionParts.push(`Salary Range: ${salaryStr}`);
+    }
+    
+    const jobDescription = jobDescriptionParts.join('\n');
+
+    // Validate variation count
+    if (variationCount < 1 || variationCount > 3) {
+      const { response, statusCode } = errorResponse(
+        "Variation count must be between 1 and 3",
+        400,
+        ERROR_CODES.INVALID_INPUT
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Fetch user profile
+    const userProfile = await User.findOne({ auth0Id: userId }).lean();
+    
+    if (!userProfile) {
+      const { response, statusCode } = errorResponse(
+        "User profile not found",
+        404,
+        ERROR_CODES.NOT_FOUND
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Check if user has sufficient profile data
+    if (!userProfile.employment || userProfile.employment.length === 0) {
+      const { response, statusCode } = errorResponse(
+        "Please add work experience to your profile before generating a cover letter",
+        400,
+        ERROR_CODES.INSUFFICIENT_DATA
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Generate cover letter using AI
+    const variations = await generateCoverLetter({
+      companyName: job.company,
+      position: job.title,
+      jobDescription,
+      userProfile,
+      tone,
+      variationCount
+    });
+
+    const { response, statusCode } = successResponse(
+      "Cover letter generated successfully",
+      { 
+        variations,
+        companyName: job.company,
+        position: job.title,
+        tone,
+        jobId: job._id
+      }
+    );
+    return sendResponse(res, response, statusCode);
+  } catch (err) {
+    console.error("Error generating AI cover letter:", err);
+    const { response, statusCode } = errorResponse(
+      `Failed to generate cover letter: ${err.message}`,
+      500,
+      ERROR_CODES.AI_GENERATION_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+};
+
+/**
+ * Analyze company culture from job description
+ */
+export const analyzeCulture = async (req, res) => {
+  try {
+    const { jobDescription } = req.body;
+
+    if (!jobDescription) {
+      const { response, statusCode } = errorResponse(
+        "Job description is required",
+        400,
+        ERROR_CODES.MISSING_REQUIRED_FIELD
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
+    const cultureAnalysis = await analyzeCompanyCulture(jobDescription);
+
+    const { response, statusCode } = successResponse(
+      "Company culture analyzed",
+      cultureAnalysis
+    );
+    return sendResponse(res, response, statusCode);
+  } catch (err) {
+    console.error("Error analyzing company culture:", err);
+    const { response, statusCode } = errorResponse(
+      "Failed to analyze company culture",
+      500,
+      ERROR_CODES.AI_GENERATION_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+};
+
 

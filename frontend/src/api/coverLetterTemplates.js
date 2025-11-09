@@ -32,3 +32,12 @@ export const shareCoverLetterTemplate = (id, payload) =>
 
 export const getIndustryGuidance = (industry) => 
   retryRequest(() => api.get("/api/cover-letter-templates/industry-guidance", { params: industry ? { industry } : {} }));
+
+// AI Generation APIs
+export const generateAICoverLetter = (payload) => 
+  retryRequest(() => api.post("/api/cover-letter/ai/generate", payload));
+
+export const analyzeCompanyCulture = (jobDescription) => 
+  retryRequest(() => api.post("/api/cover-letter/ai/analyze-culture", { jobDescription }));
+
+

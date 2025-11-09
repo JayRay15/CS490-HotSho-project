@@ -34,7 +34,12 @@ export const ERROR_CODES = {
   
   // Network errors (6xxx)
   NETWORK_ERROR: 6001,
-  TIMEOUT: 6002
+  TIMEOUT: 6002,
+  
+  // AI/ML errors (7xxx)
+  AI_GENERATION_ERROR: 7001,
+  INSUFFICIENT_DATA: 7002,
+  AI_SERVICE_UNAVAILABLE: 7003
 };
 
 export const createResponse = (success, message, data = null, statusCode = 200, errorCode = null, errors = null) => {

@@ -11,7 +11,9 @@ import {
   importTemplate,
   shareTemplate,
   exportTemplate,
-  getIndustryGuidance
+  getIndustryGuidance,
+  generateAICoverLetter,
+  analyzeCulture
 } from "../controllers/coverLetterTemplateController.js";
 
 const router = express.Router();
@@ -36,5 +38,9 @@ router.get("/cover-letter-templates/:id/export", checkJwt, exportTemplate);
 
 // Sharing routes
 router.put("/cover-letter-templates/:id/share", checkJwt, shareTemplate);
+
+// AI Generation routes
+router.post("/cover-letter/ai/generate", checkJwt, generateAICoverLetter);
+router.post("/cover-letter/ai/analyze-culture", checkJwt, analyzeCulture);
 
 export default router;
