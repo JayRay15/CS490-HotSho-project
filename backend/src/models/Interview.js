@@ -35,7 +35,6 @@ const interviewSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Job",
       required: true,
-      index: true,
     },
     title: {
       type: String,
@@ -58,7 +57,6 @@ const interviewSchema = new mongoose.Schema(
     scheduledDate: {
       type: Date,
       required: true,
-      index: true,
     },
     duration: {
       type: Number, // Duration in minutes

@@ -17,7 +17,7 @@ const resumeSchema = new mongoose.Schema(
     shares: [
       new mongoose.Schema(
         {
-          token: { type: String, required: true, unique: true, index: true },
+          token: { type: String, required: true, unique: true },
           privacy: { type: String, enum: ["unlisted", "private"], default: "unlisted" },
           note: { type: String, trim: true },
           allowComments: { type: Boolean, default: true },
