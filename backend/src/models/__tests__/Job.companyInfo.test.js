@@ -3,21 +3,37 @@
  * Test file for Job model with company information
  */
 
-import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, jest } from '@jest/globals';
 import mongoose from 'mongoose';
 import { Job } from '../Job.js';
 
 describe('UC-062: Job Model - Company Information', () => {
+    // Increase timeout for integration tests with database
+    jest.setTimeout(30000);
     beforeAll(async () => {
         // Connect to test database if not already connected
         if (mongoose.connection.readyState === 0) {
-            await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/hotshot-test');
+            await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/hotshot-test', {
+                serverSelectionTimeoutMS: 10000,
+            });
         }
+        // Wait for connection to be ready
+        await mongoose.connection.asPromise();
+    });
+
+    beforeEach(async () => {
+        // Clean up before each test to ensure isolation
+        await Job.deleteMany({ title: 'Test Job for UC-062' });
     });
 
     afterAll(async () => {
-        // Clean up
+        // Clean up all test data
         await Job.deleteMany({ title: 'Test Job for UC-062' });
+        
+        // Close database connection to prevent hanging
+        if (mongoose.connection.readyState !== 0) {
+            await mongoose.connection.close();
+        }
     });
 
     it('should create a job with company information', async () => {
@@ -134,9 +150,11 @@ describe('UC-062: Job Model - Company Information', () => {
             description: 'Updated description',
         };
 
-        await job.save();
+        const savedJob = await job.save();
+        expect(savedJob).toBeDefined();
 
-        const updatedJob = await Job.findById(job._id);
+        const updatedJob = await Job.findById(job._id).exec();
+        expect(updatedJob).toBeDefined();
         expect(updatedJob.companyInfo.size).toBe('201-500');
         expect(updatedJob.companyInfo.website).toBe('https://updated.com');
         expect(updatedJob.companyInfo.description).toBe('Updated description');
