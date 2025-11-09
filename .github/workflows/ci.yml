@@ -73,7 +73,11 @@ jobs:
       run: npm ci
     
     - name: Run tests
-      run: npm test -- run
+      # Do not pass a stray "run" argument to npm test; that string gets forwarded
+      # to the test script and becomes an accidental filter (vitest sees 'run' and
+      # treats it as a pattern). Just invoke npm test (or `npm run test`) with no
+      # extra positional args.
+      run: npm test
     
     - name: Build frontend
       run: npm run build
