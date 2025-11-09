@@ -1,198 +1,165 @@
+// Ensure mock is registered before importing the module under test
 import { jest } from '@jest/globals';
 
-// Mock the Google Generative AI package used by geminiService
-jest.unstable_mockModule('@google/generative-ai', () => {
-  class MockModel {
-    constructor() {}
-    generateContent(prompt) {
-      // Determine response based on prompt contents
-      let text = '';
-      // Special test hooks
-      if (prompt.includes('__THROW__')) {
-        throw new Error('Simulated AI failure');
+// Helper to create a mock factory for @google/generative-ai
+function createGenAIMock({ text = '', shouldThrow = false } = {}) {
+  return {
+    __esModule: true,
+    GoogleGenerativeAI: class {
+      constructor() {}
+      getGenerativeModel() {
+        return {
+          generateContent: async () => {
+            if (shouldThrow) throw new Error('model failure');
+            return { response: Promise.resolve({ text: () => text }) };
+          }
+        };
       }
-
-      if (prompt.includes('__INVALID_JSON__')) {
-        // Return malformed JSON with trailing commas to exercise the parser-fix path
-        const bad = '```json' + '{ "variations": [ { "variationNumber": 1, "summary": "S1", }, ], }' + '```';
-        return { response: Promise.resolve({ text: () => bad }) };
-      }
-
-      // Specific detectors first
-      if (prompt.includes('variationNumber') || prompt.includes('Generate multiple variations')) {
-        // Return JSON wrapped in code fences to test cleanup
-        text = '```json' + JSON.stringify({ variations: [ { variationNumber: 1, summary: 'S1' } ] }) + '```';
-        return { response: Promise.resolve({ text: () => text }) };
-      }
-
-      if (prompt.includes('Generate an alternative professional summary') || prompt.includes('Generate an alternative professional summary')) {
-        // summary: plain text (not JSON)
-        text = 'A refreshed professional summary focused on leadership and impact.';
-        return { response: Promise.resolve({ text: () => text }) };
-      }
-      if (prompt.includes('Analyze this resume content for ATS')) {
-        text = JSON.stringify({ score: 80, missingKeywords: ['k1'], keywordDensity: 'optimal', suggestions: ['s1'], matchedKeywords: ['k2'] });
-        return { response: Promise.resolve({ text: () => text }) };
-      }
-
-      if (prompt.includes('You are an expert resume optimization specialist')) {
-        text = JSON.stringify({ matchScore: 90, optimizedSkills: [{ name: 'JS', level: 'Expert', relevance: 'high' }], technicalSkills: ['JS'], softSkills: ['communication'] });
-        return { response: Promise.resolve({ text: () => text }) };
-      }
-
-      if (prompt.includes('You are an expert resume writer specializing in experience optimization')) {
-        text = JSON.stringify({ experiences: [ { experienceIndex: 0, jobTitle: 'Dev', relevanceScore: 80, bullets: [] } ], summary: 'ok' });
-        return { response: Promise.resolve({ text: () => text }) };
-      }
-
-      // Generic JSON responders for sections expecting JSON arrays/objects
-      if (prompt.includes('Return as JSON with keys') || prompt.includes('Return only a JSON array') || prompt.includes('Return as JSON:') || prompt.includes('Return as JSON')) {
-        // Return a simple JSON object for experience/skills responses
-        text = JSON.stringify({ job0: ['bul1','bul2'], job1: ['bul1'] });
-        return { response: Promise.resolve({ text: () => text }) };
-      }
-
-      // Default fallback
-      text = JSON.stringify({ result: 'default' });
-      return { response: Promise.resolve({ text: () => text }) };
     }
-  }
+  };
+}
 
-  return { GoogleGenerativeAI: class { constructor() { return { getGenerativeModel: () => new MockModel() }; } } };
-});
+async function importWithMock({ text = '', shouldThrow = false } = {}) {
+  // reset module registry so geminiService picks up the mock
+  jest.resetModules();
+  // For ESM environment use unstable_mockModule to mock before dynamic import
+  await jest.unstable_mockModule('@google/generative-ai', () => createGenAIMock({ text, shouldThrow }));
+  return await import('../geminiService.js');
+}
 
-// Now import the module under test
-const {
-  generateResumeContentVariations,
-  generateResumeContent,
-  regenerateSection,
-  analyzeATSCompatibility,
-  optimizeResumeSkills,
-  tailorExperience,
-} = await import('../geminiService.js');
+describe('geminiService', () => {
+  const jobPosting = { title: 'SWE', company: 'Acme', description: 'Do things', requirements: 'JS' };
+  const userProfile = { employment: [], skills: [], education: [], projects: [], certifications: [] };
+  const template = { layout: { projectFormat: { titleWithTech: false, hasBullets: true, bulletCharacter: '•' }, experienceFormat: { titleCompanySameLine: false, datesOnRight: false, hasBullets: true, bulletCharacter: '•', bulletIndentation: 2 }, educationFormat: { order: ['degree','institution','dates'], datesOnRight: false, locationAfterInstitution: false, gpaSeparateLine: false } } };
 
-describe('geminiService (mocked GoogleGenerativeAI)', () => {
-  it('generateResumeContentVariations parses JSON wrapped in code fences', async () => {
-    const job = { title: 'Dev', company: 'X', description: 'desc' };
-    const user = { employment: [], skills: [], education: [], projects: [], certifications: [] };
-    const template = { layout: {} };
-
-    const vars = await generateResumeContentVariations(job, user, template, 3);
-    expect(Array.isArray(vars)).toBe(true);
-    expect(vars.length).toBeGreaterThan(0);
-    expect(vars[0]).toHaveProperty('variationNumber', 1);
+  test('generateResumeContentVariations parses plain JSON response', async () => {
+    const mockText = JSON.stringify({ variations: [{ variationNumber: 1, emphasis: 'Technical' }] });
+    const mod = await importWithMock({ text: mockText });
+    const res = await mod.generateResumeContentVariations(jobPosting, userProfile, template, 1);
+    expect(Array.isArray(res)).toBe(true);
+    expect(res[0].variationNumber).toBe(1);
   });
 
-  it('generateResumeContent handles AI errors as thrown', async () => {
-    const job = { title: 'Dev', company: 'X', description: '__THROW__' };
-    const user = { employment: [], skills: [], education: [], projects: [], certifications: [] };
-    const template = { layout: {} };
-    await expect(generateResumeContentVariations(job, user, template, 3)).rejects.toThrow('Simulated AI failure');
+  test('generateResumeContentVariations handles fenced code block JSON', async () => {
+    const mockText = '```json' + JSON.stringify({ variations: [{ variationNumber: 2 }] }) + '```';
+    const mod = await importWithMock({ text: mockText });
+    const res = await mod.generateResumeContentVariations(jobPosting, userProfile, template, 1);
+    expect(res[0].variationNumber).toBe(2);
   });
 
-  it('generateResumeContent throws when inputs missing', async () => {
-    await expect(generateResumeContent(null, null, null)).rejects.toThrow('jobPosting and userProfile are required');
+  test('generateResumeContent throws when required args missing', async () => {
+    const mod = await importWithMock({ text: '{}' });
+    await expect(mod.generateResumeContent(null, null, null)).rejects.toThrow('jobPosting and userProfile are required');
   });
 
-  it('regenerateSection returns plain summary when model returns text', async () => {
-    const section = 'summary';
-    const job = { title: 'Dev', company: 'X', description: 'desc' };
-    const user = { employment: [{ jobTitle: 'Dev', company: 'X' }], skills: [] };
-    const current = { summary: 'Old summary' };
-
-    const res = await regenerateSection(section, job, user, current);
-    expect(res).toHaveProperty('summary');
-    expect(typeof res.summary).toBe('string');
-    expect(res.summary.length).toBeGreaterThan(0);
+  test('generateResumeContent returns parsed JSON and accepts null template', async () => {
+    const mod = await importWithMock({ text: JSON.stringify({ summary: 'x' }) });
+    const out = await mod.generateResumeContent(jobPosting, userProfile, null);
+    expect(out.summary).toBe('x');
   });
 
-  it('regenerateSection for experience returns parsed JSON object', async () => {
-    const section = 'experience';
-    const job = { title: 'Dev', company: 'X', description: 'desc' };
-    const user = { employment: [{ jobTitle: 'Dev', company: 'X', description: 'd' }] };
-    const current = { };
-
-    const res = await regenerateSection(section, job, user, current);
-    expect(res).toHaveProperty('job0');
+  test('generateResumeContent surfaces model errors as thrown Error', async () => {
+    const mod = await importWithMock({ shouldThrow: true });
+    await expect(mod.generateResumeContent(jobPosting, userProfile, template)).rejects.toThrow(/Failed to generate resume content/);
   });
 
-  it('analyzeATSCompatibility parses JSON response', async () => {
-    const resumeContent = { summary: 's', relevantSkills: ['a'], experienceBullets: {} };
-    const job = { title: 'Dev', company: 'X', requirements: 'req' };
-    const res = await analyzeATSCompatibility(resumeContent, job);
-    expect(res).toHaveProperty('score');
-    expect(typeof res.score).toBe('number');
+  test('regenerateSection summary returns plain text wrapped as object', async () => {
+    const mod = await importWithMock({ text: 'A fresh summary from model.' });
+    const out = await mod.regenerateSection('summary', jobPosting, userProfile, { summary: 'old' });
+    expect(out.summary).toContain('fresh summary');
   });
 
-  it('optimizeResumeSkills returns optimization object', async () => {
-    const resume = { sections: { skills: [{ name: 'JS' }] } };
-    const job = { title: 'Dev', company: 'X', description: 'desc' };
-    const user = { skills: [{ name: 'JS', level: 'Expert', yearsOfExperience: 5 }] };
-    const res = await optimizeResumeSkills(resume, job, user);
-    expect(res).toHaveProperty('matchScore');
-    expect(res.optimizedSkills).toBeDefined();
+  test('regenerateSection experience returns JSON parsed bullets', async () => {
+    const mod = await importWithMock({ text: JSON.stringify({ job0: ['b1', 'b2'] }) });
+    const out = await mod.regenerateSection('experience', jobPosting, userProfile, {});
+    expect(out.job0).toEqual(['b1', 'b2']);
   });
 
-  it('tailorExperience returns experiences array', async () => {
-    const resume = { sections: { experience: [{ jobTitle: 'Dev', company: 'X', startDate: '2020', endDate: '2021', bullets: [] }] } };
-    const job = { title: 'Dev', company: 'X', description: 'desc' };
-    const user = { employment: [{ jobTitle: 'Dev', company: 'X' }] };
-    const res = await tailorExperience(resume, job, user);
-    expect(res).toHaveProperty('experiences');
-    expect(Array.isArray(res.experiences)).toBe(true);
+  test('regenerateSection skills returns JSON array', async () => {
+    const mod = await importWithMock({ text: JSON.stringify(['s1', 's2']) });
+    const out = await mod.regenerateSection('skills', jobPosting, userProfile, { skills: ['old'] });
+    expect(Array.isArray(out)).toBe(true);
   });
 
-  // Additional tests to increase coverage for parsing and error branches
-  it('generateResumeContent returns parsed object for normal response', async () => {
-    const job = { title: 'Dev', company: 'X', description: 'desc' };
-    const user = { employment: [], skills: [], education: [], projects: [], certifications: [] };
-    const template = { layout: {} };
-
-    const res = await generateResumeContent(job, user, template);
-    expect(res).toBeDefined();
-    expect(typeof res).toBe('object');
-    expect(res).toHaveProperty('result');
+  test('regenerateSection invalid section throws', async () => {
+    const mod = await importWithMock({ text: '{}' });
+    await expect(mod.regenerateSection('invalid', jobPosting, userProfile, {})).rejects.toThrow('Invalid section');
   });
 
-  it('generateResumeContent repairs malformed JSON and parses successfully', async () => {
-    const job = { title: 'Dev', company: 'X', description: '__INVALID_JSON__' };
-    const user = { employment: [], skills: [], education: [], projects: [], certifications: [] };
-    const template = { layout: {} };
-
-    const res = await generateResumeContent(job, user, template);
-    // Our mock invalid JSON contains a "variations" key
-    expect(res).toBeDefined();
-    expect(typeof res).toBe('object');
-    // Either variations or result may be present depending on mock
-    expect(res.variations || res.result).toBeTruthy();
+  test('analyzeATSCompatibility returns parsed JSON', async () => {
+    const mod = await importWithMock({ text: JSON.stringify({ score: 85, missingKeywords: [], keywordDensity: 'optimal', suggestions: [], matchedKeywords: [] }) });
+    const out = await mod.analyzeATSCompatibility({ summary: 's', relevantSkills: [] }, jobPosting);
+    expect(out.score).toBe(85);
   });
 
-  it('regenerateSection returns parsed array/object for skills section', async () => {
-    const section = 'skills';
-    const job = { title: 'Dev', company: 'X', description: 'desc' };
-    const user = { employment: [{ jobTitle: 'Dev', company: 'X' }], skills: [{ name: 'JS' }, { name: 'React' }] };
-    const current = { skills: ['JS'] };
-
-    const res = await regenerateSection(section, job, user, current);
-    // Our mock returns an object mapping job keys; accept object or array
-    expect(res).toBeDefined();
-    expect(typeof res === 'object' || Array.isArray(res)).toBe(true);
+  test('optimizeResumeSkills returns parsed JSON', async () => {
+    const mod = await importWithMock({ text: JSON.stringify({ matchScore: 90, optimizedSkills: [] }) });
+    const out = await mod.optimizeResumeSkills({ sections: { skills: [] } }, jobPosting, userProfile);
+    expect(out.matchScore).toBe(90);
   });
 
-  it('regenerateSection throws for invalid section name', async () => {
-    const section = 'not-a-section';
-    const job = { title: 'Dev', company: 'X', description: 'desc' };
-    const user = { employment: [], skills: [] };
-    const current = {};
-
-    await expect(regenerateSection(section, job, user, current)).rejects.toThrow(/Invalid section/);
+  test('tailorExperience returns parsed JSON structure', async () => {
+    const mod = await importWithMock({ text: JSON.stringify({ experiences: [{ experienceIndex: 0, jobTitle: 'x', relevanceScore: 80 }], summary: 'ok' }) });
+    const out = await mod.tailorExperience({ sections: { experience: [] } }, jobPosting, { employment: [] });
+    expect(Array.isArray(out.experiences)).toBe(true);
+    expect(out.summary).toBe('ok');
   });
 
-  it('optimizeResumeSkills surfaces AI errors as rejected promise', async () => {
-    const resume = { sections: { skills: [{ name: 'JS' }] } };
-    const job = { title: 'Dev', company: 'X', description: '__THROW__' };
-    const user = { skills: [{ name: 'JS', level: 'Expert', yearsOfExperience: 5 }] };
+  test('generateResumeContentVariations rejects when JSON is invalid (parse-fallback exercised)', async () => {
+    const badJson = '{"variations":[{"variationNumber":1,},],}';
+    const mod = await importWithMock({ text: badJson });
+    await expect(mod.generateResumeContentVariations(jobPosting, userProfile, template, 1)).rejects.toThrow(/Failed to generate resume content variations/);
+  });
 
-    await expect(optimizeResumeSkills(resume, job, user)).rejects.toThrow(/Failed to optimize skills/);
+  test('generateResumeContent uses projectFormat.titleWithTech true branch in prompt and parses response', async () => {
+    const tpl = JSON.parse(JSON.stringify(template));
+    tpl.layout.projectFormat.titleWithTech = true;
+    const mod = await importWithMock({ text: JSON.stringify({ summary: 'x', projects: [] }) });
+    const out = await mod.generateResumeContent(jobPosting, userProfile, tpl);
+    expect(out.summary).toBe('x');
+  });
+
+  test('regenerateSection summary returns parsed JSON when model returns JSON', async () => {
+    const mod = await importWithMock({ text: JSON.stringify({ summary: 'fresh JSON summary' }) });
+    const out = await mod.regenerateSection('summary', jobPosting, userProfile, { summary: 'old' });
+    expect(out.summary).toBe('fresh JSON summary');
+  });
+
+  test('analyzeATSCompatibility rejects when JSON is invalid (parse-fallback exercised)', async () => {
+    const bad = '{"score":85,}';
+    const mod = await importWithMock({ text: bad });
+    await expect(mod.analyzeATSCompatibility({ summary: 's', relevantSkills: [] }, jobPosting)).rejects.toThrow(/Failed to analyze ATS compatibility/);
+  });
+
+  test('generateResumeContent exercises multiple template branches and userProfile shapes', async () => {
+    const detailedProfile = {
+      employment: [
+        { jobTitle: 'Engineer', company: 'A', startDate: '2020-01-01', endDate: '2021-01-01', description: 'Did X', isCurrentPosition: false },
+        { jobTitle: 'Senior Engineer', company: 'B', startDate: '2021-02-01', isCurrentPosition: true, description: 'Led Y' }
+      ],
+      skills: [{ name: 'JavaScript', level: 'Advanced' }, { name: 'Node.js', level: 'Advanced' }],
+      education: [{ degree: 'BS', fieldOfStudy: 'CS', institution: 'Uni', graduationYear: 2019 }],
+      projects: [{ name: 'Proj', description: 'Desc', technologies: ['JS', 'Node'] }],
+      certifications: [{ name: 'Cert', issuingOrganization: 'Org' }]
+    };
+
+    // Case A: no template (should use default branches)
+    const modA = await importWithMock({ text: JSON.stringify({ summary: 'A' }) });
+    const outA = await modA.generateResumeContent(jobPosting, detailedProfile, null);
+    expect(outA.summary).toBe('A');
+
+    // Case B: template with projectFormat.titleWithTech = true
+    const tplB = JSON.parse(JSON.stringify(template));
+    tplB.layout.projectFormat.titleWithTech = true;
+    const modB = await importWithMock({ text: JSON.stringify({ summary: 'B' }) });
+    const outB = await modB.generateResumeContent(jobPosting, detailedProfile, tplB);
+    expect(outB.summary).toBe('B');
+
+  // Case C: template missing projectFormat to hit the else branch
+  // Provide educationFormat.order so prompt-building doesn't throw when joining
+  const tplC = { layout: { experienceFormat: {}, educationFormat: { order: ['degree','institution','dates'], datesOnRight: false, locationAfterInstitution: false, gpaSeparateLine: false } } };
+    const modC = await importWithMock({ text: JSON.stringify({ summary: 'C' }) });
+    const outC = await modC.generateResumeContent(jobPosting, detailedProfile, tplC);
+    expect(outC.summary).toBe('C');
   });
 });
