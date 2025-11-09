@@ -10,11 +10,14 @@ import { Job } from '../Job.js';
 describe('UC-062: Job Model - Company Information', () => {
     // Increase timeout for integration tests with database
     jest.setTimeout(30000);
+    
     beforeAll(async () => {
         // Connect to test database if not already connected
         if (mongoose.connection.readyState === 0) {
             await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/hotshot-test', {
-                serverSelectionTimeoutMS: 10000,
+                serverSelectionTimeoutMS: 30000,  // Increased from 10s to 30s
+                connectTimeoutMS: 30000,           // Connection timeout
+                socketTimeoutMS: 30000,            // Socket timeout
             });
         }
         // Wait for connection to be ready
