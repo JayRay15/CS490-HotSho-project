@@ -93,11 +93,19 @@ const jobSchema = new mongoose.Schema(
       },
     ],
     materials: {
-      resume: String,
-      coverLetter: String,
+      resume: { type: mongoose.Schema.Types.ObjectId, ref: 'Resume', default: null },
+      coverLetter: { type: mongoose.Schema.Types.ObjectId, ref: 'CoverLetter', default: null },
       portfolio: String,
       other: [String],
     },
+    materialsHistory: [
+      {
+        resume: { type: mongoose.Schema.Types.ObjectId, ref: 'Resume', default: null },
+        coverLetter: { type: mongoose.Schema.Types.ObjectId, ref: 'CoverLetter', default: null },
+        timestamp: { type: Date, default: Date.now },
+        reason: String,
+      },
+    ],
     priority: {
       type: String,
       enum: ["Low", "Medium", "High"],
