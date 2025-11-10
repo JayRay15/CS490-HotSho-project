@@ -737,7 +737,6 @@ export const generateAICoverLetter = async (req, res) => {
     }
 
     // Research company information
-    console.log(`🔍 Researching company: ${job.company}`);
     const companyResearchData = await researchCompany(job.company, jobDescription);
     const formattedResearch = formatResearchForCoverLetter(companyResearchData);
 

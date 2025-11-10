@@ -42,7 +42,7 @@ export async function researchCompany(companyName, jobDescription = '') {
  * Use AI to analyze job description and generate company research
  */
 async function generateCompanyResearch(companyName, jobDescription) {
-  const model = genAI.getGenerativeModel({ model: 'models/gemini-2.5-flash' });
+  const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
 
   const prompt = `You are a professional company research analyst. Analyze the following job description and extract/infer comprehensive company information about ${companyName}.
 
