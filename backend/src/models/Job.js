@@ -60,8 +60,39 @@ const jobSchema = new mongoose.Schema(
           summary: String,
           url: String,
           date: Date,
+          source: String, // News source (e.g., "TechCrunch", "Reuters")
+          category: {
+            type: String,
+            enum: ["funding", "product_launch", "hiring", "acquisition", "partnership", "leadership", "awards", "general"],
+            default: "general",
+          },
+          relevanceScore: {
+            type: Number,
+            min: 0,
+            max: 10,
+            default: 5,
+          },
+          keyPoints: [String], // Extracted key points from the article
+          sentiment: {
+            type: String,
+            enum: ["positive", "neutral", "negative"],
+            default: "neutral",
+          },
+          tags: [String], // Keywords/tags for filtering
         },
       ],
+      newsAlerts: {
+        enabled: {
+          type: Boolean,
+          default: false,
+        },
+        lastChecked: Date,
+        frequency: {
+          type: String,
+          enum: ["daily", "weekly", "never"],
+          default: "never",
+        },
+      },
     },
     status: {
       type: String,

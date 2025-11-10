@@ -495,7 +495,7 @@ export const getCompanyInfo = asyncHandler(async (req, res) => {
  * GET /api/companies/news?company=CompanyName
  */
 export const getCompanyNews = asyncHandler(async (req, res) => {
-    const { company } = req.query;
+    const { company, limit = 5, minRelevance = 3, category } = req.query;
 
     if (!company) {
         const { response, statusCode } = errorResponse(
@@ -507,13 +507,30 @@ export const getCompanyNews = asyncHandler(async (req, res) => {
     }
 
     try {
-        // For now, return a message that news should be added manually
-        // In production, you could integrate with a news API
+        // Dynamic import of news service
+        const { fetchCompanyNews, generateNewsSummary } = await import('../utils/newsService.js');
+        
+        // Fetch news with options
+        let news = await fetchCompanyNews(company, {
+            limit: parseInt(limit),
+            minRelevance: parseInt(minRelevance),
+        });
+        
+        // Filter by category if specified
+        if (category && category !== 'all') {
+            news = news.filter(item => item.category === category);
+        }
+        
+        // Generate summary
+        const summary = generateNewsSummary(news, company);
+        
         const { response, statusCode } = successResponse(
-            "Company news retrieval coming soon",
+            "Company news retrieved successfully",
             {
-                news: [],
-                message: "News aggregation feature will be available soon. You can manually add news items for now."
+                company,
+                news,
+                summary,
+                categories: ['all', 'funding', 'product_launch', 'hiring', 'acquisition', 'partnership', 'leadership', 'awards', 'general'],
             }
         );
         return sendResponse(res, response, statusCode);
@@ -522,6 +539,89 @@ export const getCompanyNews = asyncHandler(async (req, res) => {
         console.error("Error fetching company news:", error);
         const { response, statusCode } = errorResponse(
             "Failed to fetch company news",
+            500,
+            ERROR_CODES.SERVER_ERROR
+        );
+        return sendResponse(res, response, statusCode);
+    }
+});
+
+/**
+ * Export news summary for job applications
+ * GET /api/companies/news/export?company=<name>&format=<json|text>
+ */
+export const exportNewsSummary = asyncHandler(async (req, res) => {
+    const { company, format = 'json' } = req.query;
+
+    if (!company) {
+        const { response, statusCode } = errorResponse(
+            "Company name is required",
+            400,
+            ERROR_CODES.VALIDATION_ERROR
+        );
+        return sendResponse(res, response, statusCode);
+    }
+
+    try {
+        const { fetchCompanyNews, generateNewsSummary } = await import('../utils/newsService.js');
+        
+        // Fetch news
+        const news = await fetchCompanyNews(company, { limit: 10, minRelevance: 5 });
+        const summary = generateNewsSummary(news, company);
+        
+        if (format === 'text') {
+            // Export as formatted text for cover letters/applications
+            let textOutput = `COMPANY NEWS SUMMARY - ${company.toUpperCase()}\n`;
+            textOutput += `Generated: ${new Date().toLocaleDateString()}\n`;
+            textOutput += `${'='.repeat(60)}\n\n`;
+            textOutput += `OVERVIEW:\n${summary.summary}\n\n`;
+            
+            if (summary.highlights.length > 0) {
+                textOutput += `KEY HIGHLIGHTS:\n${summary.highlights.join('\n')}\n\n`;
+            }
+            
+            textOutput += `RECENT NEWS (${news.length} items):\n`;
+            textOutput += `${'='.repeat(60)}\n\n`;
+            
+            news.forEach((item, index) => {
+                textOutput += `${index + 1}. ${item.title}\n`;
+                textOutput += `   Category: ${item.category} | Sentiment: ${item.sentiment} | Relevance: ${item.relevanceScore}/10\n`;
+                textOutput += `   Date: ${new Date(item.date).toLocaleDateString()} | Source: ${item.source}\n`;
+                textOutput += `   ${item.summary}\n`;
+                if (item.keyPoints && item.keyPoints.length > 0) {
+                    textOutput += `   Key Points:\n`;
+                    item.keyPoints.forEach(point => {
+                        textOutput += `   - ${point}\n`;
+                    });
+                }
+                textOutput += `   URL: ${item.url}\n\n`;
+            });
+            
+            res.set('Content-Type', 'text/plain');
+            res.set('Content-Disposition', `attachment; filename="${company.replace(/\s+/g, '_')}_news_summary.txt"`);
+            return res.send(textOutput);
+        } else {
+            // Export as JSON
+            const exportData = {
+                company,
+                exportDate: new Date(),
+                summary,
+                news,
+                metadata: {
+                    totalItems: news.length,
+                    categories: summary.categories,
+                    averageRelevance: summary.averageRelevance,
+                },
+            };
+            
+            res.set('Content-Type', 'application/json');
+            res.set('Content-Disposition', `attachment; filename="${company.replace(/\s+/g, '_')}_news_summary.json"`);
+            return res.json(exportData);
+        }
+    } catch (error) {
+        console.error("Error exporting news summary:", error);
+        const { response, statusCode } = errorResponse(
+            "Failed to export news summary",
             500,
             ERROR_CODES.SERVER_ERROR
         );

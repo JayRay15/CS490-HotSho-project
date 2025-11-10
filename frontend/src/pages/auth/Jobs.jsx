@@ -15,6 +15,7 @@ import InterviewInsights from "../../components/InterviewInsights";
 import InterviewScheduler from "../../components/InterviewScheduler";
 import InterviewCard from "../../components/InterviewCard";
 import CompanyInfoCard from "../../components/CompanyInfoCard";
+import CompanyNewsSection from "../../components/CompanyNewsSection";
 import * as interviewsAPI from "../../api/interviews";
 
 const PIPELINE_STAGES = ["Interested", "Applied", "Phone Screen", "Interview", "Offer", "Rejected"];
@@ -2926,6 +2927,24 @@ export default function Jobs() {
                   industry={viewingJob.industry}
                   location={viewingJob.location}
                 />
+
+                {/* UC-062: Enhanced Company News Section */}
+                {viewingJob.company && (
+                  <CompanyNewsSection
+                    companyName={viewingJob.company}
+                    initialNews={viewingJob.companyInfo?.recentNews || []}
+                    onNewsUpdate={(news) => {
+                      // Update the viewing job with fresh news
+                      setViewingJob({
+                        ...viewingJob,
+                        companyInfo: {
+                          ...viewingJob.companyInfo,
+                          recentNews: news,
+                        },
+                      });
+                    }}
+                  />
+                )}
 
                 {/* Description */}
                 {viewingJob.description && (
