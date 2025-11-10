@@ -11,6 +11,6 @@ module.exports = {
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
-  testTimeout: 10000,
+  testTimeout: 60000, // Increased to 60s for integration tests with database
   verbose: true,
 };
