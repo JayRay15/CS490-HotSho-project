@@ -658,7 +658,12 @@ export const generateAICoverLetter = async (req, res) => {
     const {
       jobId, // Required: ID of saved job posting
       tone = 'formal',
-      variationCount = 1
+      variationCount = 1,
+      industry = 'general',
+      companyCulture = 'corporate',
+      length = 'standard',
+      writingStyle = 'hybrid',
+      customInstructions = ''
     } = req.body;
 
     // Validate required fields
@@ -667,6 +672,81 @@ export const generateAICoverLetter = async (req, res) => {
         "Job ID is required. Please select a job from your saved jobs.",
         400,
         ERROR_CODES.MISSING_REQUIRED_FIELD
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Validate tone
+    const validTones = ['formal', 'casual', 'enthusiastic', 'analytical', 'creative', 'technical', 'executive'];
+    if (!validTones.includes(tone)) {
+      const { response, statusCode } = errorResponse(
+        `Invalid tone. Must be one of: ${validTones.join(', ')}`,
+        400,
+        ERROR_CODES.INVALID_INPUT
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Validate industry
+    const validIndustries = ['technology', 'finance', 'healthcare', 'marketing', 'education', 'sales', 'consulting', 'engineering', 'creative', 'general'];
+    if (!validIndustries.includes(industry)) {
+      const { response, statusCode } = errorResponse(
+        `Invalid industry. Must be one of: ${validIndustries.join(', ')}`,
+        400,
+        ERROR_CODES.INVALID_INPUT
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Validate company culture
+    const validCultures = ['startup', 'corporate', 'enterprise', 'agency', 'nonprofit', 'remote'];
+    if (!validCultures.includes(companyCulture)) {
+      const { response, statusCode } = errorResponse(
+        `Invalid company culture. Must be one of: ${validCultures.join(', ')}`,
+        400,
+        ERROR_CODES.INVALID_INPUT
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Validate length
+    const validLengths = ['brief', 'standard', 'detailed'];
+    if (!validLengths.includes(length)) {
+      const { response, statusCode } = errorResponse(
+        `Invalid length. Must be one of: ${validLengths.join(', ')}`,
+        400,
+        ERROR_CODES.INVALID_INPUT
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Validate writing style
+    const validStyles = ['direct', 'narrative', 'hybrid'];
+    if (!validStyles.includes(writingStyle)) {
+      const { response, statusCode } = errorResponse(
+        `Invalid writing style. Must be one of: ${validStyles.join(', ')}`,
+        400,
+        ERROR_CODES.INVALID_INPUT
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Validate variation count
+    if (variationCount < 1 || variationCount > 3) {
+      const { response, statusCode } = errorResponse(
+        "Variation count must be between 1 and 3",
+        400,
+        ERROR_CODES.INVALID_INPUT
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Validate custom instructions length
+    if (customInstructions && customInstructions.length > 500) {
+      const { response, statusCode } = errorResponse(
+        "Custom instructions must be 500 characters or less",
+        400,
+        ERROR_CODES.INVALID_INPUT
       );
       return sendResponse(res, response, statusCode);
     }
@@ -748,6 +828,11 @@ export const generateAICoverLetter = async (req, res) => {
       userProfile,
       tone,
       variationCount,
+      industry,
+      companyCulture,
+      length,
+      writingStyle,
+      customInstructions,
       companyResearch: formattedResearch
     });
 

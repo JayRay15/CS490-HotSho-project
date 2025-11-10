@@ -11,8 +11,6 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
  */
 export async function researchCompany(companyName, jobDescription = '') {
   try {
-    console.log(`🔍 Researching company: ${companyName}`);
-
     // Use AI to extract and synthesize company information from job description
     // and generate comprehensive research
     const research = await generateCompanyResearch(companyName, jobDescription);
@@ -48,8 +46,6 @@ export async function researchCompany(companyName, jobDescription = '') {
  */
 export async function conductComprehensiveResearch(companyName, jobDescription = '', companyWebsite = '') {
   try {
-    console.log(`🔍 Starting comprehensive research for: ${companyName}`);
-
     // Gather data from multiple sources in parallel
     const [
       basicInfo,
@@ -145,7 +141,6 @@ export async function conductComprehensiveResearch(companyName, jobDescription =
       }
     };
 
-    console.log(`✅ Comprehensive research completed for ${companyName}`);
     return comprehensiveResearch;
 
   } catch (error) {
@@ -249,7 +244,6 @@ Generate the company research JSON now:`;
     // Parse JSON
     const research = JSON.parse(text);
 
-    console.log(`✅ Company research completed for ${companyName}`);
     return research;
   } catch (error) {
     console.error('AI research generation failed:', error);
@@ -530,7 +524,6 @@ Generate the research JSON now:`;
     // Parse JSON
     const research = JSON.parse(text);
 
-    console.log(`✅ AI research completed for ${companyName}`);
     return research;
   } catch (error) {
     console.error('AI research generation failed:', error);
