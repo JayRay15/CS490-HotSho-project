@@ -8,6 +8,11 @@ import { sendInterviewReminderEmail } from "./email.js";
  * This function is called by the cron job and can also be called manually
  */
 export const sendInterviewRemindersNow = async () => {
+  // Test hook: allow forcing an error to exercise startup catch in tests
+  if (process.env.FORCE_REMINDER_SEND_ERROR === 'true') {
+    throw new Error('forced send error');
+  }
+
   try {
     console.log("📧 Starting interview reminder check...");
     

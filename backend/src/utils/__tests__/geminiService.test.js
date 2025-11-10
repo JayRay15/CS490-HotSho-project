@@ -1,5 +1,4 @@
-// Ensure mock is registered before importing the module under test
-import { jest } from '@jest/globals';
+﻿import { jest } from '@jest/globals';
 
 // Helper to create a mock factory for @google/generative-ai
 function createGenAIMock({ text = '', shouldThrow = false } = {}) {
@@ -30,7 +29,7 @@ async function importWithMock({ text = '', shouldThrow = false } = {}) {
 describe('geminiService', () => {
   const jobPosting = { title: 'SWE', company: 'Acme', description: 'Do things', requirements: 'JS' };
   const userProfile = { employment: [], skills: [], education: [], projects: [], certifications: [] };
-  const template = { layout: { projectFormat: { titleWithTech: false, hasBullets: true, bulletCharacter: '•' }, experienceFormat: { titleCompanySameLine: false, datesOnRight: false, hasBullets: true, bulletCharacter: '•', bulletIndentation: 2 }, educationFormat: { order: ['degree','institution','dates'], datesOnRight: false, locationAfterInstitution: false, gpaSeparateLine: false } } };
+  const template = { layout: { projectFormat: { titleWithTech: false, hasBullets: true, bulletCharacter: '' }, experienceFormat: { titleCompanySameLine: false, datesOnRight: false, hasBullets: true, bulletCharacter: '', bulletIndentation: 2 }, educationFormat: { order: ['degree','institution','dates'], datesOnRight: false, locationAfterInstitution: false, gpaSeparateLine: false } } };
 
   test('generateResumeContentVariations parses plain JSON response', async () => {
     const mockText = JSON.stringify({ variations: [{ variationNumber: 1, emphasis: 'Technical' }] });
@@ -155,9 +154,9 @@ describe('geminiService', () => {
     const outB = await modB.generateResumeContent(jobPosting, detailedProfile, tplB);
     expect(outB.summary).toBe('B');
 
-  // Case C: template missing projectFormat to hit the else branch
-  // Provide educationFormat.order so prompt-building doesn't throw when joining
-  const tplC = { layout: { experienceFormat: {}, educationFormat: { order: ['degree','institution','dates'], datesOnRight: false, locationAfterInstitution: false, gpaSeparateLine: false } } };
+    // Case C: template missing projectFormat to hit the else branch
+    // Provide educationFormat.order so prompt-building doesn't throw when joining
+    const tplC = { layout: { experienceFormat: {}, educationFormat: { order: ['degree','institution','dates'], datesOnRight: false, locationAfterInstitution: false, gpaSeparateLine: false } } };
     const modC = await importWithMock({ text: JSON.stringify({ summary: 'C' }) });
     const outC = await modC.generateResumeContent(jobPosting, detailedProfile, tplC);
     expect(outC.summary).toBe('C');
@@ -224,5 +223,96 @@ describe('geminiService', () => {
     const mod = await importWithMock({ text: mockText });
     const out = await mod.regenerateSection('summary', jobPosting, userProfile, { summary: 'old' });
     expect(out.summary).toBe('fenced summary');
+  });
+
+  test('generateCoverLetter parses single variation and extracts paragraphs', async () => {
+    // Single variation: plain text with multiple paragraphs separated by double newlines
+    const singleText = `Dear Hiring Manager\n\nI am very interested in this role.\n\nI have relevant experience.\n\nSincerely, Candidate`;
+    const mod = await importWithMock({ text: singleText });
+    const variations = await mod.generateCoverLetter({ companyName: 'Acme', position: 'SWE', jobDescription: 'Do things', userProfile: { firstName: 'John', lastName: 'Doe', email: 'j@d.com' }, tone: 'formal', variationCount: 1 });
+    expect(Array.isArray(variations)).toBe(true);
+    expect(variations.length).toBe(1);
+    expect(variations[0].content).toContain('Dear Hiring Manager');
+    // openingParagraph should match first paragraph
+    expect(variations[0].openingParagraph).toContain('Dear Hiring Manager');
+  });
+
+  test('generateCoverLetter parses multiple variations separated by markers', async () => {
+    const multiText = `===VARIATION 1===\nHeader One\n\nBody One\n\nClosing One\n===VARIATION 2===\nHeader Two\n\nBody Two\n\nClosing Two`;
+    const mod = await importWithMock({ text: multiText });
+    const variations = await mod.generateCoverLetter({ companyName: 'Acme', position: 'SWE', jobDescription: 'Do things', userProfile: { firstName: 'Jane', lastName: 'Doe', email: 'j@d.com' }, tone: 'modern', variationCount: 2 });
+    expect(variations.length).toBe(2);
+    expect(variations[0].openingParagraph).toContain('Header One');
+    expect(variations[1].openingParagraph).toContain('Header Two');
+  });
+
+  test('analyzeCompanyCulture maps analysis text to recommended tones', async () => {
+    // creative/innovative -> creative
+    const modA = await importWithMock({ text: 'This company is creative and innovative with a startup vibe.' });
+    const outA = await modA.analyzeCompanyCulture('Some job description');
+    expect(outA.recommendedTone).toBe('creative');
+
+    // technical -> technical
+    const modB = await importWithMock({ text: 'We are a data-driven engineering organization focused on technical excellence.' });
+    const outB = await modB.analyzeCompanyCulture('JD');
+    expect(outB.recommendedTone).toBe('technical');
+
+    // executive -> executive
+    const modC = await importWithMock({ text: 'Strategic leadership and executive-level decision making is required.' });
+    const outC = await modC.analyzeCompanyCulture('JD');
+    expect(outC.recommendedTone).toBe('executive');
+
+    // modern/friendly -> modern
+    const modD = await importWithMock({ text: 'A modern and friendly culture that values collaboration.' });
+    const outD = await modD.analyzeCompanyCulture('JD');
+    expect(outD.recommendedTone).toBe('modern');
+  });
+
+  test('analyzeCompanyCulture returns fallback when model fails', async () => {
+    const mod = await importWithMock({ shouldThrow: true });
+    const out = await mod.analyzeCompanyCulture('JD');
+    expect(out.recommendedTone).toBe('formal');
+    expect(out.analysis).toContain('Unable to analyze');
+  });
+
+  test('generateCoverLetter with detailed profile exercises buildProfileSummary branches', async () => {
+    const detailedProfile = {
+      firstName: 'Ava',
+      lastName: 'Smith',
+      email: 'ava@example.com',
+      phone: '555-0101',
+      location: 'Boston, MA',
+      headline: 'Senior Engineer',
+      professionalSummary: 'Experienced engineer focused on scalable systems.',
+      employment: [
+        { position: 'Engineer', company: 'X', isCurrentPosition: false, description: 'Worked on X', startDate: '2018', endDate: '2019' },
+        { position: 'Senior Engineer', company: 'Y', isCurrentPosition: true, description: 'Leading Z', startDate: '2019' }
+      ],
+      skills: [
+        { name: 'JavaScript', level: 'Expert' },
+        { name: 'Node.js', level: 'Expert' },
+        { name: 'React', level: 'Advanced' },
+        { name: 'TypeScript', level: 'Expert' },
+        { name: 'AWS', level: 'Expert' },
+        { name: 'Docker', level: 'Advanced' },
+        { name: 'Kubernetes', level: 'Advanced' },
+        { name: 'SQL', level: 'Expert' },
+        { name: 'Testing', level: 'Advanced' }
+      ],
+      education: [{ degree: 'BS', fieldOfStudy: 'CS', institution: 'State U', gpa: 3.8 }],
+      certifications: [{ name: 'Cert A' }, { name: 'Cert B' }],
+      projects: [{ name: 'Proj1', description: 'Desc', technologies: ['JS'] }]
+    };
+
+    const mod = await importWithMock({ text: 'Cover letter content here' });
+    const variations = await mod.generateCoverLetter({ companyName: 'Acme', position: 'SWE', jobDescription: 'Do things', userProfile: detailedProfile, tone: 'technical', variationCount: 1 });
+    expect(variations.length).toBe(1);
+    expect(variations[0].content).toContain('Cover letter content here');
+  });
+
+  test('analyzeCompanyCulture returns formal when analysis is neutral', async () => {
+    const mod = await importWithMock({ text: 'This company focuses on the business and customers.' });
+    const out = await mod.analyzeCompanyCulture('JD');
+    expect(out.recommendedTone).toBe('formal');
   });
 });
