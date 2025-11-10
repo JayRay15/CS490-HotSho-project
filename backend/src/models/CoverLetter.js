@@ -8,7 +8,7 @@ const coverLetterSchema = new mongoose.Schema(
     content: { type: String, required: true }, // Actual cover letter content
     style: { 
       type: String, 
-      enum: ["formal", "modern", "creative", "technical", "executive"], 
+      enum: ["formal", "casual", "enthusiastic", "analytical", "creative", "technical", "executive"], 
       default: "formal"
     },
     jobId: { type: mongoose.Schema.Types.ObjectId, ref: "Job" }, // Optional: link to job application

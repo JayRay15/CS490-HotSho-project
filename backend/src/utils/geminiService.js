@@ -1,4 +1,12 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { 
+  TONE_OPTIONS, 
+  INDUSTRY_SETTINGS, 
+  COMPANY_CULTURE, 
+  LENGTH_OPTIONS, 
+  WRITING_STYLE 
+} from '../config/coverLetterTones.js';
+import dotenv from 'dotenv';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -630,6 +638,38 @@ Return ONLY valid JSON, no markdown formatting. Focus on maintaining factual acc
 }
 
 /**
+ * Clean up AI response by removing unwanted markers, notes, and artifacts
+ */
+function cleanAIResponse(text) {
+  // Remove common AI meta-commentary patterns
+  text = text.replace(/\*\*CRITICAL NOTE:\*\*[^\n]*\n*/gi, '');
+  text = text.replace(/\*\*NOTE:\*\*[^\n]*\n*/gi, '');
+  text = text.replace(/\*\*IMPORTANT:\*\*[^\n]*\n*/gi, '');
+  
+  // Remove markdown formatting (bold and italics)
+  // Remove bold: **word** -> word
+  text = text.replace(/\*\*([^*]+)\*\*/g, '$1');
+  // Remove italics: *word* -> word
+  text = text.replace(/\*([^*\n]+)\*/g, '$1');
+  
+  // Remove standalone asterisks or hash marks
+  text = text.replace(/^\s*\*{3,}\s*$/gm, '');
+  text = text.replace(/^\s*#{3,}\s*$/gm, '');
+  
+  // Remove explanatory parentheticals at the start
+  text = text.replace(/^\s*\([^)]*omitting[^)]*\)\s*/gi, '');
+  text = text.replace(/^\s*\([^)]*not supplied[^)]*\)\s*/gi, '');
+  
+  // Remove focus annotations like *(Focus: ...)*
+  text = text.replace(/^\s*\*\(Focus:.*?\)\*\s*\n*/gm, '');
+  
+  // Trim multiple blank lines
+  text = text.replace(/\n{3,}/g, '\n\n');
+  
+  return text.trim();
+}
+
+/**
  * Generate AI cover letter content based on job posting and user profile
  * @param {Object} params - Generation parameters
  * @param {string} params.companyName - Name of the company
@@ -646,7 +686,12 @@ export async function generateCoverLetter({
   jobDescription,
   userProfile,
   tone = 'formal',
-  variationCount = 1
+  variationCount = 1,
+  industry = 'general',
+  companyCulture = 'corporate',
+  length = 'standard',
+  writingStyle = 'hybrid',
+  customInstructions = ''
 }) {
   try {
     const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
@@ -654,19 +699,27 @@ export async function generateCoverLetter({
     // Build user profile summary
     const profileSummary = buildProfileSummary(userProfile);
 
-    // Construct the prompt
+    // Construct the prompt with enhanced options
     const prompt = buildCoverLetterPrompt({
       companyName,
       position,
       jobDescription,
       profileSummary,
       tone,
-      variationCount
+      variationCount,
+      industry,
+      companyCulture,
+      length,
+      writingStyle,
+      customInstructions
     });
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    const text = response.text();
+    let text = response.text();
+
+    // Clean up any unwanted markers or notes
+    text = cleanAIResponse(text);
 
     // Parse the response to extract variations
     const variations = parseCoverLetterVariations(text, variationCount);
@@ -779,7 +832,7 @@ function buildProfileSummary(profile) {
 }
 
 /**
- * Build the AI prompt for cover letter generation
+ * Build the AI prompt for cover letter generation with comprehensive tone and style options
  */
 function buildCoverLetterPrompt({
   companyName,
@@ -787,15 +840,28 @@ function buildCoverLetterPrompt({
   jobDescription,
   profileSummary,
   tone,
-  variationCount
+  variationCount,
+  industry,
+  companyCulture,
+  length,
+  writingStyle,
+  customInstructions
 }) {
-  const toneGuide = {
-    formal: 'professional, traditional, and respectful',
-    modern: 'contemporary, friendly yet professional, with conversational elements',
-    creative: 'expressive, engaging, and personality-driven',
-    technical: 'precise, detail-oriented, with technical terminology',
-    executive: 'strategic, leadership-focused, and high-level'
-  };
+  // Get configuration details
+  const toneConfig = TONE_OPTIONS[tone] || TONE_OPTIONS.formal;
+  const industryConfig = INDUSTRY_SETTINGS[industry] || INDUSTRY_SETTINGS.general;
+  const cultureConfig = COMPANY_CULTURE[companyCulture] || COMPANY_CULTURE.corporate;
+  const lengthConfig = LENGTH_OPTIONS[length] || LENGTH_OPTIONS.standard;
+  const styleConfig = WRITING_STYLE[writingStyle] || WRITING_STYLE.hybrid;
+
+  // Build industry-specific keyword guidance
+  const industryKeywords = industryConfig.keywords.length > 0 
+    ? `Industry Keywords to incorporate naturally: ${industryConfig.keywords.join(', ')}`
+    : '';
+  
+  const industryTerminology = industryConfig.terminology.length > 0
+    ? `Industry Terminology to use appropriately: ${industryConfig.terminology.join(', ')}`
+    : '';
 
   return `You are an expert cover letter writer. Generate ${variationCount} compelling cover letter${variationCount > 1 ? 's' : ''} for the following job application.
 
@@ -807,7 +873,32 @@ function buildCoverLetterPrompt({
 **Candidate Profile:**
 ${profileSummary}
 
-**Tone:** ${toneGuide[tone] || toneGuide.formal}
+**TONE AND STYLE REQUIREMENTS:**
+
+**Primary Tone: ${toneConfig.name}**
+${toneConfig.description}
+Guidelines: ${toneConfig.guidelines}
+
+**Industry Focus: ${industryConfig.name}**
+${industryConfig.focus}
+${industryKeywords}
+${industryTerminology}
+
+**Company Culture: ${cultureConfig.name}**
+${cultureConfig.description}
+Cultural Alignment: ${cultureConfig.language}
+
+**Writing Style: ${styleConfig.name}**
+${styleConfig.description}
+Style Guidelines: ${styleConfig.guidelines}
+
+**Length Target: ${lengthConfig.name}**
+${lengthConfig.description}
+Target word count: ${lengthConfig.wordCount.min}-${lengthConfig.wordCount.max} words (excluding header)
+Number of body paragraphs: ${lengthConfig.paragraphs}
+${lengthConfig.guidelines}
+
+${customInstructions ? `**Custom Instructions:**\n${customInstructions}\n` : ''}
 
 **Cover Letter Format:**
 The cover letter MUST start with a professional header. Use the EXACT information from the CONTACT INFORMATION section above.
@@ -830,6 +921,9 @@ ${companyName}
 3. NEVER write "[Your Name]", "[Your Email]", "[Your Phone]", "[Your Address]" - use ACTUAL values
 4. If a field is not provided in CONTACT INFORMATION, omit it entirely (don't use placeholders)
 5. The closing signature MUST use the actual candidate name (not "[Your Name]")
+6. OUTPUT ONLY THE COVER LETTER - Do NOT include explanatory notes, asterisks, or meta-commentary
+7. Do NOT start with phrases like "CRITICAL NOTE" or explanations about missing fields
+8. Generate the complete professional cover letter directly without any preamble
 
 **COMPANY RESEARCH REQUIREMENTS:**
 Before writing, analyze the job description and company information to identify:
@@ -889,10 +983,36 @@ Before writing, analyze the job description and company information to identify:
 ❌ [Company Address] - Use city from job description or omit
 ❌ Generic statements like "I am a hard worker" without specific examples
 ❌ Phrases like "I believe I would be a good fit" without explaining why with specifics
+❌ Explanatory notes, asterisks (***), or hash marks (###) - Output ONLY the letter content
+❌ Meta-commentary like "CRITICAL NOTE" or explanations about the data provided
+❌ Markdown formatting (*italics* or **bold**) - Use plain text only
 
-${variationCount > 1 ? `\n**Format:** Separate each variation clearly with "===VARIATION [NUMBER]===" header. Each variation should emphasize different aspects of the candidate's background while maintaining all requirements above.\n` : ''}
+${variationCount > 1 ? `\n**MULTIPLE VARIATIONS FORMAT:**
+You must generate ${variationCount} COMPLETE, SEPARATE cover letters.
+Each cover letter must be a FULL, STANDALONE document with:
+- Complete header (name, email, date, hiring manager, company)
+- Full opening paragraph
+- All body paragraphs (2-3)
+- Complete closing paragraph
+- Signature line
 
-Generate the cover letter${variationCount > 1 ? 's' : ''} now with ALL actual information filled in and company-specific personalization:`;
+Separate each COMPLETE cover letter with exactly this line:
+===VARIATION 2===
+(or ===VARIATION 3=== for the third one)
+
+Each variation should:
+- Be a complete cover letter from start to finish
+- Emphasize different aspects of the candidate's experience
+- Use slightly different examples and achievements
+- Maintain the same tone and style throughout
+- Be equally strong and comprehensive
+
+DO NOT split one cover letter into parts. Generate ${variationCount} completely independent cover letters.
+` : ''}
+
+**IMPORTANT: Your response must ONLY contain the cover letter content itself. Start directly with the candidate's name in the header. Do not include any explanatory text, notes, asterisks, or commentary about the generation process.**
+
+Generate the ${variationCount > 1 ? `${variationCount} complete cover letters` : 'cover letter'} now:`;
 }
 
 /**
@@ -911,10 +1031,12 @@ function parseCoverLetterVariations(text, expectedCount) {
     });
   } else {
     // Multiple variations - split by separator
-    const parts = text.split(/===VARIATION\s+\d+===/i);
+    // Split by the separator
+    const parts = text.split(/===\s*VARIATION\s+\d+\s*===/i);
+    
     parts.forEach((part, index) => {
       const content = part.trim();
-      if (content) {
+      if (content && content.length > 100) { // Must be substantial content
         variations.push({
           content,
           openingParagraph: extractParagraph(content, 0),
