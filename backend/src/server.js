@@ -14,6 +14,7 @@ import interviewRoutes from "./routes/interviewRoutes.js";
 import salaryRoutes from "./routes/salaryRoutes.js";
 import coverLetterTemplateRoutes from "./routes/coverLetterTemplateRoutes.js";
 import coverLetterRoutes from "./routes/coverLetterRoutes.js";
+import companyRoutes from "./routes/companyRoutes.js";
 import { getPublicProject } from "./controllers/profileController.js";
 import { startDeadlineReminderSchedule } from "./utils/deadlineReminders.js";
 import { startInterviewReminderSchedule } from "./utils/interviewReminders.js";
@@ -57,6 +58,7 @@ app.use("/api/pdf-analysis", pdfAnalysisRoutes);
 app.use("/api/salary", salaryRoutes);
 app.use("/api", coverLetterTemplateRoutes);
 app.use("/api", coverLetterRoutes);
+app.use("/api/companies", companyRoutes);
 // Mount profile routes under /api/profile (existing) and also under /api/users
 // so frontend requests to /api/users/... (used elsewhere in the app) resolve correctly.
 app.use("/api/profile", profileRoutes);

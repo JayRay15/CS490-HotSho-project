@@ -17,6 +17,25 @@ const mockGetIndustryGuidance = jest.fn((req, res) => res.json({ success: true }
 const mockGenerateAICoverLetter = jest.fn((req, res) => res.json({ success: true }));
 const mockAnalyzeCulture = jest.fn((req, res) => res.json({ success: true }));
 
+// Mock company research service
+jest.unstable_mockModule('../../utils/companyResearchService.js', () => ({
+  researchCompany: jest.fn(async (companyName, jobDescription) => ({
+    companyName,
+    background: `${companyName} is a leading company`,
+    recentNews: ['Recent achievement 1', 'Recent achievement 2'],
+    mission: 'Company mission',
+    values: ['Innovation', 'Excellence'],
+    initiatives: ['Initiative 1', 'Initiative 2'],
+    industryContext: 'Industry context',
+    size: 'mid-size',
+    growth: 'growth',
+    funding: 'Recently funded',
+    competitive: 'Competitive position',
+    researchSuccess: true
+  })),
+  formatResearchForCoverLetter: jest.fn((research) => 'Formatted research data')
+}));
+
 jest.unstable_mockModule('../../controllers/coverLetterTemplateController.js', () => ({
   listTemplates: mockListTemplates,
   getTemplateById: mockGetTemplateById,

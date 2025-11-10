@@ -14,6 +14,8 @@ import JobStatistics from "../../components/JobStatistics";
 import InterviewInsights from "../../components/InterviewInsights";
 import InterviewScheduler from "../../components/InterviewScheduler";
 import InterviewCard from "../../components/InterviewCard";
+import CompanyInfoCard from "../../components/CompanyInfoCard";
+import CompanyNewsSection from "../../components/CompanyNewsSection";
 import * as interviewsAPI from "../../api/interviews";
 
 const PIPELINE_STAGES = ["Interested", "Applied", "Phone Screen", "Interview", "Offer", "Rejected"];
@@ -33,7 +35,7 @@ export default function Jobs() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedJobs, setSelectedJobs] = useState([]);
-  
+
   // Advanced filters
   const [filters, setFilters] = useState({
     location: "",
@@ -56,14 +58,14 @@ export default function Jobs() {
   const [isImporting, setIsImporting] = useState(false);
   const [importStatus, setImportStatus] = useState(null);
   const [importMessage, setImportMessage] = useState("");
-  
+
   // Archive-related state
   const [showArchived, setShowArchived] = useState(false);
   const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [showAutoArchiveModal, setShowAutoArchiveModal] = useState(false);
   const [archivingJob, setArchivingJob] = useState(null);
   const [archiveNotification, setArchiveNotification] = useState(null);
-  
+
   // Statistics modal state
   const [showStatistics, setShowStatistics] = useState(false);
 
@@ -98,6 +100,25 @@ export default function Jobs() {
     contacts: [],
     interviewNotes: "",
     salaryNegotiationNotes: "",
+    // UC-062: Company information
+    companyInfo: {
+      size: "",
+      website: "",
+      description: "",
+      mission: "",
+      logo: "",
+      contactInfo: {
+        email: "",
+        phone: "",
+        address: "",
+      },
+      glassdoorRating: {
+        rating: "",
+        reviewCount: "",
+        url: "",
+      },
+      recentNews: [],
+    },
   });
 
   // Load jobs on mount
@@ -117,7 +138,7 @@ export default function Jobs() {
 
     // Apply archived filter
     filtered = filtered.filter((job) => job.archived === showArchived);
-    
+
     console.log('✅ After archive filter:', filtered.length);
 
     // Apply status filter
@@ -130,10 +151,10 @@ export default function Jobs() {
       const search = searchTerm.toLowerCase();
       filtered = filtered.filter(
         (job) => {
-          const requirementsText = Array.isArray(job.requirements) 
-            ? job.requirements.join(' ').toLowerCase() 
+          const requirementsText = Array.isArray(job.requirements)
+            ? job.requirements.join(' ').toLowerCase()
             : (job.requirements || '').toLowerCase();
-          
+
           return (
             job.title.toLowerCase().includes(search) ||
             job.company.toLowerCase().includes(search) ||
@@ -151,7 +172,7 @@ export default function Jobs() {
     // Apply location filter
     if (filters.location) {
       const locationSearch = filters.location.toLowerCase();
-      filtered = filtered.filter((job) => 
+      filtered = filtered.filter((job) =>
         job.location?.toLowerCase().includes(locationSearch)
       );
     }
@@ -318,15 +339,15 @@ export default function Jobs() {
       const token = await getToken();
       setAuthToken(token);
       const response = await interviewsAPI.getInterviews({ limit: 20 });
-      
+
       // Backend returns: { success: true, data: { interviews: [...], count: X } }
       const interviewData = response.data?.data?.interviews || [];
-      
+
       // Filter out cancelled and completed interviews from the upcoming list
       const activeInterviews = interviewData.filter(
         i => i.status !== "Cancelled" && i.status !== "Completed"
       );
-      
+
       setInterviews(activeInterviews);
     } catch (error) {
       console.error("Failed to fetch interviews:", error);
@@ -367,15 +388,15 @@ export default function Jobs() {
           salaryMax: max ? String(max) : prev.salaryMax,
         }));
       }
-      
+
       // Set status based on import result
       setImportStatus(jobData.importStatus || 'partial');
       // If backend provided field-level confidences, append a compact summary for transparency
       const info = jobData.extractionInfo || {};
       const summaryParts = [];
-      ['title','company','location','jobType','workMode','salary'].forEach(k => {
+      ['title', 'company', 'location', 'jobType', 'workMode', 'salary'].forEach(k => {
         const m = info[k];
-        if (m && typeof m.confidence === 'number') summaryParts.push(`${k}: ${(m.confidence*100).toFixed(0)}%`);
+        if (m && typeof m.confidence === 'number') summaryParts.push(`${k}: ${(m.confidence * 100).toFixed(0)}%`);
       });
       const summary = summaryParts.length ? `\nFields: ${summaryParts.join(', ')}` : '';
       setImportMessage((jobData.importNotes || 'Job details imported. Please review and complete.') + summary);
@@ -409,10 +430,10 @@ export default function Jobs() {
         salary:
           formData.salaryMin || formData.salaryMax
             ? {
-                min: formData.salaryMin ? parseInt(formData.salaryMin) : undefined,
-                max: formData.salaryMax ? parseInt(formData.salaryMax) : undefined,
-                currency: "USD",
-              }
+              min: formData.salaryMin ? parseInt(formData.salaryMin) : undefined,
+              max: formData.salaryMax ? parseInt(formData.salaryMax) : undefined,
+              currency: "USD",
+            }
             : undefined,
         jobType: formData.jobType || undefined,
         industry: formData.industry || undefined,
@@ -424,6 +445,25 @@ export default function Jobs() {
         tags: formData.tags ? formData.tags.split(",").map((t) => t.trim()) : undefined,
         applicationDate: formData.applicationDate || undefined,
         deadline: formData.deadline || undefined,
+        // UC-062: Company information
+        companyInfo: {
+          size: formData.companyInfo?.size || undefined,
+          website: formData.companyInfo?.website || undefined,
+          description: formData.companyInfo?.description || undefined,
+          mission: formData.companyInfo?.mission || undefined,
+          logo: formData.companyInfo?.logo || undefined,
+          contactInfo: {
+            email: formData.companyInfo?.contactInfo?.email || undefined,
+            phone: formData.companyInfo?.contactInfo?.phone || undefined,
+            address: formData.companyInfo?.contactInfo?.address || undefined,
+          },
+          glassdoorRating: {
+            rating: formData.companyInfo?.glassdoorRating?.rating ? parseFloat(formData.companyInfo.glassdoorRating.rating) : undefined,
+            reviewCount: formData.companyInfo?.glassdoorRating?.reviewCount ? parseInt(formData.companyInfo.glassdoorRating.reviewCount) : undefined,
+            url: formData.companyInfo?.glassdoorRating?.url || undefined,
+          },
+          recentNews: formData.companyInfo?.recentNews || [],
+        },
       };
 
       await api.post("/api/jobs", jobData);
@@ -433,7 +473,7 @@ export default function Jobs() {
       resetForm();
       setImportStatus(null);
       setImportMessage('');
-      
+
       // Show success message
       setSuccessMessage("Job successfully added!");
       setTimeout(() => setSuccessMessage(null), 5000);
@@ -457,10 +497,10 @@ export default function Jobs() {
         salary:
           formData.salaryMin || formData.salaryMax
             ? {
-                min: formData.salaryMin ? parseInt(formData.salaryMin) : undefined,
-                max: formData.salaryMax ? parseInt(formData.salaryMax) : undefined,
-                currency: "USD",
-              }
+              min: formData.salaryMin ? parseInt(formData.salaryMin) : undefined,
+              max: formData.salaryMax ? parseInt(formData.salaryMax) : undefined,
+              currency: "USD",
+            }
             : undefined,
         jobType: formData.jobType || undefined,
         industry: formData.industry || undefined,
@@ -474,6 +514,25 @@ export default function Jobs() {
         tags: formData.tags ? formData.tags.split(",").map((t) => t.trim()) : undefined,
         applicationDate: formData.applicationDate || undefined,
         deadline: formData.deadline || undefined,
+        // UC-062: Company information
+        companyInfo: {
+          size: formData.companyInfo?.size || undefined,
+          website: formData.companyInfo?.website || undefined,
+          description: formData.companyInfo?.description || undefined,
+          mission: formData.companyInfo?.mission || undefined,
+          logo: formData.companyInfo?.logo || undefined,
+          contactInfo: {
+            email: formData.companyInfo?.contactInfo?.email || undefined,
+            phone: formData.companyInfo?.contactInfo?.phone || undefined,
+            address: formData.companyInfo?.contactInfo?.address || undefined,
+          },
+          glassdoorRating: {
+            rating: formData.companyInfo?.glassdoorRating?.rating ? parseFloat(formData.companyInfo.glassdoorRating.rating) : undefined,
+            reviewCount: formData.companyInfo?.glassdoorRating?.reviewCount ? parseInt(formData.companyInfo.glassdoorRating.reviewCount) : undefined,
+            url: formData.companyInfo?.glassdoorRating?.url || undefined,
+          },
+          recentNews: formData.companyInfo?.recentNews || [],
+        },
       };
 
       console.log("UPDATE JOB - Frontend formData:", formData);
@@ -548,6 +607,25 @@ export default function Jobs() {
       deadline: job.deadline ? job.deadline.split("T")[0] : "",
       interviewNotes: job.interviewNotes || "",
       salaryNegotiationNotes: job.salaryNegotiationNotes || "",
+      // UC-062: Company information
+      companyInfo: {
+        size: job.companyInfo?.size || "",
+        website: job.companyInfo?.website || "",
+        description: job.companyInfo?.description || "",
+        mission: job.companyInfo?.mission || "",
+        logo: job.companyInfo?.logo || "",
+        contactInfo: {
+          email: job.companyInfo?.contactInfo?.email || "",
+          phone: job.companyInfo?.contactInfo?.phone || "",
+          address: job.companyInfo?.contactInfo?.address || "",
+        },
+        glassdoorRating: {
+          rating: job.companyInfo?.glassdoorRating?.rating || "",
+          reviewCount: job.companyInfo?.glassdoorRating?.reviewCount || "",
+          url: job.companyInfo?.glassdoorRating?.url || "",
+        },
+        recentNews: job.companyInfo?.recentNews || [],
+      },
     });
     console.log("EDIT JOB - Form data set with industry:", job.industry || "");
     setShowEditModal(true);
@@ -647,6 +725,25 @@ export default function Jobs() {
       contacts: [],
       interviewNotes: "",
       salaryNegotiationNotes: "",
+      // UC-062: Company information
+      companyInfo: {
+        size: "",
+        website: "",
+        description: "",
+        mission: "",
+        logo: "",
+        contactInfo: {
+          email: "",
+          phone: "",
+          address: "",
+        },
+        glassdoorRating: {
+          rating: "",
+          reviewCount: "",
+          url: "",
+        },
+        recentNews: [],
+      },
     });
   };
 
@@ -709,11 +806,11 @@ export default function Jobs() {
   };
 
   const hasActiveFilters = () => {
-    return searchTerm !== "" || 
-           filterStatus !== "all" || 
-           Object.values(filters).some(v => v !== "") ||
-           sortBy !== "dateAdded" ||
-           sortOrder !== "desc";
+    return searchTerm !== "" ||
+      filterStatus !== "all" ||
+      Object.values(filters).some(v => v !== "") ||
+      sortBy !== "dateAdded" ||
+      sortOrder !== "desc";
   };
 
   const handleViewJob = (job) => {
@@ -731,7 +828,7 @@ export default function Jobs() {
     try {
       const token = await getToken();
       setAuthToken(token);
-      
+
       if (archivingJob) {
         // Single job archive
         await api.post(`/api/jobs/${archivingJob._id}/archive`, { reason, notes });
@@ -742,10 +839,10 @@ export default function Jobs() {
         });
       } else if (selectedJobs.length > 0) {
         // Bulk archive
-        await api.post('/api/jobs/bulk-archive', { 
-          jobIds: selectedJobs, 
-          reason, 
-          notes 
+        await api.post('/api/jobs/bulk-archive', {
+          jobIds: selectedJobs,
+          reason,
+          notes
         });
         setArchiveNotification({
           message: `${selectedJobs.length} job(s) archived successfully`,
@@ -754,11 +851,11 @@ export default function Jobs() {
         });
         setSelectedJobs([]);
       }
-      
+
       await fetchJobs();
       await fetchStats();
       setArchivingJob(null);
-      
+
       // Clear notification after 10 seconds
       setTimeout(() => setArchiveNotification(null), 10000);
     } catch (error) {
@@ -848,7 +945,7 @@ export default function Jobs() {
       alert(`You can only schedule interviews for jobs in "Interview" or "Phone Screen" stages. This job is currently in "${job.status}" stage.`);
       return;
     }
-    
+
     setSelectedJobForInterview(job);
     setEditingInterview(null);
     setShowInterviewScheduler(true);
@@ -877,11 +974,11 @@ export default function Jobs() {
 
   const handleInterviewView = (interview) => {
     // interview.jobId might be populated with job object or just ID
-    const jobIdString = typeof interview.jobId === 'object' 
-      ? interview.jobId._id 
+    const jobIdString = typeof interview.jobId === 'object'
+      ? interview.jobId._id
       : interview.jobId;
     const job = jobs.find(j => j._id === jobIdString);
-    
+
     setEditingInterview(interview);
     setSelectedJobForInterview(job);
     setShowInterviewScheduler(true);
@@ -891,15 +988,15 @@ export default function Jobs() {
     try {
       const token = await getToken();
       setAuthToken(token);
-      const response = await api.post('/api/jobs/auto-archive', { 
-        daysInactive, 
-        statuses 
+      const response = await api.post('/api/jobs/auto-archive', {
+        daysInactive,
+        statuses
       });
-      
+
       const count = response.data.data.count;
       await fetchJobs();
       await fetchStats();
-      
+
       if (count > 0) {
         setSuccessMessage(`${count} job(s) auto-archived successfully!`);
       } else {
@@ -916,7 +1013,7 @@ export default function Jobs() {
     const confirmed = window.confirm(
       `Are you sure you want to permanently delete "${jobTitle}"?\n\nThis action cannot be undone. Consider archiving instead.`
     );
-    
+
     if (!confirmed) return;
 
     const doubleConfirm = window.confirm(
@@ -1008,20 +1105,20 @@ export default function Jobs() {
           {/* Deadline Reminders */}
           {(() => {
             const today = new Date();
-            today.setHours(0,0,0,0);
+            today.setHours(0, 0, 0, 0);
             const soon = jobs
               .filter(j => j.deadline)
               .map(j => ({
                 job: j,
-                days: Math.round((new Date(j.deadline).setHours(0,0,0,0) - today) / (1000*60*60*24))
+                days: Math.round((new Date(j.deadline).setHours(0, 0, 0, 0) - today) / (1000 * 60 * 60 * 24))
               }))
               .filter(x => x.days <= 3)
-              .sort((a,b) => a.days - b.days)
-              .slice(0,5);
+              .sort((a, b) => a.days - b.days)
+              .slice(0, 5);
             return soon.length ? (
               <Card variant="info" className="mb-4" title="Upcoming Deadlines">
                 <ul className="text-sm text-gray-800 space-y-1">
-                  {soon.map(({job, days}) => (
+                  {soon.map(({ job, days }) => (
                     <li key={job._id}>
                       <button className={`font-medium ${days <= 0 ? 'text-red-700' : 'text-blue-700'} hover:underline`}
                         onClick={() => handleViewJob(job)}
@@ -1090,8 +1187,8 @@ export default function Jobs() {
                 </select>
               </div>
               <div className="flex items-end gap-2 flex-wrap">
-                <Button 
-                  onClick={() => setShowFilters(!showFilters)} 
+                <Button
+                  onClick={() => setShowFilters(!showFilters)}
                   variant={showFilters || hasActiveFilters() ? "primary" : "secondary"}
                 >
                   {showFilters ? "Hide Filters" : "More Filters"}
@@ -1103,8 +1200,8 @@ export default function Jobs() {
                 <Button onClick={() => setShowStatistics(true)} variant="secondary">
                   Statistics
                 </Button>
-                <Button 
-                  onClick={() => setShowArchived(!showArchived)} 
+                <Button
+                  onClick={() => setShowArchived(!showArchived)}
                   variant={showArchived ? "primary" : "secondary"}
                 >
                   {showArchived ? "Show Active" : "Show Archived"}
@@ -1401,11 +1498,11 @@ export default function Jobs() {
                     onDelete={handleInterviewDeleted}
                     onEdit={(interview) => {
                       // interview.jobId might be populated with job object or just ID
-                      const jobIdString = typeof interview.jobId === 'object' 
-                        ? interview.jobId._id 
+                      const jobIdString = typeof interview.jobId === 'object'
+                        ? interview.jobId._id
                         : interview.jobId;
                       const job = jobs.find(j => j._id === jobIdString);
-                      
+
                       setEditingInterview(interview);
                       setSelectedJobForInterview(job);
                       setShowInterviewScheduler(true);
@@ -1419,8 +1516,8 @@ export default function Jobs() {
 
           {/* Pipeline or Calendar View */}
           {showCalendar ? (
-            <DeadlineCalendar 
-              jobs={filteredJobs} 
+            <DeadlineCalendar
+              jobs={filteredJobs}
               interviews={interviews}
               onJobView={handleViewJob}
               onInterviewView={handleInterviewView}
@@ -1623,11 +1720,10 @@ export default function Jobs() {
                     placeholder="https://linkedin.com/jobs/view/..."
                   />
                   {importStatus && (
-                    <div className={`mt-2 p-3 rounded-lg text-sm ${
-                      importStatus === 'success' ? 'bg-green-50 text-green-800 border border-green-200' :
+                    <div className={`mt-2 p-3 rounded-lg text-sm ${importStatus === 'success' ? 'bg-green-50 text-green-800 border border-green-200' :
                       importStatus === 'partial' ? 'bg-yellow-50 text-yellow-800 border border-yellow-200' :
-                      'bg-red-50 text-red-800 border border-red-200'
-                    }`}>
+                        'bg-red-50 text-red-800 border border-red-200'
+                      }`}>
                       {importMessage}
                     </div>
                   )}
@@ -1659,6 +1755,361 @@ export default function Jobs() {
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   placeholder="Personal notes about this opportunity..."
                 />
+
+                {/* UC-062: Company Information Section */}
+                <details className="border rounded-lg p-4 bg-gray-50">
+                  <summary className="cursor-pointer font-medium text-gray-900 hover:text-blue-600">
+                    📋 Company Information
+                  </summary>
+                  <div className="mt-4 space-y-4">
+                    {/* Auto-fill button */}
+                    <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-blue-900">Auto-fill company information</p>
+                        <p className="text-xs text-blue-700">Automatically fetch company details, logo, and description</p>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={async (event) => {
+                          if (!formData.company) {
+                            alert('Please enter a company name first');
+                            return;
+                          }
+                          try {
+                            const token = await getToken();
+                            setAuthToken(token);
+
+                            // Show loading state
+                            const btn = event.target;
+                            btn.disabled = true;
+                            btn.textContent = 'Fetching...';
+
+                            const response = await api.get(`/api/companies/info?name=${encodeURIComponent(formData.company)}`);
+
+                            if (response.data?.success && response.data?.data?.companyInfo) {
+                              const info = response.data.data.companyInfo;
+                              setFormData({
+                                ...formData,
+                                companyInfo: {
+                                  ...formData.companyInfo,
+                                  website: info.website || formData.companyInfo?.website || '',
+                                  logo: info.logo || formData.companyInfo?.logo || '',
+                                  description: info.description || formData.companyInfo?.description || '',
+                                  mission: info.mission || formData.companyInfo?.mission || '',
+                                  size: info.size || formData.companyInfo?.size || '',
+                                  industry: info.industry || formData.companyInfo?.industry || '',
+                                  location: info.location || formData.companyInfo?.location || '',
+                                  contactInfo: {
+                                    email: info.contactInfo?.email || formData.companyInfo?.contactInfo?.email || '',
+                                    phone: info.contactInfo?.phone || formData.companyInfo?.contactInfo?.phone || '',
+                                    address: info.contactInfo?.address || formData.companyInfo?.contactInfo?.address || ''
+                                  },
+                                  glassdoorRating: {
+                                    rating: info.glassdoorRating?.rating ?? formData.companyInfo?.glassdoorRating?.rating ?? '',
+                                    reviewCount: info.glassdoorRating?.reviewCount ?? formData.companyInfo?.glassdoorRating?.reviewCount ?? '',
+                                    url: info.glassdoorRating?.url ?? formData.companyInfo?.glassdoorRating?.url ?? ''
+                                  },
+                                  recentNews: info.recentNews || formData.companyInfo?.recentNews || []
+                                }
+                              });
+                              alert('Company information loaded successfully!');
+                            } else {
+                              alert('Could not find company information. You can add it manually below.');
+                            }
+
+                            btn.disabled = false;
+                            btn.textContent = '🔄 Auto-fill';
+                          } catch (error) {
+                            console.error('Error fetching company info:', error);
+                            alert('Failed to fetch company information. You can add it manually below.');
+                            event.target.disabled = false;
+                            event.target.textContent = '🔄 Auto-fill';
+                          }
+                        }}
+                        variant="primary"
+                        className="text-sm whitespace-nowrap"
+                      >
+                        🔄 Auto-fill
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Company Size</label>
+                        <select
+                          value={formData.companyInfo?.size || ""}
+                          onChange={(e) => setFormData({ ...formData, companyInfo: { ...formData.companyInfo, size: e.target.value } })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">Select size...</option>
+                          <option value="1-10">1-10 employees</option>
+                          <option value="11-50">11-50 employees</option>
+                          <option value="51-200">51-200 employees</option>
+                          <option value="201-500">201-500 employees</option>
+                          <option value="501-1000">501-1000 employees</option>
+                          <option value="1001-5000">1001-5000 employees</option>
+                          <option value="5001-10000">5001-10000 employees</option>
+                          <option value="10000+">10000+ employees</option>
+                        </select>
+                      </div>
+                      <InputField
+                        label="Company Website"
+                        type="url"
+                        value={formData.companyInfo?.website || ""}
+                        onChange={(e) => setFormData({ ...formData, companyInfo: { ...formData.companyInfo, website: e.target.value } })}
+                        placeholder="https://company.com"
+                      />
+                    </div>
+
+                    <InputField
+                      label="Company Logo URL"
+                      type="url"
+                      value={formData.companyInfo?.logo || ""}
+                      onChange={(e) => setFormData({ ...formData, companyInfo: { ...formData.companyInfo, logo: e.target.value } })}
+                      placeholder="https://company.com/logo.png"
+                    />
+
+                    <InputField
+                      label="Company Description"
+                      as="textarea"
+                      rows={3}
+                      value={formData.companyInfo?.description || ""}
+                      onChange={(e) => setFormData({ ...formData, companyInfo: { ...formData.companyInfo, description: e.target.value } })}
+                      placeholder="Brief description of the company..."
+                    />
+
+                    <InputField
+                      label="Mission Statement"
+                      as="textarea"
+                      rows={2}
+                      value={formData.companyInfo?.mission || ""}
+                      onChange={(e) => setFormData({ ...formData, companyInfo: { ...formData.companyInfo, mission: e.target.value } })}
+                      placeholder="Company's mission statement..."
+                    />
+
+                    <div className="border-t pt-4">
+                      <h4 className="text-sm font-medium text-gray-700 mb-3">Contact Information</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <InputField
+                          label="Email"
+                          type="email"
+                          value={formData.companyInfo?.contactInfo?.email || ""}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            companyInfo: {
+                              ...formData.companyInfo,
+                              contactInfo: { ...formData.companyInfo?.contactInfo, email: e.target.value }
+                            }
+                          })}
+                          placeholder="contact@company.com"
+                        />
+                        <InputField
+                          label="Phone"
+                          type="tel"
+                          value={formData.companyInfo?.contactInfo?.phone || ""}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            companyInfo: {
+                              ...formData.companyInfo,
+                              contactInfo: { ...formData.companyInfo?.contactInfo, phone: e.target.value }
+                            }
+                          })}
+                          placeholder="(555) 123-4567"
+                        />
+                      </div>
+                      <InputField
+                        label="Address"
+                        type="text"
+                        value={formData.companyInfo?.contactInfo?.address || ""}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          companyInfo: {
+                            ...formData.companyInfo,
+                            contactInfo: { ...formData.companyInfo?.contactInfo, address: e.target.value }
+                          }
+                        })}
+                        placeholder="123 Main St, City, State 12345"
+                      />
+                    </div>
+
+                    <div className="border-t pt-4">
+                      <h4 className="text-sm font-medium text-gray-700 mb-3">Glassdoor Information</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <InputField
+                          label="Rating (0-5)"
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          max="5"
+                          value={formData.companyInfo?.glassdoorRating?.rating || ""}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            companyInfo: {
+                              ...formData.companyInfo,
+                              glassdoorRating: { ...formData.companyInfo?.glassdoorRating, rating: e.target.value }
+                            }
+                          })}
+                          placeholder="4.2"
+                        />
+                        <InputField
+                          label="Review Count"
+                          type="number"
+                          value={formData.companyInfo?.glassdoorRating?.reviewCount || ""}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            companyInfo: {
+                              ...formData.companyInfo,
+                              glassdoorRating: { ...formData.companyInfo?.glassdoorRating, reviewCount: e.target.value }
+                            }
+                          })}
+                          placeholder="150"
+                        />
+                        <InputField
+                          label="Glassdoor URL"
+                          type="url"
+                          value={formData.companyInfo?.glassdoorRating?.url || ""}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            companyInfo: {
+                              ...formData.companyInfo,
+                              glassdoorRating: { ...formData.companyInfo?.glassdoorRating, url: e.target.value }
+                            }
+                          })}
+                          placeholder="https://glassdoor.com/..."
+                        />
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-medium text-gray-700">Recent News & Updates</h4>
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            const newNews = {
+                              title: "",
+                              summary: "",
+                              url: "",
+                              date: new Date().toISOString().split('T')[0]
+                            };
+                            setFormData({
+                              ...formData,
+                              companyInfo: {
+                                ...formData.companyInfo,
+                                recentNews: [...(formData.companyInfo?.recentNews || []), newNews]
+                              }
+                            });
+                          }}
+                          variant="secondary"
+                          className="text-xs"
+                        >
+                          + Add News Item
+                        </Button>
+                      </div>
+
+                      {formData.companyInfo?.recentNews && formData.companyInfo.recentNews.length > 0 ? (
+                        <div className="space-y-3">
+                          {formData.companyInfo.recentNews.map((news, idx) => (
+                            <div key={idx} className="p-3 border rounded-lg bg-gray-50">
+                              <div className="flex items-start justify-between mb-2">
+                                <span className="text-xs font-medium text-gray-600">News Item {idx + 1}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updatedNews = formData.companyInfo.recentNews.filter((_, i) => i !== idx);
+                                    setFormData({
+                                      ...formData,
+                                      companyInfo: {
+                                        ...formData.companyInfo,
+                                        recentNews: updatedNews
+                                      }
+                                    });
+                                  }}
+                                  className="text-red-600 hover:text-red-800 text-xs"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                              <div className="space-y-2">
+                                <InputField
+                                  label="Title"
+                                  type="text"
+                                  value={news.title || ""}
+                                  onChange={(e) => {
+                                    const updatedNews = [...formData.companyInfo.recentNews];
+                                    updatedNews[idx] = { ...updatedNews[idx], title: e.target.value };
+                                    setFormData({
+                                      ...formData,
+                                      companyInfo: {
+                                        ...formData.companyInfo,
+                                        recentNews: updatedNews
+                                      }
+                                    });
+                                  }}
+                                  placeholder="News headline..."
+                                />
+                                <InputField
+                                  label="Summary"
+                                  as="textarea"
+                                  rows={2}
+                                  value={news.summary || ""}
+                                  onChange={(e) => {
+                                    const updatedNews = [...formData.companyInfo.recentNews];
+                                    updatedNews[idx] = { ...updatedNews[idx], summary: e.target.value };
+                                    setFormData({
+                                      ...formData,
+                                      companyInfo: {
+                                        ...formData.companyInfo,
+                                        recentNews: updatedNews
+                                      }
+                                    });
+                                  }}
+                                  placeholder="Brief summary..."
+                                />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                  <InputField
+                                    label="URL"
+                                    type="url"
+                                    value={news.url || ""}
+                                    onChange={(e) => {
+                                      const updatedNews = [...formData.companyInfo.recentNews];
+                                      updatedNews[idx] = { ...updatedNews[idx], url: e.target.value };
+                                      setFormData({
+                                        ...formData,
+                                        companyInfo: {
+                                          ...formData.companyInfo,
+                                          recentNews: updatedNews
+                                        }
+                                      });
+                                    }}
+                                    placeholder="https://..."
+                                  />
+                                  <InputField
+                                    label="Date"
+                                    type="date"
+                                    value={news.date ? (typeof news.date === 'string' ? news.date.split('T')[0] : new Date(news.date).toISOString().split('T')[0]) : ""}
+                                    onChange={(e) => {
+                                      const updatedNews = [...formData.companyInfo.recentNews];
+                                      updatedNews[idx] = { ...updatedNews[idx], date: e.target.value };
+                                      setFormData({
+                                        ...formData,
+                                        companyInfo: {
+                                          ...formData.companyInfo,
+                                          recentNews: updatedNews
+                                        }
+                                      });
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500 italic">No news items added yet. Click "Add News Item" to get started.</p>
+                      )}
+                    </div>
+                  </div>
+                </details>
 
                 <div className="flex justify-end gap-3 pt-4">
                   <Button
@@ -1847,11 +2298,10 @@ export default function Jobs() {
                     placeholder="https://linkedin.com/jobs/view/..."
                   />
                   {importStatus && (
-                    <div className={`mt-2 p-3 rounded-lg text-sm ${
-                      importStatus === 'success' ? 'bg-green-50 text-green-800 border border-green-200' :
+                    <div className={`mt-2 p-3 rounded-lg text-sm ${importStatus === 'success' ? 'bg-green-50 text-green-800 border border-green-200' :
                       importStatus === 'partial' ? 'bg-yellow-50 text-yellow-800 border border-yellow-200' :
-                      'bg-red-50 text-red-800 border border-red-200'
-                    }`}>
+                        'bg-red-50 text-red-800 border border-red-200'
+                      }`}>
                       {importMessage}
                     </div>
                   )}
@@ -1900,6 +2350,361 @@ export default function Jobs() {
                   placeholder="Salary discussions, negotiation points..."
                 />
 
+                {/* UC-062: Company Information Section */}
+                <details className="border rounded-lg p-4 bg-gray-50">
+                  <summary className="cursor-pointer font-medium text-gray-900 hover:text-blue-600">
+                    📋 Company Information
+                  </summary>
+                  <div className="mt-4 space-y-4">
+                    {/* Auto-fill button */}
+                    <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-blue-900">Auto-fill company information</p>
+                        <p className="text-xs text-blue-700">Automatically fetch company details, logo, and description</p>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={async (event) => {
+                          if (!formData.company) {
+                            alert('Please enter a company name first');
+                            return;
+                          }
+                          try {
+                            const token = await getToken();
+                            setAuthToken(token);
+
+                            // Show loading state
+                            const btn = event.target;
+                            btn.disabled = true;
+                            btn.textContent = 'Fetching...';
+
+                            const response = await api.get(`/api/companies/info?name=${encodeURIComponent(formData.company)}`);
+
+                            if (response.data?.success && response.data?.data?.companyInfo) {
+                              const info = response.data.data.companyInfo;
+                              setFormData({
+                                ...formData,
+                                companyInfo: {
+                                  ...formData.companyInfo,
+                                  website: info.website || formData.companyInfo?.website || '',
+                                  logo: info.logo || formData.companyInfo?.logo || '',
+                                  description: info.description || formData.companyInfo?.description || '',
+                                  mission: info.mission || formData.companyInfo?.mission || '',
+                                  size: info.size || formData.companyInfo?.size || '',
+                                  industry: info.industry || formData.companyInfo?.industry || '',
+                                  location: info.location || formData.companyInfo?.location || '',
+                                  contactInfo: {
+                                    email: info.contactInfo?.email || formData.companyInfo?.contactInfo?.email || '',
+                                    phone: info.contactInfo?.phone || formData.companyInfo?.contactInfo?.phone || '',
+                                    address: info.contactInfo?.address || formData.companyInfo?.contactInfo?.address || ''
+                                  },
+                                  glassdoorRating: {
+                                    rating: info.glassdoorRating?.rating ?? formData.companyInfo?.glassdoorRating?.rating ?? '',
+                                    reviewCount: info.glassdoorRating?.reviewCount ?? formData.companyInfo?.glassdoorRating?.reviewCount ?? '',
+                                    url: info.glassdoorRating?.url ?? formData.companyInfo?.glassdoorRating?.url ?? ''
+                                  },
+                                  recentNews: info.recentNews || formData.companyInfo?.recentNews || []
+                                }
+                              });
+                              alert('Company information loaded successfully!');
+                            } else {
+                              alert('Could not find company information. You can add it manually below.');
+                            }
+
+                            btn.disabled = false;
+                            btn.textContent = '🔄 Auto-fill';
+                          } catch (error) {
+                            console.error('Error fetching company info:', error);
+                            alert('Failed to fetch company information. You can add it manually below.');
+                            event.target.disabled = false;
+                            event.target.textContent = '🔄 Auto-fill';
+                          }
+                        }}
+                        variant="primary"
+                        className="text-sm whitespace-nowrap"
+                      >
+                        🔄 Auto-fill
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Company Size</label>
+                        <select
+                          value={formData.companyInfo?.size || ""}
+                          onChange={(e) => setFormData({ ...formData, companyInfo: { ...formData.companyInfo, size: e.target.value } })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">Select size...</option>
+                          <option value="1-10">1-10 employees</option>
+                          <option value="11-50">11-50 employees</option>
+                          <option value="51-200">51-200 employees</option>
+                          <option value="201-500">201-500 employees</option>
+                          <option value="501-1000">501-1000 employees</option>
+                          <option value="1001-5000">1001-5000 employees</option>
+                          <option value="5001-10000">5001-10000 employees</option>
+                          <option value="10000+">10000+ employees</option>
+                        </select>
+                      </div>
+                      <InputField
+                        label="Company Website"
+                        type="url"
+                        value={formData.companyInfo?.website || ""}
+                        onChange={(e) => setFormData({ ...formData, companyInfo: { ...formData.companyInfo, website: e.target.value } })}
+                        placeholder="https://company.com"
+                      />
+                    </div>
+
+                    <InputField
+                      label="Company Logo URL"
+                      type="url"
+                      value={formData.companyInfo?.logo || ""}
+                      onChange={(e) => setFormData({ ...formData, companyInfo: { ...formData.companyInfo, logo: e.target.value } })}
+                      placeholder="https://company.com/logo.png"
+                    />
+
+                    <InputField
+                      label="Company Description"
+                      as="textarea"
+                      rows={3}
+                      value={formData.companyInfo?.description || ""}
+                      onChange={(e) => setFormData({ ...formData, companyInfo: { ...formData.companyInfo, description: e.target.value } })}
+                      placeholder="Brief description of the company..."
+                    />
+
+                    <InputField
+                      label="Mission Statement"
+                      as="textarea"
+                      rows={2}
+                      value={formData.companyInfo?.mission || ""}
+                      onChange={(e) => setFormData({ ...formData, companyInfo: { ...formData.companyInfo, mission: e.target.value } })}
+                      placeholder="Company's mission statement..."
+                    />
+
+                    <div className="border-t pt-4">
+                      <h4 className="text-sm font-medium text-gray-700 mb-3">Contact Information</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <InputField
+                          label="Email"
+                          type="email"
+                          value={formData.companyInfo?.contactInfo?.email || ""}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            companyInfo: {
+                              ...formData.companyInfo,
+                              contactInfo: { ...formData.companyInfo?.contactInfo, email: e.target.value }
+                            }
+                          })}
+                          placeholder="contact@company.com"
+                        />
+                        <InputField
+                          label="Phone"
+                          type="tel"
+                          value={formData.companyInfo?.contactInfo?.phone || ""}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            companyInfo: {
+                              ...formData.companyInfo,
+                              contactInfo: { ...formData.companyInfo?.contactInfo, phone: e.target.value }
+                            }
+                          })}
+                          placeholder="(555) 123-4567"
+                        />
+                      </div>
+                      <InputField
+                        label="Address"
+                        type="text"
+                        value={formData.companyInfo?.contactInfo?.address || ""}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          companyInfo: {
+                            ...formData.companyInfo,
+                            contactInfo: { ...formData.companyInfo?.contactInfo, address: e.target.value }
+                          }
+                        })}
+                        placeholder="123 Main St, City, State 12345"
+                      />
+                    </div>
+
+                    <div className="border-t pt-4">
+                      <h4 className="text-sm font-medium text-gray-700 mb-3">Glassdoor Information</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <InputField
+                          label="Rating (0-5)"
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          max="5"
+                          value={formData.companyInfo?.glassdoorRating?.rating || ""}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            companyInfo: {
+                              ...formData.companyInfo,
+                              glassdoorRating: { ...formData.companyInfo?.glassdoorRating, rating: e.target.value }
+                            }
+                          })}
+                          placeholder="4.2"
+                        />
+                        <InputField
+                          label="Review Count"
+                          type="number"
+                          value={formData.companyInfo?.glassdoorRating?.reviewCount || ""}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            companyInfo: {
+                              ...formData.companyInfo,
+                              glassdoorRating: { ...formData.companyInfo?.glassdoorRating, reviewCount: e.target.value }
+                            }
+                          })}
+                          placeholder="150"
+                        />
+                        <InputField
+                          label="Glassdoor URL"
+                          type="url"
+                          value={formData.companyInfo?.glassdoorRating?.url || ""}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            companyInfo: {
+                              ...formData.companyInfo,
+                              glassdoorRating: { ...formData.companyInfo?.glassdoorRating, url: e.target.value }
+                            }
+                          })}
+                          placeholder="https://glassdoor.com/..."
+                        />
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-medium text-gray-700">Recent News & Updates</h4>
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            const newNews = {
+                              title: "",
+                              summary: "",
+                              url: "",
+                              date: new Date().toISOString().split('T')[0]
+                            };
+                            setFormData({
+                              ...formData,
+                              companyInfo: {
+                                ...formData.companyInfo,
+                                recentNews: [...(formData.companyInfo?.recentNews || []), newNews]
+                              }
+                            });
+                          }}
+                          variant="secondary"
+                          className="text-xs"
+                        >
+                          + Add News Item
+                        </Button>
+                      </div>
+
+                      {formData.companyInfo?.recentNews && formData.companyInfo.recentNews.length > 0 ? (
+                        <div className="space-y-3">
+                          {formData.companyInfo.recentNews.map((news, idx) => (
+                            <div key={idx} className="p-3 border rounded-lg bg-gray-50">
+                              <div className="flex items-start justify-between mb-2">
+                                <span className="text-xs font-medium text-gray-600">News Item {idx + 1}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updatedNews = formData.companyInfo.recentNews.filter((_, i) => i !== idx);
+                                    setFormData({
+                                      ...formData,
+                                      companyInfo: {
+                                        ...formData.companyInfo,
+                                        recentNews: updatedNews
+                                      }
+                                    });
+                                  }}
+                                  className="text-red-600 hover:text-red-800 text-xs"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                              <div className="space-y-2">
+                                <InputField
+                                  label="Title"
+                                  type="text"
+                                  value={news.title || ""}
+                                  onChange={(e) => {
+                                    const updatedNews = [...formData.companyInfo.recentNews];
+                                    updatedNews[idx] = { ...updatedNews[idx], title: e.target.value };
+                                    setFormData({
+                                      ...formData,
+                                      companyInfo: {
+                                        ...formData.companyInfo,
+                                        recentNews: updatedNews
+                                      }
+                                    });
+                                  }}
+                                  placeholder="News headline..."
+                                />
+                                <InputField
+                                  label="Summary"
+                                  as="textarea"
+                                  rows={2}
+                                  value={news.summary || ""}
+                                  onChange={(e) => {
+                                    const updatedNews = [...formData.companyInfo.recentNews];
+                                    updatedNews[idx] = { ...updatedNews[idx], summary: e.target.value };
+                                    setFormData({
+                                      ...formData,
+                                      companyInfo: {
+                                        ...formData.companyInfo,
+                                        recentNews: updatedNews
+                                      }
+                                    });
+                                  }}
+                                  placeholder="Brief summary..."
+                                />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                  <InputField
+                                    label="URL"
+                                    type="url"
+                                    value={news.url || ""}
+                                    onChange={(e) => {
+                                      const updatedNews = [...formData.companyInfo.recentNews];
+                                      updatedNews[idx] = { ...updatedNews[idx], url: e.target.value };
+                                      setFormData({
+                                        ...formData,
+                                        companyInfo: {
+                                          ...formData.companyInfo,
+                                          recentNews: updatedNews
+                                        }
+                                      });
+                                    }}
+                                    placeholder="https://..."
+                                  />
+                                  <InputField
+                                    label="Date"
+                                    type="date"
+                                    value={news.date ? (typeof news.date === 'string' ? news.date.split('T')[0] : new Date(news.date).toISOString().split('T')[0]) : ""}
+                                    onChange={(e) => {
+                                      const updatedNews = [...formData.companyInfo.recentNews];
+                                      updatedNews[idx] = { ...updatedNews[idx], date: e.target.value };
+                                      setFormData({
+                                        ...formData,
+                                        companyInfo: {
+                                          ...formData.companyInfo,
+                                          recentNews: updatedNews
+                                        }
+                                      });
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500 italic">No news items added yet. Click "Add News Item" to get started.</p>
+                      )}
+                    </div>
+                  </div>
+                </details>
+
                 <div className="flex justify-end gap-3 pt-4">
                   <Button
                     type="button"
@@ -1933,14 +2738,13 @@ export default function Jobs() {
                   <h2 className="text-3xl font-bold text-gray-900">{viewingJob.title}</h2>
                   <p className="text-xl text-gray-600 mt-1">{viewingJob.company}</p>
                   <div className="flex items-center gap-3 mt-2">
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      viewingJob.status === "Interested" ? "bg-gray-100 text-gray-800" :
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${viewingJob.status === "Interested" ? "bg-gray-100 text-gray-800" :
                       viewingJob.status === "Applied" ? "bg-blue-100 text-blue-800" :
-                      viewingJob.status === "Phone Screen" ? "bg-yellow-100 text-yellow-800" :
-                      viewingJob.status === "Interview" ? "bg-purple-100 text-purple-800" :
-                      viewingJob.status === "Offer" ? "bg-green-100 text-green-800" :
-                      "bg-red-100 text-red-800"
-                    }`}>
+                        viewingJob.status === "Phone Screen" ? "bg-yellow-100 text-yellow-800" :
+                          viewingJob.status === "Interview" ? "bg-purple-100 text-purple-800" :
+                            viewingJob.status === "Offer" ? "bg-green-100 text-green-800" :
+                              "bg-red-100 text-red-800"
+                      }`}>
                       {viewingJob.status}
                     </span>
                     {viewingJob.priority && (
@@ -2058,8 +2862,8 @@ export default function Jobs() {
                           {viewingJob.salary.min && viewingJob.salary.max
                             ? `$${viewingJob.salary.min.toLocaleString()} - $${viewingJob.salary.max.toLocaleString()}`
                             : viewingJob.salary.min
-                            ? `$${viewingJob.salary.min.toLocaleString()}+`
-                            : `Up to $${viewingJob.salary.max.toLocaleString()}`}
+                              ? `$${viewingJob.salary.min.toLocaleString()}+`
+                              : `Up to $${viewingJob.salary.max.toLocaleString()}`}
                         </p>
                       </div>
                     )}
@@ -2115,6 +2919,32 @@ export default function Jobs() {
                     </div>
                   )}
                 </Card>
+
+                {/* UC-062: Company Information */}
+                <CompanyInfoCard
+                  companyInfo={viewingJob.companyInfo}
+                  companyName={viewingJob.company}
+                  industry={viewingJob.industry}
+                  location={viewingJob.location}
+                />
+
+                {/* UC-062: Enhanced Company News Section */}
+                {viewingJob.company && (
+                  <CompanyNewsSection
+                    companyName={viewingJob.company}
+                    initialNews={viewingJob.companyInfo?.recentNews || []}
+                    onNewsUpdate={(news) => {
+                      // Update the viewing job with fresh news
+                      setViewingJob({
+                        ...viewingJob,
+                        companyInfo: {
+                          ...viewingJob.companyInfo,
+                          recentNews: news,
+                        },
+                      });
+                    }}
+                  />
+                )}
 
                 {/* Description */}
                 {viewingJob.description && (

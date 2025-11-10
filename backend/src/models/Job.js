@@ -17,6 +17,83 @@ const jobSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    // UC-062: Company information for job opportunities
+    companyInfo: {
+      size: {
+        type: String,
+        enum: ["1-10", "11-50", "51-200", "201-500", "501-1000", "1001-5000", "5001-10000", "10000+", ""],
+        default: "",
+      },
+      website: {
+        type: String,
+        trim: true,
+      },
+      description: {
+        type: String,
+        trim: true,
+      },
+      mission: {
+        type: String,
+        trim: true,
+      },
+      logo: {
+        type: String,
+        trim: true,
+      },
+      contactInfo: {
+        email: String,
+        phone: String,
+        address: String,
+      },
+      glassdoorRating: {
+        rating: {
+          type: Number,
+          min: 0,
+          max: 5,
+        },
+        reviewCount: Number,
+        url: String,
+      },
+      recentNews: [
+        {
+          title: String,
+          summary: String,
+          url: String,
+          date: Date,
+          source: String, // News source (e.g., "TechCrunch", "Reuters")
+          category: {
+            type: String,
+            enum: ["funding", "product_launch", "hiring", "acquisition", "partnership", "leadership", "awards", "general"],
+            default: "general",
+          },
+          relevanceScore: {
+            type: Number,
+            min: 0,
+            max: 10,
+            default: 5,
+          },
+          keyPoints: [String], // Extracted key points from the article
+          sentiment: {
+            type: String,
+            enum: ["positive", "neutral", "negative"],
+            default: "neutral",
+          },
+          tags: [String], // Keywords/tags for filtering
+        },
+      ],
+      newsAlerts: {
+        enabled: {
+          type: Boolean,
+          default: false,
+        },
+        lastChecked: Date,
+        frequency: {
+          type: String,
+          enum: ["daily", "weekly", "never"],
+          default: "never",
+        },
+      },
+    },
     status: {
       type: String,
       required: true,
