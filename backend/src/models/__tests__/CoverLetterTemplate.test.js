@@ -21,7 +21,7 @@ describe('CoverLetterTemplate model schema', () => {
     const industry = CoverLetterTemplate.schema.path('industry');
     expect(industry).toBeDefined();
     expect(industry.options.enum).toEqual(
-      expect.arrayContaining(['general', 'technology', 'business', 'healthcare'])
+      expect.arrayContaining(['general', 'technology', 'finance', 'healthcare', 'marketing', 'education', 'sales', 'consulting', 'engineering', 'creative'])
     );
     expect(industry.options.default).toBe('general');
   });
@@ -30,7 +30,7 @@ describe('CoverLetterTemplate model schema', () => {
     const style = CoverLetterTemplate.schema.path('style');
     expect(style).toBeDefined();
     expect(style.options.enum).toEqual(
-      expect.arrayContaining(['formal', 'modern', 'creative', 'technical', 'executive'])
+      expect.arrayContaining(['formal', 'casual', 'enthusiastic', 'analytical', 'creative', 'technical', 'executive'])
     );
     expect(style.options.default).toBe('formal');
   });
