@@ -19,6 +19,50 @@ const mockJob = {
   countDocuments: jest.fn(),
 };
 
+const mockUser = {
+  findOne: jest.fn(),
+};
+
+// Mock responseFormat utilities so controller uses deterministic behavior
+const mockSendResponse = jest.fn((res, response, statusCode) => {
+  // emulate controller's expected behavior: set status and json
+  if (res && typeof res.status === 'function' && typeof res.json === 'function') {
+    res.status(statusCode || 200);
+    res.json(response);
+  }
+});
+const mockSuccessResponse = (message, data, statusCode = 200) => ({ response: { success: true, message, data }, statusCode });
+const mockErrorResponse = (message, statusCode = 500, code = 'ERR') => ({ response: { success: false, message, code }, statusCode });
+
+jest.unstable_mockModule('../../models/User.js', () => ({
+  User: mockUser,
+}));
+
+jest.unstable_mockModule('../../utils/responseFormat.js', () => ({
+  errorResponse: mockErrorResponse,
+  sendResponse: mockSendResponse,
+  successResponse: mockSuccessResponse,
+  ERROR_CODES: {
+    DATABASE_ERROR: 'DB_ERR',
+    NOT_FOUND: 'NOT_FOUND',
+    MISSING_REQUIRED_FIELD: 'MISSING',
+    INVALID_INPUT: 'INVALID',
+    EXPORT_ERROR: 'EXPORT_ERR'
+  }
+}));
+
+// Mock cover letter exporter helpers used by export endpoints
+const mockExporters = {
+  exportCoverLetterToPdf: jest.fn().mockResolvedValue(Buffer.from('PDF')),
+  exportCoverLetterToDocx: jest.fn().mockResolvedValue(Buffer.from('DOCX')),
+  exportCoverLetterToHtml: jest.fn().mockReturnValue('<html>ok</html>'),
+  exportCoverLetterToPlainText: jest.fn().mockReturnValue('plain text'),
+  generateEmailTemplate: jest.fn().mockReturnValue({ subject: 'Hello', body: 'Body' }),
+  generateCoverLetterFilename: jest.fn().mockReturnValue('coverletter.pdf')
+};
+
+jest.unstable_mockModule('../../utils/coverLetterExporter.js', () => (mockExporters));
+
 jest.unstable_mockModule('../../models/CoverLetter.js', () => ({
   CoverLetter: mockCoverLetter,
 }));
@@ -445,6 +489,274 @@ describe('CoverLetterController', () => {
       await listCoverLetters(mockReq, mockRes);
 
       expect(mockRes.status).toHaveBeenCalledWith(500);
+    });
+  });
+
+  describe('additional error and auth branches', () => {
+    it('should return 404 when updating a non-existent cover letter', async () => {
+      mockReq.params.id = 'missing-update';
+      mockCoverLetter.findOne.mockResolvedValue(null);
+
+      await updateCoverLetter(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+    });
+
+    it('should return 404 when setting default and not found', async () => {
+      mockReq.params.id = 'missing-default';
+      mockCoverLetter.findOne.mockResolvedValue(null);
+
+      await setDefaultCoverLetter(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+    });
+
+    it('should return 404 when archiving and not found', async () => {
+      mockReq.params.id = 'missing-archive';
+      mockCoverLetter.findOne.mockResolvedValue(null);
+
+      await archiveCoverLetter(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+    });
+
+    it('should return 404 when unarchiving and not found', async () => {
+      mockReq.params.id = 'missing-unarchive';
+      mockCoverLetter.findOne.mockResolvedValue(null);
+
+      await unarchiveCoverLetter(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+    });
+
+    it('should return 404 when generating email template for missing cover letter', async () => {
+      const module = await import('../coverLetterController.js');
+      const { generateCoverLetterEmailTemplate } = module;
+
+      mockReq.params.id = 'missing-email';
+      mockCoverLetter.findOne.mockReturnValue({
+        populate: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue(null)
+        })
+      });
+
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+
+      await generateCoverLetterEmailTemplate(mockReq, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+    });
+
+    it('should handle exporter failure for PDF and return 500', async () => {
+      const module = await import('../coverLetterController.js');
+      const { exportCoverLetterAsPdf } = module;
+
+      mockReq.params.id = 'cl-err';
+      const mockCoverLetterObj = {
+        _id: 'cl-err',
+        userId: 'test-user-123',
+        style: 'formal',
+        templateId: { theme: {} },
+        jobId: null
+      };
+
+      mockCoverLetter.findOne.mockReturnValue({
+        populate: jest.fn().mockReturnValue({
+          populate: jest.fn().mockReturnValue({
+            lean: jest.fn().mockResolvedValue(mockCoverLetterObj)
+          })
+        })
+      });
+
+      mockUser.findOne.mockReturnValue({ select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue({ profile: { contactInfo: {} } }) }) });
+
+      // make exporter throw
+      mockExporters.exportCoverLetterToPdf.mockRejectedValueOnce(new Error('boom'));
+
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+
+      await exportCoverLetterAsPdf(mockReq, res);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+    });
+
+    it('should handle exporter failure for DOCX/HTML/TEXT and return 500 via sendResponse', async () => {
+      const module = await import('../coverLetterController.js');
+      const { exportCoverLetterAsDocx, exportCoverLetterAsHtml, exportCoverLetterAsText } = module;
+
+      const mockCoverLetterObj = {
+        _id: 'cl-bad',
+        userId: 'test-user-123',
+        style: 'formal',
+        templateId: { theme: {} },
+        jobId: null
+      };
+
+      // set up findOne chain
+      mockCoverLetter.findOne.mockReturnValue({
+        populate: jest.fn().mockReturnValue({
+          populate: jest.fn().mockReturnValue({
+            lean: jest.fn().mockResolvedValue(mockCoverLetterObj)
+          })
+        })
+      });
+      mockUser.findOne.mockReturnValue({ select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue({ profile: { contactInfo: {} } }) }) });
+
+      // make exporters throw
+      mockExporters.exportCoverLetterToDocx.mockRejectedValueOnce(new Error('docx-fail'));
+      const resDocx = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+      await exportCoverLetterAsDocx(mockReq, resDocx);
+      expect(resDocx.status).toHaveBeenCalledWith(500);
+
+      mockExporters.exportCoverLetterToHtml.mockImplementationOnce(() => { throw new Error('html-fail'); });
+      const resHtml = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+      await exportCoverLetterAsHtml(mockReq, resHtml);
+      expect(resHtml.status).toHaveBeenCalledWith(500);
+
+      mockExporters.exportCoverLetterToPlainText.mockImplementationOnce(() => { throw new Error('text-fail'); });
+      const resText = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+      // exportCoverLetterAsText uses a single populate chain
+      mockCoverLetter.findOne.mockReturnValue({ populate: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(mockCoverLetterObj) }) });
+      await exportCoverLetterAsText(mockReq, resText);
+      expect(resText.status).toHaveBeenCalledWith(500);
+    });
+
+    it('should accept auth provided as a function and use payload.sub', async () => {
+      // provide auth as a function returning payload.sub
+      mockReq = {
+        auth: () => ({ payload: { sub: 'fn-user-55' } }),
+        body: {},
+        params: {},
+      };
+
+      // make find return empty list for listCoverLetters
+      mockCoverLetter.find.mockReturnValue({ populate: jest.fn().mockReturnThis(), sort: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue([]) }) });
+
+      await listCoverLetters(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+    });
+  });
+  describe('exports and email template', () => {
+    it('should return 400 when content is only whitespace during create', async () => {
+      mockReq.body = { name: 'Whitespace', content: '    ' };
+
+      await createCoverLetterFromTemplate(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: expect.stringContaining('Content cannot be empty'),
+        })
+      );
+    });
+
+    it('should export cover letter as PDF and set headers', async () => {
+      const module = await import('../coverLetterController.js');
+      const { exportCoverLetterAsPdf } = module;
+
+      mockReq.params.id = 'cl-999';
+      mockReq.body = { letterhead: true, jobDetails: {} };
+
+      const mockCoverLetterObj = {
+        _id: 'cl-999',
+        userId: 'test-user-123',
+        style: 'formal',
+        templateId: { theme: {} },
+        jobId: { company: 'ACME', jobTitle: 'Dev', hiringManager: 'Bob', companyAddress: 'Addr' }
+      };
+
+      mockCoverLetter.findOne.mockReturnValue({
+        populate: jest.fn().mockReturnValue({
+          populate: jest.fn().mockReturnValue({
+            lean: jest.fn().mockResolvedValue(mockCoverLetterObj)
+          })
+        })
+      });
+
+      mockUser.findOne.mockReturnValue({ select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue({ profile: { contactInfo: { name: 'U' } } }) }) });
+
+      const res = { setHeader: jest.fn(), send: jest.fn() };
+
+      await exportCoverLetterAsPdf(mockReq, res);
+
+      expect(mockExporters.exportCoverLetterToPdf).toHaveBeenCalled();
+      expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/pdf');
+      expect(res.send).toHaveBeenCalledWith(expect.any(Buffer));
+    });
+
+    it('should return 404 when exporting PDF and cover letter not found', async () => {
+      const module = await import('../coverLetterController.js');
+      const { exportCoverLetterAsPdf } = module;
+
+      mockReq.params.id = 'not-found';
+      // simulate chained populates returning null
+      mockCoverLetter.findOne.mockReturnValue({
+        populate: jest.fn().mockReturnValue({
+          populate: jest.fn().mockReturnValue({
+            lean: jest.fn().mockResolvedValue(null)
+          })
+        })
+      });
+
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+
+      await exportCoverLetterAsPdf(mockReq, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+    });
+
+    it('should export DOCX, HTML, Text and generate email template', async () => {
+      const module = await import('../coverLetterController.js');
+      const { exportCoverLetterAsDocx, exportCoverLetterAsHtml, exportCoverLetterAsText, generateCoverLetterEmailTemplate } = module;
+
+      // prepare a standard cover letter result for chained populates
+      const mockCoverLetterObj = {
+        _id: 'cl-321',
+        userId: 'test-user-123',
+        style: 'formal',
+        templateId: { theme: {} },
+        jobId: { company: 'Beta', jobTitle: 'Eng', hiringManager: 'Alice', companyAddress: 'Addr' }
+      };
+
+      mockCoverLetter.findOne.mockReturnValue({
+        populate: jest.fn().mockReturnValue({
+          populate: jest.fn().mockReturnValue({
+            lean: jest.fn().mockResolvedValue(mockCoverLetterObj)
+          })
+        })
+      });
+
+      mockUser.findOne.mockReturnValue({ select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue({ profile: { contactInfo: {} } }) }) });
+
+      // DOCX
+      const resDocx = { setHeader: jest.fn(), send: jest.fn() };
+      mockReq.params.id = 'cl-321';
+      await exportCoverLetterAsDocx(mockReq, resDocx);
+      expect(resDocx.setHeader).toHaveBeenCalledWith('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      expect(resDocx.send).toHaveBeenCalledWith(expect.any(Buffer));
+
+      // HTML
+      const resHtml = { setHeader: jest.fn(), send: jest.fn() };
+      await exportCoverLetterAsHtml(mockReq, resHtml);
+      expect(resHtml.setHeader).toHaveBeenCalledWith('Content-Type', 'text/html');
+      expect(resHtml.send).toHaveBeenCalledWith('<html>ok</html>');
+
+      // Text
+      const resText = { setHeader: jest.fn(), send: jest.fn() };
+  mockReq.body = { includeHeader: false };
+  // exportCoverLetterAsText uses a single .populate('jobId') chain, ensure lean() is on the returned object
+  mockCoverLetter.findOne.mockReturnValue({ populate: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(mockCoverLetterObj) }) });
+  await exportCoverLetterAsText(mockReq, resText);
+      expect(resText.setHeader).toHaveBeenCalledWith('Content-Type', 'text/plain');
+      expect(resText.send).toHaveBeenCalledWith('plain text');
+
+      // Email template
+      const resEmail = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+      await generateCoverLetterEmailTemplate(mockReq, resEmail);
+      expect(resEmail.status).toHaveBeenCalledWith(200);
+      expect(resEmail.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
     });
   });
 });

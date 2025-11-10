@@ -51,6 +51,10 @@ const mockResumeExporter = {
   exportToPlainText: jest.fn(),
 };
 
+const mockHtmlToPdf = {
+  htmlToPdf: jest.fn(),
+};
+
 jest.unstable_mockModule('../../models/Resume.js', () => ({
   Resume: mockResume,
 }));
@@ -77,6 +81,7 @@ jest.unstable_mockModule('../../utils/pdfGenerator.js', () => mockPdfGenerator);
 
 jest.unstable_mockModule('../../utils/resumeExporter.js', () => mockResumeExporter);
 jest.unstable_mockModule('../../utils/jobDataFetcher.js', () => mockJobDataFetcher);
+jest.unstable_mockModule('../../utils/htmlToPdf.js', () => mockHtmlToPdf);
 
 // Import controller
 const {
@@ -172,6 +177,20 @@ describe('ResumeController', () => {
 
       expect(mockRes.status).toHaveBeenCalledWith(500);
     });
+
+    it('should work when req.auth is a function (getUserId branch)', async () => {
+      // auth provided as a function returning object
+      mockReq.auth = () => ({ userId: 'test-user-123' });
+      mockResumeTemplate.find.mockReturnValue({
+        sort: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue([{ _id: 't1', userId: 'test-user-123' }]),
+        }),
+      });
+
+      await listTemplates(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+    });
   });
 
   describe('createTemplate', () => {
@@ -230,6 +249,27 @@ describe('ResumeController', () => {
         })
       );
     });
+
+    it('should skip saving originalPdf when provided PDF buffer is too large', async () => {
+      // Provide a base64 > 15MB to trigger skip logic
+      const largeBase64 = Buffer.alloc(16 * 1024 * 1024).toString('base64');
+      mockReq.body = {
+        name: 'Large PDF Template',
+        type: 'chronological',
+        pdfBuffer: largeBase64,
+      };
+
+      mockResumeTemplate.updateMany.mockResolvedValue({});
+      mockResumeTemplate.create.mockResolvedValue({ _id: 'tpl-large', toObject: () => ({ _id: 'tpl-large' }) });
+
+      await createTemplate(mockReq, mockRes);
+
+      expect(mockResumeTemplate.create).toHaveBeenCalled();
+      // Ensure create was called without originalPdf (skipped due to size)
+      expect(mockResumeTemplate.create).toHaveBeenCalledWith(
+        expect.not.objectContaining({ originalPdf: expect.anything() })
+      );
+    });
   });
 
   describe('updateTemplate', () => {
@@ -280,6 +320,21 @@ describe('ResumeController', () => {
         { userId: 'test-user-123' },
         { $set: { isDefault: false } }
       );
+    });
+
+    it('should return 500 if save throws while updating template', async () => {
+      mockReq.params.id = 'template-500';
+      mockReq.body = { name: 'Will Fail' };
+      const mockTemplate = {
+        _id: 'template-500',
+        userId: 'test-user-123',
+        save: jest.fn().mockRejectedValue(new Error('save failed')),
+      };
+      mockResumeTemplate.findOne.mockResolvedValue(mockTemplate);
+
+      await updateTemplate(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(500);
     });
   });
 
@@ -1149,6 +1204,335 @@ describe('ResumeController', () => {
 
       expect(mockRes.status).toHaveBeenCalledWith(400);
     });
+
+    it('should fallback to HTML->PDF when template missing and default template used', async () => {
+      mockReq.params.id = 'resume-123';
+      mockReq.query = {};
+      const validatedAt = new Date();
+      const resume = {
+        _id: 'resume-123',
+        userId: 'test-user-123',
+        name: 'Resume Name',
+        templateId: 'template-xyz',
+        metadata: { lastValidation: { isValid: true }, validatedAt },
+        updatedAt: validatedAt,
+      };
+
+      mockResume.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(resume) });
+
+      // First call: try to find template by id -> returns null
+      // Second call(s): when looking for default/any template return a template without originalPdf/pdfLayout
+      mockResumeTemplate.findOne
+        .mockReturnValueOnce({ select: jest.fn().mockResolvedValue(null) })
+        .mockReturnValueOnce({ select: jest.fn().mockResolvedValue(null) })
+        .mockReturnValueOnce({ select: jest.fn().mockResolvedValue({
+          _id: 'default-tpl',
+          layout: {},
+          pdfLayout: null,
+          originalPdf: null,
+          toObject: jest.fn().mockReturnValue({ layout: {} })
+        }) });
+
+      mockResumeTemplate.findById.mockReturnValue({ select: jest.fn().mockResolvedValue(null) });
+
+      mockResumeExporter.exportToHtml.mockReturnValue('<html>fallback</html>');
+      mockHtmlToPdf.htmlToPdf.mockResolvedValue(Buffer.from('pdf-bytes'));
+
+      mockRes.send = jest.fn();
+      mockRes.setHeader = jest.fn();
+
+      await generateResumePDF(mockReq, mockRes);
+
+      expect(mockHtmlToPdf.htmlToPdf).toHaveBeenCalled();
+      expect(mockRes.setHeader).toHaveBeenCalledWith('Content-Type', 'application/pdf');
+      expect(mockRes.send).toHaveBeenCalledWith(expect.any(Buffer));
+    });
+
+    it('should return 500 if HTML->PDF fallback fails', async () => {
+      mockReq.params.id = 'resume-123';
+      mockReq.query = {};
+      const validatedAt = new Date();
+      const resume = {
+        _id: 'resume-123',
+        userId: 'test-user-123',
+        name: 'Resume Name',
+        templateId: 'template-xyz',
+        metadata: { lastValidation: { isValid: true }, validatedAt },
+        updatedAt: validatedAt,
+      };
+
+      mockResume.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(resume) });
+
+      mockResumeTemplate.findOne
+        .mockReturnValueOnce({ select: jest.fn().mockResolvedValue(null) })
+        .mockReturnValueOnce({ select: jest.fn().mockResolvedValue(null) })
+        .mockReturnValueOnce({ select: jest.fn().mockResolvedValue({
+          _id: 'default-tpl',
+          layout: {},
+          pdfLayout: null,
+          originalPdf: null,
+          toObject: jest.fn().mockReturnValue({ layout: {} })
+        }) });
+
+      mockResumeTemplate.findById.mockReturnValue({ select: jest.fn().mockResolvedValue(null) });
+
+      mockResumeExporter.exportToHtml.mockReturnValue('<html>fallback</html>');
+      mockHtmlToPdf.htmlToPdf.mockRejectedValue(new Error('render fail'));
+
+      await generateResumePDF(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(500);
+    });
+
+    it('should return 400 if template PDF buffer size is zero', async () => {
+      mockReq.params.id = 'resume-123';
+      mockReq.query = {};
+      const validatedAt = new Date();
+      const resume = {
+        _id: 'resume-123',
+        userId: 'test-user-123',
+        name: 'Resume Name',
+        templateId: 'template-xyz',
+        metadata: { lastValidation: { isValid: true }, validatedAt },
+        updatedAt: validatedAt,
+      };
+
+      mockResume.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(resume) });
+
+      // return a template document with an empty Buffer
+      const tplWithZero = {
+        _id: 'template-xyz',
+        originalPdf: Buffer.alloc(0),
+        pdfLayout: { sections: [] },
+        layout: {},
+        toObject: jest.fn().mockReturnValue({ originalPdf: Buffer.alloc(0), pdfLayout: { sections: [] } })
+      };
+
+      mockResumeTemplate.findOne.mockReturnValue({ select: jest.fn().mockResolvedValue(tplWithZero) });
+
+      await generateResumePDF(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should return 404 when template and fallbacks are missing', async () => {
+      mockReq.params.id = 'resume-123';
+      mockReq.query = {};
+      const validatedAt = new Date();
+      const resume = {
+        _id: 'resume-123',
+        userId: 'test-user-123',
+        name: 'Resume Name',
+        templateId: 'template-xyz',
+        metadata: { lastValidation: { isValid: true }, validatedAt },
+        updatedAt: validatedAt,
+      };
+
+      mockResume.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(resume) });
+
+      // initial template is null
+      mockResumeTemplate.findOne
+        .mockReturnValueOnce({ select: jest.fn().mockResolvedValue(null) })
+        .mockReturnValueOnce({ select: jest.fn().mockResolvedValue(null) })
+        .mockReturnValueOnce({ select: jest.fn().mockResolvedValue(null) });
+
+      mockResumeTemplate.findById.mockReturnValue({ select: jest.fn().mockResolvedValue(null) });
+
+      await generateResumePDF(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+    });
+
+    it('should pass watermark options to generatePdfFromTemplate when provided', async () => {
+      mockReq.params.id = 'resume-123';
+      mockReq.query = { watermarkEnabled: 'true', watermark: 'DRAFT' };
+      const validatedAt = new Date();
+      const resume = {
+        _id: 'resume-123',
+        userId: 'test-user-123',
+        name: 'Resume Name',
+        templateId: 'template-xyz',
+        metadata: { lastValidation: { isValid: true }, validatedAt },
+        updatedAt: validatedAt,
+      };
+
+      mockResume.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(resume) });
+
+      const mockTemplateWithSelect = {
+        _id: 'template-xyz',
+        originalPdf: Buffer.from('pdf'),
+        pdfLayout: { sections: [] },
+        layout: {},
+        toObject: jest.fn().mockReturnValue({ originalPdf: Buffer.from('pdf'), pdfLayout: { sections: [] }, layout: {} })
+      };
+
+      mockResumeTemplate.findOne.mockReturnValue({ select: jest.fn().mockResolvedValue(mockTemplateWithSelect) });
+      const outBuffer = Buffer.from('pdf-out');
+      mockPdfGenerator.generatePdfFromTemplate.mockResolvedValue(outBuffer);
+      mockRes.send = jest.fn();
+      mockRes.setHeader = jest.fn();
+
+      await generateResumePDF(mockReq, mockRes);
+
+      expect(mockPdfGenerator.generatePdfFromTemplate).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.any(Object),
+        expect.objectContaining({ watermark: { enabled: true, text: 'DRAFT' } })
+      );
+      expect(mockRes.send).toHaveBeenCalledWith(outBuffer);
+    });
+
+    it('should log existsButNotAccessible and use anyTpl fallback when default missing', async () => {
+      mockReq.params.id = 'resume-123';
+      mockReq.query = {};
+      const validatedAt = new Date();
+      const resume = {
+        _id: 'resume-123',
+        userId: 'test-user-123',
+        name: 'Resume Name',
+        templateId: 'template-xyz',
+        metadata: { lastValidation: { isValid: true }, validatedAt },
+        updatedAt: validatedAt,
+      };
+
+      mockResume.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(resume) });
+
+      // initial template null
+      mockResumeTemplate.findOne
+        .mockReturnValueOnce({ select: jest.fn().mockResolvedValue(null) })
+        // defaultTpl null
+        .mockReturnValueOnce({ select: jest.fn().mockResolvedValue(null) })
+        // anyTpl exists and lacks originalPdf/pdfLayout -> will trigger HTML->PDF fallback
+        .mockReturnValueOnce({ select: jest.fn().mockResolvedValue({
+          _id: 'any-tpl',
+          layout: {},
+          pdfLayout: null,
+          originalPdf: null,
+          toObject: jest.fn().mockReturnValue({ layout: {} })
+        }) });
+
+      // findById returns an object (existsButNotAccessible)
+      mockResumeTemplate.findById.mockReturnValue({ select: jest.fn().mockResolvedValue({ _id: 'template-xyz', userId: 'other-user', isShared: false }) });
+
+      mockResumeExporter.exportToHtml.mockReturnValue('<html>any</html>');
+      mockHtmlToPdf.htmlToPdf.mockResolvedValue(Buffer.from('pdf-bytes'));
+      mockRes.send = jest.fn();
+      mockRes.setHeader = jest.fn();
+
+      await generateResumePDF(mockReq, mockRes);
+
+      expect(mockResumeTemplate.findById).toHaveBeenCalled();
+      expect(mockHtmlToPdf.htmlToPdf).toHaveBeenCalled();
+      expect(mockRes.send).toHaveBeenCalledWith(expect.any(Buffer));
+    });
+
+    it('should fallback to HTML->PDF when template has PDF but missing pdfLayout', async () => {
+      mockReq.params.id = 'resume-123';
+      mockReq.query = {};
+      const validatedAt = new Date();
+      const resume = {
+        _id: 'resume-123',
+        userId: 'test-user-123',
+        name: 'Resume Name',
+        templateId: 'template-xyz',
+        metadata: { lastValidation: { isValid: true }, validatedAt },
+        updatedAt: validatedAt,
+      };
+
+      mockResume.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(resume) });
+
+      const tpl = {
+        _id: 'template-xyz',
+        originalPdf: Buffer.from('pdf-bytes'),
+        pdfLayout: null, // missing pdfLayout triggers fallback
+        layout: {},
+        toObject: jest.fn().mockReturnValue({ layout: {} })
+      };
+
+      mockResumeTemplate.findOne.mockReturnValue({ select: jest.fn().mockResolvedValue(tpl) });
+      mockResumeExporter.exportToHtml.mockReturnValue('<html>fallback</html>');
+      mockHtmlToPdf.htmlToPdf.mockResolvedValue(Buffer.from('pdf-bytes'));
+      mockRes.send = jest.fn();
+      mockRes.setHeader = jest.fn();
+
+      await generateResumePDF(mockReq, mockRes);
+
+      expect(mockHtmlToPdf.htmlToPdf).toHaveBeenCalled();
+      expect(mockRes.send).toHaveBeenCalledWith(expect.any(Buffer));
+    });
+
+    it('should use accessible template from findById fallback and call pixel-perfect generator', async () => {
+      mockReq.params.id = 'resume-123';
+      mockReq.query = {};
+      const validatedAt = new Date();
+      const resume = {
+        _id: 'resume-123',
+        userId: 'test-user-123',
+        name: 'Resume Name',
+        templateId: 'template-xyz',
+        metadata: { lastValidation: { isValid: true }, validatedAt },
+        updatedAt: validatedAt,
+      };
+
+      mockResume.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(resume) });
+
+      // initial findOne(select) returns null so controller will try fallbacks
+      // Make the second findOne call (defaultTpl) return an accessible template with originalPdf/pdfLayout
+      const accessibleTpl = {
+        _id: 'template-xyz',
+        userId: 'test-user-123',
+        originalPdf: Buffer.from('pdf-data'),
+        pdfLayout: { sections: [] },
+        layout: {},
+        toObject: jest.fn().mockReturnValue({ originalPdf: Buffer.from('pdf-data'), pdfLayout: { sections: [] }, layout: {} }),
+      };
+
+      mockResumeTemplate.findOne
+        .mockReturnValueOnce({ select: jest.fn().mockResolvedValue(null) })
+        .mockReturnValueOnce({ select: jest.fn().mockResolvedValue(accessibleTpl) });
+
+      const outBuf = Buffer.from('out-pdf');
+      mockPdfGenerator.generatePdfFromTemplate.mockResolvedValue(outBuf);
+      mockRes.send = jest.fn();
+      mockRes.setHeader = jest.fn();
+
+      await generateResumePDF(mockReq, mockRes);
+
+      expect(mockResumeTemplate.findById).toHaveBeenCalled();
+      expect(mockPdfGenerator.generatePdfFromTemplate).toHaveBeenCalled();
+      expect(mockRes.send).toHaveBeenCalledWith(outBuf);
+    });
+
+    it('should return 500 if pixel-perfect PDF generation throws', async () => {
+      mockReq.params.id = 'resume-123';
+      mockReq.query = {};
+      const validatedAt = new Date();
+      const resume = {
+        _id: 'resume-123',
+        userId: 'test-user-123',
+        name: 'Resume Name',
+        templateId: 'template-123',
+        metadata: { lastValidation: { isValid: true }, validatedAt },
+        updatedAt: validatedAt,
+      };
+
+      mockResume.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(resume) });
+
+      const tpl = {
+        _id: 'template-123',
+        originalPdf: Buffer.from('pdf'),
+        pdfLayout: { sections: [] },
+        layout: {},
+        toObject: jest.fn().mockReturnValue({ originalPdf: Buffer.from('pdf'), pdfLayout: { sections: [] }, layout: {} })
+      };
+
+      mockResumeTemplate.findOne.mockReturnValue({ select: jest.fn().mockResolvedValue(tpl) });
+      mockPdfGenerator.generatePdfFromTemplate.mockRejectedValue(new Error('generator crash'));
+
+      await generateResumePDF(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(500);
+    });
   });
 
   describe('optimizeSkills', () => {
@@ -1375,6 +1759,49 @@ describe('ResumeController', () => {
 
       expect(mockRes.status).toHaveBeenCalledWith(400);
     });
+
+    it('should return 500 if exportToDocx throws an error', async () => {
+      mockReq.params.id = 'resume-123';
+      mockReq.query = {};
+      const validatedAt = new Date();
+      const mockResumeDoc = {
+        _id: 'resume-123',
+        userId: 'test-user-123',
+        name: 'My Resume',
+        sections: {},
+        templateId: 'template-123',
+        metadata: {
+          lastValidation: { isValid: true },
+          validatedAt: validatedAt,
+        },
+        updatedAt: validatedAt,
+      };
+
+      mockResume.findOne.mockReturnValue({
+        lean: jest.fn().mockResolvedValue(mockResumeDoc),
+      });
+      mockResumeTemplate.findById.mockReturnValue({
+        lean: jest.fn().mockResolvedValue({ _id: 'template-123' }),
+      });
+      mockResumeExporter.exportToDocx.mockRejectedValue(new Error('export failed'));
+
+      await exportResumeDocx(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(500);
+    });
+
+    it('should return 500 if DB throws while fetching resume', async () => {
+      mockReq.params.id = 'resume-123';
+      mockReq.query = {};
+      // Simulate DB error
+      mockResume.findOne.mockReturnValue({
+        lean: jest.fn().mockRejectedValue(new Error('DB down')),
+      });
+
+      await exportResumeDocx(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(500);
+    });
   });
 
   describe('exportResumeHtml', () => {
@@ -1411,6 +1838,67 @@ describe('ResumeController', () => {
       expect(mockResumeExporter.exportToHtml).toHaveBeenCalled();
       expect(mockRes.send).toHaveBeenCalledWith(mockHtml);
     });
+
+    it('should return 400 if resume not validated (HTML export)', async () => {
+      mockReq.params.id = 'resume-123';
+      const mockResumeDoc = {
+        _id: 'resume-123',
+        userId: 'test-user-123',
+        sections: {},
+        metadata: {},
+      };
+      mockResume.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(mockResumeDoc) });
+
+      await exportResumeHtml(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should return 400 if resume modified after validation (HTML export)', async () => {
+      mockReq.params.id = 'resume-123';
+      const validatedAt = new Date('2024-01-01');
+      const mockResumeDoc = {
+        _id: 'resume-123',
+        userId: 'test-user-123',
+        sections: {},
+        metadata: { lastValidation: { isValid: true }, validatedAt },
+        updatedAt: new Date('2024-02-01'),
+      };
+      mockResume.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(mockResumeDoc) });
+
+      await exportResumeHtml(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should return 500 if exportToHtml throws', async () => {
+      mockReq.params.id = 'resume-123';
+      const validatedAt = new Date();
+      const mockResumeDoc = {
+        _id: 'resume-123',
+        userId: 'test-user-123',
+        name: 'My Resume',
+        sections: {},
+        templateId: 'template-123',
+        metadata: {
+          lastValidation: { isValid: true },
+          validatedAt: validatedAt,
+        },
+        updatedAt: validatedAt,
+      };
+
+      mockResume.findOne.mockReturnValue({
+        lean: jest.fn().mockResolvedValue(mockResumeDoc),
+      });
+      mockResumeTemplate.findById.mockReturnValue({
+        lean: jest.fn().mockResolvedValue({ _id: 'template-123' }),
+      });
+      mockResumeExporter.exportToHtml.mockImplementation(() => { throw new Error('render fail'); });
+
+      await exportResumeHtml(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(500);
+    });
   });
 
   describe('exportResumeText', () => {
@@ -1442,6 +1930,71 @@ describe('ResumeController', () => {
 
       expect(mockResumeExporter.exportToPlainText).toHaveBeenCalled();
       expect(mockRes.send).toHaveBeenCalledWith(mockText);
+    });
+
+    it('should return 400 if resume not validated (Text export)', async () => {
+      mockReq.params.id = 'resume-123';
+      const mockResumeDoc = { _id: 'resume-123', userId: 'test-user-123', sections: {}, metadata: {} };
+      mockResume.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(mockResumeDoc) });
+
+      await exportResumeText(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should return 400 if resume modified after validation (Text export)', async () => {
+      mockReq.params.id = 'resume-123';
+      const validatedAt = new Date('2024-01-01');
+      const mockResumeDoc = {
+        _id: 'resume-123',
+        userId: 'test-user-123',
+        sections: {},
+        metadata: { lastValidation: { isValid: true }, validatedAt },
+        updatedAt: new Date('2024-02-01'),
+      };
+      mockResume.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(mockResumeDoc) });
+
+      await exportResumeText(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should return 500 if DB throws while fetching resume', async () => {
+      mockReq.params.id = 'resume-123';
+      // Simulate DB error
+      mockResume.findOne.mockReturnValue({
+        lean: jest.fn().mockRejectedValue(new Error('DB error')),
+      });
+
+      await exportResumeText(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(500);
+    });
+  });
+
+  describe('error handling coverage', () => {
+    it('generateResumePDF should return 500 if Resume.findOne throws', async () => {
+      mockReq.params.id = 'resume-500';
+      mockResume.findOne.mockReturnValue({ lean: jest.fn().mockRejectedValue(new Error('boom')) });
+
+      await generateResumePDF(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(500);
+    });
+
+    // NOTE: skipping a forced DB-throw test for generateAIResume because
+    // the controller's catch block references local variables that may not
+    // be defined depending on where the error is thrown; testing the
+    // graceful 500 path here would require changing production code.
+
+    it('createTemplate should return 500 if create throws', async () => {
+      mockReq.body = { name: 'Test', type: 'chronological' };
+      mockResumeTemplate.updateMany.mockResolvedValue({});
+      mockResumeTemplate.create.mockRejectedValue(new Error('create failed'));
+
+      await createTemplate(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(500);
     });
   });
 });

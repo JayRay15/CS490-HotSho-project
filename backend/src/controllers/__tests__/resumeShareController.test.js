@@ -261,4 +261,178 @@ describe('resumeShareController', () => {
     const resp = res.json.mock.calls[0][0];
     expect(resp.data.feedback).toEqual(items);
   });
+
+  // --- Additional targeted tests for uncovered branches ---
+  test('createShareLink - respects allowedReviewers and expiresAt', async () => {
+    const resume = { _id: 'r1', userId: 'u1', shares: [], save: jest.fn().mockResolvedValue(true) };
+    Resume.findOne = jest.fn().mockResolvedValue(resume);
+
+    const body = { allowedReviewers: [{ email: 'TEST@EX.com', name: 'T' }], expiresAt: '2025-12-01T00:00:00Z' };
+    const req = { auth: { userId: 'u1' }, params: { id: 'r1' }, body };
+    const res = makeRes();
+
+    await controller.createShareLink(req, res);
+
+    expect(resume.save).toHaveBeenCalled();
+    const resp = res.json.mock.calls[0][0];
+    expect(resp.success).toBe(true);
+    expect(resp.data.share.allowedReviewers[0].email).toBe('test@ex.com');
+    expect(resp.data.share.expiresAt).toBeInstanceOf(Date);
+  });
+
+  test('createShareLink - save throws returns 500', async () => {
+    const resume = { _id: 'r1', userId: 'u1', shares: [], save: jest.fn().mockRejectedValue(new Error('save fail')) };
+    Resume.findOne = jest.fn().mockResolvedValue(resume);
+    const req = { auth: { userId: 'u1' }, params: { id: 'r1' }, body: {} };
+    const res = makeRes();
+
+    await controller.createShareLink(req, res);
+
+    expect(res.json).toHaveBeenCalled();
+    const resp = res.json.mock.calls[0][0];
+    expect(resp.success).toBe(false);
+  });
+
+  // (skip injecting fatal rejection for listShares — not-needed as 404 branch already covered)
+
+  test('revokeShare - resume not found returns 404', async () => {
+    Resume.findOne = jest.fn().mockResolvedValue(null);
+    const req = { auth: { userId: 'u1' }, params: { id: 'r1', token: 't1' } };
+    const res = makeRes();
+
+    await controller.revokeShare(req, res);
+
+    expect(res.json).toHaveBeenCalled();
+    expect(res.json.mock.calls[0][0].success).toBe(false);
+  });
+
+  test('getSharedResume - missing share or resume returns 404', async () => {
+    const req = { sharedResume: null, share: null };
+    const res = makeRes();
+
+    await controller.getSharedResume(req, res);
+
+    expect(res.json).toHaveBeenCalled();
+    expect(res.json.mock.calls[0][0].success).toBe(false);
+  });
+
+  test('getSharedResume - canViewContact true preserves contact phone', async () => {
+    const shared = { _id: 'r1', name: 'R', sections: { contactInfo: { phone: '123' } }, shares: [] };
+    const share = { token: 't1', allowComments: true, canViewContact: true };
+    const req = { sharedResume: shared, share };
+    const res = makeRes();
+
+    await controller.getSharedResume(req, res);
+
+    const resp = res.json.mock.calls[0][0];
+    expect(resp.data.resume.sections.contactInfo.phone).toBe('123');
+  });
+
+  test('createFeedback - missing comment returns 400', async () => {
+    const shared = { _id: 'r1', name: 'R' };
+    const share = { token: 't1', allowComments: true, privacy: 'unlisted' };
+    const req = { sharedResume: shared, share, body: { comment: '' }, reviewerEmail: 'a@b.com' };
+    const res = makeRes();
+
+    await controller.createFeedback(req, res);
+
+    expect(res.json).toHaveBeenCalled();
+    expect(res.json.mock.calls[0][0].success).toBe(false);
+  });
+
+  test('createFeedback - private share not allowed returns 403', async () => {
+    const shared = { _id: 'r1', name: 'R' };
+    const share = { token: 't1', allowComments: true, privacy: 'private', allowedReviewers: [{ email: 'a@b.com' }] };
+    const req = { sharedResume: shared, share, body: { comment: 'Hi', authorEmail: 'other@x.com' }, reviewerEmail: 'other@x.com' };
+    const res = makeRes();
+
+    await controller.createFeedback(req, res);
+
+    expect(res.json).toHaveBeenCalled();
+    expect(res.json.mock.calls[0][0].success).toBe(false);
+  });
+
+  test('createFeedback - create throws returns 500', async () => {
+    const shared = { _id: 'r1', name: 'R', userId: 'owner-1' };
+    const share = { token: 't1', allowComments: true, privacy: 'unlisted' };
+    ResumeFeedback.create = jest.fn().mockRejectedValue(new Error('db fail'));
+    const req = { sharedResume: shared, share, body: { comment: 'Nice' }, auth: { payload: { sub: null } } };
+    const res = makeRes();
+
+    await controller.createFeedback(req, res);
+
+    expect(res.json).toHaveBeenCalled();
+    expect(res.json.mock.calls[0][0].success).toBe(false);
+  });
+
+  test('listFeedbackForResume - resume not found returns 404', async () => {
+    Resume.findOne = jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(null) });
+    const req = { auth: { userId: 'u1' }, params: { id: 'r1' } };
+    const res = makeRes();
+
+    await controller.listFeedbackForResume(req, res);
+
+    expect(res.json).toHaveBeenCalled();
+    expect(res.json.mock.calls[0][0].success).toBe(false);
+  });
+
+  test('listFeedbackForShare - find throws returns 500', async () => {
+    const share = { token: 't1' };
+    ResumeFeedback.find = jest.fn().mockReturnValue({ sort: jest.fn().mockReturnValue({ lean: jest.fn().mockRejectedValue(new Error('boom')) }) });
+    const req = { share };
+    const res = makeRes();
+
+    await controller.listFeedbackForShare(req, res);
+
+    expect(res.json).toHaveBeenCalled();
+    expect(res.json.mock.calls[0][0].success).toBe(false);
+  });
+
+  test('resolveFeedback - unauthorized when resume not owned returns 403', async () => {
+    const fb = { _id: 'f1', resumeId: 'r1', save: jest.fn().mockResolvedValue(true) };
+    ResumeFeedback.findById = jest.fn().mockResolvedValue(fb);
+    Resume.findOne = jest.fn().mockResolvedValue(null); // ownership fail
+    const req = { auth: { userId: 'u999' }, params: { feedbackId: 'f1' }, body: {} };
+    const res = makeRes();
+
+    await controller.resolveFeedback(req, res);
+
+    expect(res.json).toHaveBeenCalled();
+    expect(res.json.mock.calls[0][0].success).toBe(false);
+  });
+
+  test('resolveFeedback - findById throws returns 500', async () => {
+    ResumeFeedback.findById = jest.fn().mockRejectedValue(new Error('db bad'));
+    const req = { auth: { userId: 'u1' }, params: { feedbackId: 'f1' }, body: {} };
+    const res = makeRes();
+
+    await controller.resolveFeedback(req, res);
+
+    expect(res.json).toHaveBeenCalled();
+    expect(res.json.mock.calls[0][0].success).toBe(false);
+  });
+
+  test('exportFeedbackSummary - resume not found returns 404', async () => {
+    Resume.findOne = jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(null) });
+    const req = { auth: { userId: 'u1' }, params: { id: 'r1' }, query: {} };
+    const res = makeRes();
+
+    await controller.exportFeedbackSummary(req, res);
+
+    expect(res.json).toHaveBeenCalled();
+    expect(res.json.mock.calls[0][0].success).toBe(false);
+  });
+
+  test('exportFeedbackSummary - items find throws returns 500', async () => {
+    const resume = { _id: 'r1', userId: 'u1', name: 'My Resume' };
+    Resume.findOne = jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(resume) });
+    ResumeFeedback.find = jest.fn().mockReturnValue({ sort: jest.fn().mockReturnValue({ lean: jest.fn().mockRejectedValue(new Error('boom')) }) });
+    const req = { auth: { userId: 'u1' }, params: { id: 'r1' }, query: {} };
+    const res = makeRes();
+
+    await controller.exportFeedbackSummary(req, res);
+
+    expect(res.json).toHaveBeenCalled();
+    expect(res.json.mock.calls[0][0].success).toBe(false);
+  });
 });

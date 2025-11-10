@@ -6,6 +6,8 @@ module.exports = {
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
+  // Ignore manual test scripts and tooling from coverage
+  coveragePathIgnorePatterns: ['<rootDir>/src/test_scripts/','<rootDir>/utils/__tests__'],
   testMatch: ['**/__tests__/**/*.test.js'],
   transform: {},
   moduleNameMapper: {

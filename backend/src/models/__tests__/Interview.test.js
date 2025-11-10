@@ -74,4 +74,71 @@ describe('Interview model virtuals and methods', () => {
     expect(doc.conflictWarning.conflictDetails).toMatch(/You have 1 other interview/);
     spy.mockRestore();
   });
+
+  it('generatePreparationTasks covers many interview types (Behavioral, Video legacy, Final Round, In-Person, Case Study)', () => {
+    const future = new Date(Date.now() + 8 * 24 * 60 * 60 * 1000);
+
+    const typesToTest = ['Behavioral', 'Video', 'Final Round', 'In-Person', 'Case Study'];
+    typesToTest.forEach(type => {
+      const doc = new Interview({ userId: 'u1', jobId: new mongoose.Types.ObjectId(), title: 'Dev', company: 'C', interviewType: type, scheduledDate: future });
+      const tasks = doc.generatePreparationTasks();
+      expect(Array.isArray(tasks)).toBe(true);
+      // Each type should add at least one type-specific task (length > base tasks)
+      expect(tasks.length).toBeGreaterThanOrEqual(4);
+    });
+  });
+
+  it('pre-save middleware pushes history entries for status change and scheduledDate change', (done) => {
+    const future = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000);
+    const doc = new Interview({ userId: 'u1', jobId: new mongoose.Types.ObjectId(), title: 'Dev', company: 'C', interviewType: 'Video Call', scheduledDate: future, status: 'Scheduled' });
+
+    // Simulate modifications
+    // We'll call the pre-save hooks directly to avoid DB interaction
+    // Find pre hooks registered on the schema and call any 'save' pres.
+    const schema = Interview.schema;
+
+    // Prepare doc state to trigger both branches
+    doc.isModified = (field) => field === 'status' || field === 'scheduledDate';
+    doc.isNew = false;
+
+    // Mongoose stores pre hooks in different shapes across versions.
+    // Try the modern Map-based storage first: schema.s.hooks._pres is a Map keyed by hook name.
+    let presSaveFns = [];
+    try {
+      if (schema && schema.s && schema.s.hooks && schema.s.hooks._pres && typeof schema.s.hooks._pres.get === 'function') {
+        const saveArr = schema.s.hooks._pres.get('save') || [];
+        presSaveFns = saveArr.map(obj => obj && obj.fn).filter(Boolean);
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    // Fallback: older mongoose versions may keep callQueue entries
+    if (!presSaveFns.length && schema && Array.isArray(schema.callQueue)) {
+      schema.callQueue.forEach(entry => {
+        if (entry && entry[0] === 'pre' && entry[1] === 'save') {
+          // entry shape might be ['pre', 'save', fn] or ['pre', 'save', false, fn]
+          const fn = entry[2] && typeof entry[2] === 'function' ? entry[2] : entry[3];
+          if (typeof fn === 'function') presSaveFns.push(fn);
+        }
+      });
+    }
+
+    // Call each pre-save hook function with doc as context
+    presSaveFns.forEach(fn => {
+      try {
+        // Some pre hooks expect next callback, some return promises; call with a noop next
+        fn.call(doc, () => {});
+      } catch (e) {
+        // ignore - some hook shapes differ between mongoose versions
+      }
+    });
+
+    // After running hooks, history should have at least one entry for status change and one for reschedule
+    expect(Array.isArray(doc.history)).toBe(true);
+    // At least one entry with action 'Updated' or 'Rescheduled'
+    const actions = doc.history.map(h => h.action);
+    expect(actions.some(a => a === 'Updated' || a === 'Rescheduled')).toBe(true);
+    done();
+  });
 });

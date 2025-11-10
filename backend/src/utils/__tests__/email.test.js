@@ -314,4 +314,512 @@ describe('email utility', () => {
       expect(mockTransporter.sendMail).toHaveBeenCalledWith(expect.objectContaining({ to: 'to@example.com', subject: expect.stringContaining('Interview Rescheduled') }));
     });
   });
+
+  describe('sendInterviewReminderEmail - extra coverage', () => {
+    it('should send interview reminder with different hour values', async () => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      const interview = {
+        title: 'Engineer Interview',
+        company: 'TechCorp',
+        scheduledDate: new Date(),
+        interviewType: 'virtual',
+        meetingLink: 'https://meet.example.com',
+        preparationTasks: [
+          { title: 'Task 1', completed: false },
+          { title: 'Task 2', completed: true }
+        ]
+      };
+
+      await sendInterviewReminderEmail('test@example.com', 'John', interview, 1);
+      expect(mockTransporter.sendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          subject: expect.stringContaining('1 hours')
+        })
+      );
+    });
+
+    it('should send interview reminder with 24 hours', async () => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      const interview = {
+        title: 'Engineer Interview',
+        company: 'TechCorp',
+        scheduledDate: new Date(),
+        interviewType: 'virtual',
+        meetingLink: 'https://meet.example.com',
+        preparationTasks: []
+      };
+
+      await sendInterviewReminderEmail('test@example.com', 'John', interview, 24);
+      expect(mockTransporter.sendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          subject: expect.stringContaining('24 hours')
+        })
+      );
+    });
+
+    it('should send interview reminder with 2 hours', async () => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      const interview = {
+        title: 'Engineer Interview',
+        company: 'TechCorp',
+        scheduledDate: new Date(),
+        interviewType: 'virtual',
+        meetingLink: 'https://meet.example.com',
+        preparationTasks: []
+      };
+
+      await sendInterviewReminderEmail('test@example.com', 'John', interview, 2);
+      expect(mockTransporter.sendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          subject: expect.stringContaining('2 hours')
+        })
+      );
+    });
+
+    it('should handle interview reminder without SMTP', async () => {
+      delete process.env.SMTP_HOST;
+      const interview = {
+        title: 'Engineer Interview',
+        company: 'TechCorp',
+        scheduledDate: new Date(),
+        interviewType: 'virtual'
+      };
+
+      await sendInterviewReminderEmail('test@example.com', 'John', interview, 24);
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[MOCK EMAIL] Interview Reminder')
+      );
+    });
+
+    it('should include meeting link in interview reminder when present', async () => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      const interview = {
+        title: 'Engineer Interview',
+        company: 'TechCorp',
+        scheduledDate: new Date(),
+        interviewType: 'virtual',
+        meetingLink: 'https://meet.example.com/abc123'
+      };
+
+      await sendInterviewReminderEmail('test@example.com', 'John', interview, 24);
+      expect(mockTransporter.sendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          html: expect.stringContaining('https://meet.example.com/abc123')
+        })
+      );
+    });
+  });
+
+  describe('sendInterviewCancellationEmail - extra coverage', () => {
+    it('should send cancellation email via transporter', async () => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      const interview = {
+        title: 'Software Engineer',
+        company: 'Acme Corp',
+        scheduledDate: new Date(),
+        interviewType: 'onsite'
+      };
+
+      await sendInterviewCancellationEmail('test@example.com', 'Jane Doe', interview);
+      expect(mockTransporter.sendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'test@example.com',
+          subject: expect.stringContaining('Cancelled')
+        })
+      );
+    });
+
+    it('should handle cancellation email without SMTP', async () => {
+      delete process.env.SMTP_HOST;
+      const interview = {
+        title: 'Software Engineer',
+        company: 'Acme Corp',
+        scheduledDate: new Date()
+      };
+
+      await sendInterviewCancellationEmail('test@example.com', 'Jane Doe', interview);
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[MOCK EMAIL] Interview Cancellation')
+      );
+    });
+
+    it('should handle cancellation email sending errors', async () => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      const error = new Error('Send failed');
+      mockTransporter.sendMail.mockRejectedValue(error);
+
+      const interview = {
+        title: 'Software Engineer',
+        company: 'Acme Corp',
+        scheduledDate: new Date()
+      };
+
+      await expect(
+        sendInterviewCancellationEmail('test@example.com', 'Jane Doe', interview)
+      ).rejects.toThrow('Send failed');
+    });
+  });
+
+  describe('sendDeadlineReminderEmail - extra coverage', () => {
+    it('should send deadline reminder with multiple items', async () => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      const items = [
+        {
+          title: 'Application Deadline',
+          company: 'Company A',
+          deadline: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+          days: 2
+        },
+        {
+          title: 'Second Round',
+          company: 'Company B',
+          deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+          days: 5
+        }
+      ];
+
+      await sendDeadlineReminderEmail('test@example.com', 'John', items);
+      expect(mockTransporter.sendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'test@example.com'
+        })
+      );
+    });
+
+    it('should handle deadline reminder without SMTP', async () => {
+      delete process.env.SMTP_HOST;
+      const items = [
+        {
+          title: 'Application',
+          company: 'Company A',
+          deadline: new Date(),
+          days: 3
+        }
+      ];
+
+      await sendDeadlineReminderEmail('test@example.com', 'John', items);
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[MOCK EMAIL] Deadline Reminders')
+      );
+    });
+
+    it('should handle deadline reminder send errors', async () => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      mockTransporter.sendMail.mockRejectedValue(new Error('Deadline send failed'));
+
+      const items = [
+        {
+          title: 'Deadline',
+          company: 'Company',
+          deadline: new Date(),
+          days: 1
+        }
+      ];
+
+      await expect(
+        sendDeadlineReminderEmail('test@example.com', 'John', items)
+      ).rejects.toThrow('Deadline send failed');
+    });
+  });
+
+  describe('sendInterviewConfirmationEmail - extra coverage', () => {
+    it('should send confirmation email successfully', async () => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      const interview = {
+        title: 'Junior Developer',
+        company: 'StartupXYZ',
+        scheduledDate: new Date(),
+        duration: 60,
+        interviewType: 'phone'
+      };
+
+      await sendInterviewConfirmationEmail('test@example.com', 'Alice', interview);
+      expect(mockTransporter.sendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'test@example.com',
+          subject: expect.stringContaining('Interview')
+        })
+      );
+    });
+
+    it('should handle confirmation without SMTP', async () => {
+      delete process.env.SMTP_HOST;
+      const interview = {
+        title: 'Junior Developer',
+        company: 'StartupXYZ',
+        scheduledDate: new Date(),
+        duration: 60,
+        interviewType: 'phone'
+      };
+
+      await sendInterviewConfirmationEmail('test@example.com', 'Alice', interview);
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[MOCK EMAIL] Interview Confirmation')
+      );
+    });
+
+    it('should handle confirmation send errors', async () => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      mockTransporter.sendMail.mockRejectedValue(new Error('Confirmation error'));
+
+      const interview = {
+        title: 'Junior Developer',
+        company: 'StartupXYZ',
+        scheduledDate: new Date(),
+        duration: 60,
+        interviewType: 'phone'
+      };
+
+      await expect(
+        sendInterviewConfirmationEmail('test@example.com', 'Alice', interview)
+      ).rejects.toThrow('Confirmation error');
+    });
+  });
+
+  describe('sendInterviewRescheduledEmail - extra coverage', () => {
+    it('should send reschedule email successfully', async () => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      const previousDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const interview = {
+        title: 'QA Engineer',
+        company: 'TechInc',
+        scheduledDate: new Date(),
+        interviewType: 'onsite'
+      };
+
+      await sendInterviewRescheduledEmail('test@example.com', 'Bob', interview, previousDate);
+      expect(mockTransporter.sendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'test@example.com',
+          subject: expect.stringContaining('Rescheduled')
+        })
+      );
+    });
+
+    it('should handle reschedule without SMTP', async () => {
+      delete process.env.SMTP_HOST;
+      const previousDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const interview = {
+        title: 'QA Engineer',
+        company: 'TechInc',
+        scheduledDate: new Date(),
+        interviewType: 'onsite'
+      };
+
+      await sendInterviewRescheduledEmail('test@example.com', 'Bob', interview, previousDate);
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[MOCK EMAIL] Interview Rescheduled')
+      );
+    });
+
+    it('should handle reschedule send errors', async () => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      mockTransporter.sendMail.mockRejectedValue(new Error('Reschedule failed'));
+
+      const previousDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const interview = {
+        title: 'QA Engineer',
+        company: 'TechInc',
+        scheduledDate: new Date(),
+        interviewType: 'onsite'
+      };
+
+      await expect(
+        sendInterviewRescheduledEmail('test@example.com', 'Bob', interview, previousDate)
+      ).rejects.toThrow('Reschedule failed');
+    });
+  });
+
+  describe('sendInterviewConfirmationEmail - comprehensive', () => {
+    it('should include interview details in confirmation', async () => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      const interview = {
+        title: 'Senior Developer Role',
+        company: 'TechCorp',
+        scheduledDate: new Date('2024-12-15T10:00:00'),
+        duration: 60,
+        interviewType: 'phone',
+        location: 'San Francisco',
+        preparationTasks: [
+          { title: 'Review code sample', completed: false },
+          { title: 'Prepare questions', completed: false }
+        ]
+      };
+
+      await sendInterviewConfirmationEmail('test@example.com', 'John', interview);
+
+      expect(mockTransporter.sendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'test@example.com',
+          html: expect.stringContaining('Senior Developer')
+        })
+      );
+    });
+
+    it('should handle missing location gracefully', async () => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      const interview = {
+        title: 'Developer',
+        company: 'TechCorp',
+        scheduledDate: new Date(),
+        duration: 45,
+        interviewType: 'virtual'
+      };
+
+      await sendInterviewConfirmationEmail('test@example.com', 'John', interview);
+      expect(mockTransporter.sendMail).toHaveBeenCalled();
+    });
+
+    it('should handle missing preparation tasks', async () => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      const interview = {
+        title: 'Developer',
+        company: 'TechCorp',
+        scheduledDate: new Date(),
+        duration: 45,
+        interviewType: 'onsite',
+        preparationTasks: []
+      };
+
+      await sendInterviewConfirmationEmail('test@example.com', 'John', interview);
+      expect(mockTransporter.sendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'test@example.com'
+        })
+      );
+    });
+
+    it('should format interview time correctly', async () => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      const interview = {
+        title: 'Developer',
+        company: 'TechCorp',
+        scheduledDate: new Date('2024-12-20T14:30:00'),
+        duration: 60,
+        interviewType: 'phone'
+      };
+
+      await sendInterviewConfirmationEmail('test@example.com', 'John', interview);
+      expect(mockTransporter.sendMail).toHaveBeenCalled();
+    });
+  });
+
+  describe('sendDeadlineReminderEmail - additional scenarios', () => {
+    it('should handle single deadline reminder', async () => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      const items = [
+        {
+          title: 'Application Deadline',
+          company: 'Google',
+          deadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+          days: 3
+        }
+      ];
+
+      await sendDeadlineReminderEmail('test@example.com', 'Alice', items);
+      expect(mockTransporter.sendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'test@example.com'
+        })
+      );
+    });
+
+    it('should handle various deadline days remaining', async () => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      const items = [
+        {
+          title: 'Deadline 1',
+          company: 'Company 1',
+          deadline: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
+          days: 1
+        },
+        {
+          title: 'Deadline 2',
+          company: 'Company 2',
+          deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+          days: 5
+        },
+        {
+          title: 'Deadline 3',
+          company: 'Company 3',
+          deadline: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+          days: 10
+        }
+      ];
+
+      await sendDeadlineReminderEmail('test@example.com', 'Alice', items);
+      expect(mockTransporter.sendMail).toHaveBeenCalled();
+    });
+
+    it('should include all deadline items in email', async () => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      const items = [
+        { title: 'First', company: 'Company A', deadline: new Date(), days: 2 },
+        { title: 'Second', company: 'Company B', deadline: new Date(), days: 3 }
+      ];
+
+      await sendDeadlineReminderEmail('test@example.com', 'Alice', items);
+      expect(mockTransporter.sendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          text: expect.stringContaining('Company A'),
+          html: expect.stringContaining('Company B')
+        })
+      );
+    });
+  });
+
+  describe('Email error handling - comprehensive', () => {
+    it('should handle email deletion error gracefully', async () => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      mockTransporter.sendMail.mockRejectedValue(new Error('Connection timeout'));
+
+      await expect(sendDeletionEmail('test@example.com', 'John')).rejects.toThrow();
+      expect(consoleErrorSpy).toHaveBeenCalled();
+    });
+
+    it('should handle final deletion email error', async () => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      mockTransporter.sendMail.mockRejectedValue(new Error('Auth failed'));
+
+      await expect(sendFinalDeletionEmail('test@example.com', 'John')).rejects.toThrow();
+    });
+  });
+
+  describe('SMTP configuration handling', () => {
+    it('should use environment variables for SMTP setup', async () => {
+      process.env.SMTP_HOST = 'mail.company.com';
+      process.env.SMTP_PORT = '465';
+      process.env.SMTP_USER = 'sender@company.com';
+      process.env.SMTP_PASS = 'securepass';
+
+      await sendDeletionEmail('test@example.com', 'Test');
+
+      expect(mockCreateTransport).toHaveBeenCalledWith(
+        expect.objectContaining({
+          host: 'mail.company.com',
+          port: 465
+        })
+      );
+    });
+
+    it('should handle boolean SMTP_SECURE setting', async () => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      process.env.SMTP_SECURE = 'true';
+
+      await sendDeletionEmail('test@example.com', 'Test');
+      expect(mockCreateTransport).toHaveBeenCalled();
+    });
+
+    it('should use default SMTP_FROM when not set', async () => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      delete process.env.SMTP_FROM;
+
+      await sendDeletionEmail('test@example.com', 'Test');
+      expect(mockTransporter.sendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          from: expect.stringContaining('nirvana')
+        })
+      );
+    });
+  });
 });
