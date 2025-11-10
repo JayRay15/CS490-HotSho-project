@@ -17,6 +17,8 @@ import InterviewCard from "../../components/InterviewCard";
 import CompanyInfoCard from "../../components/CompanyInfoCard";
 import CompanyNewsSection from "../../components/CompanyNewsSection";
 import CompanyResearchReport from "../../components/CompanyResearchReport";
+import ApplicationPackageGenerator from "../../components/ApplicationPackageGenerator";
+import ApplicationAutomation from "../../components/ApplicationAutomation";
 import * as interviewsAPI from "../../api/interviews";
 
 const PIPELINE_STAGES = ["Interested", "Applied", "Phone Screen", "Interview", "Offer", "Rejected"];
@@ -79,6 +81,12 @@ export default function Jobs() {
   const [selectedJobForInterview, setSelectedJobForInterview] = useState(null);
   const [interviews, setInterviews] = useState([]);
   const [editingInterview, setEditingInterview] = useState(null);
+
+  // Application Automation state
+  const [showPackageGenerator, setShowPackageGenerator] = useState(false);
+  const [showAutomation, setShowAutomation] = useState(false);
+  const [selectedJobForPackage, setSelectedJobForPackage] = useState(null);
+  const [bulkSelectionMode, setBulkSelectionMode] = useState(false);
 
   // Form state for adding/editing jobs
   const [formData, setFormData] = useState({
@@ -819,6 +827,12 @@ export default function Jobs() {
     setShowDetailModal(true);
   };
 
+  // Job selection handlers for bulk operations
+  // Note: selectedJobs stores job IDs (strings), not full job objects
+  const getSelectedJobObjects = () => {
+    return jobs.filter(job => selectedJobs.includes(job._id));
+  };
+
   // Archive handlers
   const handleArchiveJob = (job) => {
     setArchivingJob(job);
@@ -1201,6 +1215,25 @@ export default function Jobs() {
                 <Button onClick={() => setShowStatistics(true)} variant="secondary">
                   Statistics
                 </Button>
+                <Button
+                  onClick={() => {
+                    setBulkSelectionMode(!bulkSelectionMode);
+                    if (bulkSelectionMode) setSelectedJobs([]);
+                  }}
+                  variant={bulkSelectionMode ? "primary" : "secondary"}
+                  className={bulkSelectionMode ? "bg-yellow-600 hover:bg-yellow-700" : ""}
+                >
+                  {bulkSelectionMode ? `Bulk Mode (${selectedJobs.length})` : "Bulk Select"}
+                </Button>
+                {selectedJobs.length > 0 && (
+                  <Button
+                    onClick={() => setShowAutomation(true)}
+                    variant="primary"
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    ⚡ Automate ({selectedJobs.length})
+                  </Button>
+                )}
                 <Button
                   onClick={() => setShowArchived(!showArchived)}
                   variant={showArchived ? "primary" : "secondary"}
@@ -2779,6 +2812,17 @@ export default function Jobs() {
                 >
                   Edit Job
                 </Button>
+                {/* Application Automation Button */}
+                <Button
+                  onClick={() => {
+                    setSelectedJobForPackage(viewingJob);
+                    setShowPackageGenerator(true);
+                  }}
+                  variant="secondary"
+                  className="bg-blue-100 hover:bg-blue-200 text-blue-700"
+                >
+                  ⚡ Generate Package
+                </Button>
                 {/* UC-68: Interview Insights Button */}
                 <Button
                   onClick={() => {
@@ -3216,6 +3260,39 @@ export default function Jobs() {
             setEditingInterview(null);
           }}
           onSuccess={handleInterviewSaved}
+        />
+      )}
+
+      {/* Application Package Generator Modal */}
+      {showPackageGenerator && selectedJobForPackage && (
+        <ApplicationPackageGenerator
+          job={selectedJobForPackage}
+          onClose={() => {
+            setShowPackageGenerator(false);
+            setSelectedJobForPackage(null);
+          }}
+          onSuccess={async (pkg) => {
+            setShowPackageGenerator(false);
+            setSelectedJobForPackage(null);
+            alert(`Application package generated successfully for ${pkg.metadata.jobTitle}!`);
+            await fetchJobs(); // Refresh jobs to show updated status
+          }}
+        />
+      )}
+
+      {/* Application Automation Modal */}
+      {showAutomation && (
+        <ApplicationAutomation
+          selectedJobs={getSelectedJobObjects()}
+          onClose={() => {
+            setShowAutomation(false);
+          }}
+          onSuccess={async () => {
+            setShowAutomation(false);
+            setBulkSelectionMode(false);
+            setSelectedJobs([]);
+            await fetchJobs(); // Refresh jobs
+          }}
         />
       )}
     </div>

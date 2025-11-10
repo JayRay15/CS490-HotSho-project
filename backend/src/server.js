@@ -16,9 +16,11 @@ import coverLetterTemplateRoutes from "./routes/coverLetterTemplateRoutes.js";
 import coverLetterRoutes from "./routes/coverLetterRoutes.js";
 import companyRoutes from "./routes/companyRoutes.js";
 import skillGapRoutes from "./routes/skillGapRoutes.js";
+import applicationRoutes from "./routes/applicationRoutes.js";
 import { getPublicProject } from "./controllers/profileController.js";
 import { startDeadlineReminderSchedule } from "./utils/deadlineReminders.js";
 import { startInterviewReminderSchedule } from "./utils/interviewReminders.js";
+import { startApplicationScheduler, startFollowUpScheduler } from "./utils/applicationScheduler.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 // Cleanup schedule no longer needed - accounts are deleted immediately
 // import { startCleanupSchedule } from "./utils/cleanupDeletedUsers.js";
@@ -61,6 +63,7 @@ app.use("/api", coverLetterTemplateRoutes);
 app.use("/api", coverLetterRoutes);
 app.use("/api/companies", companyRoutes);
 app.use("/api/skill-gaps", skillGapRoutes);
+app.use("/api/applications", applicationRoutes);
 // Mount profile routes under /api/profile (existing) and also under /api/users
 // so frontend requests to /api/users/... (used elsewhere in the app) resolve correctly.
 app.use("/api/profile", profileRoutes);
@@ -98,5 +101,12 @@ app.listen(PORT, () => {
     startInterviewReminderSchedule();
   } catch (err) {
     console.error('Failed to start interview reminder schedule:', err?.message || err);
+  }
+  // Start application automation schedulers
+  try {
+    startApplicationScheduler();
+    startFollowUpScheduler();
+  } catch (err) {
+    console.error('Failed to start application schedulers:', err?.message || err);
   }
 });
