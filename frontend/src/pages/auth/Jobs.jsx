@@ -17,6 +17,8 @@ import InterviewCard from "../../components/InterviewCard";
 import CompanyInfoCard from "../../components/CompanyInfoCard";
 import CompanyNewsSection from "../../components/CompanyNewsSection";
 import CompanyResearchReport from "../../components/CompanyResearchReport";
+import JobMatchScore from "../../components/JobMatchScore";
+import JobMatchComparison from "../../components/JobMatchComparison";
 import * as interviewsAPI from "../../api/interviews";
 
 const PIPELINE_STAGES = ["Interested", "Applied", "Phone Screen", "Interview", "Offer", "Rejected"];
@@ -79,6 +81,11 @@ export default function Jobs() {
   const [selectedJobForInterview, setSelectedJobForInterview] = useState(null);
   const [interviews, setInterviews] = useState([]);
   const [editingInterview, setEditingInterview] = useState(null);
+
+  // UC-063: Job Matching state
+  const [showMatchScore, setShowMatchScore] = useState(false);
+  const [matchJobId, setMatchJobId] = useState(null);
+  const [showComparison, setShowComparison] = useState(false);
 
   // Form state for adding/editing jobs
   const [formData, setFormData] = useState({
@@ -1010,6 +1017,12 @@ export default function Jobs() {
     }
   };
 
+  // UC-063: Job Matching Handlers
+  const handleViewMatchScore = (job) => {
+    setMatchJobId(job._id);
+    setShowMatchScore(true);
+  };
+
   const handleDeleteJobWithConfirm = async (jobId, jobTitle) => {
     const confirmed = window.confirm(
       `Are you sure you want to permanently delete "${jobTitle}"?\n\nThis action cannot be undone. Consider archiving instead.`
@@ -1209,9 +1222,14 @@ export default function Jobs() {
                   {stats?.totalArchived > 0 && ` (${stats.totalArchived})`}
                 </Button>
                 {!showArchived && (
-                  <Button onClick={() => setShowAutoArchiveModal(true)} variant="secondary">
-                    Auto-Archive
-                  </Button>
+                  <>
+                    <Button onClick={() => setShowAutoArchiveModal(true)} variant="secondary">
+                      Auto-Archive
+                    </Button>
+                    <Button onClick={() => setShowComparison(true)} variant="secondary">
+                      Compare Matches
+                    </Button>
+                  </>
                 )}
                 <Button onClick={() => setShowAddModal(true)} variant="primary">
                   Add Job
@@ -1535,6 +1553,7 @@ export default function Jobs() {
               onJobArchive={handleArchiveJob}
               onJobRestore={handleRestoreJob}
               onScheduleInterview={handleScheduleInterview}
+              onViewMatchScore={handleViewMatchScore}
               highlightTerms={[
                 searchTerm?.trim(),
                 filters.location?.trim(),
@@ -3217,6 +3236,68 @@ export default function Jobs() {
           }}
           onSuccess={handleInterviewSaved}
         />
+      )}
+
+      {/* UC-063: Job Match Score Modal */}
+      {showMatchScore && matchJobId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold text-gray-900">Job Match Analysis</h2>
+                <button
+                  onClick={() => {
+                    setShowMatchScore(false);
+                    setMatchJobId(null);
+                  }}
+                  className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
+                >
+                  ×
+                </button>
+              </div>
+              <JobMatchScore jobId={matchJobId} />
+              <div className="flex justify-end mt-6">
+                <Button
+                  onClick={() => {
+                    setShowMatchScore(false);
+                    setMatchJobId(null);
+                  }}
+                  variant="secondary"
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* UC-063: Job Comparison Modal */}
+      {showComparison && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold text-gray-900">Compare Job Matches</h2>
+                <button
+                  onClick={() => setShowComparison(false)}
+                  className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
+                >
+                  ×
+                </button>
+              </div>
+              <JobMatchComparison />
+              <div className="flex justify-end mt-6">
+                <Button
+                  onClick={() => setShowComparison(false)}
+                  variant="secondary"
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

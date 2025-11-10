@@ -18,7 +18,7 @@ const PRIORITY_COLORS = {
   "High": "text-red-600",
 };
 
-export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange, isDragging, highlightTerms, isSelected, onToggleSelect, onArchive, onRestore, onScheduleInterview }) {
+export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange, isDragging, highlightTerms, isSelected, onToggleSelect, onArchive, onRestore, onScheduleInterview, onViewMatchScore }) {
   const [showDetails, setShowDetails] = useState(false);
   const navigate = useNavigate();
 
@@ -261,6 +261,16 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
               🎯 Skill Gaps
             </button>
           )}
+          {/* UC-063: Job Match Score button */}
+          {!job.archived && onViewMatchScore && (
+            <button
+              onClick={() => onViewMatchScore(job)}
+              className="text-xs px-2 py-1 rounded bg-green-100 hover:bg-green-200 text-green-700 font-medium"
+              title="View match score and analysis"
+            >
+              ✨ Match Score
+            </button>
+          )}
           {job.archived ? (
             onRestore && (
               <button
@@ -403,4 +413,5 @@ JobCard.propTypes = {
   onArchive: PropTypes.func,
   onRestore: PropTypes.func,
   onScheduleInterview: PropTypes.func,
+  onViewMatchScore: PropTypes.func,
 };
