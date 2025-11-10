@@ -2,7 +2,8 @@ import { CoverLetterTemplate } from "../models/CoverLetterTemplate.js";
 import { User } from "../models/User.js";
 import { Job } from "../models/Job.js";
 import { errorResponse, sendResponse, successResponse, ERROR_CODES } from "../utils/responseFormat.js";
-import { generateCoverLetter, analyzeCompanyCulture } from "../utils/geminiService.js";
+import { generateCoverLetter, analyzeCompanyCulture } from '../utils/geminiService.js';
+import { researchCompany, formatResearchForCoverLetter } from '../utils/companyResearchService.js';
 
 const getUserId = (req) => {
   const auth = typeof req.auth === 'function' ? req.auth() : req.auth;
@@ -735,14 +736,20 @@ export const generateAICoverLetter = async (req, res) => {
       return sendResponse(res, response, statusCode);
     }
 
-    // Generate cover letter using AI
+    // Research company information
+    console.log(`🔍 Researching company: ${job.company}`);
+    const companyResearchData = await researchCompany(job.company, jobDescription);
+    const formattedResearch = formatResearchForCoverLetter(companyResearchData);
+
+    // Generate cover letter using AI with company research
     const variations = await generateCoverLetter({
       companyName: job.company,
       position: job.title,
       jobDescription,
       userProfile,
       tone,
-      variationCount
+      variationCount,
+      companyResearch: formattedResearch
     });
 
     const { response, statusCode } = successResponse(
