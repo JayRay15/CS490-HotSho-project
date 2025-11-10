@@ -97,4 +97,76 @@ describe('coverLetterRoutes', () => {
     expect(mockCheckJwt).toHaveBeenCalled();
     expect(mockDelete).toHaveBeenCalled();
   });
+
+  test('PUT /api/cover-letters/:id/set-default calls setDefaultCoverLetter and is protected', async () => {
+    const res = await request(app).put('/api/cover-letters/abc123/set-default');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(mockCheckJwt).toHaveBeenCalled();
+    expect(mockSetDefault).toHaveBeenCalled();
+  });
+
+  test('PUT /api/cover-letters/:id/archive calls archiveCoverLetter and is protected', async () => {
+    const res = await request(app).put('/api/cover-letters/abc123/archive');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(mockCheckJwt).toHaveBeenCalled();
+    expect(mockArchive).toHaveBeenCalled();
+  });
+
+  test('PUT /api/cover-letters/:id/unarchive calls unarchiveCoverLetter and is protected', async () => {
+    const res = await request(app).put('/api/cover-letters/abc123/unarchive');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(mockCheckJwt).toHaveBeenCalled();
+    expect(mockUnarchive).toHaveBeenCalled();
+  });
+
+  test('POST /api/cover-letters/:id/clone calls cloneCoverLetter and is protected', async () => {
+    const res = await request(app).post('/api/cover-letters/abc123/clone');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(mockCheckJwt).toHaveBeenCalled();
+    expect(mockClone).toHaveBeenCalled();
+  });
+
+  test('POST /api/cover-letters/:id/export/pdf calls exportCoverLetterAsPdf and is protected', async () => {
+    const res = await request(app).post('/api/cover-letters/abc123/export/pdf');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(mockCheckJwt).toHaveBeenCalled();
+    expect(mockExportPdf).toHaveBeenCalled();
+  });
+
+  test('POST /api/cover-letters/:id/export/docx calls exportCoverLetterAsDocx and is protected', async () => {
+    const res = await request(app).post('/api/cover-letters/abc123/export/docx');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(mockCheckJwt).toHaveBeenCalled();
+    expect(mockExportDocx).toHaveBeenCalled();
+  });
+
+  test('POST /api/cover-letters/:id/export/html calls exportCoverLetterAsHtml and is protected', async () => {
+    const res = await request(app).post('/api/cover-letters/abc123/export/html');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(mockCheckJwt).toHaveBeenCalled();
+    expect(mockExportHtml).toHaveBeenCalled();
+  });
+
+  test('POST /api/cover-letters/:id/export/text calls exportCoverLetterAsText and is protected', async () => {
+    const res = await request(app).post('/api/cover-letters/abc123/export/text');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(mockCheckJwt).toHaveBeenCalled();
+    expect(mockExportText).toHaveBeenCalled();
+  });
+
+  test('POST /api/cover-letters/:id/email-template calls generateCoverLetterEmailTemplate and is protected', async () => {
+    const res = await request(app).post('/api/cover-letters/abc123/email-template');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(mockCheckJwt).toHaveBeenCalled();
+    expect(mockGenerateEmailTemplate).toHaveBeenCalled();
+  });
 });
