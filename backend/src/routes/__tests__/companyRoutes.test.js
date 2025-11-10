@@ -2,17 +2,16 @@ import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
 
-// Mock the controllers before importing routes
+// Create mock functions BEFORE jest.mock
 const mockGetCompanyInfo = jest.fn((req, res) => res.json({ success: true, company: {} }));
 const mockGetCompanyNews = jest.fn((req, res) => res.json({ success: true, news: [] }));
 const mockExportNewsSummary = jest.fn((req, res) => res.json({ success: true, summary: '' }));
 
+// Mock the controller module - must happen before route import
 jest.unstable_mockModule('../../controllers/companyController.js', () => ({
   getCompanyInfo: mockGetCompanyInfo,
   getCompanyNews: mockGetCompanyNews,
   exportNewsSummary: mockExportNewsSummary,
-  exportResearchReport: jest.fn(),
-  getResearchData: jest.fn(),
 }));
 
 describe('companyRoutes', () => {
@@ -24,9 +23,9 @@ describe('companyRoutes', () => {
     app = express();
     app.use(express.json());
     
-    // Re-import routes module to ensure mocks are applied
-    const routesModule = await import('../../routes/companyRoutes.js');
-    companyRoutes = routesModule.default;
+    // Import routes - mocks should be applied at this point
+    const { default: routesModule } = await import('../../routes/companyRoutes.js');
+    companyRoutes = routesModule;
     app.use('/api/companies', companyRoutes);
   });
 

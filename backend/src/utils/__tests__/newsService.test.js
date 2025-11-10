@@ -1,14 +1,5 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-
-// Mock axios before importing newsService
-jest.unstable_mockModule('axios', () => ({
-  default: {
-    get: jest.fn(),
-    post: jest.fn(),
-  },
-}));
-
-const {
+import {
   categorizeNews,
   calculateRelevance,
   analyzeSentiment,
@@ -16,7 +7,7 @@ const {
   extractTags,
   processNewsItem,
   generateSampleNews
-} = await import('../newsService.js');
+} from '../newsService.js';
 
 describe('newsService utilities', () => {
   describe('categorizeNews', () => {
