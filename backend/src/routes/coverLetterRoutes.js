@@ -14,7 +14,13 @@ import {
   exportCoverLetterAsDocx,
   exportCoverLetterAsHtml,
   exportCoverLetterAsText,
-  generateCoverLetterEmailTemplate
+  generateCoverLetterEmailTemplate,
+  checkCoverLetterSpelling,
+  getCoverLetterSynonyms,
+  analyzeCoverLetterReadability,
+  getSentenceRestructuring,
+  saveCoverLetterVersion,
+  getCoverLetterHistory
 } from "../controllers/coverLetterController.js";
 
 const router = express.Router();
@@ -38,5 +44,13 @@ router.post("/cover-letters/:id/export/docx", checkJwt, exportCoverLetterAsDocx)
 router.post("/cover-letters/:id/export/html", checkJwt, exportCoverLetterAsHtml);
 router.post("/cover-letters/:id/export/text", checkJwt, exportCoverLetterAsText);
 router.post("/cover-letters/:id/email-template", checkJwt, generateCoverLetterEmailTemplate);
+
+// UC-060: Cover letter editing assistance routes
+router.post("/cover-letters/editing/spell-check", checkJwt, checkCoverLetterSpelling);
+router.post("/cover-letters/editing/synonyms", checkJwt, getCoverLetterSynonyms);
+router.post("/cover-letters/editing/readability", checkJwt, analyzeCoverLetterReadability);
+router.post("/cover-letters/editing/restructure", checkJwt, getSentenceRestructuring);
+router.post("/cover-letters/:id/versions", checkJwt, saveCoverLetterVersion);
+router.get("/cover-letters/:id/history", checkJwt, getCoverLetterHistory);
 
 export default router;

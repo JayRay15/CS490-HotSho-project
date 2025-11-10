@@ -4,6 +4,12 @@ import { Job } from "../models/Job.js";
 import { User } from "../models/User.js";
 import { errorResponse, sendResponse, successResponse, ERROR_CODES } from "../utils/responseFormat.js";
 import {
+  checkSpellingAndGrammar,
+  getSynonymSuggestions,
+  analyzeReadability,
+  suggestRestructuring
+} from "../utils/geminiService.js";
+import {
   exportCoverLetterToDocx,
   exportCoverLetterToHtml,
   exportCoverLetterToPdf,
@@ -350,7 +356,172 @@ export const exportCoverLetterAsPdf = async (req, res) => {
     res.send(pdfBuffer);
   } catch (err) {
     console.error("Failed to export cover letter as PDF:", err);
-    const { response, statusCode } = errorResponse("Failed to export cover letter", 500, ERROR_CODES.EXPORT_ERROR);
+    const { response, statusCode } = errorResponse("Failed to export cover letter", 500, ERROR_CODES.SERVER_ERROR);
+    return sendResponse(res, response, statusCode);
+  }
+};
+
+// UC-060: AI-powered editing assistance endpoints
+
+/**
+ * Check spelling and grammar in cover letter text
+ */
+export const checkCoverLetterSpelling = async (req, res) => {
+  try {
+    const { text } = req.body;
+
+    if (!text || !text.trim()) {
+      const { response, statusCode } = errorResponse("Text is required", 400, ERROR_CODES.MISSING_REQUIRED_FIELD);
+      return sendResponse(res, response, statusCode);
+    }
+
+    const analysis = await checkSpellingAndGrammar(text);
+
+    const { response, statusCode } = successResponse("Spelling and grammar check completed", { analysis });
+    return sendResponse(res, response, statusCode);
+  } catch (err) {
+    console.error("Failed to check spelling and grammar:", err);
+    const { response, statusCode } = errorResponse("Failed to check spelling and grammar", 500, ERROR_CODES.SERVER_ERROR);
+    return sendResponse(res, response, statusCode);
+  }
+};
+
+/**
+ * Get synonym suggestions for a word
+ */
+export const getCoverLetterSynonyms = async (req, res) => {
+  try {
+    const { word, context } = req.body;
+
+    if (!word || !word.trim()) {
+      const { response, statusCode } = errorResponse("Word is required", 400, ERROR_CODES.MISSING_REQUIRED_FIELD);
+      return sendResponse(res, response, statusCode);
+    }
+
+    const suggestions = await getSynonymSuggestions(word, context || '');
+
+    const { response, statusCode } = successResponse("Synonym suggestions retrieved", { suggestions });
+    return sendResponse(res, response, statusCode);
+  } catch (err) {
+    console.error("Failed to get synonym suggestions:", err);
+    const { response, statusCode } = errorResponse("Failed to get synonym suggestions", 500, ERROR_CODES.SERVER_ERROR);
+    return sendResponse(res, response, statusCode);
+  }
+};
+
+/**
+ * Analyze readability of cover letter text
+ */
+export const analyzeCoverLetterReadability = async (req, res) => {
+  try {
+    const { text } = req.body;
+
+    if (!text || !text.trim()) {
+      const { response, statusCode } = errorResponse("Text is required", 400, ERROR_CODES.MISSING_REQUIRED_FIELD);
+      return sendResponse(res, response, statusCode);
+    }
+
+    const analysis = await analyzeReadability(text);
+
+    const { response, statusCode } = successResponse("Readability analysis completed", { analysis });
+    return sendResponse(res, response, statusCode);
+  } catch (err) {
+    console.error("Failed to analyze readability:", err);
+    const { response, statusCode } = errorResponse("Failed to analyze readability", 500, ERROR_CODES.SERVER_ERROR);
+    return sendResponse(res, response, statusCode);
+  }
+};
+
+/**
+ * Get restructuring suggestions for text
+ */
+export const getSentenceRestructuring = async (req, res) => {
+  try {
+    const { text, type } = req.body;
+
+    if (!text || !text.trim()) {
+      const { response, statusCode } = errorResponse("Text is required", 400, ERROR_CODES.MISSING_REQUIRED_FIELD);
+      return sendResponse(res, response, statusCode);
+    }
+
+    const suggestions = await suggestRestructuring(text, type || 'sentence');
+
+    const { response, statusCode } = successResponse("Restructuring suggestions retrieved", { suggestions });
+    return sendResponse(res, response, statusCode);
+  } catch (err) {
+    console.error("Failed to get restructuring suggestions:", err);
+    const { response, statusCode } = errorResponse("Failed to get restructuring suggestions", 500, ERROR_CODES.SERVER_ERROR);
+    return sendResponse(res, response, statusCode);
+  }
+};
+
+/**
+ * Save a version of the cover letter during editing
+ */
+export const saveCoverLetterVersion = async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { id } = req.params;
+    const { content, note } = req.body;
+
+    const coverLetter = await CoverLetter.findOne({ _id: id, userId });
+    if (!coverLetter) {
+      const { response, statusCode } = errorResponse("Cover letter not found", 404, ERROR_CODES.NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Initialize editHistory if it doesn't exist
+    if (!coverLetter.editHistory) {
+      coverLetter.editHistory = [];
+    }
+
+    // Add current version to history
+    coverLetter.editHistory.push({
+      content,
+      note: note || 'Manual save',
+      timestamp: new Date()
+    });
+
+    // Keep only last 20 versions to prevent bloat
+    if (coverLetter.editHistory.length > 20) {
+      coverLetter.editHistory = coverLetter.editHistory.slice(-20);
+    }
+
+    await coverLetter.save();
+
+    const { response, statusCode } = successResponse("Version saved", { 
+      versionCount: coverLetter.editHistory.length,
+      latestVersion: coverLetter.editHistory[coverLetter.editHistory.length - 1]
+    });
+    return sendResponse(res, response, statusCode);
+  } catch (err) {
+    console.error("Failed to save version:", err);
+    const { response, statusCode } = errorResponse("Failed to save version", 500, ERROR_CODES.DATABASE_ERROR);
+    return sendResponse(res, response, statusCode);
+  }
+};
+
+/**
+ * Get edit history for a cover letter
+ */
+export const getCoverLetterHistory = async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { id } = req.params;
+
+    const coverLetter = await CoverLetter.findOne({ _id: id, userId }).lean();
+    if (!coverLetter) {
+      const { response, statusCode } = errorResponse("Cover letter not found", 404, ERROR_CODES.NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    const { response, statusCode } = successResponse("Edit history retrieved", { 
+      history: coverLetter.editHistory || []
+    });
+    return sendResponse(res, response, statusCode);
+  } catch (err) {
+    console.error("Failed to get edit history:", err);
+    const { response, statusCode } = errorResponse("Failed to get edit history", 500, ERROR_CODES.DATABASE_ERROR);
     return sendResponse(res, response, statusCode);
   }
 };

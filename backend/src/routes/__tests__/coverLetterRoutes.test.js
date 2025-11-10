@@ -17,6 +17,12 @@ const mockExportDocx = jest.fn((req, res) => res.json({ success: true }));
 const mockExportHtml = jest.fn((req, res) => res.json({ success: true }));
 const mockExportText = jest.fn((req, res) => res.json({ success: true }));
 const mockGenerateEmailTemplate = jest.fn((req, res) => res.json({ success: true }));
+const mockCheckSpelling = jest.fn((req, res) => res.json({ success: true }));
+const mockGetSynonyms = jest.fn((req, res) => res.json({ success: true }));
+const mockAnalyzeReadability = jest.fn((req, res) => res.json({ success: true }));
+const mockGetRestructuring = jest.fn((req, res) => res.json({ success: true }));
+const mockSaveVersion = jest.fn((req, res) => res.json({ success: true }));
+const mockGetHistory = jest.fn((req, res) => res.json({ success: true }));
 
 jest.unstable_mockModule('../../controllers/coverLetterController.js', () => ({
   listCoverLetters: mockList,
@@ -33,6 +39,12 @@ jest.unstable_mockModule('../../controllers/coverLetterController.js', () => ({
   exportCoverLetterAsHtml: mockExportHtml,
   exportCoverLetterAsText: mockExportText,
   generateCoverLetterEmailTemplate: mockGenerateEmailTemplate,
+  checkCoverLetterSpelling: mockCheckSpelling,
+  getCoverLetterSynonyms: mockGetSynonyms,
+  analyzeCoverLetterReadability: mockAnalyzeReadability,
+  getSentenceRestructuring: mockGetRestructuring,
+  saveCoverLetterVersion: mockSaveVersion,
+  getCoverLetterHistory: mockGetHistory,
 }));
 
 // Mock middleware

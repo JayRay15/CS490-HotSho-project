@@ -421,3 +421,155 @@ select {
         margin: 0.5in;
     }
 }
+
+/* ============================================
+   Cover Letter Content Formatting
+   ============================================ */
+
+/* Proper formatting for cover letter content display */
+.cover-letter-content {
+    line-height: 1.8;
+    font-size: 14px;
+    color: #374151;
+}
+
+.cover-letter-content p {
+    margin-bottom: 1rem;
+}
+
+/* First few paragraphs are likely header (name, date, etc.) - less spacing */
+.cover-letter-content p:nth-child(-n+8) {
+    margin-bottom: 0.25rem;
+    line-height: 1.5;
+}
+
+/* Greeting line (usually contains "Dear" or ends with colon) gets extra space after */
+.cover-letter-content p:nth-child(8) {
+    margin-bottom: 1.5rem;
+}
+
+/* Last few paragraphs are closing section (Sincerely, Name) - tight spacing */
+.cover-letter-content p:nth-last-child(-n+2) {
+    margin-bottom: 0.25rem;
+    line-height: 1.5;
+}
+
+.cover-letter-content p:last-child {
+    margin-bottom: 0;
+}
+
+.cover-letter-content strong,
+.cover-letter-content b {
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.cover-letter-content em,
+.cover-letter-content i {
+    font-style: italic;
+}
+
+.cover-letter-content ul,
+.cover-letter-content ol {
+    margin: 1rem 0;
+    padding-left: 1.5rem;
+}
+
+.cover-letter-content ul li,
+.cover-letter-content ol li {
+    margin-bottom: 0.5rem;
+}
+
+.cover-letter-content h1,
+.cover-letter-content h2,
+.cover-letter-content h3 {
+    font-weight: 600;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    color: #1f2937;
+}
+
+.cover-letter-content h1 {
+    font-size: 1.5rem;
+}
+
+.cover-letter-content h2 {
+    font-size: 1.25rem;
+}
+
+.cover-letter-content h3 {
+    font-size: 1.1rem;
+}
+
+/* ============================================
+   TipTap Editor Formatting
+   ============================================ */
+
+/* Style the TipTap editor content for proper formatting */
+.ProseMirror {
+    outline: none;
+}
+
+.ProseMirror p {
+    margin-bottom: 1rem;
+    line-height: 1.8;
+}
+
+/* First few paragraphs in editor are likely header - less spacing */
+.ProseMirror p:nth-child(-n+8) {
+    margin-bottom: 0.25rem;
+    line-height: 1.5;
+}
+
+/* Add extra space after greeting/header section */
+.ProseMirror p:nth-child(8) {
+    margin-bottom: 1.5rem;
+}
+
+/* Last few paragraphs are closing section (Sincerely, Name) - tight spacing */
+.ProseMirror p:nth-last-child(-n+2) {
+    margin-bottom: 0.25rem;
+    line-height: 1.5;
+}
+
+.ProseMirror p:last-child {
+    margin-bottom: 0;
+}
+
+.ProseMirror strong,
+.ProseMirror b {
+    font-weight: 600;
+}
+
+.ProseMirror em,
+.ProseMirror i {
+    font-style: italic;
+}
+
+.ProseMirror ul,
+.ProseMirror ol {
+    padding-left: 1.5rem;
+    margin: 1rem 0;
+}
+
+.ProseMirror ul li,
+.ProseMirror ol li {
+    margin-bottom: 0.5rem;
+}
+
+.ProseMirror h1,
+.ProseMirror h2,
+.ProseMirror h3 {
+    font-weight: 600;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+}
+
+/* Placeholder styling */
+.ProseMirror p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    color: #9CA3AF;
+    pointer-events: none;
+    height: 0;
+}
