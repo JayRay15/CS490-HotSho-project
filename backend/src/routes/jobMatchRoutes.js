@@ -1,16 +1,16 @@
 import express from "express";
 import { checkJwt } from "../middleware/checkJwt.js";
 import {
-  calculateMatch,
-  getJobMatch,
-  getAllMatches,
-  compareMatches,
-  updateMatchWeights,
-  getMatchHistory,
-  getMatchTrends,
-  exportMatchReport,
-  deleteMatch,
-  calculateAllMatches,
+    calculateMatch,
+    getJobMatch,
+    getAllMatches,
+    compareMatches,
+    updateMatchWeights,
+    getMatchHistory,
+    getMatchTrends,
+    exportMatchReport,
+    deleteMatch,
+    calculateAllMatches,
 } from "../controllers/jobMatchController.js";
 
 const router = express.Router();

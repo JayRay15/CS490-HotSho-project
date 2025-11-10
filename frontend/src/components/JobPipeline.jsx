@@ -65,9 +65,8 @@ export default function JobPipeline({ jobs, onJobStatusChange, onJobEdit, onJobD
         return (
           <div
             key={stage.id}
-            className={`shrink-0 w-80 rounded-lg border-2 ${stage.color} ${
-              isDropTarget ? "ring-4 ring-blue-400 ring-opacity-50" : ""
-            }`}
+            className={`shrink-0 w-80 rounded-lg border-2 ${stage.color} ${isDropTarget ? "ring-4 ring-blue-400 ring-opacity-50" : ""
+              }`}
             onDragOver={(e) => handleDragOver(e, stage.id)}
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, stage.id)}

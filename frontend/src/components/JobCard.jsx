@@ -29,7 +29,7 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
 
   const formatSalary = (salary) => {
     if (!salary || (!salary.min && !salary.max)) return null;
-    
+
     const format = (num) => {
       return new Intl.NumberFormat('en-US', {
         style: 'currency',
@@ -53,8 +53,8 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
     const end = new Date(date);
     // zero out times for accurate day diff
     const start = new Date();
-    start.setHours(0,0,0,0);
-    end.setHours(0,0,0,0);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
     const diffMs = end - start;
     return Math.round(diffMs / (1000 * 60 * 60 * 24));
   };
@@ -102,12 +102,11 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
   };
 
   const cardColorClass = STAGE_COLORS[job.status] || "bg-white border-gray-200";
-  
+
   return (
     <div
-      className={`rounded-lg border-2 p-4 mb-3 transition-all ${cardColorClass} ${
-        isDragging ? "opacity-50 rotate-2 shadow-lg" : "hover:shadow-md"
-      } ${isSelected ? 'ring-2 ring-blue-400' : ''}`}
+      className={`rounded-lg border-2 p-4 mb-3 transition-all ${cardColorClass} ${isDragging ? "opacity-50 rotate-2 shadow-lg" : "hover:shadow-md"
+        } ${isSelected ? 'ring-2 ring-blue-400' : ''}`}
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-2">
@@ -314,7 +313,7 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
               <p className="text-gray-600 text-xs whitespace-pre-wrap">{job.description}</p>
             </div>
           )}
-          
+
           {job.requirements && job.requirements.length > 0 && (
             <div>
               <p className="font-medium text-gray-700">Requirements:</p>
