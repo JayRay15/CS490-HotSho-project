@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Test Company News API</title>
+</head>
+
+<body>
+    <h1>Company News API Test</h1>
+    <button onclick="testAPI()">Test API</button>
+    <div id="result"></div>
+
+    <script>
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Loading...';
+
+            try {
+                const response = await fetch('http://localhost:5001/api/companies/news?company=Google&limit=3');
+                const data = await response.json();
+
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <h2>Success! Found ${data.data.news.length} news items:</h2>
+                        <ul>
+                            ${data.data.news.map(item => `
+                                <li>
+                                    <strong>${item.title}</strong><br>
+                                    Category: ${item.category} | Score: ${item.relevanceScore}/10<br>
+                                    ${item.summary}
+                                </li>
+                            `).join('')}
+                        </ul>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<p style="color: red;">API returned success=false</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+
+</html>
