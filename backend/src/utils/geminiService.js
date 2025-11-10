@@ -11,7 +11,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
  * @returns {Array} Array of generated resume content variations
  */
 export async function generateResumeContentVariations(jobPosting, userProfile, template, numVariations = 3) {
-  const model = genAI.getGenerativeModel({ model: "models/gemini-2.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "models/gemini-flash-latest" });
 
   const prompt = `You are an expert resume writer and career coach. Generate ${numVariations} DIFFERENT variations of tailored resume content based on the job posting and user's profile. Each variation should approach the content from a different angle or emphasis.
 
@@ -139,7 +139,7 @@ export async function generateResumeContent(jobPosting, userProfile, template) {
     template.layout = {};
   }
   
-  const model = genAI.getGenerativeModel({ model: "models/gemini-2.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "models/gemini-flash-latest" });
 
   const prompt = `You are an expert resume writer and career coach. Generate tailored resume content based on the job posting and user's profile.
 
@@ -317,7 +317,7 @@ Return ONLY valid JSON, no markdown formatting. Make all content professional an
  * @returns {Object} Regenerated section content
  */
 export async function regenerateSection(section, jobPosting, userProfile, currentContent) {
-  const model = genAI.getGenerativeModel({ model: "models/gemini-2.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "models/gemini-flash-latest" });
 
   let prompt = '';
   
@@ -404,7 +404,7 @@ Return only a JSON array of skill names: ["skill1", "skill2", ...]`;
  * @returns {Object} ATS analysis with score and suggestions
  */
 export async function analyzeATSCompatibility(resumeContent, jobPosting) {
-  const model = genAI.getGenerativeModel({ model: "models/gemini-2.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "models/gemini-flash-latest" });
 
   const prompt = `Analyze this resume content for ATS (Applicant Tracking System) compatibility against the job posting.
 
@@ -461,7 +461,7 @@ Return as JSON:
  * @returns {Object} Skills optimization with reordering, gaps, and matching score
  */
 export async function optimizeResumeSkills(resume, jobPosting, userProfile) {
-  const model = genAI.getGenerativeModel({ model: "models/gemini-2.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "models/gemini-flash-latest" });
 
   const prompt = `You are an expert resume optimization specialist. Analyze the job requirements and optimize the skills section for maximum impact.
 
@@ -539,7 +539,7 @@ Return ONLY valid JSON, no markdown formatting. Focus on actionable, specific re
  * @returns {Object} Experience tailoring with suggestions and variations
  */
 export async function tailorExperience(resume, jobPosting, userProfile) {
-  const model = genAI.getGenerativeModel({ model: "models/gemini-2.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "models/gemini-flash-latest" });
 
   const currentExperience = resume.sections?.experience || [];
   
@@ -646,24 +646,22 @@ export async function generateCoverLetter({
   jobDescription,
   userProfile,
   tone = 'formal',
-  variationCount = 1,
-  companyResearch = null
+  variationCount = 1
 }) {
   try {
-    const model = genAI.getGenerativeModel({ model: 'models/gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
 
     // Build user profile summary
     const profileSummary = buildProfileSummary(userProfile);
 
-    // Construct the prompt with optional company research
+    // Construct the prompt
     const prompt = buildCoverLetterPrompt({
       companyName,
       position,
       jobDescription,
       profileSummary,
       tone,
-      variationCount,
-      companyResearch
+      variationCount
     });
 
     const result = await model.generateContent(prompt);
@@ -673,27 +671,9 @@ export async function generateCoverLetter({
     // Parse the response to extract variations
     const variations = parseCoverLetterVariations(text, variationCount);
 
-    // Validate that we got the expected number of variations
-    if (!variations || variations.length === 0) {
-      console.error('No variations were parsed from AI response');
-      console.error('Raw AI response:', text.substring(0, 500));
-      throw new Error('Failed to parse cover letter variations from AI response');
-    }
-
-    if (variations.length < variationCount) {
-      console.warn(`Expected ${variationCount} variations but only got ${variations.length}`);
-    }
-
     return variations;
   } catch (error) {
     console.error('AI Generation Error:', error);
-    console.error('Error details:', {
-      message: error.message,
-      stack: error.stack,
-      companyName,
-      position,
-      variationCount
-    });
     throw new Error(`Failed to generate cover letter: ${error.message}`);
   }
 }
@@ -807,8 +787,7 @@ function buildCoverLetterPrompt({
   jobDescription,
   profileSummary,
   tone,
-  variationCount,
-  companyResearch = null
+  variationCount
 }) {
   const toneGuide = {
     formal: 'professional, traditional, and respectful',
@@ -829,8 +808,6 @@ function buildCoverLetterPrompt({
 ${profileSummary}
 
 **Tone:** ${toneGuide[tone] || toneGuide.formal}
-
-${companyResearch ? `\n**COMPANY RESEARCH DATA:**\n${companyResearch}\n` : ''}
 
 **Cover Letter Format:**
 The cover letter MUST start with a professional header. Use the EXACT information from the CONTACT INFORMATION section above.
@@ -855,13 +832,13 @@ ${companyName}
 5. The closing signature MUST use the actual candidate name (not "[Your Name]")
 
 **COMPANY RESEARCH REQUIREMENTS:**
-${companyResearch ? `Use the COMPANY RESEARCH DATA provided above to:` : `Analyze the job description and company information to identify:`}
-1. ${companyResearch ? 'Reference specific company achievements, news, or initiatives mentioned in research' : 'Company\'s mission, values, and culture (extract from job description)'}
-2. ${companyResearch ? 'Demonstrate understanding of company\'s mission, values, and culture' : 'Recent projects, initiatives, or achievements mentioned'}
-3. ${companyResearch ? 'Mention relevant projects or initiatives the company is working on' : 'Technologies, methodologies, or approaches the company uses'}
-4. ${companyResearch ? 'Show awareness of company\'s industry position and competitive landscape' : 'Industry trends or challenges the company is addressing'}
-5. ${companyResearch ? 'Connect your experience to their specific industry challenges and growth stage' : 'Company\'s competitive advantages or unique selling points'}
-${companyResearch ? '\n**CRITICAL:** You MUST reference at least 2-3 specific items from the COMPANY RESEARCH DATA in the cover letter to show genuine interest and thorough preparation.\n' : ''}
+Before writing, analyze the job description and company information to identify:
+1. Company's mission, values, and culture (extract from job description)
+2. Recent projects, initiatives, or achievements mentioned
+3. Technologies, methodologies, or approaches the company uses
+4. Industry trends or challenges the company is addressing
+5. Company's competitive advantages or unique selling points
+
 **Requirements:**
 1. **Opening Paragraph:** 
    - Start with a compelling hook that demonstrates knowledge of ${companyName}
@@ -913,21 +890,7 @@ ${companyResearch ? '\n**CRITICAL:** You MUST reference at least 2-3 specific it
 ❌ Generic statements like "I am a hard worker" without specific examples
 ❌ Phrases like "I believe I would be a good fit" without explaining why with specifics
 
-${variationCount > 1 ? `\n**MULTIPLE VARIATIONS FORMAT:**
-You must generate ${variationCount} different cover letters. Separate each variation with this exact separator:
-===VARIATION 1===
-[First complete cover letter with header]
-
-===VARIATION 2===
-[Second complete cover letter with header]
-
-${variationCount === 3 ? '===VARIATION 3===\n[Third complete cover letter with header]\n\n' : ''}Each variation should:
-- Be a complete, standalone cover letter with its own header
-- Emphasize different aspects of the candidate's background
-- Use different examples and achievements
-- Maintain the same professional quality
-- Include company research references
-\n` : ''}
+${variationCount > 1 ? `\n**Format:** Separate each variation clearly with "===VARIATION [NUMBER]===" header. Each variation should emphasize different aspects of the candidate's background while maintaining all requirements above.\n` : ''}
 
 Generate the cover letter${variationCount > 1 ? 's' : ''} now with ALL actual information filled in and company-specific personalization:`;
 }
@@ -948,31 +911,20 @@ function parseCoverLetterVariations(text, expectedCount) {
     });
   } else {
     // Multiple variations - split by separator
-    // Handle multiple separator formats:
-    // ===VARIATION 1===, ===VARIATION [1]===, === VARIATION 1 ===, etc.
-    const separatorRegex = /===\s*VARIATION\s+(?:\[?\d+\]?)\s*===/gi;
-    const parts = text.split(separatorRegex);
-    
-    console.log(`Parsing ${expectedCount} variations. Found ${parts.length} parts after splitting.`);
-    console.log('First 200 chars of text:', text.substring(0, 200));
-    
+    const parts = text.split(/===VARIATION\s+\d+===/i);
     parts.forEach((part, index) => {
       const content = part.trim();
-      if (content && content.length > 100) { // Ensure it's substantial content, not just whitespace
-        console.log(`Adding variation ${variations.length + 1}, content length: ${content.length}`);
+      if (content) {
         variations.push({
           content,
           openingParagraph: extractParagraph(content, 0),
           bodyParagraphs: extractParagraphs(content, 1, -1),
           closingParagraph: extractParagraph(content, -1)
         });
-      } else {
-        console.log(`Skipping part ${index}, content length: ${content.length}`);
       }
     });
   }
 
-  console.log(`Final variation count: ${variations.length} (expected: ${expectedCount})`);
   return variations.slice(0, expectedCount);
 }
 
@@ -1005,7 +957,7 @@ function extractParagraphs(text, startIndex, endIndex) {
  */
 export async function analyzeCompanyCulture(jobDescription) {
   try {
-    const model = genAI.getGenerativeModel({ model: 'models/gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
 
     const prompt = `Analyze the following job description and provide insights about the company culture, values, and tone:
 
