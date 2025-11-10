@@ -509,21 +509,21 @@ export const getCompanyNews = asyncHandler(async (req, res) => {
     try {
         // Dynamic import of news service
         const { fetchCompanyNews, generateNewsSummary } = await import('../utils/newsService.js');
-        
+
         // Fetch news with options
         let news = await fetchCompanyNews(company, {
             limit: parseInt(limit),
             minRelevance: parseInt(minRelevance),
         });
-        
+
         // Filter by category if specified
         if (category && category !== 'all') {
             news = news.filter(item => item.category === category);
         }
-        
+
         // Generate summary
         const summary = generateNewsSummary(news, company);
-        
+
         const { response, statusCode } = successResponse(
             "Company news retrieved successfully",
             {
@@ -564,25 +564,25 @@ export const exportNewsSummary = asyncHandler(async (req, res) => {
 
     try {
         const { fetchCompanyNews, generateNewsSummary } = await import('../utils/newsService.js');
-        
+
         // Fetch news
         const news = await fetchCompanyNews(company, { limit: 10, minRelevance: 5 });
         const summary = generateNewsSummary(news, company);
-        
+
         if (format === 'text') {
             // Export as formatted text for cover letters/applications
             let textOutput = `COMPANY NEWS SUMMARY - ${company.toUpperCase()}\n`;
             textOutput += `Generated: ${new Date().toLocaleDateString()}\n`;
             textOutput += `${'='.repeat(60)}\n\n`;
             textOutput += `OVERVIEW:\n${summary.summary}\n\n`;
-            
+
             if (summary.highlights.length > 0) {
                 textOutput += `KEY HIGHLIGHTS:\n${summary.highlights.join('\n')}\n\n`;
             }
-            
+
             textOutput += `RECENT NEWS (${news.length} items):\n`;
             textOutput += `${'='.repeat(60)}\n\n`;
-            
+
             news.forEach((item, index) => {
                 textOutput += `${index + 1}. ${item.title}\n`;
                 textOutput += `   Category: ${item.category} | Sentiment: ${item.sentiment} | Relevance: ${item.relevanceScore}/10\n`;
@@ -596,7 +596,7 @@ export const exportNewsSummary = asyncHandler(async (req, res) => {
                 }
                 textOutput += `   URL: ${item.url}\n\n`;
             });
-            
+
             res.set('Content-Type', 'text/plain');
             res.set('Content-Disposition', `attachment; filename="${company.replace(/\s+/g, '_')}_news_summary.txt"`);
             return res.send(textOutput);
@@ -613,7 +613,7 @@ export const exportNewsSummary = asyncHandler(async (req, res) => {
                     averageRelevance: summary.averageRelevance,
                 },
             };
-            
+
             res.set('Content-Type', 'application/json');
             res.set('Content-Disposition', `attachment; filename="${company.replace(/\s+/g, '_')}_news_summary.json"`);
             return res.json(exportData);
@@ -622,6 +622,201 @@ export const exportNewsSummary = asyncHandler(async (req, res) => {
         console.error("Error exporting news summary:", error);
         const { response, statusCode } = errorResponse(
             "Failed to export news summary",
+            500,
+            ERROR_CODES.SERVER_ERROR
+        );
+        return sendResponse(res, response, statusCode);
+    }
+});
+
+/**
+ * UC-064: Comprehensive Company Research
+ * GET /api/companies/research?company=<name>&jobDescription=<desc>&website=<url>
+ */
+export const getComprehensiveResearch = asyncHandler(async (req, res) => {
+    const { company, jobDescription = '', website = '' } = req.query;
+
+    if (!company) {
+        const { response, statusCode } = errorResponse(
+            "Company name is required",
+            400,
+            ERROR_CODES.VALIDATION_ERROR
+        );
+        return sendResponse(res, response, statusCode);
+    }
+
+    try {
+        // Dynamic import of research service
+        const { conductComprehensiveResearch, formatComprehensiveResearch } = await import('../utils/companyResearchService.js');
+
+        // Conduct comprehensive research
+        const research = await conductComprehensiveResearch(company, jobDescription, website);
+
+        // Format for display
+        const formatted = formatComprehensiveResearch(research);
+
+        const { response, statusCode } = successResponse(
+            "Company research completed successfully",
+            {
+                research,
+                formatted,
+                metadata: {
+                    researchDate: research.researchDate,
+                    dataQuality: research.metadata.dataQuality,
+                    sources: research.metadata.sources
+                }
+            }
+        );
+        return sendResponse(res, response, statusCode);
+
+    } catch (error) {
+        console.error("Error conducting company research:", error);
+        const { response, statusCode } = errorResponse(
+            "Failed to conduct company research",
+            500,
+            ERROR_CODES.SERVER_ERROR
+        );
+        return sendResponse(res, response, statusCode);
+    }
+});
+
+/**
+ * Export comprehensive research report
+ * GET /api/companies/research/export?company=<name>&format=<json|pdf>
+ */
+export const exportResearchReport = asyncHandler(async (req, res) => {
+    const { company, format = 'json', jobDescription = '', website = '' } = req.query;
+
+    if (!company) {
+        const { response, statusCode } = errorResponse(
+            "Company name is required",
+            400,
+            ERROR_CODES.VALIDATION_ERROR
+        );
+        return sendResponse(res, response, statusCode);
+    }
+
+    try {
+        const { conductComprehensiveResearch } = await import('../utils/companyResearchService.js');
+
+        // Conduct research
+        const research = await conductComprehensiveResearch(company, jobDescription, website);
+
+        if (format === 'json') {
+            // Export as JSON
+            res.set('Content-Type', 'application/json');
+            res.set('Content-Disposition', `attachment; filename="${company.replace(/\s+/g, '_')}_research_report.json"`);
+            return res.json(research);
+        } else {
+            // Export as formatted text
+            let textOutput = `COMPREHENSIVE COMPANY RESEARCH REPORT\n`;
+            textOutput += `Company: ${company.toUpperCase()}\n`;
+            textOutput += `Generated: ${new Date().toLocaleDateString()}\n`;
+            textOutput += `Data Quality: ${research.metadata.dataQuality}%\n`;
+            textOutput += `${'='.repeat(70)}\n\n`;
+
+            // Summary
+            textOutput += `EXECUTIVE SUMMARY:\n${research.summary}\n\n`;
+            textOutput += `${'='.repeat(70)}\n\n`;
+
+            // Basic Information
+            textOutput += `BASIC INFORMATION:\n`;
+            textOutput += `  Industry: ${research.basicInfo.industry}\n`;
+            textOutput += `  Size: ${research.basicInfo.size}\n`;
+            textOutput += `  Headquarters: ${research.basicInfo.headquarters}\n`;
+            if (research.basicInfo.founded) {
+                textOutput += `  Founded: ${research.basicInfo.founded}\n`;
+            }
+            if (research.basicInfo.website) {
+                textOutput += `  Website: ${research.basicInfo.website}\n`;
+            }
+            textOutput += `\n`;
+
+            // Mission and Culture
+            if (research.missionAndCulture.mission || research.missionAndCulture.values.length > 0) {
+                textOutput += `MISSION & CULTURE:\n`;
+                if (research.missionAndCulture.mission) {
+                    textOutput += `  Mission: ${research.missionAndCulture.mission}\n`;
+                }
+                if (research.missionAndCulture.values.length > 0) {
+                    textOutput += `  Core Values:\n`;
+                    research.missionAndCulture.values.forEach(value => {
+                        textOutput += `    • ${value}\n`;
+                    });
+                }
+                if (research.missionAndCulture.culture) {
+                    textOutput += `  Culture: ${research.missionAndCulture.culture}\n`;
+                }
+                textOutput += `\n`;
+            }
+
+            // Products and Services
+            if (research.productsAndServices.mainProducts.length > 0) {
+                textOutput += `PRODUCTS & SERVICES:\n`;
+                textOutput += `  Main Products:\n`;
+                research.productsAndServices.mainProducts.forEach(product => {
+                    textOutput += `    • ${product}\n`;
+                });
+                if (research.productsAndServices.technologies.length > 0) {
+                    textOutput += `  Technologies:\n`;
+                    research.productsAndServices.technologies.forEach(tech => {
+                        textOutput += `    • ${tech}\n`;
+                    });
+                }
+                textOutput += `\n`;
+            }
+
+            // Leadership
+            if (research.leadership.executives.length > 0) {
+                textOutput += `LEADERSHIP TEAM:\n`;
+                research.leadership.executives.forEach(exec => {
+                    textOutput += `  • ${exec.name} - ${exec.title}\n`;
+                    if (exec.background) {
+                        textOutput += `    ${exec.background}\n`;
+                    }
+                });
+                textOutput += `\n`;
+            }
+
+            // Competitive Landscape
+            if (research.competitive.mainCompetitors.length > 0 || research.competitive.marketPosition) {
+                textOutput += `COMPETITIVE LANDSCAPE:\n`;
+                if (research.competitive.mainCompetitors.length > 0) {
+                    textOutput += `  Main Competitors:\n`;
+                    research.competitive.mainCompetitors.forEach(competitor => {
+                        textOutput += `    • ${competitor}\n`;
+                    });
+                }
+                if (research.competitive.marketPosition) {
+                    textOutput += `  Market Position: ${research.competitive.marketPosition}\n`;
+                }
+                if (research.competitive.uniqueValue) {
+                    textOutput += `  Unique Value: ${research.competitive.uniqueValue}\n`;
+                }
+                textOutput += `\n`;
+            }
+
+            // Social Media
+            if (research.socialMedia.platforms && Object.keys(research.socialMedia.platforms).length > 0) {
+                textOutput += `SOCIAL MEDIA PRESENCE:\n`;
+                Object.entries(research.socialMedia.platforms).forEach(([platform, url]) => {
+                    textOutput += `  ${platform.charAt(0).toUpperCase() + platform.slice(1)}: ${url}\n`;
+                });
+                textOutput += `\n`;
+            }
+
+            textOutput += `${'='.repeat(70)}\n`;
+            textOutput += `Report generated by HotSho Job Application Tracker\n`;
+            textOutput += `Research Date: ${research.researchDate}\n`;
+
+            res.set('Content-Type', 'text/plain');
+            res.set('Content-Disposition', `attachment; filename="${company.replace(/\s+/g, '_')}_research_report.txt"`);
+            return res.send(textOutput);
+        }
+    } catch (error) {
+        console.error("Error exporting research report:", error);
+        const { response, statusCode } = errorResponse(
+            "Failed to export research report",
             500,
             ERROR_CODES.SERVER_ERROR
         );
