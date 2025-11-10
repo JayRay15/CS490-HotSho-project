@@ -52,8 +52,17 @@ export const createCoverLetterFromTemplate = async (req, res) => {
     const userId = getUserId(req);
     const { templateId, name, content, style, jobId } = req.body || {};
 
+    // Validate required fields
     if (!name || !content) {
+      console.error('Validation error: Missing required fields', { hasName: !!name, hasContent: !!content });
       const { response, statusCode } = errorResponse("name and content are required", 400, ERROR_CODES.MISSING_REQUIRED_FIELD);
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Validate content is not empty
+    if (!content.trim()) {
+      console.error('Validation error: Content is empty');
+      const { response, statusCode } = errorResponse("Content cannot be empty", 400, ERROR_CODES.INVALID_INPUT);
       return sendResponse(res, response, statusCode);
     }
 
@@ -66,6 +75,7 @@ export const createCoverLetterFromTemplate = async (req, res) => {
         $or: [{ userId }, { isShared: true }]
       });
       if (!tpl) {
+        console.error('Template not found:', templateId);
         const { response, statusCode } = errorResponse("Template not found", 404, ERROR_CODES.NOT_FOUND);
         return sendResponse(res, response, statusCode);
       }
@@ -92,6 +102,11 @@ export const createCoverLetterFromTemplate = async (req, res) => {
     return sendResponse(res, response, statusCode);
   } catch (err) {
     console.error("Failed to create cover letter:", err);
+    console.error("Error details:", {
+      name: err.name,
+      message: err.message,
+      code: err.code
+    });
     const { response, statusCode } = errorResponse("Failed to create cover letter", 500, ERROR_CODES.DATABASE_ERROR);
     return sendResponse(res, response, statusCode);
   }

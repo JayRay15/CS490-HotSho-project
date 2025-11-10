@@ -6,12 +6,12 @@ const coverLetterTemplateSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     industry: { 
       type: String, 
-      enum: ["general", "technology", "business", "healthcare"], 
+      enum: ["general", "technology", "finance", "healthcare", "marketing", "education", "sales", "consulting", "engineering", "creative"], 
       default: "general"
     },
     style: { 
       type: String, 
-      enum: ["formal", "modern", "creative", "technical", "executive"], 
+      enum: ["formal", "casual", "enthusiastic", "analytical", "creative", "technical", "executive"], 
       default: "formal"
     },
     content: { type: String, required: true }, // Template content with placeholders

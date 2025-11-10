@@ -57,6 +57,15 @@ import DeleteConfirmationModal from "../../components/resume/DeleteConfirmationM
 import ViewIssuesButton from "../../components/resume/ViewIssuesButton";
 import { THEME_PRESETS, getThemePresetNames, getThemePreset } from "../../utils/themePresets";
 import { TEMPLATE_TYPES, DEFAULT_SECTIONS, SECTION_PRESETS, formatDate } from "../../utils/resumeConstants";
+import { 
+  TONE_OPTIONS, 
+  INDUSTRY_OPTIONS, 
+  COMPANY_CULTURE_OPTIONS, 
+  LENGTH_OPTIONS, 
+  WRITING_STYLE_OPTIONS,
+  validateToneConsistency,
+  getRecommendedSettings
+} from "../../utils/coverLetterToneConfig";
 import { useResumeValidation } from "../../hooks/useResumeValidation";
 import { useResumeExport } from "../../components/resume/useResumeExport";
 import { useSkillsOptimization } from "../../hooks/useSkillsOptimization";
@@ -221,11 +230,18 @@ export default function ResumeTemplates() {
   const [showAICoverLetterModal, setShowAICoverLetterModal] = useState(false);
   const [aiJobId, setAiJobId] = useState('');
   const [aiTone, setAiTone] = useState('formal');
+  const [aiIndustry, setAiIndustry] = useState('general');
+  const [aiCompanyCulture, setAiCompanyCulture] = useState('corporate');
+  const [aiLength, setAiLength] = useState('standard');
+  const [aiWritingStyle, setAiWritingStyle] = useState('hybrid');
+  const [aiCustomInstructions, setAiCustomInstructions] = useState('');
   const [aiVariationCount, setAiVariationCount] = useState(1);
   const [aiGeneratedVariations, setAiGeneratedVariations] = useState([]);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [aiGenerationError, setAiGenerationError] = useState('');
+  const [aiConsistencyWarnings, setAiConsistencyWarnings] = useState([]);
   const [selectedAIVariation, setSelectedAIVariation] = useState(0);
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
 
   const authWrap = async () => {
     const token = await getToken();
@@ -6044,10 +6060,17 @@ export default function ResumeTemplates() {
                     // Reset AI state
                     setAiJobId('');
                     setAiTone('formal');
+                    setAiIndustry('general');
+                    setAiCompanyCulture('corporate');
+                    setAiLength('standard');
+                    setAiWritingStyle('hybrid');
+                    setAiCustomInstructions('');
                     setAiVariationCount(1);
                     setAiGeneratedVariations([]);
                     setAiGenerationError('');
+                    setAiConsistencyWarnings([]);
                     setSelectedAIVariation(0);
+                    setShowAdvancedOptions(false);
                     // Load jobs for the dropdown
                     await loadJobs();
                     setShowAICoverLetterModal(true);
@@ -6186,6 +6209,31 @@ export default function ResumeTemplates() {
                         // Clear any previous errors when job is selected
                         if (e.target.value) {
                           setAiGenerationError('');
+                          
+                          // Auto-recommend settings based on job
+                          const selectedJob = jobs.find(j => j._id === e.target.value);
+                          if (selectedJob) {
+                            const recommendations = getRecommendedSettings(
+                              selectedJob.title,
+                              selectedJob.description,
+                              selectedJob.company
+                            );
+                            
+                            // Apply recommendations
+                            setAiTone(recommendations.tone);
+                            setAiIndustry(recommendations.industry);
+                            setAiCompanyCulture(recommendations.companyCulture);
+                            setAiLength(recommendations.length);
+                            setAiWritingStyle(recommendations.writingStyle);
+                            
+                            // Update warnings
+                            const warnings = validateToneConsistency(
+                              recommendations.tone,
+                              recommendations.industry,
+                              recommendations.companyCulture
+                            );
+                            setAiConsistencyWarnings(warnings);
+                          }
                         }
                       }}
                       disabled={isGeneratingAI}
@@ -6221,40 +6269,187 @@ export default function ResumeTemplates() {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 gap-4 mb-6">
+                  {/* Tone and Style Configuration */}
+                  <div className="space-y-4 mb-6">
+                    {/* Tone Selection */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Writing Tone
+                        Writing Tone *
                       </label>
                       <select
-                        className="w-full p-3 border border-gray-300 rounded-lg"
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         value={aiTone}
-                        onChange={(e) => setAiTone(e.target.value)}
+                        onChange={(e) => {
+                          setAiTone(e.target.value);
+                          // Update warnings when tone changes
+                          const warnings = validateToneConsistency(e.target.value, aiIndustry, aiCompanyCulture);
+                          setAiConsistencyWarnings(warnings);
+                        }}
                         disabled={isGeneratingAI}
                       >
-                        <option value="formal">Formal Professional</option>
-                        <option value="modern">Modern Professional</option>
-                        <option value="creative">Creative</option>
-                        <option value="technical">Technical</option>
-                        <option value="executive">Executive Leadership</option>
+                        {TONE_OPTIONS.map(option => (
+                          <option key={option.value} value={option.value}>
+                            {option.label} - {option.description}
+                          </option>
+                        ))}
                       </select>
                     </div>
 
+                    {/* Industry Selection */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Number of Variations
+                        Industry
                       </label>
                       <select
-                        className="w-full p-3 border border-gray-300 rounded-lg"
-                        value={aiVariationCount}
-                        onChange={(e) => setAiVariationCount(Number(e.target.value))}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        value={aiIndustry}
+                        onChange={(e) => {
+                          setAiIndustry(e.target.value);
+                          const warnings = validateToneConsistency(aiTone, e.target.value, aiCompanyCulture);
+                          setAiConsistencyWarnings(warnings);
+                        }}
                         disabled={isGeneratingAI}
                       >
-                        <option value={1}>1 Variation</option>
-                        <option value={2}>2 Variations</option>
-                        <option value={3}>3 Variations</option>
+                        {INDUSTRY_OPTIONS.map(option => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
                       </select>
                     </div>
+
+                    {/* Company Culture Selection */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Company Culture
+                      </label>
+                      <select
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        value={aiCompanyCulture}
+                        onChange={(e) => {
+                          setAiCompanyCulture(e.target.value);
+                          const warnings = validateToneConsistency(aiTone, aiIndustry, e.target.value);
+                          setAiConsistencyWarnings(warnings);
+                        }}
+                        disabled={isGeneratingAI}
+                      >
+                        {COMPANY_CULTURE_OPTIONS.map(option => (
+                          <option key={option.value} value={option.value}>
+                            {option.label} - {option.description}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Consistency Warnings */}
+                    {aiConsistencyWarnings.length > 0 && (
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                        {aiConsistencyWarnings.map((warning, idx) => (
+                          <p key={idx} className="text-sm text-amber-800 mb-1 last:mb-0">
+                            {warning}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Advanced Options Toggle */}
+                    <button
+                      type="button"
+                      onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+                      className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700"
+                      disabled={isGeneratingAI}
+                    >
+                      <svg 
+                        className={`w-4 h-4 transition-transform ${showAdvancedOptions ? 'rotate-90' : ''}`}
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                      {showAdvancedOptions ? 'Hide' : 'Show'} Advanced Options
+                    </button>
+
+                    {/* Advanced Options Panel */}
+                    {showAdvancedOptions && (
+                      <div className="space-y-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                        {/* Length Selection */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Cover Letter Length
+                          </label>
+                          <select
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            value={aiLength}
+                            onChange={(e) => setAiLength(e.target.value)}
+                            disabled={isGeneratingAI}
+                          >
+                            {LENGTH_OPTIONS.map(option => (
+                              <option key={option.value} value={option.value}>
+                                {option.label} - {option.description}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Writing Style Selection */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Writing Style
+                          </label>
+                          <select
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            value={aiWritingStyle}
+                            onChange={(e) => setAiWritingStyle(e.target.value)}
+                            disabled={isGeneratingAI}
+                          >
+                            {WRITING_STYLE_OPTIONS.map(option => (
+                              <option key={option.value} value={option.value}>
+                                {option.label} - {option.description}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Custom Instructions */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Custom Instructions (Optional)
+                          </label>
+                          <textarea
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                            rows="3"
+                            placeholder="Any specific instructions or points to emphasize? (max 500 characters)"
+                            value={aiCustomInstructions}
+                            onChange={(e) => setAiCustomInstructions(e.target.value.slice(0, 500))}
+                            disabled={isGeneratingAI}
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            {aiCustomInstructions.length}/500 characters
+                          </p>
+                        </div>
+
+                        {/* Variation Count */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Number of Variations
+                          </label>
+                          <select
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            value={aiVariationCount}
+                            onChange={(e) => setAiVariationCount(Number(e.target.value))}
+                            disabled={isGeneratingAI}
+                          >
+                            <option value={1}>1 Variation</option>
+                            <option value={2}>2 Variations</option>
+                            <option value={3}>3 Variations</option>
+                          </select>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Generate multiple versions to choose from
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {aiGenerationError && (
@@ -6287,7 +6482,12 @@ export default function ResumeTemplates() {
                           const response = await generateAICoverLetter({
                             jobId: aiJobId,
                             tone: aiTone,
-                            variationCount: aiVariationCount
+                            variationCount: aiVariationCount,
+                            industry: aiIndustry,
+                            companyCulture: aiCompanyCulture,
+                            length: aiLength,
+                            writingStyle: aiWritingStyle,
+                            customInstructions: aiCustomInstructions
                           });
 
                           setAiGeneratedVariations(response.data.data.variations);
@@ -6396,28 +6596,39 @@ export default function ResumeTemplates() {
                             await authWrap();
                             const selectedContent = aiGeneratedVariations[selectedAIVariation].content;
                             
+                            // Validate content is not empty
+                            if (!selectedContent || !selectedContent.trim()) {
+                              alert('Selected cover letter content is empty. Please try generating again.');
+                              return;
+                            }
+                            
                             // Find the selected job to get company and position
                             const selectedJob = jobs.find(j => j._id === aiJobId);
                             const coverLetterName = selectedJob 
                               ? `${selectedJob.title} at ${selectedJob.company}`
                               : 'AI Generated Cover Letter';
                             
-                            await createCoverLetter({
+                            const response = await createCoverLetter({
                               name: coverLetterName,
                               content: selectedContent,
                               style: aiTone,
                               templateId: null
                             });
 
-                            setShowAICoverLetterModal(false);
-                            setAiGeneratedVariations([]);
-                            setAiJobId('');
-                            
-                            await loadSavedCoverLetters();
-                            alert('AI-generated cover letter saved successfully!');
+                            if (response && response.data && response.data.success) {
+                              setShowAICoverLetterModal(false);
+                              setAiGeneratedVariations([]);
+                              setAiJobId('');
+                              
+                              await loadSavedCoverLetters();
+                              alert('AI-generated cover letter saved successfully!');
+                            } else {
+                              throw new Error('Unexpected response format');
+                            }
                           } catch (err) {
                             console.error('Save failed:', err);
-                            alert('Failed to save cover letter. Please try again.');
+                            const errorMessage = err.response?.data?.message || err.message || 'Unknown error occurred';
+                            alert(`Failed to save cover letter: ${errorMessage}. Please try again.`);
                           }
                         }}
                       >
