@@ -291,9 +291,10 @@ function calculateEducationScore(job, userProfile) {
     // Find highest education level
     const highestEducation = findHighestEducation(userEducation);
     const educationLevel = getEducationLevel(highestEducation?.degree || '');
+    const requiredDegreeLevel = getEducationLevel(requiredDegree);
 
     // Check degree match
-    const degreeMatch = requiredDegree === 'None' || educationLevel >= requiredDegree;
+    const degreeMatch = requiredDegree === 'None' || educationLevel >= requiredDegreeLevel;
 
     // Check field match
     const fieldMatch = !requiredField || userEducation.some(edu =>
@@ -352,7 +353,7 @@ function calculateAdditionalScore(job, userProfile) {
     if (locationMatch) score += 25;
 
     // Work mode match (25 points)
-    const workModeMatch = !job.workMode || job.workMode === 'Remote' || userProfile.location;
+    const workModeMatch = !job.workMode || job.workMode === 'Remote' || !!userProfile.location;
     if (workModeMatch) score += 25;
 
     // Salary expectation match (20 points)
@@ -531,8 +532,8 @@ function extractDegreeRequirement(job) {
     const text = `${job.description || ''} ${job.requirements?.join(' ') || ''}`.toLowerCase();
 
     if (text.includes('phd') || text.includes('doctorate')) return 'PhD';
-    if (text.includes('master') || text.includes('mba') || text.includes('ms')) return 'Master';
-    if (text.includes('bachelor') || text.includes('bs') || text.includes('ba')) return 'Bachelor';
+    if (text.includes('master') || text.includes('mba') || text.match(/\bms\b/)) return 'Master';
+    if (text.includes('bachelor') || text.match(/\bbs\b/) || text.match(/\bba\b/)) return 'Bachelor';
     if (text.includes('associate')) return 'Associate';
 
     return 'None';
