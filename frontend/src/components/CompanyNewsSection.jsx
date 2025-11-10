@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'prop-types';
+import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import Card from './Card';
 import axios from 'axios';
@@ -16,6 +16,12 @@ export default function CompanyNewsSection({ companyName, initialNews = [], onNe
     const [summary, setSummary] = useState(null);
     const [showExportModal, setShowExportModal] = useState(false);
 
+    console.log('🎬 CompanyNewsSection mounted/updated:', {
+        companyName,
+        initialNewsCount: initialNews.length,
+        currentNewsCount: news.length
+    });
+
     const categories = [
         { value: 'all', label: 'All News', icon: '📰' },
         { value: 'funding', label: 'Funding', icon: '💰' },
@@ -32,9 +38,15 @@ export default function CompanyNewsSection({ companyName, initialNews = [], onNe
     const fetchNews = async () => {
         setLoading(true);
         setError(null);
-        
+
+        console.log('🔍 Fetching news for company:', companyName);
+
         try {
-            const response = await axios.get(`/api/companies/news`, {
+            const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
+            const url = `${API_URL}/api/companies/news`;
+            console.log('📡 API URL:', url);
+
+            const response = await axios.get(url, {
                 params: {
                     company: companyName,
                     limit: 10,
@@ -43,15 +55,19 @@ export default function CompanyNewsSection({ companyName, initialNews = [], onNe
                 },
             });
 
+            console.log('✅ API Response:', response.data);
+
             if (response.data.success) {
                 setNews(response.data.data.news);
                 setSummary(response.data.data.summary);
+                console.log('📰 News items set:', response.data.data.news.length);
                 if (onNewsUpdate) {
                     onNewsUpdate(response.data.data.news);
                 }
             }
         } catch (err) {
-            console.error('Error fetching news:', err);
+            console.error('❌ Error fetching news:', err);
+            console.error('Error details:', err.response?.data || err.message);
             setError('Failed to fetch company news. Using cached data.');
         } finally {
             setLoading(false);
@@ -60,8 +76,19 @@ export default function CompanyNewsSection({ companyName, initialNews = [], onNe
 
     // Load news on component mount or when company changes
     useEffect(() => {
-        if (companyName && initialNews.length === 0) {
-            fetchNews();
+        console.log('🎯 useEffect triggered - companyName:', companyName, 'initialNews:', initialNews.length);
+
+        if (companyName) {
+            // Use initial news if provided, otherwise fetch
+            if (initialNews.length > 0) {
+                console.log('📦 Using initial news:', initialNews.length, 'items');
+                setNews(initialNews);
+            } else {
+                console.log('🌐 No initial news, fetching from API...');
+                fetchNews();
+            }
+        } else {
+            console.log('⚠️ No company name provided');
         }
     }, [companyName]);
 
@@ -89,7 +116,8 @@ export default function CompanyNewsSection({ companyName, initialNews = [], onNe
     // Export news summary
     const handleExport = async (format) => {
         try {
-            const response = await axios.get(`/api/companies/news/export`, {
+            const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
+            const response = await axios.get(`${API_URL}/api/companies/news/export`, {
                 params: {
                     company: companyName,
                     format,
@@ -112,7 +140,7 @@ export default function CompanyNewsSection({ companyName, initialNews = [], onNe
                 a.download = `${companyName.replace(/\s+/g, '_')}_news_summary.json`;
                 a.click();
             }
-            
+
             setShowExportModal(false);
         } catch (err) {
             console.error('Error exporting news:', err);
@@ -183,11 +211,10 @@ export default function CompanyNewsSection({ companyName, initialNews = [], onNe
                             <button
                                 key={cat.value}
                                 onClick={() => setSelectedCategory(cat.value)}
-                                className={`px-3 py-1.5 text-xs font-medium rounded-full transition ${
-                                    selectedCategory === cat.value
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                }`}
+                                className={`px-3 py-1.5 text-xs font-medium rounded-full transition ${selectedCategory === cat.value
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    }`}
                             >
                                 <span className="mr-1">{cat.icon}</span>
                                 {cat.label}
