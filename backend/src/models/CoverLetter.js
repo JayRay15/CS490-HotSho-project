@@ -15,6 +15,12 @@ const coverLetterSchema = new mongoose.Schema(
     metadata: { type: Object, default: {} }, // { clonedFrom?, clonedAt?, tailoredForJob?, etc. }
     isDefault: { type: Boolean, default: false }, // Mark default cover letter
     isArchived: { type: Boolean, default: false, index: true }, // Archive functionality
+    // UC-060: Edit history for version tracking during editing sessions
+    editHistory: [{
+      content: { type: String, required: true },
+      note: { type: String },
+      timestamp: { type: Date, default: Date.now }
+    }]
   },
   { timestamps: true }
 );

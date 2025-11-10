@@ -1131,3 +1131,245 @@ function detectRecommendedTone(analysis) {
   return 'formal';
 }
 
+/**
+ * Check spelling and grammar in cover letter text
+ * @param {string} text - Cover letter text to check
+ * @returns {Promise<Object>} Spelling and grammar suggestions
+ */
+export async function checkSpellingAndGrammar(text) {
+  try {
+    const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+
+    const prompt = `You are an expert proofreader and grammar checker. Analyze the following cover letter text and identify all spelling errors, grammar mistakes, and punctuation issues.
+
+**TEXT TO CHECK:**
+${text}
+
+**ANALYSIS REQUIRED:**
+1. Spelling Errors: Words that are misspelled
+2. Grammar Issues: Subject-verb agreement, tense consistency, sentence structure problems
+3. Punctuation: Missing or incorrect punctuation
+4. Word Choice: Awkward phrasing or better alternatives
+5. Overall Quality Score (0-100)
+
+**OUTPUT FORMAT (JSON):**
+{
+  "score": 95,
+  "issues": [
+    {
+      "type": "spelling|grammar|punctuation|word_choice",
+      "severity": "critical|moderate|minor",
+      "text": "The incorrect text",
+      "suggestion": "The corrected text",
+      "explanation": "Brief explanation of why it's wrong",
+      "position": {"start": 10, "end": 15}
+    }
+  ],
+  "summary": "Overall assessment of writing quality"
+}
+
+Return ONLY valid JSON, no markdown formatting.`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    let textResponse = response.text().trim();
+    
+    // Clean JSON markers
+    if (textResponse.startsWith('```json')) {
+      textResponse = textResponse.slice(7);
+    } else if (textResponse.startsWith('```')) {
+      textResponse = textResponse.slice(3);
+    }
+    if (textResponse.endsWith('```')) {
+      textResponse = textResponse.slice(0, -3);
+    }
+    
+    return JSON.parse(textResponse.trim());
+  } catch (error) {
+    console.error('Spelling/Grammar Check Error:', error);
+    throw new Error(`Failed to check spelling and grammar: ${error.message}`);
+  }
+}
+
+/**
+ * Get synonym suggestions for a word or phrase
+ * @param {string} word - Word or phrase to get synonyms for
+ * @param {string} context - Surrounding text for context
+ * @returns {Promise<Object>} Synonym suggestions
+ */
+export async function getSynonymSuggestions(word, context) {
+  try {
+    const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+
+    const prompt = `Suggest professional synonyms for the word/phrase "${word}" in the context of a cover letter.
+
+**CONTEXT:**
+${context}
+
+**REQUIREMENTS:**
+1. Provide 5-8 synonyms or alternative phrases
+2. Consider the professional cover letter context
+3. Rank by appropriateness for formal business writing
+4. Include brief usage notes
+
+**OUTPUT FORMAT (JSON):**
+{
+  "word": "${word}",
+  "synonyms": [
+    {
+      "word": "alternative",
+      "formality": "formal|neutral|casual",
+      "usage": "Best when emphasizing X",
+      "example": "Example sentence using this synonym"
+    }
+  ]
+}
+
+Return ONLY valid JSON, no markdown formatting.`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    let textResponse = response.text().trim();
+    
+    if (textResponse.startsWith('```json')) {
+      textResponse = textResponse.slice(7);
+    } else if (textResponse.startsWith('```')) {
+      textResponse = textResponse.slice(3);
+    }
+    if (textResponse.endsWith('```')) {
+      textResponse = textResponse.slice(0, -3);
+    }
+    
+    return JSON.parse(textResponse.trim());
+  } catch (error) {
+    console.error('Synonym Suggestion Error:', error);
+    throw new Error(`Failed to get synonym suggestions: ${error.message}`);
+  }
+}
+
+/**
+ * Analyze readability and provide improvement suggestions
+ * @param {string} text - Cover letter text to analyze
+ * @returns {Promise<Object>} Readability analysis and suggestions
+ */
+export async function analyzeReadability(text) {
+  try {
+    const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+
+    const prompt = `Analyze the readability and writing quality of this cover letter text. Provide detailed feedback and improvement suggestions.
+
+**TEXT TO ANALYZE:**
+${text}
+
+**ANALYSIS REQUIRED:**
+1. Readability Score (0-100): Based on sentence complexity, word choice, and flow
+2. Average Sentence Length
+3. Vocabulary Level (basic, intermediate, advanced, expert)
+4. Tone Consistency (formal, professional, casual)
+5. Paragraph Structure Quality
+6. Transition Quality Between Paragraphs
+7. Specific Improvement Suggestions
+
+**OUTPUT FORMAT (JSON):**
+{
+  "readabilityScore": 85,
+  "metrics": {
+    "averageSentenceLength": 18,
+    "vocabularyLevel": "advanced",
+    "toneConsistency": "professional",
+    "paragraphStructure": "good|fair|poor",
+    "transitionQuality": "excellent|good|fair|poor"
+  },
+  "strengths": [
+    "Clear opening statement",
+    "Strong action verbs"
+  ],
+  "improvements": [
+    {
+      "issue": "Long, complex sentences in paragraph 2",
+      "suggestion": "Break into shorter sentences for better clarity",
+      "priority": "high|medium|low",
+      "example": "Example of improved version"
+    }
+  ],
+  "summary": "2-3 sentence overall assessment"
+}
+
+Return ONLY valid JSON, no markdown formatting.`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    let textResponse = response.text().trim();
+    
+    if (textResponse.startsWith('```json')) {
+      textResponse = textResponse.slice(7);
+    } else if (textResponse.startsWith('```')) {
+      textResponse = textResponse.slice(3);
+    }
+    if (textResponse.endsWith('```')) {
+      textResponse = textResponse.slice(0, -3);
+    }
+    
+    return JSON.parse(textResponse.trim());
+  } catch (error) {
+    console.error('Readability Analysis Error:', error);
+    throw new Error(`Failed to analyze readability: ${error.message}`);
+  }
+}
+
+/**
+ * Suggest restructuring for sentences or paragraphs
+ * @param {string} text - Text to restructure
+ * @param {string} type - Type of restructuring: 'sentence' or 'paragraph'
+ * @returns {Promise<Object>} Restructuring suggestions
+ */
+export async function suggestRestructuring(text, type = 'sentence') {
+  try {
+    const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+
+    const prompt = `Suggest better ways to structure this ${type} from a cover letter. Provide multiple variations with different emphases.
+
+**TEXT TO RESTRUCTURE:**
+${text}
+
+**REQUIREMENTS:**
+1. Provide 3-5 restructured variations
+2. Each should emphasize a different aspect (clarity, impact, flow, conciseness, formality)
+3. Explain what makes each version better
+4. Maintain the original meaning and facts
+
+**OUTPUT FORMAT (JSON):**
+{
+  "original": "${text.substring(0, 100)}...",
+  "variations": [
+    {
+      "text": "Restructured version",
+      "emphasis": "clarity|impact|flow|conciseness|formality",
+      "improvements": "What's better about this version",
+      "wordCountChange": "+5|-3|0"
+    }
+  ]
+}
+
+Return ONLY valid JSON, no markdown formatting.`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    let textResponse = response.text().trim();
+    
+    if (textResponse.startsWith('```json')) {
+      textResponse = textResponse.slice(7);
+    } else if (textResponse.startsWith('```')) {
+      textResponse = textResponse.slice(3);
+    }
+    if (textResponse.endsWith('```')) {
+      textResponse = textResponse.slice(0, -3);
+    }
+    
+    return JSON.parse(textResponse.trim());
+  } catch (error) {
+    console.error('Restructuring Suggestion Error:', error);
+    throw new Error(`Failed to suggest restructuring: ${error.message}`);
+  }
+}
+

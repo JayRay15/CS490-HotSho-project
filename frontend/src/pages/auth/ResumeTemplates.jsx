@@ -28,6 +28,7 @@ import Container from "../../components/Container";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import InputField from "../../components/InputField";
+import CoverLetterEditor from "../../components/CoverLetterEditor";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import CoverLetterExportModal from "../../components/CoverLetterExportModal";
 import ValidationPanel from "../../components/resume/ValidationPanel";
@@ -79,6 +80,91 @@ import {
   resolveFeedback as apiResolveFeedback,
   exportFeedbackSummary as apiExportFeedbackSummary
 } from "../../api/resumeShare";
+
+// Utility function to format plain text into HTML paragraphs
+const formatCoverLetterContent = (content) => {
+  if (!content) return '';
+  
+  // If content already has HTML paragraph tags, return as-is
+  if (content.includes('<p>') || content.includes('<div>') || content.includes('<br')) {
+    return content;
+  }
+  
+  // Split content into lines, preserving empty lines
+  const lines = content.split('\n');
+  
+  const result = [];
+  let currentParagraph = [];
+  let inBody = false;
+  
+  lines.forEach((line, index) => {
+    const trimmedLine = line.trim();
+    
+    // Handle empty lines - just skip them, don't add blank paragraphs
+    // The CSS margin will provide the spacing
+    if (trimmedLine.length === 0) {
+      // Save any accumulated paragraph first
+      if (currentParagraph.length > 0) {
+        result.push(`<p>${currentParagraph.join(' ')}</p>`);
+        currentParagraph = [];
+      }
+      return;
+    }
+    
+    // More aggressive header detection
+    const isHeaderLine = !inBody && (
+      trimmedLine.length < 80 && (
+        trimmedLine.includes('@') || // Email
+        trimmedLine.match(/^\d{10}/) || // Phone number
+        trimmedLine.match(/^\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/) || // Phone with formatting
+        trimmedLine.match(/^\d{1,2}\/\d{1,2}\/\d{4}/) || // Date format
+        trimmedLine.match(/^[A-Z][a-z]+ \d{1,2}, \d{4}/) || // Date format "November 10, 2025"
+        trimmedLine.match(/^[A-Z][a-z]+(?: [A-Z][a-z]+)*,? [A-Z]{2}$/) || // "City, State" format
+        trimmedLine.match(/^[A-Z][a-z]+(?: [A-Z][a-z]+)*$/) || // Name or single words in Title Case
+        trimmedLine.toLowerCase().trim() === 'hiring manager' ||
+        trimmedLine.toLowerCase().startsWith('dear ') ||
+        trimmedLine.endsWith(':') || // Greeting or label
+        trimmedLine.endsWith(',') || // Greeting comma
+        index < 15 // First 15 lines are likely header
+      )
+    );
+    
+    // Check if this line starts the body (contains multiple sentences or is long)
+    const startsBody = trimmedLine.length > 80 || trimmedLine.split(/[.!?]/).length > 2;
+    
+    if (isHeaderLine && !startsBody) {
+      // Save any accumulated paragraph first
+      if (currentParagraph.length > 0) {
+        result.push(`<p>${currentParagraph.join(' ')}</p>`);
+        currentParagraph = [];
+      }
+      // Add header line as its own paragraph
+      result.push(`<p>${trimmedLine}</p>`);
+    } else {
+      // Mark that we've entered the body
+      inBody = true;
+      
+      // This is body text - accumulate sentences
+      currentParagraph.push(trimmedLine);
+      
+      // Check if we should end the paragraph (after ~3 sentences)
+      const combinedText = currentParagraph.join(' ');
+      const sentenceCount = combinedText.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
+      
+      if (sentenceCount >= 3) {
+        result.push(`<p>${combinedText}</p>`);
+        currentParagraph = [];
+      }
+    }
+  });
+  
+  // Add any remaining content
+  if (currentParagraph.length > 0) {
+    result.push(`<p>${currentParagraph.join(' ')}</p>`);
+  }
+  
+  return result.join('');
+};
 
 export default function ResumeTemplates() {
   const { getToken } = useAuth();
@@ -221,6 +307,9 @@ export default function ResumeTemplates() {
   const [showManageCoverLetterTemplates, setShowManageCoverLetterTemplates] = useState(false);
   const [editingCoverLetter, setEditingCoverLetter] = useState(null);
   const [showEditCoverLetterModal, setShowEditCoverLetterModal] = useState(false);
+  const [showViewCoverLetterModal, setShowViewCoverLetterModal] = useState(false);
+  const [viewingCoverLetter, setViewingCoverLetter] = useState(null);
+  const [isCoverLetterEditMode, setIsCoverLetterEditMode] = useState(false);
 
   // UC-054: Cover Letter Export State
   const [showCoverLetterExportModal, setShowCoverLetterExportModal] = useState(false);
@@ -1995,73 +2084,167 @@ export default function ResumeTemplates() {
                     .map((letter) => (
                       <Card
                         key={letter._id}
-                        variant="elevated"
-                        className="p-4 hover:shadow-lg transition-shadow"
+                        variant="outlined"
+                        interactive
+                        className="overflow-hidden !p-0"
                       >
-                        <div className="mb-3">
-                          <h3 className="font-semibold text-lg truncate" style={{ color: "#4F5348" }}>
-                            {letter.name}
-                          </h3>
-                        </div>
-                        <p className="text-sm text-gray-600 mb-3 line-clamp-3">
-                          {letter.content.substring(0, 100)}...
-                        </p>
-                        <p className="text-xs text-gray-500 mb-3">
-                          Modified {new Date(letter.updatedAt).toLocaleDateString()}
-                        </p>
-                        <div className="flex flex-col gap-2">
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => {
-                                setEditingCoverLetter(letter);
-                                setCustomCoverLetterName(letter.name);
-                                setCustomCoverLetterContent(letter.content);
-                                setCustomCoverLetterStyle(letter.style || 'formal');
-                                setShowEditCoverLetterModal(true);
-                              }}
-                              className="flex-1 px-3 py-1.5 text-sm rounded transition"
-                              style={{ backgroundColor: "#777C6D", color: "white" }}
-                              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-                            >
-                              View
-                            </button>
-                            <button
-                              onClick={async () => {
-                                if (confirm(`Delete "${letter.name}"?`)) {
-                                  try {
-                                    await authWrap();
-                                    await apiDeleteCoverLetter(letter._id);
-                                    await loadSavedCoverLetters();
-                                    alert("Cover letter deleted successfully!");
-                                  } catch (err) {
-                                    console.error("Delete failed:", err);
-                                    alert("Failed to delete cover letter.");
-                                  }
-                                }
-                              }}
-                              className="px-3 py-1.5 text-sm text-red-600 hover:text-red-700 border border-red-300 rounded transition"
-                            >
-                              Delete
-                            </button>
+                        {/* Preview Area */}
+                        <div
+                          className="h-64 p-4 flex flex-col justify-start border-b cursor-pointer"
+                          style={{ backgroundColor: "#F9F9F9" }}
+                          onClick={() => {
+                            setViewingCoverLetter(letter);
+                            setCustomCoverLetterName(letter.name);
+                            setCustomCoverLetterContent(letter.content);
+                            setCustomCoverLetterStyle(letter.style || 'formal');
+                            setIsCoverLetterEditMode(false);
+                            setShowViewCoverLetterModal(true);
+                          }}
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="text-xs font-bold" style={{ color: '#4F5348' }}>
+                              {letter.name || "Untitled Cover Letter"}
+                            </div>
+                            <span className="inline-block px-2 py-0.5 text-[10px] rounded-full capitalize flex-shrink-0" 
+                                  style={{ backgroundColor: '#E8EBE4', color: '#4F5348' }}>
+                              {letter.style || 'formal'}
+                            </span>
                           </div>
-                          {/* UC-054: Export Button */}
-                          <button
-                            onClick={() => {
-                              setExportingCoverLetter(letter);
-                              setShowCoverLetterExportModal(true);
-                            }}
-                            className="w-full px-3 py-1.5 text-sm text-white rounded transition flex items-center justify-center gap-2"
-                            style={{ backgroundColor: "#4F5348" }}
-                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#3a3d34'}
-                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#4F5348'}
-                            title="Export cover letter"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                            </svg>
-                            Export
-                          </button>
+                          <div className="flex-1 overflow-hidden">
+                            <div className="text-[7px] text-gray-600 leading-tight line-clamp-[18]">
+                              {letter.content.replace(/<[^>]*>/g, '')}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Info & Actions */}
+                        <div className="px-2 pt-2 pb-2">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <p className="text-sm font-medium text-gray-900 line-clamp-1 flex-1 min-w-0">
+                              {letter.name}
+                            </p>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs text-gray-500">
+                              Modified {new Date(letter.updatedAt).toLocaleDateString()}
+                            </p>
+                            <div className="flex items-center gap-1">
+                              {/* View Button */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setViewingCoverLetter(letter);
+                                  setCustomCoverLetterName(letter.name);
+                                  setCustomCoverLetterContent(letter.content);
+                                  setCustomCoverLetterStyle(letter.style || 'formal');
+                                  setIsCoverLetterEditMode(false);
+                                  setShowViewCoverLetterModal(true);
+                                }}
+                                className="p-1 rounded-lg transition flex-shrink-0 flex items-center justify-center"
+                                style={{ color: '#6B7280' }}
+                                onMouseOver={(e) => {
+                                  e.currentTarget.style.color = '#777C6D';
+                                  e.currentTarget.style.backgroundColor = '#F5F6F4';
+                                }}
+                                onMouseOut={(e) => {
+                                  e.currentTarget.style.color = '#6B7280';
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
+                                title="View"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                              </button>
+
+                              {/* Edit Button */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setViewingCoverLetter(letter);
+                                  setEditingCoverLetter(letter);
+                                  setCustomCoverLetterName(letter.name);
+                                  setCustomCoverLetterContent(letter.content);
+                                  setCustomCoverLetterStyle(letter.style || 'formal');
+                                  setIsCoverLetterEditMode(true);
+                                  setShowViewCoverLetterModal(true);
+                                }}
+                                className="p-1 rounded-lg transition flex-shrink-0 flex items-center justify-center"
+                                style={{ color: '#6B7280' }}
+                                onMouseOver={(e) => {
+                                  e.currentTarget.style.color = '#777C6D';
+                                  e.currentTarget.style.backgroundColor = '#F5F6F4';
+                                }}
+                                onMouseOut={(e) => {
+                                  e.currentTarget.style.color = '#6B7280';
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
+                                title="Edit"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </button>
+
+                              {/* Export Button */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setExportingCoverLetter(letter);
+                                  setShowCoverLetterExportModal(true);
+                                }}
+                                className="p-1 rounded-lg transition flex-shrink-0 flex items-center justify-center"
+                                style={{ color: '#6B7280' }}
+                                onMouseOver={(e) => {
+                                  e.currentTarget.style.color = '#4F5348';
+                                  e.currentTarget.style.backgroundColor = '#F5F6F4';
+                                }}
+                                onMouseOut={(e) => {
+                                  e.currentTarget.style.color = '#6B7280';
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
+                                title="Export"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                              </button>
+
+                              {/* Delete Button */}
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (confirm(`Delete "${letter.name}"?`)) {
+                                    try {
+                                      await authWrap();
+                                      await apiDeleteCoverLetter(letter._id);
+                                      await loadSavedCoverLetters();
+                                      alert("Cover letter deleted successfully!");
+                                    } catch (err) {
+                                      console.error("Delete failed:", err);
+                                      alert("Failed to delete cover letter.");
+                                    }
+                                  }
+                                }}
+                                className="p-1 rounded-lg transition flex-shrink-0 flex items-center justify-center"
+                                style={{ color: '#6B7280' }}
+                                onMouseOver={(e) => {
+                                  e.currentTarget.style.color = '#B91C1C';
+                                  e.currentTarget.style.backgroundColor = '#FEE2E2';
+                                }}
+                                onMouseOut={(e) => {
+                                  e.currentTarget.style.color = '#6B7280';
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
+                                title="Delete"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0H7m4-4h2a2 2 0 012 2v2H9V5a2 2 0 012-2z" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </Card>
                     ))}
@@ -7018,120 +7201,224 @@ export default function ResumeTemplates() {
         </div>
       )}
 
-      {/* Edit Cover Letter Modal */}
-      {showEditCoverLetterModal && editingCoverLetter && (
+      {/* View/Edit Cover Letter Modal - UC-060: Enhanced with rich text editor and AI assistance */}
+      {showViewCoverLetterModal && viewingCoverLetter && (
         <div
           className="fixed inset-0 flex items-center justify-center z-50 p-4"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
-          onClick={() => setShowEditCoverLetterModal(false)}
+          onClick={() => {
+            setShowViewCoverLetterModal(false);
+            setIsCoverLetterEditMode(false);
+          }}
         >
           <div
-            className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold" style={{ color: "#4F5348" }}>
-                  Edit Cover Letter
+                  {isCoverLetterEditMode ? 'Edit Cover Letter' : 'View Cover Letter'}
                 </h2>
-                <button
-                  onClick={() => setShowEditCoverLetterModal(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+                <div className="flex items-center gap-3">
+                  {!isCoverLetterEditMode && (
+                    <button
+                      onClick={() => {
+                        setEditingCoverLetter(viewingCoverLetter);
+                        setIsCoverLetterEditMode(true);
+                      }}
+                      className="px-4 py-2 text-white rounded-lg transition flex items-center gap-2"
+                      style={{ backgroundColor: '#777C6D' }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      Edit
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      setShowViewCoverLetterModal(false);
+                      setIsCoverLetterEditMode(false);
+                    }}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               </div>
 
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Cover Letter Name
-                </label>
-                <input
-                  type="text"
-                  className="w-full p-3 border border-gray-300 rounded-lg"
-                  value={customCoverLetterName}
-                  onChange={(e) => setCustomCoverLetterName(e.target.value)}
-                  placeholder="e.g., My Software Engineer Cover Letter"
-                />
-              </div>
+              {!isCoverLetterEditMode ? (
+                /* VIEW MODE */
+                <>
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Cover Letter Name
+                    </label>
+                    <div className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50">
+                      {customCoverLetterName}
+                    </div>
+                  </div>
 
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Cover Letter Style
-                </label>
-                <select
-                  className="w-full p-3 border border-gray-300 rounded-lg"
-                  value={customCoverLetterStyle}
-                  onChange={(e) => setCustomCoverLetterStyle(e.target.value)}
-                >
-                  <option value="formal">Formal</option>
-                  <option value="modern">Modern</option>
-                  <option value="creative">Creative</option>
-                  <option value="technical">Technical</option>
-                  <option value="executive">Executive</option>
-                </select>
-              </div>
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Cover Letter Style
+                    </label>
+                    <div className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 capitalize">
+                      {customCoverLetterStyle}
+                    </div>
+                  </div>
 
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Cover Letter Content
-                </label>
-                <textarea
-                  className="w-full h-96 p-4 border border-gray-300 rounded-lg font-sans text-sm"
-                  value={customCoverLetterContent}
-                  onChange={(e) => setCustomCoverLetterContent(e.target.value)}
-                  placeholder="Edit your cover letter here..."
-                />
-              </div>
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Cover Letter Content
+                    </label>
+                    <div 
+                      className="cover-letter-content w-full p-4 border border-gray-300 rounded-lg bg-gray-50 min-h-[400px]"
+                      dangerouslySetInnerHTML={{ __html: formatCoverLetterContent(customCoverLetterContent) }}
+                    />
+                  </div>
 
-              <div className="flex justify-end gap-3">
-                <button
-                  onClick={() => setShowEditCoverLetterModal(false)}
-                  className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={async () => {
-                    try {
-                      if (!customCoverLetterName.trim()) {
-                        alert("Please enter a name for your cover letter.");
-                        return;
-                      }
-                      if (!customCoverLetterContent.trim()) {
-                        alert("Please enter cover letter content.");
-                        return;
-                      }
+                  <div className="flex justify-end gap-3">
+                    <button
+                      onClick={() => {
+                        setShowViewCoverLetterModal(false);
+                        setIsCoverLetterEditMode(false);
+                      }}
+                      className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                    >
+                      Close
+                    </button>
+                    <button
+                      onClick={() => {
+                        setExportingCoverLetter(viewingCoverLetter);
+                        setShowCoverLetterExportModal(true);
+                      }}
+                      className="px-6 py-2 text-white rounded-lg transition flex items-center gap-2"
+                      style={{ backgroundColor: '#4F5348' }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#3a3d34'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#4F5348'}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      Export
+                    </button>
+                  </div>
+                </>
+              ) : (
+                /* EDIT MODE */
+                <>
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Cover Letter Name
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full p-3 border border-gray-300 rounded-lg"
+                      value={customCoverLetterName}
+                      onChange={(e) => setCustomCoverLetterName(e.target.value)}
+                      placeholder="e.g., My Software Engineer Cover Letter"
+                    />
+                  </div>
 
-                      await authWrap();
-                      await apiUpdateCoverLetter(editingCoverLetter._id, {
-                        name: customCoverLetterName,
-                        content: customCoverLetterContent,
-                        style: customCoverLetterStyle
-                      });
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Cover Letter Style
+                    </label>
+                    <select
+                      className="w-full p-3 border border-gray-300 rounded-lg"
+                      value={customCoverLetterStyle}
+                      onChange={(e) => setCustomCoverLetterStyle(e.target.value)}
+                    >
+                      <option value="formal">Formal</option>
+                      <option value="casual">Casual</option>
+                      <option value="enthusiastic">Enthusiastic</option>
+                      <option value="analytical">Analytical</option>
+                      <option value="creative">Creative</option>
+                      <option value="technical">Technical</option>
+                      <option value="executive">Executive</option>
+                    </select>
+                  </div>
 
-                      setShowEditCoverLetterModal(false);
-                      setEditingCoverLetter(null);
-                      setCustomCoverLetterName('');
-                      setCustomCoverLetterContent('');
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Cover Letter Content
+                    </label>
+                    <CoverLetterEditor
+                      initialContent={formatCoverLetterContent(customCoverLetterContent)}
+                      onChange={(content) => setCustomCoverLetterContent(content)}
+                      coverLetterId={editingCoverLetter._id}
+                      onSave={async (content) => {
+                        setCustomCoverLetterContent(content);
+                      }}
+                    />
+                  </div>
 
-                      await loadSavedCoverLetters();
-                      alert("Cover letter updated successfully!");
-                    } catch (err) {
-                      console.error("Update failed:", err);
-                      alert("Failed to update cover letter. Please try again.");
-                    }
-                  }}
-                  className="px-6 py-2 text-white rounded-lg transition"
-                  style={{ backgroundColor: '#777C6D' }}
-                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-                >
-                  Save Changes
-                </button>
-              </div>
+                  <div className="flex justify-end gap-3">
+                    <button
+                      onClick={() => {
+                        // Restore original values
+                        setCustomCoverLetterName(viewingCoverLetter.name);
+                        setCustomCoverLetterContent(viewingCoverLetter.content);
+                        setCustomCoverLetterStyle(viewingCoverLetter.style || 'formal');
+                        setIsCoverLetterEditMode(false);
+                      }}
+                      className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          if (!customCoverLetterName.trim()) {
+                            alert("Please enter a name for your cover letter.");
+                            return;
+                          }
+                          if (!customCoverLetterContent.trim()) {
+                            alert("Please enter cover letter content.");
+                            return;
+                          }
+
+                          await authWrap();
+                          await apiUpdateCoverLetter(editingCoverLetter._id, {
+                            name: customCoverLetterName,
+                            content: customCoverLetterContent,
+                            style: customCoverLetterStyle
+                          });
+
+                          // Update the viewing cover letter with new data
+                          setViewingCoverLetter({
+                            ...viewingCoverLetter,
+                            name: customCoverLetterName,
+                            content: customCoverLetterContent,
+                            style: customCoverLetterStyle
+                          });
+
+                          setIsCoverLetterEditMode(false);
+                          setEditingCoverLetter(null);
+
+                          await loadSavedCoverLetters();
+                          alert("Cover letter updated successfully!");
+                        } catch (err) {
+                          console.error("Update failed:", err);
+                          alert("Failed to update cover letter. Please try again.");
+                        }
+                      }}
+                      className="px-6 py-2 text-white rounded-lg transition"
+                      style={{ backgroundColor: '#777C6D' }}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                    >
+                      Save Changes
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
