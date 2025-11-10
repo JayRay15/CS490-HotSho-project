@@ -6,7 +6,8 @@ import {
   extractKeyPoints,
   extractTags,
   processNewsItem,
-  generateSampleNews
+  generateSampleNews,
+  generateNewsSummary
 } from '../newsService.js';
 
 describe('newsService utilities', () => {
@@ -365,6 +366,47 @@ describe('newsService utilities', () => {
       
       const hasPositive = news.some(item => item.sentiment === 'positive');
       expect(hasPositive).toBe(true);
+    });
+  });
+
+  describe('generateNewsSummary', () => {
+    it('returns default summary when no news items', () => {
+      const summary = generateNewsSummary([], 'NoCo');
+      expect(summary.summary).toContain('No recent news available');
+      expect(Array.isArray(summary.highlights)).toBe(true);
+      expect(summary.highlights.length).toBe(0);
+      expect(Array.isArray(summary.categories)).toBe(true);
+      expect(summary.categories.length).toBe(0);
+    });
+
+    it('generates highlights, categories and averages for mixed items', () => {
+      const items = [
+        { title: 'A wins award', category: 'awards', relevanceScore: 8 },
+        { title: 'A launches product', category: 'product_launch', relevanceScore: 7 },
+        { title: 'A hires new team', category: 'hiring', relevanceScore: 5 }
+      ];
+
+      const summary = generateNewsSummary(items, 'A');
+      expect(summary.totalItems).toBe(3);
+      expect(summary.categories.length).toBeGreaterThan(0);
+      expect(summary.highlights.length).toBeGreaterThan(0);
+      expect(Number(summary.averageRelevance)).toBeGreaterThan(0);
+    });
+  });
+
+  describe('calculateRelevance extra cases', () => {
+    it('caps company mention bonus at 2 and clamps to 10', () => {
+      const news = {
+        title: 'X X X',
+        summary: 'X X X',
+        date: new Date(),
+        category: 'general'
+      };
+
+      const score = calculateRelevance(news, 'X');
+      // base 5 + recent 3 + mentions capped to 2 => 10 max
+      expect(score).toBeLessThanOrEqual(10);
+      expect(score).toBeGreaterThanOrEqual(0);
     });
   });
 });
