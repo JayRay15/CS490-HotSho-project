@@ -899,32 +899,65 @@ Generate the cover letter${variationCount > 1 ? 's' : ''} now with ALL actual in
  * Parse AI response into structured variations
  */
 function parseCoverLetterVariations(text, expectedCount) {
-  const variations = [];
+  // Normalize newlines
+  const normalized = String(text || '').replace(/\r\n/g, '\n');
 
+  // Helper to build a variation object
+  const buildVariation = (content) => ({
+    content: content.trim(),
+    openingParagraph: extractParagraph(content, 0),
+    bodyParagraphs: extractParagraphs(content, 1, -1),
+    closingParagraph: extractParagraph(content, -1)
+  });
+
+  // If only one variation expected, return whole response as single variation
   if (expectedCount === 1) {
-    // Single variation - return as is
-    variations.push({
-      content: text.trim(),
-      openingParagraph: extractParagraph(text, 0),
-      bodyParagraphs: extractParagraphs(text, 1, -1),
-      closingParagraph: extractParagraph(text, -1)
-    });
-  } else {
-    // Multiple variations - split by separator
-    const parts = text.split(/===VARIATION\s+\d+===/i);
-    parts.forEach((part, index) => {
-      const content = part.trim();
-      if (content) {
-        variations.push({
-          content,
-          openingParagraph: extractParagraph(content, 0),
-          bodyParagraphs: extractParagraphs(content, 1, -1),
-          closingParagraph: extractParagraph(content, -1)
-        });
-      }
-    });
+    return [buildVariation(normalized)];
   }
 
+  // Try a set of likely separators the model might use
+  const separatorPatterns = [
+    /={3,}\s*VARIATION\s*\d+\s*={3,}/i, // ===VARIATION 1===
+    /={3,}\s*VARIATION\b/i,                // ===VARIATION
+    /---+\s*VARIATION\s*\d+\s*-+/i,     // ---VARIATION 1---
+    /VARIATION\s+\d+/i,                  // VARIATION 1
+    /\n\s*={3,}\s*\n/                   // lines of ===
+  ];
+
+  // Attempt splitting using separators
+  let parts = null;
+  for (const pat of separatorPatterns) {
+    if (pat.test(normalized)) {
+      parts = normalized.split(pat).map(p => p.trim()).filter(Boolean);
+      if (parts.length > 1) break;
+    }
+  }
+
+  // As a fallback, try splitting on explicit marker like ===VARIATION 1=== with optional spaces
+  if (!parts || parts.length <= 1) {
+    parts = normalized.split(/===\s*VARIATION\s*\d+\s*===/i).map(p => p.trim()).filter(Boolean);
+  }
+
+  // If still single part, attempt heuristic: split into paragraphs and distribute across expectedCount
+  if (!parts || parts.length <= 1) {
+    const paragraphs = normalized.split(/\n\n+/).map(p => p.trim()).filter(Boolean);
+    if (paragraphs.length >= expectedCount) {
+      // Try to chunk paragraphs into expectedCount groups as evenly as possible
+      const groups = Array.from({ length: expectedCount }, () => []);
+      paragraphs.forEach((p, i) => {
+        groups[i % expectedCount].push(p);
+      });
+      parts = groups.map(g => g.join('\n\n').trim()).filter(Boolean);
+    }
+  }
+
+  // Final safety: if still no multi-parts, include the whole text as a single part
+  if (!parts || parts.length === 0) {
+    parts = [normalized.trim()];
+  }
+
+  // Build variation objects and return up to expectedCount
+  const variations = parts.map(p => buildVariation(p));
   return variations.slice(0, expectedCount);
 }
 
@@ -932,7 +965,7 @@ function parseCoverLetterVariations(text, expectedCount) {
  * Extract a specific paragraph from text
  */
 function extractParagraph(text, index) {
-  const paragraphs = text.split('\n\n').filter(p => p.trim());
+  const paragraphs = String(text || '').split(/\n\n+/).filter(p => p.trim());
   if (index < 0) {
     index = paragraphs.length + index;
   }
@@ -943,7 +976,7 @@ function extractParagraph(text, index) {
  * Extract multiple paragraphs from text
  */
 function extractParagraphs(text, startIndex, endIndex) {
-  const paragraphs = text.split('\n\n').filter(p => p.trim());
+  const paragraphs = String(text || '').split(/\n\n+/).filter(p => p.trim());
   if (endIndex < 0) {
     endIndex = paragraphs.length + endIndex;
   }
