@@ -11,7 +11,7 @@ const PIPELINE_STAGES = [
   { id: "Rejected", label: "Rejected", color: "bg-red-100 border-red-300" },
 ];
 
-export default function JobPipeline({ jobs, onJobStatusChange, onJobEdit, onJobDelete, onJobView, highlightTerms, selectedJobs = [], onToggleSelect, onJobArchive, onJobRestore, onScheduleInterview }) {
+export default function JobPipeline({ jobs, onJobStatusChange, onJobEdit, onJobDelete, onJobView, highlightTerms, selectedJobs = [], onToggleSelect, onJobArchive, onJobRestore, onScheduleInterview, onViewMatchScore }) {
   const [draggedJob, setDraggedJob] = useState(null);
   const [dragOverStage, setDragOverStage] = useState(null);
 
@@ -65,9 +65,8 @@ export default function JobPipeline({ jobs, onJobStatusChange, onJobEdit, onJobD
         return (
           <div
             key={stage.id}
-            className={`shrink-0 w-80 rounded-lg border-2 ${stage.color} ${
-              isDropTarget ? "ring-4 ring-blue-400 ring-opacity-50" : ""
-            }`}
+            className={`shrink-0 w-80 rounded-lg border-2 ${stage.color} ${isDropTarget ? "ring-4 ring-blue-400 ring-opacity-50" : ""
+              }`}
             onDragOver={(e) => handleDragOver(e, stage.id)}
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, stage.id)}
@@ -145,6 +144,7 @@ export default function JobPipeline({ jobs, onJobStatusChange, onJobEdit, onJobD
                       onArchive={onJobArchive}
                       onRestore={onJobRestore}
                       onScheduleInterview={onScheduleInterview}
+                      onViewMatchScore={onViewMatchScore}
                     />
                   </div>
                 ))
@@ -176,4 +176,5 @@ JobPipeline.propTypes = {
   onJobArchive: PropTypes.func,
   onJobRestore: PropTypes.func,
   onScheduleInterview: PropTypes.func,
+  onViewMatchScore: PropTypes.func,
 };

@@ -1,5 +1,7 @@
 # API Endpoints Documentation
 
+**Last Updated:** November 10, 2025
+
 ## Base URL
 ```
 http://localhost:5000/api
@@ -809,4 +811,405 @@ console.log('Response:', data);
 - Real data used when 3+ applications exist for the company
 - Industry standards used when limited company data available
 - `basedOnRealData` flag indicates data source reliability
+
+
+---
+
+## Job Matching (UC-063)
+
+### Calculate Match Score
+**POST** `/job-matches/calculate/:jobId`
+
+Calculate how well user matches a specific job opportunity.
+
+**Request Body (optional):**
+```json
+{
+  "customWeights": {
+    "skills": 50,
+    "experience": 25,
+    "education": 15,
+    "additional": 10
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Match score calculated",
+  "data": {
+    "_id": "matchId",
+    "userId": "userId",
+    "jobId": "jobId",
+    "overallScore": 78,
+    "matchGrade": "Good",
+    "categoryScores": {
+      "skills": {
+        "score": 85,
+        "weight": 40,
+        "details": {
+          "matched": ["JavaScript", "React", "Node.js"],
+          "missing": ["Python"],
+          "weak": [],
+          "matchedCount": 3,
+          "totalRequired": 4
+        }
+      },
+      "experience": {
+        "score": 75,
+        "weight": 30,
+        "details": {
+          "yearsExperience": 3.5,
+          "yearsRequired": 3,
+          "relevantPositions": [...],
+          "industryMatch": true,
+          "seniorityMatch": true
+        }
+      },
+      "education": {
+        "score": 70,
+        "weight": 15,
+        "details": {
+          "degreeMatch": true,
+          "fieldMatch": true,
+          "gpaMatch": true,
+          "hasRequiredDegree": true,
+          "educationLevel": "Bachelor"
+        }
+      },
+      "additional": {
+        "score": 80,
+        "weight": 15,
+        "details": {
+          "locationMatch": true,
+          "workModeMatch": true,
+          "salaryExpectationMatch": true,
+          "certifications": 1,
+          "projects": 2
+        }
+      }
+    },
+    "strengths": [
+      {
+        "category": "skills",
+        "description": "Strong skill match with 3 out of 4 required skills",
+        "impact": "high"
+      }
+    ],
+    "gaps": [
+      {
+        "category": "skills",
+        "description": "Missing required skills: Python",
+        "severity": "important",
+        "suggestion": "Consider gaining experience in Python through courses or projects"
+      }
+    ],
+    "suggestions": [
+      {
+        "type": "skill",
+        "priority": "high",
+        "title": "Learn Python",
+        "description": "Python is a critical skill for this position. Focus on this first.",
+        "estimatedImpact": 10,
+        "resources": [
+          {
+            "title": "Python course on Coursera",
+            "url": "https://www.coursera.org/search?query=Python",
+            "platform": "Coursera"
+          }
+        ]
+      }
+    ],
+    "metadata": {
+      "jobTitle": "Software Engineer",
+      "company": "Tech Corp",
+      "industry": "Technology",
+      "calculatedAt": "2025-11-10T12:00:00Z",
+      "algorithVersion": "1.0"
+    }
+  }
+}
+```
+
+---
+
+### Get Match Score
+**GET** `/job-matches/:jobId`
+
+Retrieve existing match score for a job.
+
+**Response:** Same as Calculate Match Score
+
+---
+
+### Get All Matches
+**GET** `/job-matches`
+
+Get all match scores for user's jobs.
+
+**Query Parameters:**
+- `sortBy` (optional): Field to sort by (`overallScore`, `createdAt`, `metadata.company`). Default: `overallScore`
+- `order` (optional): Sort order (`asc`, `desc`). Default: `desc`
+- `minScore` (optional): Filter by minimum score (0-100)
+- `maxScore` (optional): Filter by maximum score (0-100)
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Matches retrieved",
+  "data": {
+    "matches": [
+      {
+        "_id": "matchId",
+        "overallScore": 85,
+        "matchGrade": "Excellent",
+        "categoryScores": {...},
+        "job": {
+          "_id": "jobId",
+          "title": "Software Engineer",
+          "company": "Tech Corp",
+          ...
+        }
+      }
+    ],
+    "total": 5
+  }
+}
+```
+
+---
+
+### Compare Job Matches
+**POST** `/job-matches/compare`
+
+Compare match scores across multiple jobs.
+
+**Request Body:**
+```json
+{
+  "jobIds": ["jobId1", "jobId2", "jobId3"]
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Jobs compared",
+  "data": {
+    "totalJobs": 3,
+    "averageScore": 72,
+    "bestMatch": {
+      "job": "Software Engineer at Google",
+      "score": 85,
+      "id": "jobId1"
+    },
+    "worstMatch": {
+      "job": "Backend Developer at Startup",
+      "score": 60,
+      "id": "jobId3"
+    },
+    "recommendations": [
+      {
+        "type": "action",
+        "message": "Software Engineer at Google is your best match (85%). Prioritize this application."
+      }
+    ],
+    "scoreDistribution": {
+      "excellent": 1,
+      "good": 1,
+      "fair": 1,
+      "poor": 0
+    }
+  }
+}
+```
+
+---
+
+### Update Custom Weights
+**PUT** `/job-matches/:jobId/weights`
+
+Update category weights for match calculation.
+
+**Request Body:**
+```json
+{
+  "skills": 50,
+  "experience": 25,
+  "education": 15,
+  "additional": 10
+}
+```
+
+**Note:** Weights must sum to 100.
+
+**Response:** Updated match record with recalculated score
+
+---
+
+### Get Match History
+**GET** `/job-matches/:jobId/history`
+
+Get historical match scores for a job to track improvement over time.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Match history retrieved",
+  "data": {
+    "matches": [
+      {
+        "_id": "matchId1",
+        "overallScore": 65,
+        "createdAt": "2025-10-01T12:00:00Z"
+      },
+      {
+        "_id": "matchId2",
+        "overallScore": 72,
+        "createdAt": "2025-10-15T12:00:00Z"
+      },
+      {
+        "_id": "matchId3",
+        "overallScore": 78,
+        "createdAt": "2025-11-01T12:00:00Z"
+      }
+    ],
+    "trend": {
+      "direction": "improving",
+      "change": 13,
+      "firstScore": 65,
+      "latestScore": 78
+    },
+    "timeline": [
+      {
+        "date": "2025-10-01T12:00:00Z",
+        "score": 65,
+        "skills": 70,
+        "experience": 60,
+        "education": 65,
+        "additional": 70
+      }
+    ]
+  }
+}
+```
+
+---
+
+### Get Match Trends
+**GET** `/job-matches/trends/all`
+
+Analyze match score trends across all jobs.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Match trends retrieved",
+  "data": {
+    "averageScore": 73,
+    "categoryAverages": {
+      "skills": 78,
+      "experience": 70,
+      "education": 75,
+      "additional": 72
+    },
+    "weakestCategory": {
+      "category": "experience",
+      "score": 70
+    },
+    "trends": [
+      {
+        "month": "Oct 2025",
+        "averageScore": 70,
+        "count": 3
+      },
+      {
+        "month": "Nov 2025",
+        "averageScore": 76,
+        "count": 2
+      }
+    ],
+    "totalMatches": 5,
+    "scoreDistribution": {
+      "excellent": 1,
+      "good": 2,
+      "fair": 2,
+      "poor": 0
+    }
+  }
+}
+```
+
+---
+
+### Export Match Report
+**GET** `/job-matches/:jobId/export`
+
+Export detailed match analysis report.
+
+**Query Parameters:**
+- `format` (optional): Export format (`json`, `text`). Default: `json`
+
+**Response:** 
+- JSON format: Returns match data as downloadable JSON file
+- Text format: Returns formatted plain text report
+
+---
+
+### Delete Match
+**DELETE** `/job-matches/:jobId`
+
+Delete a match record.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Match deleted"
+}
+```
+
+---
+
+### Calculate All Matches
+**POST** `/job-matches/calculate-all`
+
+Batch calculate match scores for all active (non-archived) jobs.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "All matches calculated",
+  "data": {
+    "calculatedMatches": 5,
+    "topMatch": {
+      "jobId": "jobId1",
+      "score": 85,
+      "job": "Software Engineer at Google"
+    },
+    "averageScore": 73
+  }
+}
+```
+
+---
+
+**Match Score Grading:**
+- **Excellent** (85-100%): Outstanding match, highly recommended
+- **Good** (70-84%): Strong match, good candidate
+- **Fair** (55-69%): Moderate match, consider with reservations
+- **Poor** (0-54%): Weak match, may not be suitable
+
+**Scoring Categories:**
+- **Skills** (default 40%): Technical and soft skills alignment
+- **Experience** (default 30%): Years of experience, relevant positions, seniority
+- **Education** (default 15%): Degree level, field of study, academic performance
+- **Additional** (default 15%): Location, work mode, certifications, projects
 
