@@ -726,15 +726,6 @@ export const generateAICoverLetter = async (req, res) => {
       return sendResponse(res, response, statusCode);
     }
 
-    console.log('📋 User profile check:', {
-      hasEmployment: !!userProfile.employment,
-      employmentCount: userProfile.employment?.length || 0,
-      employmentSample: userProfile.employment?.[0] ? {
-        jobTitle: userProfile.employment[0].jobTitle,
-        company: userProfile.employment[0].company
-      } : 'none'
-    });
-
     // Check if user has sufficient profile data
     if (!userProfile.employment || userProfile.employment.length === 0) {
       const { response, statusCode } = errorResponse(
@@ -746,7 +737,6 @@ export const generateAICoverLetter = async (req, res) => {
     }
 
     // Research company information
-    console.log(`🔍 Researching company: ${job.company}`);
     const companyResearchData = await researchCompany(job.company, jobDescription);
     const formattedResearch = formatResearchForCoverLetter(companyResearchData);
 
@@ -761,9 +751,6 @@ export const generateAICoverLetter = async (req, res) => {
       companyResearch: formattedResearch
     });
 
-    console.log('✅ Generated variations:', variations.length);
-    console.log('📤 Sending success response to frontend');
-
     const { response, statusCode } = successResponse(
       "Cover letter generated successfully",
       { 
@@ -776,14 +763,7 @@ export const generateAICoverLetter = async (req, res) => {
     );
     return sendResponse(res, response, statusCode);
   } catch (err) {
-    console.error("❌ Error generating AI cover letter:", err);
-    console.error("Error stack:", err.stack);
-    console.error("Error details:", {
-      message: err.message,
-      variationCount,
-      jobId,
-      tone
-    });
+    console.error("Error generating AI cover letter:", err);
     const { response, statusCode } = errorResponse(
       `Failed to generate cover letter: ${err.message}`,
       500,
