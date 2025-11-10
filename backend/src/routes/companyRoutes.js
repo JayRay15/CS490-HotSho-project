@@ -1,5 +1,11 @@
 import express from "express";
-import { getCompanyInfo, getCompanyNews, exportNewsSummary } from "../controllers/companyController.js";
+import {
+    getCompanyInfo,
+    getCompanyNews,
+    exportNewsSummary,
+    getComprehensiveResearch,
+    exportResearchReport
+} from "../controllers/companyController.js";
 
 const router = express.Router();
 
@@ -12,5 +18,11 @@ router.get("/news", getCompanyNews);
 
 // GET /api/companies/news/export - Export news summary for applications
 router.get("/news/export", exportNewsSummary);
+
+// UC-064: GET /api/companies/research - Conduct comprehensive company research
+router.get("/research", getComprehensiveResearch);
+
+// UC-064: GET /api/companies/research/export - Export comprehensive research report
+router.get("/research/export", exportResearchReport);
 
 export default router;

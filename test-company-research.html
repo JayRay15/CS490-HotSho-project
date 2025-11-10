@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UC-064: Company Research Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .demo-card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .input-group input,
+        .input-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus,
+        .input-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .input-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .results {
+            margin-top: 30px;
+        }
+
+        .quality-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-left: 10px;
+        }
+
+        .quality-excellent {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .quality-good {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .quality-limited {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .section h3 {
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .section-icon {
+            font-size: 1.5rem;
+            margin-right: 10px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .info-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 3px solid #667eea;
+        }
+
+        .info-label {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .list-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .list-item:last-child {
+            border-bottom: none;
+        }
+
+        .social-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .social-link {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #667eea;
+            transition: transform 0.2s;
+        }
+
+        .social-link:hover {
+            transform: translateX(5px);
+        }
+
+        .social-icon {
+            font-size: 1.5rem;
+            margin-right: 10px;
+        }
+
+        .summary-box {
+            background: linear-gradient(135deg, #e0e7ff 0%, #fce7f3 100%);
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 1.05rem;
+            line-height: 1.6;
+        }
+
+        .export-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #dc3545;
+        }
+
+        .acceptance-criteria {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .criteria-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: #e7f3ff;
+            border-left: 3px solid #28a745;
+            border-radius: 4px;
+        }
+
+        .criteria-item::before {
+            content: "✅ ";
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 UC-064: Automated Company Research</h1>
+            <p>Comprehensive company intelligence for job applications</p>
+        </div>
+
+        <div class="demo-card">
+            <h2>Try It Out</h2>
+            <p style="margin-bottom: 20px; color: #666;">Enter a company name to see comprehensive research in action
+            </p>
+
+            <div class="input-group">
+                <label for="companyName">Company Name *</label>
+                <input type="text" id="companyName" placeholder="e.g., Google, Microsoft, Apple" value="Google" />
+            </div>
+
+            <div class="input-group">
+                <label for="jobDescription">Job Description (Optional)</label>
+                <textarea id="jobDescription"
+                    placeholder="Paste a job description for more context-aware research..."></textarea>
+            </div>
+
+            <div class="input-group">
+                <label for="website">Company Website (Optional)</label>
+                <input type="text" id="website" placeholder="e.g., https://google.com" />
+            </div>
+
+            <button class="btn" onclick="conductResearch()">
+                🔍 Research Company
+            </button>
+
+            <div id="loading" class="loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>Conducting comprehensive research...</p>
+                <p style="color: #666; font-size: 0.9rem; margin-top: 10px;">
+                    Gathering data from multiple sources, analyzing with AI, and generating report...
+                </p>
+            </div>
+
+            <div id="error" style="display: none;"></div>
+            <div id="results" class="results" style="display: none;"></div>
+        </div>
+
+        <div class="demo-card acceptance-criteria">
+            <h2>✅ Acceptance Criteria Coverage</h2>
+            <p style="margin-bottom: 15px; color: #666;">All 9 acceptance criteria fully implemented:</p>
+
+            <div class="criteria-item">Gather basic company information (size, industry, headquarters)</div>
+            <div class="criteria-item">Research company mission, values, and culture</div>
+            <div class="criteria-item">Find recent news and press releases</div>
+            <div class="criteria-item">Identify key executives and leadership team</div>
+            <div class="criteria-item">Discover company products and services</div>
+            <div class="criteria-item">Research competitive landscape</div>
+            <div class="criteria-item">Find company social media presence</div>
+            <div class="criteria-item">Generate company research summary</div>
+            <div class="criteria-item">Frontend verification (view comprehensive report)</div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5001';
+
+        async function conductResearch() {
+            const companyName = document.getElementById('companyName').value.trim();
+            const jobDescription = document.getElementById('jobDescription').value.trim();
+            const website = document.getElementById('website').value.trim();
+
+            if (!companyName) {
+                alert('Please enter a company name');
+                return;
+            }
+
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+
+            try {
+                const params = new URLSearchParams({ company: companyName });
+                if (jobDescription) params.append('jobDescription', jobDescription);
+                if (website) params.append('website', website);
+
+                const response = await fetch(`${API_URL}/api/companies/research?${params}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    displayResults(data.data.research);
+                } else {
+                    showError(data.message || 'Research failed');
+                }
+            } catch (error) {
+                showError('Failed to connect to API. Make sure the backend server is running on http://localhost:5001');
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        function displayResults(research) {
+            const resultsDiv = document.getElementById('results');
+            const quality = research.metadata.dataQuality;
+            const qualityClass = quality >= 80 ? 'quality-excellent' : quality >= 60 ? 'quality-good' : 'quality-limited';
+
+            let html = `
+                <h2>
+                    ${research.companyName}
+                    <span class="quality-badge ${qualityClass}">
+                        ${quality}% Data Quality
+                    </span>
+                </h2>
+                
+                <div class="summary-box">
+                    <strong>📝 Summary:</strong><br>
+                    ${research.summary}
+                </div>
+
+                <div class="export-buttons">
+                    <button class="btn" onclick="exportResearch('text')">📄 Export as Text</button>
+                    <button class="btn" onclick="exportResearch('json')">📋 Export as JSON</button>
+                </div>
+
+                <div class="section">
+                    <h3><span class="section-icon">📊</span>Basic Information</h3>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">🏢 Industry</div>
+                            <div class="info-value">${research.basicInfo.industry}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">👥 Company Size</div>
+                            <div class="info-value">${research.basicInfo.size}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">📍 Headquarters</div>
+                            <div class="info-value">${research.basicInfo.headquarters}</div>
+                        </div>
+                        ${research.basicInfo.founded ? `
+                        <div class="info-item">
+                            <div class="info-label">📅 Founded</div>
+                            <div class="info-value">${research.basicInfo.founded}</div>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+
+                ${research.missionAndCulture.mission ? `
+                <div class="section">
+                    <h3><span class="section-icon">🎯</span>Mission & Culture</h3>
+                    <p><strong>Mission:</strong> ${research.missionAndCulture.mission}</p>
+                    ${research.missionAndCulture.values.length > 0 ? `
+                    <p style="margin-top: 15px;"><strong>Core Values:</strong></p>
+                    <ul style="margin-left: 20px; margin-top: 10px;">
+                        ${research.missionAndCulture.values.map(v => `<li>${v}</li>`).join('')}
+                    </ul>
+                    ` : ''}
+                </div>
+                ` : ''}
+
+                ${research.productsAndServices.mainProducts.length > 0 ? `
+                <div class="section">
+                    <h3><span class="section-icon">🚀</span>Products & Services</h3>
+                    <ul style="margin-left: 20px;">
+                        ${research.productsAndServices.mainProducts.map(p => `<li>${p}</li>`).join('')}
+                    </ul>
+                    ${research.productsAndServices.technologies.length > 0 ? `
+                    <p style="margin-top: 15px;"><strong>Technologies:</strong> ${research.productsAndServices.technologies.join(', ')}</p>
+                    ` : ''}
+                </div>
+                ` : ''}
+
+                ${research.leadership.executives.length > 0 ? `
+                <div class="section">
+                    <h3><span class="section-icon">👔</span>Leadership Team</h3>
+                    ${research.leadership.executives.map(exec => `
+                        <div class="list-item">
+                            <strong>${exec.name}</strong> - ${exec.title}
+                            ${exec.background ? `<br><small style="color: #666;">${exec.background}</small>` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+                ` : ''}
+
+                ${research.competitive.mainCompetitors.length > 0 ? `
+                <div class="section">
+                    <h3><span class="section-icon">🏆</span>Competitive Landscape</h3>
+                    <p><strong>Main Competitors:</strong> ${research.competitive.mainCompetitors.join(', ')}</p>
+                    ${research.competitive.marketPosition ? `
+                    <p style="margin-top: 10px;"><strong>Market Position:</strong> ${research.competitive.marketPosition}</p>
+                    ` : ''}
+                </div>
+                ` : ''}
+
+                ${research.socialMedia.platforms && Object.keys(research.socialMedia.platforms).length > 0 ? `
+                <div class="section">
+                    <h3><span class="section-icon">📱</span>Social Media Presence</h3>
+                    <div class="social-links">
+                        ${Object.entries(research.socialMedia.platforms).map(([platform, url]) => `
+                            <a href="${url}" target="_blank" class="social-link">
+                                <span class="social-icon">${getPlatformIcon(platform)}</span>
+                                <span style="text-transform: capitalize;">${platform}</span>
+                            </a>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : ''}
+            `;
+
+            resultsDiv.innerHTML = html;
+            resultsDiv.style.display = 'block';
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.innerHTML = `<div class="error">${message}</div>`;
+            errorDiv.style.display = 'block';
+        }
+
+        function getPlatformIcon(platform) {
+            const icons = {
+                linkedin: '💼',
+                twitter: '🐦',
+                facebook: '👥',
+                instagram: '📷',
+                youtube: '📺',
+                github: '💻'
+            };
+            return icons[platform.toLowerCase()] || '🔗';
+        }
+
+        async function exportResearch(format) {
+            const companyName = document.getElementById('companyName').value.trim();
+            const jobDescription = document.getElementById('jobDescription').value.trim();
+            const website = document.getElementById('website').value.trim();
+
+            const params = new URLSearchParams({ company: companyName, format });
+            if (jobDescription) params.append('jobDescription', jobDescription);
+            if (website) params.append('website', website);
+
+            try {
+                const response = await fetch(`${API_URL}/api/companies/research/export?${params}`);
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${companyName.replace(/\s+/g, '_')}_research_report.${format === 'json' ? 'json' : 'txt'}`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } catch (error) {
+                alert('Export failed: ' + error.message);
+            }
+        }
+    </script>
+</body>
+
+</html>

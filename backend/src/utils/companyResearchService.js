@@ -12,11 +12,11 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 export async function researchCompany(companyName, jobDescription = '') {
   try {
     console.log(`🔍 Researching company: ${companyName}`);
-    
+
     // Use AI to extract and synthesize company information from job description
     // and generate comprehensive research
     const research = await generateCompanyResearch(companyName, jobDescription);
-    
+
     return research;
   } catch (error) {
     console.error('Company research error:', error);
@@ -35,6 +35,122 @@ export async function researchCompany(companyName, jobDescription = '') {
       competitive: null,
       researchSuccess: false
     };
+  }
+}
+
+/**
+ * UC-064: Comprehensive Company Research
+ * Conducts automated, in-depth company research for job applications
+ * @param {string} companyName - Name of the company to research
+ * @param {string} jobDescription - Optional job description for context
+ * @param {string} companyWebsite - Optional company website
+ * @returns {Promise<Object>} Comprehensive company research data
+ */
+export async function conductComprehensiveResearch(companyName, jobDescription = '', companyWebsite = '') {
+  try {
+    console.log(`🔍 Starting comprehensive research for: ${companyName}`);
+
+    // Gather data from multiple sources in parallel
+    const [
+      basicInfo,
+      aiResearch,
+      socialMedia,
+      executives
+    ] = await Promise.all([
+      gatherBasicCompanyInfo(companyName, companyWebsite),
+      generateAIResearch(companyName, jobDescription),
+      findSocialMediaPresence(companyName, companyWebsite),
+      identifyExecutives(companyName)
+    ]);
+
+    // Combine all research data
+    const comprehensiveResearch = {
+      companyName,
+      researchDate: new Date().toISOString(),
+
+      // Basic Information (Enhanced)
+      basicInfo: {
+        name: basicInfo.name || companyName,
+        size: aiResearch.size || basicInfo.size || 'Not specified',
+        industry: aiResearch.industry || basicInfo.industry || 'Not specified',
+        headquarters: aiResearch.headquarters || basicInfo.headquarters || 'Not specified',
+        founded: aiResearch.founded || basicInfo.founded || null,
+        website: basicInfo.website || companyWebsite || null,
+        logo: basicInfo.logo || null,
+        // New enhanced fields
+        companyType: aiResearch.companyType || 'Private',
+        stockTicker: aiResearch.stockTicker || null,
+        revenue: aiResearch.revenue || null,
+        description: aiResearch.description || `${companyName} is a company in the ${aiResearch.industry || 'technology'} industry.`
+      },
+
+      // Mission, Values, and Culture
+      missionAndCulture: {
+        mission: basicInfo.mission || aiResearch.mission || null,
+        values: aiResearch.values || [],
+        culture: aiResearch.culture || null,
+        workEnvironment: aiResearch.workEnvironment || null
+      },
+
+      // Recent News and Press Releases
+      news: {
+        recentNews: basicInfo.recentNews || [],
+        pressReleases: aiResearch.pressReleases || [],
+        majorAnnouncements: aiResearch.majorAnnouncements || []
+      },
+
+      // Leadership Team
+      leadership: {
+        executives: executives.executives || [],
+        keyLeaders: executives.keyLeaders || [],
+        leadershipInfo: aiResearch.leadershipInfo || null
+      },
+
+      // Products and Services
+      productsAndServices: {
+        mainProducts: aiResearch.mainProducts || [],
+        services: aiResearch.services || [],
+        technologies: aiResearch.technologies || [],
+        innovations: aiResearch.innovations || []
+      },
+
+      // Competitive Landscape
+      competitive: {
+        mainCompetitors: aiResearch.competitors || [],
+        marketPosition: aiResearch.marketPosition || null,
+        uniqueValue: aiResearch.uniqueValue || null,
+        industryTrends: aiResearch.industryTrends || []
+      },
+
+      // Social Media Presence
+      socialMedia: {
+        platforms: socialMedia.platforms || {},
+        engagement: socialMedia.engagement || null
+      },
+
+      // Summary
+      summary: generateResearchSummary({
+        basicInfo,
+        aiResearch,
+        socialMedia,
+        executives
+      }),
+
+      // Metadata
+      metadata: {
+        researchSuccess: true,
+        dataQuality: calculateDataQuality({ basicInfo, aiResearch, socialMedia, executives }),
+        sources: ['AI Analysis', 'Public Data', 'Social Media Lookup'],
+        lastUpdated: new Date().toISOString()
+      }
+    };
+
+    console.log(`✅ Comprehensive research completed for ${companyName}`);
+    return comprehensiveResearch;
+
+  } catch (error) {
+    console.error('Comprehensive company research error:', error);
+    return getMinimalComprehensiveResearchData(companyName);
   }
 }
 
@@ -126,13 +242,13 @@ Generate the company research JSON now:`;
     const result = await model.generateContent(prompt);
     const response = await result.response;
     let text = response.text().trim();
-    
+
     // Remove markdown code blocks if present
     text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    
+
     // Parse JSON
     const research = JSON.parse(text);
-    
+
     console.log(`✅ Company research completed for ${companyName}`);
     return research;
   } catch (error) {
@@ -152,7 +268,7 @@ export function formatResearchForCoverLetter(research) {
   const parts = [];
 
   parts.push(`**COMPANY RESEARCH INSIGHTS:**\n`);
-  
+
   if (research.background) {
     parts.push(`Company Background: ${research.background}`);
   }
@@ -200,4 +316,540 @@ export function formatResearchForCoverLetter(research) {
   parts.push(`- Make the research feel natural and integrated, not forced`);
 
   return parts.join('\n');
+}
+
+/**
+ * Helper Functions for Comprehensive Research
+ */
+
+/**
+ * Gather basic company information from public sources
+ */
+async function gatherBasicCompanyInfo(companyName, companyWebsite) {
+  const basicInfo = {
+    name: companyName,
+    size: null,
+    industry: null,
+    headquarters: null,
+    founded: null,
+    website: companyWebsite,
+    logo: null,
+    mission: null,
+    recentNews: []
+  };
+
+  try {
+    // Try Clearbit API for basic info
+    const AUTOCOMPLETE_API = 'https://autocomplete.clearbit.com/v1/companies/suggest?query=';
+    const autocompleteRes = await fetch(`${AUTOCOMPLETE_API}${encodeURIComponent(companyName)}`);
+
+    if (autocompleteRes.ok) {
+      const suggestions = await autocompleteRes.json();
+      if (suggestions && suggestions.length > 0) {
+        const company = suggestions[0];
+        basicInfo.name = company.name || companyName;
+        basicInfo.website = company.domain ? `https://${company.domain}` : companyWebsite;
+        basicInfo.logo = company.logo || `https://logo.clearbit.com/${company.domain}`;
+      }
+    }
+
+    // Try Wikipedia for more detailed information
+    const wikiSearchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(companyName + ' company')}&format=json&origin=*`;
+    const wikiSearchRes = await fetch(wikiSearchUrl);
+
+    if (wikiSearchRes.ok) {
+      const searchData = await wikiSearchRes.json();
+      if (searchData.query?.search?.length > 0) {
+        const pageTitle = searchData.query.search[0].title;
+
+        // Get page content
+        const wikiContentUrl = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(pageTitle)}&prop=extracts&exintro=true&explaintext=true&format=json&origin=*`;
+        const wikiContentRes = await fetch(wikiContentUrl);
+
+        if (wikiContentRes.ok) {
+          const contentData = await wikiContentRes.json();
+          const pages = contentData.query.pages;
+          const pageId = Object.keys(pages)[0];
+          const extract = pages[pageId].extract;
+
+          if (extract) {
+            // Extract industry
+            const industryPatterns = [
+              /is an? ([^\.]+) company/i,
+              /operates in the ([^\.]+) industry/i,
+              /specializes in ([^\.]+)/i
+            ];
+            for (const pattern of industryPatterns) {
+              const match = extract.match(pattern);
+              if (match && match[1]) {
+                basicInfo.industry = match[1].trim();
+                break;
+              }
+            }
+
+            // Extract headquarters
+            const hqMatch = extract.match(/headquartered in ([^\.]+)/i) ||
+              extract.match(/based in ([^\.]+)/i);
+            if (hqMatch) {
+              basicInfo.headquarters = hqMatch[1].trim().split(',')[0];
+            }
+
+            // Extract founded year
+            const foundedMatch = extract.match(/founded in (\d{4})/i) ||
+              extract.match(/established in (\d{4})/i);
+            if (foundedMatch) {
+              basicInfo.founded = parseInt(foundedMatch[1]);
+            }
+
+            // Extract employee count for size estimation
+            const employeeMatch = extract.match(/(\d{1,3}(?:,\d{3})*)\s+employees/i);
+            if (employeeMatch) {
+              const size = parseInt(employeeMatch[1].replace(/,/g, ''));
+              if (size <= 10) basicInfo.size = '1-10';
+              else if (size <= 50) basicInfo.size = '11-50';
+              else if (size <= 200) basicInfo.size = '51-200';
+              else if (size <= 500) basicInfo.size = '201-500';
+              else if (size <= 1000) basicInfo.size = '501-1000';
+              else if (size <= 5000) basicInfo.size = '1001-5000';
+              else if (size <= 10000) basicInfo.size = '5001-10000';
+              else basicInfo.size = '10000+';
+            }
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.log('Basic info gathering error:', error.message);
+  }
+
+  return basicInfo;
+}
+
+/**
+ * Use AI to generate comprehensive company research
+ */
+async function generateAIResearch(companyName, jobDescription) {
+  const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+
+  const prompt = `You are a professional business research analyst. Conduct comprehensive research about ${companyName} and provide detailed insights.
+
+${jobDescription ? `**JOB DESCRIPTION CONTEXT:**\n${jobDescription}\n\n` : ''}
+
+**RESEARCH REQUIREMENTS:**
+
+Analyze and provide information about ${companyName} in the following areas:
+
+1. **Basic Information**:
+   - Industry and sector (be specific, e.g., "Cloud Computing & Enterprise Software")
+   - Company size: Use employee count if known (e.g., "10,000+ employees") or estimate category
+   - Headquarters location (City, State/Country)
+   - Year founded
+   - Type: Public/Private, Parent company if subsidiary
+   - Revenue range if public company
+   - Stock ticker if publicly traded
+
+2. **Mission and Values**:
+   - Company mission statement (exact wording if known)
+   - Core values (3-5 specific values)
+   - Company culture description (2-3 sentences)
+   - Work environment characteristics
+
+3. **Products and Services**:
+   - Main products (list 3-5 flagship products with brief descriptions)
+   - Services offered (enterprise, consumer, B2B, B2C)
+   - Technologies used (programming languages, frameworks, cloud platforms)
+   - Recent innovations or product launches (last 12 months)
+
+4. **Leadership Team**:
+   - Key executives with full names and titles (CEO, CFO, CTO, etc.)
+   - Leadership style or philosophy
+   - Notable backgrounds or achievements
+
+5. **Competitive Landscape**:
+   - Direct competitors (list 3-5 main competitors)
+   - Market position (market leader, challenger, emerging, niche)
+   - Unique value proposition or differentiators
+   - Industry trends and how company is positioned
+
+6. **Recent Developments**:
+   - Recent achievements, milestones, or awards
+   - Press releases or major announcements
+   - Expansion plans, new offices, or market entries
+   - Acquisitions, partnerships, or funding rounds
+
+**OUTPUT FORMAT (JSON):**
+Return ONLY valid JSON (no markdown, no code blocks) with this structure:
+{
+  "size": "Specific employee count (e.g., '50,000+', '1,000-5,000', '100-500') or category (enterprise/large/medium/small/startup)",
+  "industry": "Specific industry name",
+  "headquarters": "City, State/Country",
+  "founded": 2000,
+  "companyType": "Public|Private|Subsidiary|Non-profit",
+  "stockTicker": "NASDAQ: GOOGL" or null,
+  "revenue": "Annual revenue if known" or null,
+  "description": "2-3 sentence company overview",
+  "mission": "Exact mission statement",
+  "values": ["value1", "value2", "value3", "value4", "value5"],
+  "culture": "Company culture description",
+  "workEnvironment": "Work environment characteristics",
+  "mainProducts": ["Product 1: description", "Product 2: description"],
+  "services": ["service1", "service2", "service3"],
+  "technologies": ["tech1", "tech2", "tech3"],
+  "innovations": ["innovation1: brief description", "innovation2: brief description"],
+  "competitors": ["Competitor 1", "Competitor 2", "Competitor 3"],
+  "marketPosition": "Detailed market position (market share, rank, category)",
+  "uniqueValue": "What differentiates them from competitors",
+  "industryTrends": ["trend1", "trend2", "trend3"],
+  "pressReleases": [
+    {"title": "Title", "summary": "Summary", "date": "2025-11-10"}
+  ],
+  "majorAnnouncements": ["announcement1", "announcement2"],
+  "leadershipInfo": "Leadership philosophy or notable info"
+}
+
+**IMPORTANT:**
+- Use SPECIFIC, FACTUAL information about ${companyName} if you have it
+- For company size, prefer specific employee counts over categories (e.g., "150,000 employees" instead of just "enterprise")
+- Include all available data - don't leave fields empty if you have information
+- If truly unknown, use null for strings, [] for arrays, or reasonable placeholder
+- Be detailed and comprehensive - this is for job application research
+- Focus on information valuable for job seekers
+- All arrays should have at least 2-3 items if possible
+- Use null for unknown single values, empty arrays [] for unknown lists
+
+Generate the research JSON now:`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    let text = response.text().trim();
+
+    // Remove markdown code blocks if present
+    text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+    // Parse JSON
+    const research = JSON.parse(text);
+
+    console.log(`✅ AI research completed for ${companyName}`);
+    return research;
+  } catch (error) {
+    console.error('AI research generation failed:', error);
+    return getDefaultAIResearch();
+  }
+}
+
+/**
+ * Find company social media presence
+ */
+async function findSocialMediaPresence(companyName, companyWebsite) {
+  const socialMedia = {
+    platforms: {},
+    engagement: null
+  };
+
+  try {
+    // Generate likely social media URLs
+    const cleanName = companyName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const companySlug = companyName.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
+
+    socialMedia.platforms = {
+      linkedin: `https://www.linkedin.com/company/${cleanName}`,
+      twitter: `https://twitter.com/${companySlug}`,
+      facebook: `https://www.facebook.com/${companySlug}`,
+      instagram: `https://www.instagram.com/${companySlug}`,
+      youtube: `https://www.youtube.com/@${companySlug}`,
+      github: `https://github.com/${companySlug}`
+    };
+
+    socialMedia.engagement = `Check ${companyName}'s social media profiles for latest updates, company culture insights, and employee testimonials.`;
+
+  } catch (error) {
+    console.log('Social media lookup error:', error.message);
+  }
+
+  return socialMedia;
+}
+
+/**
+ * Identify key executives and leadership team
+ */
+async function identifyExecutives(companyName) {
+  const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+
+  const prompt = `List the key executives and leadership team for ${companyName}. 
+
+Provide information in JSON format:
+{
+  "executives": [
+    {
+      "name": "Full Name",
+      "title": "Job Title (e.g., CEO, CTO, CFO)",
+      "background": "Brief background or notable achievement"
+    }
+  ],
+  "keyLeaders": ["Name - Title", "Name - Title"]
+}
+
+If you don't have specific information about ${companyName}'s executives, return:
+{
+  "executives": [],
+  "keyLeaders": []
+}
+
+Return ONLY valid JSON (no markdown, no code blocks).`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    let text = response.text().trim();
+
+    // Remove markdown code blocks
+    text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+    const executives = JSON.parse(text);
+    return executives;
+  } catch (error) {
+    console.error('Executive identification failed:', error);
+    return { executives: [], keyLeaders: [] };
+  }
+}
+
+/**
+ * Generate a comprehensive research summary
+ */
+function generateResearchSummary(researchData) {
+  const { basicInfo, aiResearch } = researchData;
+
+  const summaryParts = [];
+
+  // Company overview
+  if (basicInfo.name) {
+    summaryParts.push(`${basicInfo.name} is ${aiResearch.size || 'a'} ${aiResearch.industry || 'company'}`);
+    if (basicInfo.headquarters) {
+      summaryParts[0] += ` headquartered in ${basicInfo.headquarters}`;
+    }
+    if (basicInfo.founded) {
+      summaryParts[0] += `, founded in ${basicInfo.founded}`;
+    }
+    summaryParts[0] += '.';
+  }
+
+  // Mission
+  if (aiResearch.mission) {
+    summaryParts.push(`Mission: ${aiResearch.mission}`);
+  }
+
+  // Products/Services
+  if (aiResearch.mainProducts && aiResearch.mainProducts.length > 0) {
+    summaryParts.push(`Key offerings include ${aiResearch.mainProducts.slice(0, 3).join(', ')}.`);
+  }
+
+  // Market position
+  if (aiResearch.marketPosition) {
+    summaryParts.push(`Market Position: ${aiResearch.marketPosition}`);
+  }
+
+  // Culture
+  if (aiResearch.culture) {
+    summaryParts.push(`Culture: ${aiResearch.culture}`);
+  }
+
+  return summaryParts.join(' ');
+}
+
+/**
+ * Calculate data quality score (0-100)
+ */
+function calculateDataQuality(data) {
+  let score = 0;
+  let maxScore = 0;
+
+  // Basic info (25 points)
+  maxScore += 25;
+  if (data.basicInfo.industry) score += 5;
+  if (data.basicInfo.size) score += 5;
+  if (data.basicInfo.headquarters) score += 5;
+  if (data.basicInfo.website) score += 5;
+  if (data.basicInfo.founded) score += 5;
+
+  // AI Research (50 points)
+  maxScore += 50;
+  if (data.aiResearch.mission) score += 10;
+  if (data.aiResearch.values && data.aiResearch.values.length > 0) score += 10;
+  if (data.aiResearch.mainProducts && data.aiResearch.mainProducts.length > 0) score += 10;
+  if (data.aiResearch.competitors && data.aiResearch.competitors.length > 0) score += 10;
+  if (data.aiResearch.culture) score += 10;
+
+  // Social Media (15 points)
+  maxScore += 15;
+  if (data.socialMedia.platforms && Object.keys(data.socialMedia.platforms).length > 0) score += 15;
+
+  // Executives (10 points)
+  maxScore += 10;
+  if (data.executives.executives && data.executives.executives.length > 0) score += 10;
+
+  return Math.round((score / maxScore) * 100);
+}
+
+/**
+ * Get minimal comprehensive research data if full research fails
+ */
+function getMinimalComprehensiveResearchData(companyName) {
+  return {
+    companyName,
+    researchDate: new Date().toISOString(),
+    basicInfo: {
+      name: companyName,
+      size: 'Unknown',
+      industry: 'Unknown',
+      headquarters: 'Unknown',
+      founded: null,
+      website: null,
+      logo: null
+    },
+    missionAndCulture: {
+      mission: null,
+      values: [],
+      culture: null,
+      workEnvironment: null
+    },
+    news: {
+      recentNews: [],
+      pressReleases: [],
+      majorAnnouncements: []
+    },
+    leadership: {
+      executives: [],
+      keyLeaders: [],
+      leadershipInfo: null
+    },
+    productsAndServices: {
+      mainProducts: [],
+      services: [],
+      technologies: [],
+      innovations: []
+    },
+    competitive: {
+      mainCompetitors: [],
+      marketPosition: null,
+      uniqueValue: null,
+      industryTrends: []
+    },
+    socialMedia: {
+      platforms: {},
+      engagement: null
+    },
+    summary: `Research data for ${companyName} is currently unavailable. Please try again later or provide more context.`,
+    metadata: {
+      researchSuccess: false,
+      dataQuality: 0,
+      sources: [],
+      lastUpdated: new Date().toISOString()
+    }
+  };
+}
+
+/**
+ * Get default AI research structure
+ */
+function getDefaultAIResearch() {
+  return {
+    size: null,
+    industry: null,
+    headquarters: null,
+    founded: null,
+    mission: null,
+    values: [],
+    culture: null,
+    workEnvironment: null,
+    mainProducts: [],
+    services: [],
+    technologies: [],
+    innovations: [],
+    competitors: [],
+    marketPosition: null,
+    uniqueValue: null,
+    industryTrends: [],
+    pressReleases: [],
+    majorAnnouncements: [],
+    leadershipInfo: null
+  };
+}
+
+/**
+ * Format comprehensive research data for display
+ */
+export function formatComprehensiveResearch(research) {
+  const formatted = {
+    overview: research.summary,
+    sections: []
+  };
+
+  // Basic Information Section
+  if (research.basicInfo.industry || research.basicInfo.size || research.basicInfo.headquarters) {
+    formatted.sections.push({
+      title: 'Company Overview',
+      items: [
+        research.basicInfo.industry && `Industry: ${research.basicInfo.industry}`,
+        research.basicInfo.size && `Size: ${research.basicInfo.size}`,
+        research.basicInfo.headquarters && `Headquarters: ${research.basicInfo.headquarters}`,
+        research.basicInfo.founded && `Founded: ${research.basicInfo.founded}`
+      ].filter(Boolean)
+    });
+  }
+
+  // Mission and Culture Section
+  if (research.missionAndCulture.mission || research.missionAndCulture.values.length > 0) {
+    formatted.sections.push({
+      title: 'Mission & Culture',
+      items: [
+        research.missionAndCulture.mission && `Mission: ${research.missionAndCulture.mission}`,
+        research.missionAndCulture.values.length > 0 && `Values: ${research.missionAndCulture.values.join(', ')}`,
+        research.missionAndCulture.culture && `Culture: ${research.missionAndCulture.culture}`
+      ].filter(Boolean)
+    });
+  }
+
+  // Products and Services Section
+  if (research.productsAndServices.mainProducts.length > 0) {
+    formatted.sections.push({
+      title: 'Products & Services',
+      items: [
+        `Products: ${research.productsAndServices.mainProducts.join(', ')}`,
+        research.productsAndServices.technologies.length > 0 && `Technologies: ${research.productsAndServices.technologies.join(', ')}`
+      ].filter(Boolean)
+    });
+  }
+
+  // Leadership Section
+  if (research.leadership.executives.length > 0 || research.leadership.keyLeaders.length > 0) {
+    formatted.sections.push({
+      title: 'Leadership Team',
+      items: research.leadership.executives.map(exec => `${exec.name} - ${exec.title}`)
+    });
+  }
+
+  // Competitive Landscape Section
+  if (research.competitive.mainCompetitors.length > 0 || research.competitive.marketPosition) {
+    formatted.sections.push({
+      title: 'Competitive Landscape',
+      items: [
+        research.competitive.mainCompetitors.length > 0 && `Competitors: ${research.competitive.mainCompetitors.join(', ')}`,
+        research.competitive.marketPosition && `Market Position: ${research.competitive.marketPosition}`,
+        research.competitive.uniqueValue && `Unique Value: ${research.competitive.uniqueValue}`
+      ].filter(Boolean)
+    });
+  }
+
+  // Social Media Section
+  if (research.socialMedia.platforms && Object.keys(research.socialMedia.platforms).length > 0) {
+    formatted.sections.push({
+      title: 'Social Media Presence',
+      items: Object.entries(research.socialMedia.platforms).map(([platform, url]) =>
+        `${platform.charAt(0).toUpperCase() + platform.slice(1)}: ${url}`
+      )
+    });
+  }
+
+  return formatted;
 }

@@ -16,6 +16,7 @@ import InterviewScheduler from "../../components/InterviewScheduler";
 import InterviewCard from "../../components/InterviewCard";
 import CompanyInfoCard from "../../components/CompanyInfoCard";
 import CompanyNewsSection from "../../components/CompanyNewsSection";
+import CompanyResearchReport from "../../components/CompanyResearchReport";
 import * as interviewsAPI from "../../api/interviews";
 
 const PIPELINE_STAGES = ["Interested", "Applied", "Phone Screen", "Interview", "Offer", "Rejected"];
@@ -2944,6 +2945,26 @@ export default function Jobs() {
                       });
                     }}
                   />
+                )}
+
+                {/* UC-064: Comprehensive Company Research Report */}
+                {viewingJob.company && (
+                  <Card variant="elevated" className="mt-6">
+                    <div className="mb-4">
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                        🔍 Comprehensive Company Research
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Automated research report with company insights, mission, products, leadership, and competitive landscape
+                      </p>
+                    </div>
+                    <CompanyResearchReport
+                      companyName={viewingJob.company}
+                      jobDescription={viewingJob.description}
+                      website={viewingJob.companyInfo?.website || viewingJob.url}
+                      autoLoad={false}
+                    />
+                  </Card>
                 )}
 
                 {/* Description */}
