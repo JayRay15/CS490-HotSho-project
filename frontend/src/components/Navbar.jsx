@@ -86,6 +86,9 @@ export default function Navbar() {
                             <NavLink to="/jobs" className={navLinkClass} aria-label="Jobs">
                                 Jobs
                             </NavLink>
+                            <NavLink to="/skill-trends" className={navLinkClass} aria-label="Skill Trends">
+                                Skills
+                            </NavLink>
                             <NavLink to="/salary-benchmarks" className={navLinkClass} aria-label="Salary Benchmarks">
                                 Salary
                             </NavLink>

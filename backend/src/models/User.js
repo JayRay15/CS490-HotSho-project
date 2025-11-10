@@ -317,7 +317,28 @@ const userSchema = new mongoose.Schema(
     skills: [skillSchema],
     education: [educationSchema],
     projects: [projectSchema],
-    certifications: [certificationSchema]
+    certifications: [certificationSchema],
+    // Skill development tracking
+    skillDevelopment: [{
+      skillName: { type: String, required: true },
+      targetLevel: { type: String, enum: ['Beginner', 'Intermediate', 'Advanced', 'Expert'] },
+      currentProgress: { type: Number, default: 0, min: 0, max: 100 },
+      startedAt: { type: Date, default: Date.now },
+      targetDate: Date,
+      resources: [{
+        title: String,
+        url: String,
+        platform: String,
+        completed: { type: Boolean, default: false },
+        completedAt: Date
+      }],
+      milestones: [{
+        description: String,
+        completed: { type: Boolean, default: false },
+        completedAt: Date
+      }],
+      notes: String
+    }]
   },
   { timestamps: true }
 );

@@ -251,6 +251,16 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
               💰 Salary Research
             </button>
           )}
+          {/* Skill Gap Analysis button */}
+          {!job.archived && (
+            <button
+              onClick={() => navigate(`/skill-gap-analysis/${job._id}`)}
+              className="text-xs px-2 py-1 rounded bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-medium"
+              title="Analyze skill gaps for this job"
+            >
+              🎯 Skill Gaps
+            </button>
+          )}
           {job.archived ? (
             onRestore && (
               <button
