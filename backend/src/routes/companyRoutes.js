@@ -1,5 +1,5 @@
 import express from "express";
-import { getCompanyInfo, getCompanyNews } from "../controllers/companyController.js";
+import { getCompanyInfo, getCompanyNews, exportNewsSummary } from "../controllers/companyController.js";
 
 const router = express.Router();
 
@@ -9,5 +9,8 @@ router.get("/info", getCompanyInfo);
 
 // GET /api/companies/news - Fetch company news
 router.get("/news", getCompanyNews);
+
+// GET /api/companies/news/export - Export news summary for applications
+router.get("/news/export", exportNewsSummary);
 
 export default router;

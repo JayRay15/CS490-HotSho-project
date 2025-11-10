@@ -161,9 +161,9 @@ export default function CompanyInfoCard({ companyInfo, companyName, industry, lo
                     <div>
                         <h4 className="text-sm font-medium text-gray-500 mb-3">Recent News & Updates</h4>
                         <div className="space-y-3">
-                            {companyInfo.recentNews.map((news, idx) => (
-                                <div key={idx} className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
-                                    <div className="flex items-start justify-between gap-2">
+                            {companyInfo.recentNews.slice(0, 3).map((news, idx) => (
+                                <div key={idx} className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition border border-gray-200">
+                                    <div className="flex items-start justify-between gap-2 mb-2">
                                         <div className="flex-1">
                                             {news.url ? (
                                                 <a
@@ -177,18 +177,90 @@ export default function CompanyInfoCard({ companyInfo, companyName, industry, lo
                                             ) : (
                                                 <p className="font-medium text-gray-900">{news.title}</p>
                                             )}
-                                            {news.summary && (
-                                                <p className="text-sm text-gray-600 mt-1">{news.summary}</p>
-                                            )}
                                         </div>
-                                        {news.date && (
-                                            <span className="text-xs text-gray-500 whitespace-nowrap">
-                                                {new Date(news.date).toLocaleDateString()}
+                                        {news.relevanceScore && (
+                                            <span className={`px-2 py-0.5 text-xs font-medium rounded whitespace-nowrap ${
+                                                news.relevanceScore >= 8 ? 'bg-green-100 text-green-800' :
+                                                news.relevanceScore >= 6 ? 'bg-yellow-100 text-yellow-800' :
+                                                'bg-gray-100 text-gray-800'
+                                            }`}>
+                                                ⭐ {news.relevanceScore}/10
                                             </span>
                                         )}
                                     </div>
+                                    
+                                    {/* Metadata badges */}
+                                    <div className="flex flex-wrap gap-2 mb-2">
+                                        {news.category && (
+                                            <span className={`px-2 py-0.5 text-xs font-medium rounded ${
+                                                news.category === 'funding' ? 'bg-green-100 text-green-800' :
+                                                news.category === 'product_launch' ? 'bg-blue-100 text-blue-800' :
+                                                news.category === 'hiring' ? 'bg-purple-100 text-purple-800' :
+                                                news.category === 'acquisition' ? 'bg-orange-100 text-orange-800' :
+                                                'bg-gray-100 text-gray-800'
+                                            }`}>
+                                                {news.category.replace('_', ' ')}
+                                            </span>
+                                        )}
+                                        {news.sentiment && (
+                                            <span className={`px-2 py-0.5 text-xs font-medium rounded border ${
+                                                news.sentiment === 'positive' ? 'bg-green-50 text-green-700 border-green-200' :
+                                                news.sentiment === 'negative' ? 'bg-red-50 text-red-700 border-red-200' :
+                                                'bg-gray-50 text-gray-700 border-gray-200'
+                                            }`}>
+                                                {news.sentiment === 'positive' && '😊'}
+                                                {news.sentiment === 'neutral' && '😐'}
+                                                {news.sentiment === 'negative' && '😟'}
+                                            </span>
+                                        )}
+                                        {news.date && (
+                                            <span className="text-xs text-gray-500">
+                                                📅 {new Date(news.date).toLocaleDateString()}
+                                            </span>
+                                        )}
+                                        {news.source && (
+                                            <span className="text-xs text-gray-500">
+                                                📰 {news.source}
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {news.summary && (
+                                        <p className="text-sm text-gray-600 mb-2">{news.summary}</p>
+                                    )}
+
+                                    {/* Key Points */}
+                                    {news.keyPoints && news.keyPoints.length > 0 && (
+                                        <div className="bg-white rounded p-2 mb-2">
+                                            <p className="text-xs font-medium text-gray-600 mb-1">Key Points:</p>
+                                            <ul className="text-xs text-gray-600 space-y-0.5">
+                                                {news.keyPoints.slice(0, 2).map((point, pointIdx) => (
+                                                    <li key={pointIdx} className="flex items-start gap-1">
+                                                        <span className="text-blue-600">•</span>
+                                                        <span>{point}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+
+                                    {/* Tags */}
+                                    {news.tags && news.tags.length > 0 && (
+                                        <div className="flex flex-wrap gap-1">
+                                            {news.tags.slice(0, 3).map((tag, tagIdx) => (
+                                                <span key={tagIdx} className="px-1.5 py-0.5 text-xs bg-white text-gray-600 rounded">
+                                                    #{tag}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
+                            {companyInfo.recentNews.length > 3 && (
+                                <p className="text-xs text-center text-gray-500">
+                                    +{companyInfo.recentNews.length - 3} more news items
+                                </p>
+                            )}
                         </div>
                     </div>
                 )}
