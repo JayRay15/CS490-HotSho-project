@@ -3,8 +3,6 @@
  * Supports multiple news sources and intelligent categorization
  */
 
-import axios from 'axios';
-
 // News categories and their keywords
 const NEWS_CATEGORIES = {
     funding: ['funding', 'investment', 'series', 'capital', 'raised', 'venture', 'ipo'],
@@ -159,6 +157,9 @@ export function processNewsItem(rawNews, companyName) {
  */
 export async function fetchWikipediaNews(companyName) {
     try {
+        // Import axios only when needed
+        const { default: axios } = await import('axios');
+        
         // Search for company page
         const searchResponse = await axios.get('https://en.wikipedia.org/w/api.php', {
             params: {
