@@ -191,6 +191,14 @@ describe('ResumeController', () => {
 
       expect(mockRes.status).toHaveBeenCalledWith(200);
     });
+    it('should return 404 if resume not found (HTML export)', async () => {
+      mockReq.params.id = 'non-existent';
+      mockResume.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(null) });
+
+      await exportResumeHtml(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+    });
   });
 
   describe('createTemplate', () => {
@@ -216,6 +224,36 @@ describe('ResumeController', () => {
       await createTemplate(mockReq, mockRes);
 
       expect(mockResumeTemplate.create).toHaveBeenCalled();
+      expect(mockRes.status).toHaveBeenCalledWith(201);
+    });
+
+    it('should create template and save small PDF buffer correctly', async () => {
+      // small PDF base64 ("test")
+      const smallBase64 = Buffer.from('test').toString('base64');
+      mockReq.body = {
+        name: 'PDF Template',
+        type: 'chronological',
+        pdfBuffer: smallBase64,
+      };
+
+      const tpl = {
+        _id: 'tpl-pdf',
+        save: jest.fn().mockResolvedValue(true),
+        toObject: jest.fn(() => ({ _id: 'tpl-pdf' })),
+        layout: {}
+      };
+
+      // create returns a document-like object with save
+      mockResumeTemplate.create.mockResolvedValue(tpl);
+
+      // findById(...).select('+originalPdf') should return the saved template with originalPdf buffer
+      mockResumeTemplate.findById.mockReturnValue({ select: jest.fn().mockResolvedValue({ originalPdf: Buffer.from('test') }) });
+
+      await createTemplate(mockReq, mockRes);
+
+      expect(mockResumeTemplate.create).toHaveBeenCalled();
+      expect(tpl.save).toHaveBeenCalled();
+      expect(mockResumeTemplate.findById).toHaveBeenCalledWith('tpl-pdf');
       expect(mockRes.status).toHaveBeenCalledWith(201);
     });
 
@@ -837,6 +875,25 @@ describe('ResumeController', () => {
       expect(mockResumeDoc.isDefault).toBe(true);
       expect(mockResumeDoc.save).toHaveBeenCalled();
     });
+
+      it('should return 500 if DB throws while setting default', async () => {
+        mockReq.params.resumeId = 'resume-err';
+        mockResume.findOne.mockRejectedValue(new Error('db fail'));
+
+        await setDefaultResume(mockReq, mockRes);
+
+        expect(mockRes.status).toHaveBeenCalledWith(500);
+      });
+
+      it('should return 404 if resume not found when setting default', async () => {
+        mockReq.params.resumeId = 'non-existent';
+        // findOne returns null to simulate missing resume
+        mockResume.findOne.mockResolvedValue(null);
+
+        await setDefaultResume(mockReq, mockRes);
+
+        expect(mockRes.status).toHaveBeenCalledWith(404);
+      });
   });
 
   describe('archiveResume', () => {
@@ -857,6 +914,25 @@ describe('ResumeController', () => {
       expect(mockResumeDoc.save).toHaveBeenCalled();
       expect(mockRes.status).toHaveBeenCalledWith(200);
     });
+
+    it('should return 404 if resume not found', async () => {
+      mockReq.params.resumeId = 'non-existent';
+      mockResume.findOne.mockResolvedValue(null);
+
+      await archiveResume(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+    });
+
+    it('should return 500 if save throws while archiving', async () => {
+      mockReq.params.resumeId = 'resume-save-err';
+      const badResume = { _id: 'resume-save-err', userId: 'test-user-123', save: jest.fn().mockRejectedValue(new Error('save fail')) };
+      mockResume.findOne.mockResolvedValue(badResume);
+
+      await archiveResume(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(500);
+    });
   });
 
   describe('unarchiveResume', () => {
@@ -875,6 +951,25 @@ describe('ResumeController', () => {
 
       expect(mockResumeDoc.isArchived).toBe(false);
       expect(mockResumeDoc.save).toHaveBeenCalled();
+    });
+
+    it('should return 404 if resume not found', async () => {
+      mockReq.params.resumeId = 'non-existent';
+      mockResume.findOne.mockResolvedValue(null);
+
+      await unarchiveResume(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+    });
+
+    it('should return 500 if save throws while unarchiving', async () => {
+      mockReq.params.resumeId = 'resume-save-err';
+      const badResume = { _id: 'resume-save-err', userId: 'test-user-123', save: jest.fn().mockRejectedValue(new Error('save fail')) };
+      mockResume.findOne.mockResolvedValue(badResume);
+
+      await unarchiveResume(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(500);
     });
   });
 
@@ -1692,6 +1787,35 @@ describe('ResumeController', () => {
 
       expect(mockRes.status).toHaveBeenCalledWith(404);
     });
+
+    it('should replace a specific experience item by index when selected', async () => {
+      mockReq.params.id = 'resume-1';
+      mockReq.body = { sourceId: 'resume-2', selectedChanges: ['experience.0'] };
+
+      const mockTargetResume = {
+        _id: 'resume-1',
+        userId: 'test-user-123',
+        sections: { experience: [{ jobTitle: 'Old' }] },
+        save: jest.fn().mockResolvedValue(true),
+      };
+      const mockSourceResume = {
+        _id: 'resume-2',
+        userId: 'test-user-123',
+        sections: { experience: [{ jobTitle: 'New' }] },
+      };
+
+      mockResume.findOne
+        .mockResolvedValueOnce(mockTargetResume)
+        .mockReturnValueOnce({
+          lean: jest.fn().mockResolvedValue(mockSourceResume),
+        });
+
+      await mergeResumes(mockReq, mockRes);
+
+      expect(mockTargetResume.save).toHaveBeenCalled();
+      expect(mockTargetResume.sections.experience[0].jobTitle).toBe('New');
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+    });
   });
 
   describe('exportResumeDocx', () => {
@@ -1801,6 +1925,41 @@ describe('ResumeController', () => {
       await exportResumeDocx(mockReq, mockRes);
 
       expect(mockRes.status).toHaveBeenCalledWith(500);
+    });
+
+    it('should pass watermark options to exportToDocx when requested', async () => {
+      mockReq.params.id = 'resume-999';
+      mockReq.query = { watermarkEnabled: 'true', watermark: 'CONFIDENTIAL' };
+      const validatedAt = new Date();
+      const mockResumeDoc = {
+        _id: 'resume-999',
+        userId: 'test-user-123',
+        name: 'My Resume',
+        sections: {},
+        templateId: 'template-xyz',
+        metadata: {
+          lastValidation: { isValid: true },
+          validatedAt: validatedAt,
+        },
+        updatedAt: validatedAt,
+      };
+
+      mockResume.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(mockResumeDoc) });
+      mockResumeTemplate.findById.mockReturnValue({ lean: jest.fn().mockResolvedValue({ _id: 'template-xyz' }) });
+      const out = Buffer.from('docx-bytes');
+      mockResumeExporter.exportToDocx.mockResolvedValue(out);
+      mockRes.send = jest.fn();
+      mockRes.setHeader = jest.fn();
+
+      await exportResumeDocx(mockReq, mockRes);
+
+      expect(mockResumeExporter.exportToDocx).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.any(Object),
+        expect.objectContaining({ enabled: true, text: 'CONFIDENTIAL' })
+      );
+      expect(mockRes.setHeader).toHaveBeenCalled();
+      expect(mockRes.send).toHaveBeenCalledWith(out);
     });
   });
 
@@ -1940,6 +2099,15 @@ describe('ResumeController', () => {
       await exportResumeText(mockReq, mockRes);
 
       expect(mockRes.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should return 404 if resume not found (Text export)', async () => {
+      mockReq.params.id = 'non-existent';
+      mockResume.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(null) });
+
+      await exportResumeText(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
     });
 
     it('should return 400 if resume modified after validation (Text export)', async () => {
