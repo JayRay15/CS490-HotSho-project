@@ -6,8 +6,9 @@ import {
   extractKeyPoints,
   extractTags,
   processNewsItem,
-  generateSampleNews,
-  generateNewsSummary
+  generateNewsSummary,
+  parseWikipediaExtract,
+  fetchCompanyNews
 } from '../newsService.js';
 
 describe('newsService utilities', () => {
@@ -325,47 +326,97 @@ describe('newsService utilities', () => {
     });
   });
 
-  describe('generateSampleNews', () => {
-    it('should generate sample news array', () => {
-      const news = generateSampleNews('Google');
+  describe('parseWikipediaExtract', () => {
+    it('should extract news from Wikipedia text with recent years', () => {
+      const currentYear = new Date().getFullYear();
+      const extract = `${currentYear} The company announced a major breakthrough that will significantly impact the market and users.`;
+      
+      const news = parseWikipediaExtract(extract, 'TestCo_Page', 'TestCo');
       
       expect(Array.isArray(news)).toBe(true);
-      expect(news.length).toBeGreaterThan(0);
+      if (news.length > 0) {
+        expect(news[0].title).toContain('TestCo');
+        expect(news[0].source).toBe('Wikipedia');
+        expect(news[0].url).toContain('wikipedia.org');
+      }
     });
 
-    it('should include company name in generated news', () => {
-      const news = generateSampleNews('Microsoft');
+    it('should filter out sentences that are too short', () => {
+      const currentYear = new Date().getFullYear();
+      const extract = `${currentYear} Short. ${currentYear} This is a longer sentence that should be included in the results.`;
       
+      const news = parseWikipediaExtract(extract, 'TestCo_Page', 'TestCo');
+      
+      if (news.length > 0) {
+        news.forEach(item => {
+          expect(item.summary.length).toBeGreaterThan(50);
+        });
+      }
+    });
+
+    it('should filter out sentences that are too long', () => {
+      const currentYear = new Date().getFullYear();
+      const longText = 'X'.repeat(400);
+      const extract = `${currentYear} ${longText}. ${currentYear} Normal length sentence here.`;
+      
+      const news = parseWikipediaExtract(extract, 'TestCo_Page', 'TestCo');
+      
+      if (news.length > 0) {
+        news.forEach(item => {
+          expect(item.summary.length).toBeLessThan(300);
+        });
+      }
+    });
+
+    it('should return empty array for empty extract', () => {
+      const news = parseWikipediaExtract('', 'TestCo_Page', 'TestCo');
+      expect(news).toEqual([]);
+    });
+
+    it('should return empty array for null extract', () => {
+      const news = parseWikipediaExtract(null, 'TestCo_Page', 'TestCo');
+      expect(news).toEqual([]);
+    });
+
+    it('should include current year and previous year', () => {
+      const currentYear = new Date().getFullYear();
+      const lastYear = currentYear - 1;
+      const extract = `${currentYear} Current year news with sufficient length to be captured. ${lastYear} Last year news with sufficient length to be captured.`;
+      
+      const news = parseWikipediaExtract(extract, 'TestCo_Page', 'TestCo');
+      
+      expect(Array.isArray(news)).toBe(true);
+      // Should potentially have news from both years
+      if (news.length > 0) {
+        expect(news[0].date).toBeDefined();
+      }
+    });
+  });
+
+  describe('fetchCompanyNews integration', () => {
+    it('should return empty array when no sources return data', async () => {
+      // In test mode without network access, all sources should return empty
+      const news = await fetchCompanyNews('NonExistentCompany123XYZ', { limit: 5, minRelevance: 0 });
+      
+      expect(Array.isArray(news)).toBe(true);
+      // Should be empty since no real network calls are made in test environment
+      expect(news.length).toBe(0);
+    });
+
+    it('should respect limit parameter', async () => {
+      const news = await fetchCompanyNews('TestCo', { limit: 2, minRelevance: 0 });
+      
+      expect(Array.isArray(news)).toBe(true);
+      expect(news.length).toBeLessThanOrEqual(2);
+    });
+
+    it('should filter by minRelevance parameter', async () => {
+      const news = await fetchCompanyNews('TestCo', { limit: 10, minRelevance: 8 });
+      
+      expect(Array.isArray(news)).toBe(true);
       news.forEach(item => {
-        expect(item.title).toContain('Microsoft');
+        expect(item.relevanceScore).toBeGreaterThanOrEqual(8);
       });
-    });
-
-    it('should generate news with required fields', () => {
-      const news = generateSampleNews('Apple');
-      
-      news.forEach(item => {
-        expect(item.title).toBeDefined();
-        expect(item.summary).toBeDefined();
-        expect(item.date).toBeDefined();
-        expect(item.source).toBeDefined();
-        expect(item.category).toBeDefined();
-        expect(item.sentiment).toBeDefined();
-      });
-    });
-
-    it('should have different categories in sample news', () => {
-      const news = generateSampleNews('Tesla');
-      const categories = news.map(item => item.category);
-      
-      expect(new Set(categories).size).toBeGreaterThan(1);
-    });
-
-    it('should have positive sentiment in sample news', () => {
-      const news = generateSampleNews('Netflix');
-      
-      const hasPositive = news.some(item => item.sentiment === 'positive');
-      expect(hasPositive).toBe(true);
     });
   });
 

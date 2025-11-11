@@ -153,6 +153,232 @@ export function processNewsItem(rawNews, companyName) {
 }
 
 /**
+ * Fetch company news from NewsAPI.org
+ */
+export async function fetchNewsAPINews(companyName) {
+    // In test environments avoid real network calls unless explicitly allowed
+    if (process.env.NODE_ENV === 'test' && process.env.NEWS_SERVICE_ALLOW_NETWORK !== 'true') {
+        return [];
+    }
+
+    const apiKey = process.env.NEWS_API_KEY;
+    if (!apiKey || apiKey === 'your_newsapi_key_here') {
+        console.log('NewsAPI key not configured, skipping NewsAPI fetch');
+        return [];
+    }
+
+    try {
+        // Import axios only when needed
+        const { default: axios } = await import('axios');
+        
+        // Calculate date range (last 30 days)
+        const toDate = new Date();
+        const fromDate = new Date();
+        fromDate.setDate(fromDate.getDate() - 30);
+        
+        // Search for company news
+        const response = await axios.get('https://newsapi.org/v2/everything', {
+            params: {
+                q: companyName,
+                from: fromDate.toISOString().split('T')[0],
+                to: toDate.toISOString().split('T')[0],
+                sortBy: 'relevancy',
+                language: 'en',
+                pageSize: 10,
+                apiKey: apiKey
+            },
+            timeout: 10000
+        });
+
+        if (!response.data.articles || response.data.articles.length === 0) {
+            return [];
+        }
+
+        // Transform NewsAPI articles to our format
+        const newsItems = response.data.articles.map(article => ({
+            title: article.title,
+            summary: article.description || article.content?.substring(0, 300) || 'No summary available',
+            url: article.url,
+            date: new Date(article.publishedAt),
+            source: article.source.name,
+        }));
+
+        return newsItems.map(item => processNewsItem(item, companyName));
+    } catch (error) {
+        if (error.response?.status === 429) {
+            console.error('NewsAPI rate limit exceeded');
+        } else if (error.response?.status === 401) {
+            console.error('NewsAPI authentication failed - check API key');
+        } else {
+            console.error('Error fetching NewsAPI news:', error.message);
+        }
+        return [];
+    }
+}
+
+/**
+ * Fetch company news from Google News RSS feed
+ */
+export async function fetchGoogleNewsRSS(companyName) {
+    // In test environments avoid real network calls unless explicitly allowed
+    if (process.env.NODE_ENV === 'test' && process.env.NEWS_SERVICE_ALLOW_NETWORK !== 'true') {
+        return [];
+    }
+
+    try {
+        // Import axios only when needed
+        const { default: axios } = await import('axios');
+        
+        // Google News RSS feed URL
+        const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(companyName)}&hl=en-US&gl=US&ceid=US:en`;
+        
+        const response = await axios.get(rssUrl, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            },
+            timeout: 10000
+        });
+
+        if (!response.data) {
+            return [];
+        }
+
+        // Parse RSS XML
+        const xml = response.data;
+        const itemMatches = xml.matchAll(/<item>(.*?)<\/item>/gs);
+        const newsItems = [];
+
+        for (const match of itemMatches) {
+            const itemXml = match[1];
+            
+            // Extract title
+            const titleMatch = itemXml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/s);
+            const title = titleMatch ? titleMatch[1] : '';
+            
+            // Extract link
+            const linkMatch = itemXml.match(/<link>(.*?)<\/link>/s);
+            const url = linkMatch ? linkMatch[1].trim() : '';
+            
+            // Extract description
+            const descMatch = itemXml.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>/s);
+            const description = descMatch ? descMatch[1] : '';
+            
+            // Extract date
+            const dateMatch = itemXml.match(/<pubDate>(.*?)<\/pubDate>/s);
+            const date = dateMatch ? new Date(dateMatch[1]) : new Date();
+            
+            // Extract source from description
+            const sourceMatch = description.match(/<a[^>]*>([^<]+)<\/a>/);
+            const source = sourceMatch ? sourceMatch[1] : 'Google News';
+            
+            // Clean description (remove HTML tags)
+            const cleanDescription = description.replace(/<[^>]*>/g, '').trim();
+            const summary = cleanDescription.substring(0, 300) || 'No summary available';
+
+            if (title && url) {
+                newsItems.push({
+                    title,
+                    summary,
+                    url,
+                    date,
+                    source,
+                });
+            }
+
+            // Limit to 10 items
+            if (newsItems.length >= 10) break;
+        }
+
+        return newsItems.map(item => processNewsItem(item, companyName));
+    } catch (error) {
+        console.error('Error fetching Google News RSS:', error.message);
+        return [];
+    }
+}
+
+/**
+ * Fetch company news from Bing News Search API (free)
+ */
+export async function fetchBingNews(companyName) {
+    // In test environments avoid real network calls unless explicitly allowed
+    if (process.env.NODE_ENV === 'test' && process.env.NEWS_SERVICE_ALLOW_NETWORK !== 'true') {
+        return [];
+    }
+
+    try {
+        // Import axios only when needed
+        const { default: axios } = await import('axios');
+        
+        // Use Bing News search (free, no API key required for basic search)
+        const searchUrl = `https://www.bing.com/news/search?q=${encodeURIComponent(companyName)}&format=rss`;
+        
+        const response = await axios.get(searchUrl, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            },
+            timeout: 10000
+        });
+
+        if (!response.data) {
+            return [];
+        }
+
+        // Parse RSS XML
+        const xml = response.data;
+        const itemMatches = xml.matchAll(/<item>(.*?)<\/item>/gs);
+        const newsItems = [];
+
+        for (const match of itemMatches) {
+            const itemXml = match[1];
+            
+            // Extract title
+            const titleMatch = itemXml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/s) || 
+                              itemXml.match(/<title>(.*?)<\/title>/s);
+            const title = titleMatch ? titleMatch[1] : '';
+            
+            // Extract link
+            const linkMatch = itemXml.match(/<link>(.*?)<\/link>/s);
+            const url = linkMatch ? linkMatch[1].trim() : '';
+            
+            // Extract description
+            const descMatch = itemXml.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>/s) ||
+                             itemXml.match(/<description>(.*?)<\/description>/s);
+            const description = descMatch ? descMatch[1] : '';
+            
+            // Extract date
+            const dateMatch = itemXml.match(/<pubDate>(.*?)<\/pubDate>/s);
+            const date = dateMatch ? new Date(dateMatch[1]) : new Date();
+            
+            // Extract source
+            const sourceMatch = itemXml.match(/<source[^>]*>([^<]+)<\/source>/s);
+            const source = sourceMatch ? sourceMatch[1] : 'Bing News';
+            
+            // Clean description (remove HTML tags)
+            const cleanDescription = description.replace(/<[^>]*>/g, '').trim();
+            const summary = cleanDescription.substring(0, 300) || 'No summary available';
+
+            if (title && url) {
+                newsItems.push({
+                    title,
+                    summary,
+                    url,
+                    date,
+                    source,
+                });
+            }
+
+            // Limit to 10 items
+            if (newsItems.length >= 10) break;
+        }
+
+        return newsItems.map(item => processNewsItem(item, companyName));
+    } catch (error) {
+        console.error('Error fetching Bing News:', error.message);
+        return [];
+    }
+}
+
+/**
  * Fetch company news from Wikipedia (real implementation)
  */
 export async function fetchWikipediaNews(companyName) {
@@ -241,75 +467,67 @@ export function parseWikipediaExtract(extract, pageTitle, companyName) {
 }
 
 /**
- * Generate sample news for major companies (fallback)
- */
-export function generateSampleNews(companyName) {
-    const now = new Date();
-    const newsTemplates = [
-        {
-            title: `${companyName} Announces Major Product Innovation`,
-            summary: `${companyName} has unveiled significant improvements to its product lineup, focusing on enhanced user experience and cutting-edge technology integration.`,
-            category: 'product_launch',
-            sentiment: 'positive',
-            daysAgo: 7,
-        },
-        {
-            title: `${companyName} Expands Global Workforce`,
-            summary: `The company is actively hiring across multiple departments, with plans to grow its team by 20% this quarter to support expanding operations.`,
-            category: 'hiring',
-            sentiment: 'positive',
-            daysAgo: 14,
-        },
-        {
-            title: `${companyName} Strategic Partnership Announced`,
-            summary: `A new strategic alliance has been formed to enhance market reach and deliver innovative solutions to customers worldwide.`,
-            category: 'partnership',
-            sentiment: 'positive',
-            daysAgo: 21,
-        },
-    ];
-    
-    return newsTemplates.map((template, index) => {
-        const date = new Date(now);
-        date.setDate(date.getDate() - template.daysAgo);
-        
-        return {
-            title: template.title,
-            summary: template.summary,
-            url: `https://example.com/news/${companyName.toLowerCase().replace(/\s+/g, '-')}-${index}`,
-            date,
-            source: 'Industry News',
-            category: template.category,
-            sentiment: template.sentiment,
-            keyPoints: extractKeyPoints(template.summary),
-            tags: extractTags(template.title, template.summary),
-            relevanceScore: calculateRelevance({
-                title: template.title,
-                summary: template.summary,
-                date,
-                category: template.category,
-            }, companyName),
-        };
-    });
-}
-
-/**
- * Main function to fetch company news
+ * Main function to fetch company news from multiple sources
+ * Aggregates news from NewsAPI, Google News RSS, Bing News, and Wikipedia
  */
 export async function fetchCompanyNews(companyName, options = {}) {
     const { limit = 5, minRelevance = 3 } = options;
     
     try {
-        // Try Wikipedia first
-        let news = await fetchWikipediaNews(companyName);
+        let allNews = [];
         
-        // Fallback to sample news if no results
-        if (news.length === 0) {
-            news = generateSampleNews(companyName);
+        // Fetch from multiple sources in parallel
+        const [newsAPIResults, googleNewsResults, bingNewsResults, wikiResults] = await Promise.all([
+            fetchNewsAPINews(companyName).catch(err => {
+                console.log('NewsAPI fetch failed:', err.message);
+                return [];
+            }),
+            fetchGoogleNewsRSS(companyName).catch(err => {
+                console.log('Google News fetch failed:', err.message);
+                return [];
+            }),
+            fetchBingNews(companyName).catch(err => {
+                console.log('Bing News fetch failed:', err.message);
+                return [];
+            }),
+            fetchWikipediaNews(companyName).catch(err => {
+                console.log('Wikipedia fetch failed:', err.message);
+                return [];
+            }),
+        ]);
+        
+        // Combine all results
+        allNews = [
+            ...newsAPIResults,
+            ...googleNewsResults,
+            ...bingNewsResults,
+            ...wikiResults
+        ];
+        
+        // If no news found from any source, return empty array
+        // DO NOT use hardcoded fallback data
+        if (allNews.length === 0) {
+            console.log(`No news found for ${companyName} from any source`);
+            return [];
+        }
+        
+        // Remove duplicates based on title similarity
+        const uniqueNews = [];
+        const seenTitles = new Set();
+        
+        for (const item of allNews) {
+            // Normalize title for comparison
+            const normalizedTitle = item.title.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+            const titleWords = normalizedTitle.split(/\s+/).slice(0, 5).join(' ');
+            
+            if (!seenTitles.has(titleWords)) {
+                seenTitles.add(titleWords);
+                uniqueNews.push(item);
+            }
         }
         
         // Filter by relevance and sort
-        return news
+        return uniqueNews
             .filter(item => item.relevanceScore >= minRelevance)
             .sort((a, b) => {
                 // Sort by relevance score (desc), then date (desc)
@@ -321,7 +539,8 @@ export async function fetchCompanyNews(companyName, options = {}) {
             .slice(0, limit);
     } catch (error) {
         console.error('Error in fetchCompanyNews:', error);
-        return generateSampleNews(companyName);
+        // Return empty array instead of fallback data
+        return [];
     }
 }
 
@@ -369,8 +588,7 @@ if (process.env.NODE_ENV === 'test') {
             source: 'UnitTest'
         }, 'Test Co');
 
-        // exercise generators and summary
-        generateSampleNews('Test Co');
+        // exercise summary generator
         generateNewsSummary([sample], 'Test Co');
 
         // exercise individual utilities
@@ -384,7 +602,7 @@ if (process.env.NODE_ENV === 'test') {
             `${new Date().getFullYear() - 1} The company expanded and raised funds, increasing its market presence.`;
         parseWikipediaExtract(fakeExtract, 'Test_Co', 'Test Co');
 
-        // Exercise fetchCompanyNews fallback path (will use generateSampleNews in test env)
+        // Exercise fetchCompanyNews fallback path (will return empty array in test env when no API keys)
         // eslint-disable-next-line no-unused-vars
         const companyNews = fetchCompanyNews('Test Co', { limit: 2, minRelevance: 0 });
     } catch (e) {
