@@ -372,5 +372,73 @@ describe('SalaryController', () => {
       expect(mockRes.status).toHaveBeenCalledWith(400);
     });
   });
+
+  describe('edge cases and additional branches', () => {
+    it('getSalaryResearch should include similarPositions and salaryComparison when similar jobs and current compensation exist', async () => {
+      mockReq.params.jobId = 'job-xyz';
+      const mockJobDoc = {
+        _id: 'job-xyz',
+        title: 'Engineer II',
+        company: 'SomeCo',
+        location: 'San Francisco',
+        industry: 'Technology',
+        salary: { min: 90000, max: 120000 },
+        userId: 'test-user-123'
+      };
+
+      // similar jobs with salary data
+      const similar = [
+        { _id: 's1', company: 'A', title: 'Eng', location: 'SF', salary: { min: 95000, max: 120000 } },
+        { _id: 's2', company: 'B', title: 'Eng', location: 'SF', salary: { min: 100000, max: 130000 } }
+      ];
+
+      const mockUserDoc = {
+        auth0Id: 'test-user-123',
+        experienceLevel: 'Mid',
+        employment: [{ isCurrentPosition: true, salary: { min: 80000, max: 100000 } }]
+      };
+
+      mockJob.findOne.mockResolvedValue(mockJobDoc);
+  // Job.find(...).limit(20) is called in the controller. Return a chainable
+  // object where .limit(n) resolves to the similar jobs array.
+  mockJob.find.mockReturnValue({ limit: jest.fn().mockResolvedValue(similar) });
+      mockUser.findOne.mockResolvedValue(mockUserDoc);
+
+      await getSalaryResearch(mockReq, mockRes);
+
+      expect(mockRes.json).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          similarPositions: expect.objectContaining({ count: 2 }),
+          salaryComparison: expect.any(Object)
+        })
+      }));
+    });
+
+    it('compareSalaries should return 401 when unauthenticated', async () => {
+      mockReq.auth = null;
+      mockReq.query.jobIds = 'a,b';
+      await compareSalaries(mockReq, mockRes);
+      expect(mockRes.status).toHaveBeenCalledWith(401);
+    });
+
+    it('compareSalaries should return 400 when jobIds contains only empty items', async () => {
+      mockReq.query.jobIds = ',,,';
+      await compareSalaries(mockReq, mockRes);
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+    });
+
+    it('getSalaryBenchmarks should return 401 when unauthenticated', async () => {
+      mockReq.auth = null;
+      await getSalaryBenchmarks(mockReq, mockRes);
+      expect(mockRes.status).toHaveBeenCalledWith(401);
+    });
+
+    it('exportSalaryReport should return 401 when unauthenticated', async () => {
+      mockReq.auth = null;
+      mockReq.body = { jobId: 'job-1', format: 'json' };
+      await exportSalaryReport(mockReq, mockRes);
+      expect(mockRes.status).toHaveBeenCalledWith(401);
+    });
+  });
 });
 

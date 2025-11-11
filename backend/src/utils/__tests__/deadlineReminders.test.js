@@ -158,6 +158,63 @@ describe('deadlineReminders util', () => {
         jest.useFakeTimers();
       }
     });
+
+    it('logs initial failure and runs scheduled success when interval fires', async () => {
+      process.env.ENABLE_DEADLINE_REMINDERS = 'true';
+      // First call (initial) will fail, second call (scheduled) will succeed
+      Job.find.mockRejectedValueOnce(new Error('init fail'));
+      Job.find.mockResolvedValueOnce([]);
+
+      // Replace setInterval so the callback runs immediately
+      const origSetInterval = global.setInterval;
+      // Use real timers here so setImmediate in the test can resolve
+      jest.useRealTimers();
+      global.setInterval = (cb) => { cb(); return 1; };
+
+      try {
+        startDeadlineReminderSchedule();
+        // wait for the initial and scheduled async calls to complete
+        await new Promise(res => setImmediate(res));
+
+        // initial error should have been logged
+        expect(errSpy).toHaveBeenCalledWith(expect.stringContaining('Initial reminder run failed:'), expect.any(String));
+        // scheduled run should have logged the running message and success
+        expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('⏰ Running scheduled deadline reminders...'));
+        const sentLog = logSpy.mock.calls.some(c => String(c[0]).includes('✅ Reminders sent:'));
+        expect(sentLog).toBe(true);
+      } finally {
+        global.setInterval = origSetInterval;
+        // restore fake timers for consistency with other tests (afterEach will also reset)
+        jest.useFakeTimers();
+      }
+    });
+
+    it('logs scheduled failure when interval callback rejects', async () => {
+      process.env.ENABLE_DEADLINE_REMINDERS = 'true';
+      // Initial run resolves, scheduled run rejects
+      Job.find.mockResolvedValueOnce([]);
+      Job.find.mockRejectedValueOnce(new Error('scheduled error'));
+
+      const origSetInterval = global.setInterval;
+      // Use real timers here so setImmediate in the test can resolve
+      jest.useRealTimers();
+      global.setInterval = (cb) => { cb(); return 2; };
+
+      try {
+        startDeadlineReminderSchedule();
+        await new Promise(res => setImmediate(res));
+
+        // initial successful run logged
+        const hadInitial = logSpy.mock.calls.some(c => String(c[0]).includes('Initial deadline reminder run'));
+        expect(hadInitial).toBe(true);
+        // scheduled failure should have been logged
+        expect(errSpy).toHaveBeenCalledWith(expect.stringContaining('❌ Reminder run failed:'), expect.any(String));
+      } finally {
+        global.setInterval = origSetInterval;
+        // restore fake timers for consistency with other tests (afterEach will also reset)
+        jest.useFakeTimers();
+      }
+    });
   });
 
   it('skips users with no user record or missing email', async () => {

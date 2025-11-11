@@ -141,6 +141,7 @@ export const notFoundHandler = (req, res, next) => {
  */
 export const asyncHandler = (fn) => {
   return (req, res, next) => {
-    Promise.resolve(fn(req, res, next)).catch(next);
+    // Return the promise so callers (tests) can await the wrapped handler.
+    return Promise.resolve(fn(req, res, next)).catch(next);
   };
 };

@@ -765,5 +765,66 @@ describe('resumeValidator utilities', () => {
       const res = await validateResume(resume, Buffer.from('pdf'));
       expect(res.summary.totalErrors).toBeGreaterThanOrEqual(0);
     });
+
+    it('adds a length warning when resume has >2 pages', async () => {
+      // Simulate a 3-page PDF
+      mockPdfDocument.load.mockResolvedValue({ getPageCount: () => 3 });
+      const resume = {
+        sections: {
+          contactInfo: { name: 'Jane', email: 'jane@doe.com', phone: '2123456789' },
+          summary: 'Experienced developer with many achievements',
+          experience: [{ company: 'X', description: 'Did work', responsibilities: ['Did one', 'Did two'] }],
+          education: [{ school: 'U' }],
+          skills: ['JS','Node','React','SQL','Docker','AWS']
+        }
+      };
+
+      const res = await validateResume(resume, Buffer.from('pdf'));
+      // Should include a length warning about reducing pages
+      expect(res.warnings.some(w => w.type === 'length' && /pages?/.test(w.message))).toBe(true);
+      expect(res.summary.contactInfoValid).toBe(true);
+    });
+
+    it('reports grammar errors from summary and marks resume invalid', async () => {
+      mockPdfDocument.load.mockResolvedValue({ getPageCount: () => 1 });
+      const resume = {
+        sections: {
+          contactInfo: { name: 'Sam', email: 'sam@ex.com', phone: '2123456789' },
+          summary: "i went there. your car is alot of fun and its great",
+          experience: [{ company: 'X', description: 'Worked on things', responsibilities: ['Helped with project'] }],
+          education: [{ school: 'U' }],
+          skills: ['JS','Node','React','SQL','Docker']
+        }
+      };
+
+      const res = await validateResume(resume, Buffer.from('pdf'));
+      // At least one grammar-related error should be included
+      expect(res.errors.some(e => e.type === 'grammar' || e.message && e.message.toLowerCase().includes('check usage'))).toBe(true);
+      // Because there are grammar errors with severity 'error', resume validity should be false
+      expect(res.isValid).toBe(false);
+    });
+
+    it('detects many date format patterns via format consistency check', () => {
+      const resume = {
+        sections: {
+          experience: [
+            { company: 'A', startDate: 'Jan 2020', endDate: 'January 2021' },
+            { company: 'B', startDate: '01/2022', endDate: '2022-03' },
+            { company: 'C', startDate: '2023' }
+          ],
+          education: [
+            { school: 'X', startDate: 'Jan 2018', endDate: '01/2019' },
+            { school: 'Y', startDate: '2020-01', endDate: '2020' }
+          ]
+        }
+      };
+
+      const issues = checkFormatConsistency(resume);
+      // Should find inconsistent formats across experience/education
+      expect(Array.isArray(issues)).toBe(true);
+      expect(issues.length).toBeGreaterThanOrEqual(1);
+      // At least one issue should mention 'format' or be type 'format_consistency'
+      expect(issues.some(i => i.type === 'format_consistency')).toBe(true);
+    });
   });
 });
