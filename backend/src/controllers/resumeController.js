@@ -2,7 +2,7 @@ import { ResumeTemplate } from "../models/ResumeTemplate.js";
 import { Resume } from "../models/Resume.js";
 import { generateResumeContent, generateResumeContentVariations, regenerateSection, analyzeATSCompatibility, optimizeResumeSkills, tailorExperience } from "../utils/geminiService.js";
 import { generatePdfFromTemplate } from "../utils/pdfGenerator.js";
-import { exportToDocx, exportToHtml, exportToPlainText } from "../utils/resumeExporter.js";
+import * as resumeExporter from "../utils/resumeExporter.js";
 import { htmlToPdf } from "../utils/htmlToPdf.js";
 import { errorResponse, sendResponse, successResponse, ERROR_CODES } from "../utils/responseFormat.js";
 import { User } from "../models/User.js";
@@ -934,7 +934,7 @@ export const generateResumePDF = async (req, res) => {
       try {
         // For HTML export we can use a lean object of template for theme/layout
         const templateForHtml = (typeof template.toObject === 'function') ? template.toObject() : templateObj;
-        const html = exportToHtml(resume, templateForHtml);
+      const html = resumeExporter.exportToHtml(resume, templateForHtml);
         // UC-51: Pass watermark options to HTML->PDF fallback
         const pdfBuffer = await htmlToPdf(html, { watermark: watermarkOptions });
 
@@ -1515,7 +1515,7 @@ export const exportResumeDocx = async (req, res) => {
 
     const template = await ResumeTemplate.findById(resume.templateId).lean();
 
-    const docxBuffer = await exportToDocx(resume, template, watermarkOptions);
+  const docxBuffer = await resumeExporter.exportToDocx(resume, template, watermarkOptions);
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     res.setHeader('Content-Disposition', `attachment; filename="${resume.name || 'resume'}.docx"`);
@@ -1567,7 +1567,7 @@ export const exportResumeHtml = async (req, res) => {
 
     const template = await ResumeTemplate.findById(resume.templateId).lean();
 
-    const html = exportToHtml(resume, template);
+  const html = resumeExporter.exportToHtml(resume, template);
 
     res.setHeader('Content-Type', 'text/html');
     res.setHeader('Content-Disposition', `attachment; filename="${resume.name || 'resume'}.html"`);
@@ -1616,7 +1616,7 @@ export const exportResumeText = async (req, res) => {
       return sendResponse(res, response, statusCode);
     }
 
-    const text = exportToPlainText(resume);
+  const text = resumeExporter.exportToPlainText(resume);
 
     res.setHeader('Content-Type', 'text/plain');
     res.setHeader('Content-Disposition', `attachment; filename="${resume.name || 'resume'}.txt"`);
