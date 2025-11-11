@@ -247,6 +247,8 @@ export const getCompanyInfo = asyncHandler(async (req, res) => {
         }
 
         // Add hardcoded data for well-known companies as fallback
+        // Note: This provides basic company information only, NOT news
+        // News should be fetched dynamically from newsService
         const knownCompanies = {
             'Google': {
                 description: 'Google LLC is an American multinational technology company that specializes in Internet-related services and products, including search engine, online advertising technologies, cloud computing, software, and hardware.',
@@ -259,15 +261,7 @@ export const getCompanyInfo = asyncHandler(async (req, res) => {
                     phone: '+1-650-253-0000',
                     address: '1600 Amphitheatre Parkway, Mountain View, CA 94043'
                 },
-                glassdoorRating: { rating: 4.4, reviewCount: 250000, url: 'https://www.glassdoor.com/Overview/Working-at-Google-EI_IE9079.11,17.htm' },
-                recentNews: [
-                    {
-                        title: 'Google Announces New AI Developments',
-                        summary: 'Google unveils groundbreaking AI advancements at their annual developer conference.',
-                        date: new Date('2025-11-01').toISOString(),
-                        url: 'https://www.google.com/press'
-                    }
-                ]
+                glassdoorRating: { rating: 4.4, reviewCount: 250000, url: 'https://www.glassdoor.com/Overview/Working-at-Google-EI_IE9079.11,17.htm' }
             },
             'Microsoft': {
                 description: 'Microsoft Corporation is an American multinational technology company that produces computer software, consumer electronics, personal computers, and related services.',
@@ -280,15 +274,7 @@ export const getCompanyInfo = asyncHandler(async (req, res) => {
                     phone: '+1-425-882-8080',
                     address: 'One Microsoft Way, Redmond, WA 98052'
                 },
-                glassdoorRating: { rating: 4.2, reviewCount: 180000, url: 'https://www.glassdoor.com/Overview/Working-at-Microsoft-EI_IE1651.11,20.htm' },
-                recentNews: [
-                    {
-                        title: 'Microsoft Expands Cloud Services',
-                        summary: 'Microsoft Azure announces new global regions and enhanced security features.',
-                        date: new Date('2025-10-28').toISOString(),
-                        url: 'https://news.microsoft.com'
-                    }
-                ]
+                glassdoorRating: { rating: 4.2, reviewCount: 180000, url: 'https://www.glassdoor.com/Overview/Working-at-Microsoft-EI_IE1651.11,20.htm' }
             },
             'Apple': {
                 description: 'Apple Inc. is an American multinational technology company that designs, develops, and sells consumer electronics, computer software, and online services.',
@@ -301,15 +287,7 @@ export const getCompanyInfo = asyncHandler(async (req, res) => {
                     phone: '+1-408-996-1010',
                     address: 'One Apple Park Way, Cupertino, CA 95014'
                 },
-                glassdoorRating: { rating: 4.3, reviewCount: 120000, url: 'https://www.glassdoor.com/Overview/Working-at-Apple-EI_IE1138.11,16.htm' },
-                recentNews: [
-                    {
-                        title: 'Apple Launches New Product Line',
-                        summary: 'Apple introduces innovative new devices with enhanced capabilities and sustainability focus.',
-                        date: new Date('2025-10-25').toISOString(),
-                        url: 'https://www.apple.com/newsroom'
-                    }
-                ]
+                glassdoorRating: { rating: 4.3, reviewCount: 120000, url: 'https://www.glassdoor.com/Overview/Working-at-Apple-EI_IE1138.11,16.htm' }
             },
             'Amazon': {
                 description: 'Amazon.com, Inc. is an American multinational technology company which focuses on e-commerce, cloud computing, digital streaming, and artificial intelligence.',
@@ -322,15 +300,7 @@ export const getCompanyInfo = asyncHandler(async (req, res) => {
                     phone: '+1-206-266-1000',
                     address: '410 Terry Avenue North, Seattle, WA 98109'
                 },
-                glassdoorRating: { rating: 3.9, reviewCount: 300000, url: 'https://www.glassdoor.com/Overview/Working-at-Amazon-EI_IE6036.11,17.htm' },
-                recentNews: [
-                    {
-                        title: 'Amazon Invests in Sustainability',
-                        summary: 'Amazon announces major investment in renewable energy and carbon neutrality initiatives.',
-                        date: new Date('2025-11-05').toISOString(),
-                        url: 'https://www.aboutamazon.com'
-                    }
-                ]
+                glassdoorRating: { rating: 3.9, reviewCount: 300000, url: 'https://www.glassdoor.com/Overview/Working-at-Amazon-EI_IE6036.11,17.htm' }
             },
             'Meta': {
                 description: 'Meta Platforms, Inc., doing business as Meta and formerly known as Facebook, Inc., is an American multinational technology conglomerate based in Menlo Park, California.',
@@ -343,15 +313,7 @@ export const getCompanyInfo = asyncHandler(async (req, res) => {
                     phone: '+1-650-543-4800',
                     address: '1 Hacker Way, Menlo Park, CA 94025'
                 },
-                glassdoorRating: { rating: 4.1, reviewCount: 90000, url: 'https://www.glassdoor.com/Overview/Working-at-Meta-EI_IE40772.11,15.htm' },
-                recentNews: [
-                    {
-                        title: 'Meta Advances VR Technology',
-                        summary: 'Meta showcases next-generation virtual reality and metaverse capabilities.',
-                        date: new Date('2025-10-30').toISOString(),
-                        url: 'https://about.meta.com/news'
-                    }
-                ]
+                glassdoorRating: { rating: 4.1, reviewCount: 90000, url: 'https://www.glassdoor.com/Overview/Working-at-Meta-EI_IE40772.11,15.htm' }
             },
             'Netflix': {
                 description: 'Netflix, Inc. is an American subscription streaming service and production company that offers a library of films and television series through distribution deals and its own productions.',
@@ -364,15 +326,7 @@ export const getCompanyInfo = asyncHandler(async (req, res) => {
                     phone: '+1-408-540-3700',
                     address: '100 Winchester Circle, Los Gatos, CA 95032'
                 },
-                glassdoorRating: { rating: 4.0, reviewCount: 50000, url: 'https://www.glassdoor.com/Overview/Working-at-Netflix-EI_IE11891.11,18.htm' },
-                recentNews: [
-                    {
-                        title: 'Netflix Expands Original Content',
-                        summary: 'Netflix announces slate of new original series and films across multiple genres.',
-                        date: new Date('2025-11-03').toISOString(),
-                        url: 'https://media.netflix.com'
-                    }
-                ]
+                glassdoorRating: { rating: 4.0, reviewCount: 50000, url: 'https://www.glassdoor.com/Overview/Working-at-Netflix-EI_IE11891.11,18.htm' }
             },
             'Tesla': {
                 description: 'Tesla, Inc. is an American multinational automotive and clean energy company that designs and manufactures electric vehicles, battery energy storage, solar panels and solar roof tiles.',
@@ -385,15 +339,7 @@ export const getCompanyInfo = asyncHandler(async (req, res) => {
                     phone: '+1-512-516-8177',
                     address: '1 Tesla Road, Austin, TX 78725'
                 },
-                glassdoorRating: { rating: 3.6, reviewCount: 75000, url: 'https://www.glassdoor.com/Overview/Working-at-Tesla-EI_IE43129.11,16.htm' },
-                recentNews: [
-                    {
-                        title: 'Tesla Opens New Gigafactory',
-                        summary: 'Tesla inaugurates state-of-the-art manufacturing facility with increased production capacity.',
-                        date: new Date('2025-10-20').toISOString(),
-                        url: 'https://www.tesla.com/blog'
-                    }
-                ]
+                glassdoorRating: { rating: 3.6, reviewCount: 75000, url: 'https://www.glassdoor.com/Overview/Working-at-Tesla-EI_IE43129.11,16.htm' }
             },
             'Stripe': {
                 description: 'Stripe is a financial services and software as a service company that primarily offers payment processing software and application programming interfaces for e-commerce websites and mobile applications.',
@@ -406,19 +352,12 @@ export const getCompanyInfo = asyncHandler(async (req, res) => {
                     phone: '+1-888-926-2289',
                     address: '510 Townsend Street, San Francisco, CA 94103'
                 },
-                glassdoorRating: { rating: 4.5, reviewCount: 20000, url: 'https://www.glassdoor.com/Overview/Working-at-Stripe-EI_IE671932.11,17.htm' },
-                recentNews: [
-                    {
-                        title: 'Stripe Launches New Payment Features',
-                        summary: 'Stripe introduces enhanced payment solutions for global e-commerce businesses.',
-                        date: new Date('2025-10-15').toISOString(),
-                        url: 'https://stripe.com/newsroom'
-                    }
-                ]
+                glassdoorRating: { rating: 4.5, reviewCount: 20000, url: 'https://www.glassdoor.com/Overview/Working-at-Stripe-EI_IE671932.11,17.htm' }
             },
         };
 
         // Apply known company data if available and fields are empty
+        // NOTE: We do NOT include hardcoded news here - news is fetched dynamically
         const knownData = knownCompanies[companyData.name];
         if (knownData) {
             if (!companyData.description) companyData.description = knownData.description;
@@ -428,7 +367,7 @@ export const getCompanyInfo = asyncHandler(async (req, res) => {
             if (!companyData.location) companyData.location = knownData.location;
             if (!companyData.contactInfo.email) companyData.contactInfo = knownData.contactInfo;
             if (!companyData.glassdoorRating.rating) companyData.glassdoorRating = knownData.glassdoorRating;
-            if (companyData.recentNews.length === 0) companyData.recentNews = knownData.recentNews;
+            // DO NOT copy hardcoded news - news should be fetched from newsService
         }
 
         // Try to extract contact email from website if not found
