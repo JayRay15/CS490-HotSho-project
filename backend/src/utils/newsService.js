@@ -243,28 +243,28 @@ export async function fetchGoogleNewsRSS(companyName) {
             return [];
         }
 
-        // Parse RSS XML
+        // Parse RSS XML (avoid using String.matchAll / dotAll for older Node versions)
         const xml = response.data;
-        const itemMatches = xml.matchAll(/<item>(.*?)<\/item>/gs);
+        const itemRegex = /<item>([\s\S]*?)<\/item>/g;
         const newsItems = [];
-
-        for (const match of itemMatches) {
-            const itemXml = match[1];
+        let itemMatch;
+        while ((itemMatch = itemRegex.exec(xml)) !== null) {
+            const itemXml = itemMatch[1];
             
             // Extract title
-            const titleMatch = itemXml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/s);
+            const titleMatch = itemXml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/);
             const title = titleMatch ? titleMatch[1] : '';
             
             // Extract link
-            const linkMatch = itemXml.match(/<link>(.*?)<\/link>/s);
+            const linkMatch = itemXml.match(/<link>([\s\S]*?)<\/link>/);
             const url = linkMatch ? linkMatch[1].trim() : '';
             
             // Extract description
-            const descMatch = itemXml.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>/s);
+            const descMatch = itemXml.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>/);
             const description = descMatch ? descMatch[1] : '';
             
             // Extract date
-            const dateMatch = itemXml.match(/<pubDate>(.*?)<\/pubDate>/s);
+            const dateMatch = itemXml.match(/<pubDate>([\s\S]*?)<\/pubDate>/);
             const date = dateMatch ? new Date(dateMatch[1]) : new Date();
             
             // Extract source from description
@@ -289,7 +289,7 @@ export async function fetchGoogleNewsRSS(companyName) {
             if (newsItems.length >= 10) break;
         }
 
-        return newsItems.map(item => processNewsItem(item, companyName));
+    return newsItems.map(item => processNewsItem(item, companyName));
     } catch (error) {
         console.error('Error fetching Google News RSS:', error.message);
         return [];
@@ -323,34 +323,34 @@ export async function fetchBingNews(companyName) {
             return [];
         }
 
-        // Parse RSS XML
+        // Parse RSS XML (avoid using String.matchAll / dotAll for older Node versions)
         const xml = response.data;
-        const itemMatches = xml.matchAll(/<item>(.*?)<\/item>/gs);
+        const itemRegex = /<item>([\s\S]*?)<\/item>/g;
         const newsItems = [];
-
-        for (const match of itemMatches) {
-            const itemXml = match[1];
+        let itemMatch;
+        while ((itemMatch = itemRegex.exec(xml)) !== null) {
+            const itemXml = itemMatch[1];
             
             // Extract title
-            const titleMatch = itemXml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/s) || 
-                              itemXml.match(/<title>(.*?)<\/title>/s);
+            const titleMatch = itemXml.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/) || 
+                              itemXml.match(/<title>([\s\S]*?)<\/title>/);
             const title = titleMatch ? titleMatch[1] : '';
             
             // Extract link
-            const linkMatch = itemXml.match(/<link>(.*?)<\/link>/s);
+            const linkMatch = itemXml.match(/<link>([\s\S]*?)<\/link>/);
             const url = linkMatch ? linkMatch[1].trim() : '';
             
             // Extract description
-            const descMatch = itemXml.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>/s) ||
-                             itemXml.match(/<description>(.*?)<\/description>/s);
+            const descMatch = itemXml.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>/) ||
+                             itemXml.match(/<description>([\s\S]*?)<\/description>/);
             const description = descMatch ? descMatch[1] : '';
             
             // Extract date
-            const dateMatch = itemXml.match(/<pubDate>(.*?)<\/pubDate>/s);
+            const dateMatch = itemXml.match(/<pubDate>([\s\S]*?)<\/pubDate>/);
             const date = dateMatch ? new Date(dateMatch[1]) : new Date();
             
             // Extract source
-            const sourceMatch = itemXml.match(/<source[^>]*>([^<]+)<\/source>/s);
+            const sourceMatch = itemXml.match(/<source[^>]*>([^<]+)<\/source>/);
             const source = sourceMatch ? sourceMatch[1] : 'Bing News';
             
             // Clean description (remove HTML tags)

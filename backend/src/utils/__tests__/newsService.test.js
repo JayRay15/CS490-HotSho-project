@@ -460,4 +460,184 @@ describe('newsService utilities', () => {
       expect(score).toBeGreaterThanOrEqual(0);
     });
   });
+
+  // Additional edge-case and boundary tests to improve coverage
+  describe('additional edge cases', () => {
+    it('categorizeNews returns general when title and summary empty', () => {
+      const result = categorizeNews('', '');
+      expect(result).toBe('general');
+    });
+
+    it('analyzeSentiment returns neutral when no keywords present', () => {
+      const result = analyzeSentiment('Plain update', 'This is a factual statement with no sentiment');
+      expect(result).toBe('neutral');
+    });
+
+    it('calculateRelevance awards correct recency bonus boundaries', () => {
+      const company = 'EdgeCo';
+      const now = Date.now();
+
+      const lessThan7 = { title: 'A', summary: 'B', date: new Date(now - 1000 * 60 * 60 * 24 * 7) }; // exactly 7 days
+      const eightDays = { title: 'A', summary: 'B', date: new Date(now - 1000 * 60 * 60 * 24 * 8) }; // 8 days
+      const twentyDays = { title: 'A', summary: 'B', date: new Date(now - 1000 * 60 * 60 * 24 * 20) }; // 20 days
+      const fortyDays = { title: 'A', summary: 'B', date: new Date(now - 1000 * 60 * 60 * 24 * 40) }; // 40 days
+
+      const s7 = calculateRelevance(lessThan7, company);
+      const s8 = calculateRelevance(eightDays, company);
+      const s20 = calculateRelevance(twentyDays, company);
+      const s40 = calculateRelevance(fortyDays, company);
+
+      // 7-day should be >= 8-day (7-day gets highest recency bonus)
+      expect(s7).toBeGreaterThanOrEqual(s8);
+      // 20-day should be >= 40-day
+      expect(s20).toBeGreaterThanOrEqual(s40);
+    });
+
+    it('extractTags returns unique tags and limits to 5', () => {
+      const title = 'Funding Launch Growth Growth Growth';
+      const summary = 'Series A investment innovation customers revenue market expansion partnership';
+      const tags = extractTags(title, summary);
+
+      // Should be an array of strings, unique and length <= 5
+      expect(Array.isArray(tags)).toBe(true);
+      const unique = new Set(tags);
+      expect(unique.size).toBe(tags.length);
+      expect(tags.length).toBeLessThanOrEqual(5);
+    });
+
+    it('processNewsItem handles missing summary and source gracefully', () => {
+      const raw = { title: 'EdgeCo raises funding', url: 'https://example.com' };
+      const processed = processNewsItem(raw, 'EdgeCo');
+
+  expect(processed.title).toBe(raw.title);
+  // summary may be undefined when not provided; ensure it is either undefined or a string
+  expect(typeof processed.summary === 'undefined' || typeof processed.summary === 'string').toBe(true);
+  expect(processed.source).toBeDefined();
+      expect(Array.isArray(processed.keyPoints)).toBe(true);
+      expect(Array.isArray(processed.tags)).toBe(true);
+      expect(typeof processed.relevanceScore).toBe('number');
+    });
+  });
+
+  // Integration tests that mock axios for network-fetching helpers
+  describe('network fetch integration (mocked axios)', () => {
+    // Helper to create a transient newsService import that uses a mocked axios
+    async function importNewsServiceWithMockedAxios(responses) {
+      const fs = await import('fs');
+      const os = await import('os');
+      const path = await import('path');
+      const { pathToFileURL, fileURLToPath } = await import('url');
+
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ns-'));
+      const mockAxiosPath = path.join(tmpDir, 'mockAxios.mjs');
+
+      const modSrc = `let _call = 0;
+export default {
+  get: async function(url, opts) {
+    const responses = ${JSON.stringify(responses)};
+    const idx = _call < responses.length ? _call++ : responses.length - 1;
+    const r = responses[idx];
+    if (r && r.__throw) throw new Error(r.__throw);
+    return { data: r };
+  }
+};
+`;
+      fs.writeFileSync(mockAxiosPath, modSrc, 'utf8');
+
+      // Read original newsService and replace dynamic axios imports
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = path.dirname(__filename);
+      const origPath = path.resolve(path.join(__dirname, '..', 'newsService.js'));
+      const origSrc = fs.readFileSync(origPath, 'utf8');
+      const mockedImport = `await import('${pathToFileURL(mockAxiosPath).href}')`;
+  let replaced = origSrc.replace(/await import\(\s*['"]axios['"]\s*\)/g, mockedImport);
+  // Remove any test-time fetchCompanyNews invocation from the transient copy so it doesn't consume mocked responses
+  replaced = replaced.replace(/const companyNews = fetchCompanyNews\([\s\S]*?\);/, '/* transient: skipped fetchCompanyNews test-time call */');
+
+      const tmpNewsPath = path.join(tmpDir, 'newsService.tmp.mjs');
+      fs.writeFileSync(tmpNewsPath, replaced, 'utf8');
+
+      // Ensure network-allow flag and a dummy NewsAPI key are set so fetch helpers run in test
+      process.env.NEWS_SERVICE_ALLOW_NETWORK = 'true';
+      process.env.NEWS_API_KEY = process.env.NEWS_API_KEY || 'test_news_api_key';
+      const mod = await import(pathToFileURL(tmpNewsPath).href);
+      return mod;
+    }
+
+    it('fetchNewsAPINews returns processed articles', async () => {
+      const article = {
+        title: 'Acme raises Series B',
+        description: 'Acme secured funding and growth',
+        url: 'https://news.example/acme',
+        publishedAt: new Date().toISOString(),
+        source: { name: 'ExampleNews' }
+      };
+
+      const mockedData = [ { articles: [ article ] } ];
+      const { fetchNewsAPINews } = await importNewsServiceWithMockedAxios(mockedData);
+
+      const results = await fetchNewsAPINews('Acme');
+      expect(Array.isArray(results)).toBe(true);
+      expect(results.length).toBeGreaterThanOrEqual(1);
+      expect(results[0].title).toBe(article.title);
+      expect(results[0].source).toBe(article.source.name);
+    });
+
+    it('fetchGoogleNewsRSS parses CDATA items correctly', async () => {
+      const rss = `<?xml version="1.0"?>\n<rss><channel><item>\n<title><![CDATA[CDATATitle]]></title>\n<link>https://g.example/article</link>\n<description><![CDATA[<a href=\"https://source\">GSource</a><p>Summary content here.</p>]]></description>\n<pubDate>Wed, 11 Nov 2025 12:00:00 GMT</pubDate>\n</item></channel></rss>`;
+      const mockedData = [ rss ];
+
+      const { fetchGoogleNewsRSS } = await importNewsServiceWithMockedAxios(mockedData);
+      const res = await fetchGoogleNewsRSS('SomeCo');
+      expect(Array.isArray(res)).toBe(true);
+      expect(res.length).toBeGreaterThanOrEqual(1);
+      expect(res[0].title).toBe('CDATATitle');
+      expect(res[0].source).toBe('GSource');
+    });
+
+    it('fetchBingNews parses non-CDATA titles and source tag', async () => {
+      const rss = `<?xml version="1.0"?>\n<rss><channel><item>\n<title>Plain Title</title>\n<link>https://b.example/article</link>\n<description>Some description here.</description>\n<pubDate>Wed, 11 Nov 2025 13:00:00 GMT</pubDate>\n<source url=\"https://b.example\">BSource</source>\n</item></channel></rss>`;
+      const mockedData = [ rss ];
+
+      const { fetchBingNews } = await importNewsServiceWithMockedAxios(mockedData);
+      const res = await fetchBingNews('OtherCo');
+      expect(Array.isArray(res)).toBe(true);
+      expect(res.length).toBeGreaterThanOrEqual(1);
+      expect(res[0].title).toBe('Plain Title');
+      expect(res[0].source).toBe('BSource');
+    });
+
+    it('fetchCompanyNews aggregates from multiple sources and deduplicates', async () => {
+      // Responses in order: NewsAPI, Google RSS, Bing RSS, Wikipedia search, Wikipedia content
+      const article = {
+        title: 'Unique Product Launch',
+        description: 'Product launch description',
+        url: 'https://news.example/unique',
+        publishedAt: new Date().toISOString(),
+        source: { name: 'ExampleNews' }
+      };
+
+      const googleRss = `<?xml version="1.0"?>\n<rss><channel><item>\n<title><![CDATA[Unique Product Launch - Coverage]]></title>\n<link>https://g.example/unique</link>\n<description><![CDATA[<a>GSource</a><p>Desc</p>]]></description>\n<pubDate>Wed, 11 Nov 2025 14:00:00 GMT</pubDate>\n</item></channel></rss>`;
+
+      const bingRss = `<?xml version="1.0"?>\n<rss><channel><item>\n<title>Unique Product Launch</title>\n<link>https://b.example/unique</link>\n<description>Some desc</description>\n<pubDate>Wed, 11 Nov 2025 14:05:00 GMT</pubDate>\n<source>BSource</source>\n</item></channel></rss>`;
+
+      const wikiSearch = { query: { search: [{ title: 'UniqueCo' }] } };
+      const extract = `${new Date().getFullYear()} UniqueCo announced Unique Product Launch that is notable and impacts customers.`;
+      const wikiContent = { query: { pages: { '1': { extract } } } };
+
+      const mockedData = [ { articles: [ article ] }, googleRss, bingRss, wikiSearch, wikiContent ];
+
+  const { fetchCompanyNews, fetchNewsAPINews, fetchGoogleNewsRSS, fetchBingNews, fetchWikipediaNews } = await importNewsServiceWithMockedAxios(mockedData);
+
+  // Call the aggregator which deduplicates and filters (mocked responses provided in order)
+  const res = await fetchCompanyNews('UniqueCo', { limit: 5, minRelevance: 0 });
+  expect(Array.isArray(res)).toBe(true);
+  // Should include at least one item
+  expect(res.length).toBeGreaterThanOrEqual(1);
+  // Titles should not be duplicates of the first 5 words normalized
+  const normalized = res.map(r => r.title.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).slice(0,5).join(' '));
+  const set = new Set(normalized);
+  expect(set.size).toBe(normalized.length);
+    });
+  });
 });
