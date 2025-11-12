@@ -317,7 +317,7 @@ export function formatResearchForCoverLetter(research) {
  */
 
 /**
- * Gather basic company information from public sources
+ * Gather basic company information using AI
  */
 async function gatherBasicCompanyInfo(companyName, companyWebsite) {
   const basicInfo = {
@@ -333,87 +333,41 @@ async function gatherBasicCompanyInfo(companyName, companyWebsite) {
   };
 
   try {
-    // Try Clearbit API for basic info
-    const AUTOCOMPLETE_API = 'https://autocomplete.clearbit.com/v1/companies/suggest?query=';
-    const autocompleteRes = await fetch(`${AUTOCOMPLETE_API}${encodeURIComponent(companyName)}`);
+    // Use AI to extract basic company information
+    const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
 
-    if (autocompleteRes.ok) {
-      const suggestions = await autocompleteRes.json();
-      if (suggestions && suggestions.length > 0) {
-        const company = suggestions[0];
-        basicInfo.name = company.name || companyName;
-        basicInfo.website = company.domain ? `https://${company.domain}` : companyWebsite;
-        basicInfo.logo = company.logo || `https://logo.clearbit.com/${company.domain}`;
-      }
-    }
+    const prompt = `Provide basic information about ${companyName}${companyWebsite ? ` (website: ${companyWebsite})` : ''}.
 
-    // Try Wikipedia for more detailed information
-    const wikiSearchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(companyName + ' company')}&format=json&origin=*`;
-    const wikiSearchRes = await fetch(wikiSearchUrl);
+Return ONLY a valid JSON object:
+{
+  "name": "Official company name",
+  "website": "Company website URL",
+  "logo": "Logo URL if known, or null",
+  "size": "Employee count estimate",
+  "industry": "Primary industry",
+  "headquarters": "City, State/Country",
+  "founded": "Year founded if known, or null",
+  "mission": "Mission statement if known, or null"
+}`;
 
-    if (wikiSearchRes.ok) {
-      const searchData = await wikiSearchRes.json();
-      if (searchData.query?.search?.length > 0) {
-        const pageTitle = searchData.query.search[0].title;
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    let text = response.text().trim();
+    text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
-        // Get page content
-        const wikiContentUrl = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(pageTitle)}&prop=extracts&exintro=true&explaintext=true&format=json&origin=*`;
-        const wikiContentRes = await fetch(wikiContentUrl);
+    const aiData = JSON.parse(text);
 
-        if (wikiContentRes.ok) {
-          const contentData = await wikiContentRes.json();
-          const pages = contentData.query.pages;
-          const pageId = Object.keys(pages)[0];
-          const extract = pages[pageId].extract;
+    basicInfo.name = aiData.name || companyName;
+    basicInfo.website = aiData.website || companyWebsite;
+    basicInfo.logo = aiData.logo;
+    basicInfo.size = aiData.size;
+    basicInfo.industry = aiData.industry;
+    basicInfo.headquarters = aiData.headquarters;
+    basicInfo.founded = aiData.founded;
+    basicInfo.mission = aiData.mission;
 
-          if (extract) {
-            // Extract industry
-            const industryPatterns = [
-              /is an? ([^\.]+) company/i,
-              /operates in the ([^\.]+) industry/i,
-              /specializes in ([^\.]+)/i
-            ];
-            for (const pattern of industryPatterns) {
-              const match = extract.match(pattern);
-              if (match && match[1]) {
-                basicInfo.industry = match[1].trim();
-                break;
-              }
-            }
-
-            // Extract headquarters
-            const hqMatch = extract.match(/headquartered in ([^\.]+)/i) ||
-              extract.match(/based in ([^\.]+)/i);
-            if (hqMatch) {
-              basicInfo.headquarters = hqMatch[1].trim().split(',')[0];
-            }
-
-            // Extract founded year
-            const foundedMatch = extract.match(/founded in (\d{4})/i) ||
-              extract.match(/established in (\d{4})/i);
-            if (foundedMatch) {
-              basicInfo.founded = parseInt(foundedMatch[1]);
-            }
-
-            // Extract employee count for size estimation
-            const employeeMatch = extract.match(/(\d{1,3}(?:,\d{3})*)\s+employees/i);
-            if (employeeMatch) {
-              const size = parseInt(employeeMatch[1].replace(/,/g, ''));
-              if (size <= 10) basicInfo.size = '1-10';
-              else if (size <= 50) basicInfo.size = '11-50';
-              else if (size <= 200) basicInfo.size = '51-200';
-              else if (size <= 500) basicInfo.size = '201-500';
-              else if (size <= 1000) basicInfo.size = '501-1000';
-              else if (size <= 5000) basicInfo.size = '1001-5000';
-              else if (size <= 10000) basicInfo.size = '5001-10000';
-              else basicInfo.size = '10000+';
-            }
-          }
-        }
-      }
-    }
   } catch (error) {
-    console.log('Basic info gathering error:', error.message);
+    console.log('AI basic info extraction error:', error.message);
   }
 
   return basicInfo;
@@ -532,7 +486,7 @@ Generate the research JSON now:`;
 }
 
 /**
- * Find company social media presence
+ * Find company social media presence using AI
  */
 async function findSocialMediaPresence(companyName, companyWebsite) {
   const socialMedia = {
@@ -541,20 +495,40 @@ async function findSocialMediaPresence(companyName, companyWebsite) {
   };
 
   try {
-    // Generate likely social media URLs
-    const cleanName = companyName.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const companySlug = companyName.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
+    // Use AI to find social media accounts
+    const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
 
-    socialMedia.platforms = {
-      linkedin: `https://www.linkedin.com/company/${cleanName}`,
-      twitter: `https://twitter.com/${companySlug}`,
-      facebook: `https://www.facebook.com/${companySlug}`,
-      instagram: `https://www.instagram.com/${companySlug}`,
-      youtube: `https://www.youtube.com/@${companySlug}`,
-      github: `https://github.com/${companySlug}`
-    };
+    const prompt = `What are the official social media accounts for ${companyName}${companyWebsite ? ` (website: ${companyWebsite})` : ''}? 
 
-    socialMedia.engagement = `Check ${companyName}'s social media profiles for latest updates, company culture insights, and employee testimonials.`;
+Return ONLY a valid JSON object with actual URLs or null:
+{
+  "linkedin": "Full LinkedIn company page URL or null",
+  "twitter": "Full Twitter/X account URL or null",
+  "facebook": "Full Facebook page URL or null",
+  "instagram": "Full Instagram account URL or null",
+  "youtube": "Full YouTube channel URL or null",
+  "github": "Full GitHub organization URL or null"
+}
+
+Only include URLs you are confident about. Use null for unknown accounts.`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    let text = response.text().trim();
+    text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+    const aiData = JSON.parse(text);
+
+    // Only include platforms that AI found
+    Object.keys(aiData).forEach(platform => {
+      if (aiData[platform]) {
+        socialMedia.platforms[platform] = aiData[platform];
+      }
+    });
+
+    if (Object.keys(socialMedia.platforms).length > 0) {
+      socialMedia.engagement = `Check ${companyName}'s social media profiles for latest updates, company culture insights, and employee testimonials.`;
+    }
 
   } catch (error) {
     console.log('Social media lookup error:', error.message);

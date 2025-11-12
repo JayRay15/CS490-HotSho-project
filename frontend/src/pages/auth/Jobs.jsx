@@ -1527,7 +1527,7 @@ export default function Jobs() {
                   </div>
 
                   {/* Tags Filter */}
-                  <div>
+                  <div style={{ display: "none" }}>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Tags (comma-separated)</label>
                     <input
                       type="text"
@@ -1930,13 +1930,13 @@ export default function Jobs() {
                   )}
                 </div>
 
-                <InputField
+                {/*                 <InputField
                   label="Tags (comma-separated)"
                   type="text"
                   value={formData.tags}
                   onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
                   placeholder="e.g., JavaScript, Remote, Senior"
-                />
+                /> */}
 
                 <InputField
                   label="Description"
@@ -2009,8 +2009,7 @@ export default function Jobs() {
                                     rating: info.glassdoorRating?.rating ?? formData.companyInfo?.glassdoorRating?.rating ?? '',
                                     reviewCount: info.glassdoorRating?.reviewCount ?? formData.companyInfo?.glassdoorRating?.reviewCount ?? '',
                                     url: info.glassdoorRating?.url ?? formData.companyInfo?.glassdoorRating?.url ?? ''
-                                  },
-                                  recentNews: info.recentNews || formData.companyInfo?.recentNews || []
+                                  }
                                 }
                               });
                               alert('Company information loaded successfully!');
@@ -2087,7 +2086,7 @@ export default function Jobs() {
                       placeholder="Company's mission statement..."
                     />
 
-                    <div className="border-t pt-4">
+                    <div className="border-t pt-4" style={{ display: "none" }}>
                       <h4 className="text-sm font-medium text-gray-700 mb-3">Contact Information</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <InputField
@@ -2180,7 +2179,7 @@ export default function Jobs() {
                       </div>
                     </div>
 
-                    <div className="border-t pt-4">
+                    <div className="border-t pt-4" style={{ display: "none" }}>
                       <div className="flex items-center justify-between mb-3">
                         <h4 className="text-sm font-medium text-gray-700">Recent News & Updates</h4>
                         <Button
@@ -2508,13 +2507,13 @@ export default function Jobs() {
                   )}
                 </div>
 
-                <InputField
+                {/*                 <InputField
                   label="Tags (comma-separated)"
                   type="text"
                   value={formData.tags}
                   onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
                   placeholder="e.g., JavaScript, Remote, Senior"
-                />
+                /> */}
 
                 <InputField
                   label="Description"
@@ -2603,8 +2602,7 @@ export default function Jobs() {
                                     rating: info.glassdoorRating?.rating ?? formData.companyInfo?.glassdoorRating?.rating ?? '',
                                     reviewCount: info.glassdoorRating?.reviewCount ?? formData.companyInfo?.glassdoorRating?.reviewCount ?? '',
                                     url: info.glassdoorRating?.url ?? formData.companyInfo?.glassdoorRating?.url ?? ''
-                                  },
-                                  recentNews: info.recentNews || formData.companyInfo?.recentNews || []
+                                  }
                                 }
                               });
                               alert('Company information loaded successfully!');
@@ -2681,7 +2679,7 @@ export default function Jobs() {
                       placeholder="Company's mission statement..."
                     />
 
-                    <div className="border-t pt-4">
+                    <div className="border-t pt-4" style={{ display: "none" }}>
                       <h4 className="text-sm font-medium text-gray-700 mb-3">Contact Information</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <InputField
@@ -2774,7 +2772,7 @@ export default function Jobs() {
                       </div>
                     </div>
 
-                    <div className="border-t pt-4">
+                    <div className="border-t pt-4" style={{ display: "none" }}>
                       <div className="flex items-center justify-between mb-3">
                         <h4 className="text-sm font-medium text-gray-700">Recent News & Updates</h4>
                         <Button
