@@ -51,3 +51,7 @@ export const exportCoverLetterAsText = (id, payload) =>
 
 export const generateEmailTemplate = (id, payload) =>
   retryRequest(() => api.post(`/api/cover-letters/${id}/email-template`, payload));
+
+// Experience analysis for cover letters
+export const analyzeExperienceForCoverLetter = (jobId, maxExperiences = 3) =>
+  retryRequest(() => api.post('/api/cover-letters/analyze-experience', { jobId, maxExperiences }));

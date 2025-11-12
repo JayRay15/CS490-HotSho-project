@@ -17,6 +17,15 @@ import {
   generateEmailTemplate,
   generateCoverLetterFilename
 } from "../utils/coverLetterExporter.js";
+import {
+  selectRelevantExperiences,
+  generateExperienceNarrative,
+  connectToJobRequirements,
+  suggestAdditionalExperiences,
+  scoreExperiencePackage,
+  generateAlternativePresentations,
+  quantifyAchievements
+} from "../utils/experienceAnalyzer.js";
 
 const getUserId = (req) => {
   const auth = typeof req.auth === 'function' ? req.auth() : req.auth;
@@ -758,3 +767,167 @@ export const generateCoverLetterEmailTemplate = async (req, res) => {
     return sendResponse(res, response, statusCode);
   }
 };
+
+/**
+ * Analyze experience relevance for a job and generate narratives
+ * POST /api/cover-letters/analyze-experience
+ */
+export const analyzeExperienceForCoverLetter = async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { jobId, maxExperiences = 3 } = req.body;
+
+    if (!jobId) {
+      const { response, statusCode } = errorResponse("Job ID is required", 400, ERROR_CODES.VALIDATION_ERROR);
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Fetch job details
+    const job = await Job.findOne({ _id: jobId, userId }).lean();
+    if (!job) {
+      const { response, statusCode } = errorResponse("Job not found", 404, ERROR_CODES.NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Fetch user profile with employment (work experience)
+    const user = await User.findOne({ auth0Id: userId }).select('employment skills').lean();
+    if (!user || !user.employment || user.employment.length === 0) {
+      const { response, statusCode } = errorResponse("No work experience found in profile. Please add your employment history in your profile.", 404, ERROR_CODES.NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Transform employment data to match experience analyzer format
+    const workExperience = user.employment.map(emp => ({
+      title: emp.position || emp.jobTitle,
+      company: emp.company,
+      startDate: emp.startDate,
+      endDate: emp.endDate,
+      description: emp.description || '',
+      achievements: emp.description ? emp.description.split('\n').filter(line => line.trim()) : [],
+      location: emp.location,
+      isCurrentPosition: emp.isCurrentPosition
+    }));
+
+    // Select most relevant experiences
+    const relevantExperiences = selectRelevantExperiences(
+      workExperience,
+      job,
+      user.skills || [],
+      maxExperiences
+    );
+
+    // Generate narratives for each experience
+    const experiencesWithNarratives = relevantExperiences.map(exp => {
+      const narratives = generateExperienceNarrative(exp, job, exp.relevance);
+      const alternativePresentations = generateAlternativePresentations(exp, job);
+      const quantified = quantifyAchievements(exp.achievements || [], exp.relevance);
+      
+      return {
+        experience: {
+          title: exp.title,
+          company: exp.company,
+          startDate: exp.startDate,
+          endDate: exp.endDate,
+          description: exp.description,
+          achievements: exp.achievements
+        },
+        relevance: exp.relevance,
+        narratives,
+        quantifiedAchievements: quantified,
+        alternativePresentations
+      };
+    });
+
+    // Connect experiences to job requirements
+    const requirementConnections = connectToJobRequirements(relevantExperiences, job);
+
+    // Suggest additional experiences
+    const additionalSuggestions = suggestAdditionalExperiences(
+      workExperience,
+      relevantExperiences,
+      job
+    );
+
+    // Score overall experience package
+    const packageScore = scoreExperiencePackage(relevantExperiences, job);
+
+    const analysisResult = {
+      selectedExperiences: experiencesWithNarratives,
+      requirementConnections,
+      additionalSuggestions: additionalSuggestions.map(s => ({
+        experience: {
+          title: s.experience.title,
+          company: s.experience.company
+        },
+        relevanceScore: s.relevance.score,
+        reason: s.reason
+      })),
+      packageScore,
+      recommendations: generateExperienceRecommendations(packageScore, relevantExperiences, job)
+    };
+
+    const { response, statusCode } = successResponse("Experience analysis completed", analysisResult);
+    return sendResponse(res, response, statusCode);
+  } catch (err) {
+    console.error("Failed to analyze experience:", err);
+    const { response, statusCode } = errorResponse("Failed to analyze experience", 500, ERROR_CODES.INTERNAL_ERROR);
+    return sendResponse(res, response, statusCode);
+  }
+};
+
+/**
+ * Generate experience recommendations based on analysis
+ */
+function generateExperienceRecommendations(packageScore, experiences, job) {
+  const recommendations = [];
+
+  if (packageScore.overallScore >= 70) {
+    recommendations.push({
+      type: 'emphasis',
+      message: 'Your experience is highly relevant - emphasize specific achievements',
+      action: 'Use achievement-focused narratives in your cover letter'
+    });
+  } else if (packageScore.overallScore >= 50) {
+    recommendations.push({
+      type: 'transferable',
+      message: 'Good match - highlight transferable skills',
+      action: 'Connect your experiences to job requirements explicitly'
+    });
+  } else {
+    recommendations.push({
+      type: 'growth',
+      message: 'Emphasize learning ability and growth potential',
+      action: 'Focus on how past experiences prepared you for this role'
+    });
+  }
+
+  if (packageScore.gaps.length > 0) {
+    recommendations.push({
+      type: 'skill-gaps',
+      message: `Address skill gaps: ${packageScore.gaps.slice(0, 3).join(', ')}`,
+      action: 'Mention relevant coursework, projects, or self-study'
+    });
+  }
+
+  if (experiences.length < 3) {
+    recommendations.push({
+      type: 'expand',
+      message: 'Consider adding more relevant experiences',
+      action: 'Include internships, projects, or volunteer work'
+    });
+  }
+
+  // Check for quantification
+  const hasQuantified = experiences.some(exp => 
+    exp.achievements?.some(a => /\d+/.test(a))
+  );
+  if (!hasQuantified) {
+    recommendations.push({
+      type: 'quantify',
+      message: 'Add metrics to your achievements',
+      action: 'Quantify impact where possible (e.g., "increased by 25%")'
+    });
+  }
+
+  return recommendations;
+}

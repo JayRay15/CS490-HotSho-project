@@ -18,7 +18,7 @@ const PRIORITY_COLORS = {
   "High": "text-red-600",
 };
 
-export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange, isDragging, highlightTerms, isSelected, onToggleSelect, onArchive, onRestore, onScheduleInterview, onViewMatchScore, onOpenStatusModal, onOpenTimeline, onOpenEmailDetector, applicationStatus }) {
+export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange, isDragging, highlightTerms, isSelected, onToggleSelect, onArchive, onRestore, onScheduleInterview, onViewMatchScore, onOpenStatusModal, onOpenTimeline, onOpenEmailDetector, applicationStatus, onGenerateCoverLetter }) {
   const [showDetails, setShowDetails] = useState(false);
   const navigate = useNavigate();
 
@@ -285,6 +285,16 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
               📅 Schedule Interview
             </button>
           )}
+          {/* Generate Cover Letter */}
+          {onGenerateCoverLetter && !job.archived && (
+            <button
+              onClick={() => onGenerateCoverLetter(job)}
+              className="text-xs px-2 py-1 rounded bg-gradient-to-r from-blue-100 to-purple-100 hover:from-blue-200 hover:to-purple-200 text-blue-700 font-medium"
+              title="Generate AI-powered cover letter with experience highlighting"
+            >
+              ✨ Generate Cover Letter
+            </button>
+          )}
           {/* Status Tracking Actions */}
           {onOpenStatusModal && !job.archived && (
             <button
@@ -490,4 +500,5 @@ JobCard.propTypes = {
   onOpenTimeline: PropTypes.func,
   onOpenEmailDetector: PropTypes.func,
   applicationStatus: PropTypes.object,
+  onGenerateCoverLetter: PropTypes.func,
 };

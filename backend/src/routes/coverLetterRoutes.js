@@ -20,7 +20,8 @@ import {
   analyzeCoverLetterReadability,
   getSentenceRestructuring,
   saveCoverLetterVersion,
-  getCoverLetterHistory
+  getCoverLetterHistory,
+  analyzeExperienceForCoverLetter
 } from "../controllers/coverLetterController.js";
 
 const router = express.Router();
@@ -28,6 +29,10 @@ const router = express.Router();
 // Cover letter routes (actual cover letters, not templates)
 router.get("/cover-letters", checkJwt, listCoverLetters);
 router.post("/cover-letters", checkJwt, createCoverLetterFromTemplate);
+
+// Experience highlighting and analysis - MUST come before parameterized routes
+router.post("/cover-letters/analyze-experience", checkJwt, analyzeExperienceForCoverLetter);
+
 router.get("/cover-letters/:id", checkJwt, getCoverLetterById);
 router.put("/cover-letters/:id", checkJwt, updateCoverLetter);
 router.delete("/cover-letters/:id", checkJwt, deleteCoverLetter);

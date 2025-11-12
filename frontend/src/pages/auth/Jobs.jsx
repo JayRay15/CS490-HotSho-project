@@ -26,6 +26,7 @@ import StatusTimeline from "../../components/StatusTimeline";
 import EmailStatusDetector from "../../components/EmailStatusDetector";
 import StatusStatistics from "../../components/StatusStatistics";
 import BulkStatusUpdate from "../../components/BulkStatusUpdate";
+import CoverLetterGeneratorModal from "../../components/CoverLetterGeneratorModal";
 import * as interviewsAPI from "../../api/interviews";
 import * as statusAPI from "../../api/applicationStatus";
 
@@ -109,6 +110,10 @@ export default function Jobs() {
   const [showStatusStats, setShowStatusStats] = useState(false);
   const [showBulkStatusUpdate, setShowBulkStatusUpdate] = useState(false);
   const [selectedJobForStatus, setSelectedJobForStatus] = useState(null);
+
+  // Cover Letter Generator state
+  const [showCoverLetterGenerator, setShowCoverLetterGenerator] = useState(false);
+  const [selectedJobForCoverLetter, setSelectedJobForCoverLetter] = useState(null);
 
   // Form state for adding/editing jobs
   const [formData, setFormData] = useState({
@@ -1071,6 +1076,17 @@ export default function Jobs() {
     setShowMatchScore(true);
   };
 
+  // Cover Letter Generator Handler
+  const handleGenerateCoverLetter = (job) => {
+    setSelectedJobForCoverLetter(job);
+    setShowCoverLetterGenerator(true);
+  };
+
+  const handleCoverLetterSuccess = () => {
+    setSuccessMessage('Cover letter generated and saved successfully!');
+    setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
   const handleDeleteJobWithConfirm = async (jobId, jobTitle) => {
     const confirmed = window.confirm(
       `Are you sure you want to permanently delete "${jobTitle}"?\n\nThis action cannot be undone. Consider archiving instead.`
@@ -1718,6 +1734,7 @@ export default function Jobs() {
               onOpenTimeline={handleOpenTimeline}
               onOpenEmailDetector={handleOpenEmailDetector}
               applicationStatuses={applicationStatuses}
+              onGenerateCoverLetter={handleGenerateCoverLetter}
               highlightTerms={[
                 searchTerm?.trim(),
                 filters.location?.trim(),
@@ -3607,6 +3624,18 @@ export default function Jobs() {
             setShowBulkStatusUpdate(false);
           }}
           onUpdate={handleBulkApplicationStatusUpdate}
+        />
+      )}
+
+      {/* Cover Letter Generator Modal */}
+      {showCoverLetterGenerator && selectedJobForCoverLetter && (
+        <CoverLetterGeneratorModal
+          job={selectedJobForCoverLetter}
+          onClose={() => {
+            setShowCoverLetterGenerator(false);
+            setSelectedJobForCoverLetter(null);
+          }}
+          onSuccess={handleCoverLetterSuccess}
         />
       )}
     </div>
