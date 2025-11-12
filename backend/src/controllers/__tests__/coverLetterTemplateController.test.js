@@ -387,4 +387,536 @@ describe('coverLetterTemplateController', () => {
       expect(mockRes.status).toHaveBeenCalledWith(200);
     });
   });
+
+  describe('advanced template operations and error handling', () => {
+    it('should export template with user access check', async () => {
+      mockReq.params.id = 't-shared';
+      const template = { 
+        _id: 't-shared', 
+        name: 'Shared', 
+        industry: 'tech', 
+        style: 'modern', 
+        content: 'c', 
+        description: 'd',
+        userId: 'other-user',
+        isShared: true
+      };
+      mockCover.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(template) });
+
+      await exportTemplate(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          data: expect.objectContaining({
+            template: expect.not.objectContaining({ userId: expect.anything() })
+          })
+        })
+      );
+    });
+
+    it('should return 404 when exporting non-existent or non-shared template', async () => {
+      mockReq.params.id = 't-private';
+      mockCover.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(null) });
+
+      await exportTemplate(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+    });
+
+    it('should share template with specific users', async () => {
+      mockReq.params.id = 't-share';
+      mockReq.body = { isShared: true, sharedWith: ['user-2', 'user-3'] };
+      const templateDoc = { 
+        _id: 't-share', 
+        userId: 'user-1', 
+        isShared: false,
+        sharedWith: [],
+        save: jest.fn().mockResolvedValue(true) 
+      };
+      mockCover.findOne.mockResolvedValue(templateDoc);
+
+      await shareTemplate(mockReq, mockRes);
+
+      expect(templateDoc.isShared).toBe(true);
+      expect(templateDoc.sharedWith).toEqual(['user-2', 'user-3']);
+      expect(templateDoc.save).toHaveBeenCalled();
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+    });
+
+    it('should return 404 when sharing non-existent template', async () => {
+      mockReq.params.id = 'missing-share';
+      mockReq.body = { isShared: true };
+      mockCover.findOne.mockResolvedValue(null);
+
+      await shareTemplate(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+    });
+
+    it('should unshare template by setting isShared to false', async () => {
+      mockReq.params.id = 't-unshare';
+      mockReq.body = { isShared: false };
+      const templateDoc = { 
+        _id: 't-unshare', 
+        userId: 'user-1', 
+        isShared: true,
+        save: jest.fn().mockResolvedValue(true) 
+      };
+      mockCover.findOne.mockResolvedValue(templateDoc);
+
+      await shareTemplate(mockReq, mockRes);
+
+      expect(templateDoc.isShared).toBe(false);
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+    });
+
+    it('should track template usage and increment count', async () => {
+      mockReq.params.id = 't-track';
+      mockCover.findByIdAndUpdate.mockResolvedValue({ _id: 't-track', usageCount: 5 });
+
+      await trackTemplateUsage(mockReq, mockRes);
+
+      expect(mockCover.findByIdAndUpdate).toHaveBeenCalledWith(
+        't-track',
+        { $inc: { usageCount: 1 } },
+        { new: true }
+      );
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+    });
+
+    it('should return 404 when tracking usage for non-existent template', async () => {
+      mockReq.params.id = 'missing-track';
+      mockCover.findByIdAndUpdate.mockResolvedValue(null);
+
+      await trackTemplateUsage(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+    });
+
+    it('should get analytics with usage breakdown by industry and style', async () => {
+      const templates = [
+        { _id: 'a', name: 'A', industry: 'tech', style: 'formal', usageCount: 5, createdAt: new Date() },
+        { _id: 'b', name: 'B', industry: 'tech', style: 'modern', usageCount: 3, createdAt: new Date() },
+        { _id: 'c', name: 'C', industry: 'finance', style: 'formal', usageCount: 2, createdAt: new Date() }
+      ];
+      mockCover.find.mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          sort: jest.fn().mockReturnValue({
+            lean: jest.fn().mockResolvedValue(templates)
+          })
+        })
+      });
+
+      await getTemplateAnalytics(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          data: expect.objectContaining({
+            analytics: expect.objectContaining({
+              usageByIndustry: expect.any(Object),
+              usageByStyle: expect.any(Object)
+            })
+          })
+        })
+      );
+    });
+
+    it('should import template with JSON parsing', async () => {
+      mockReq.body = {
+        templateData: {
+          name: 'Imported',
+          industry: 'technology',
+          style: 'modern',
+          content: 'Hello [NAME]',
+          description: 'Cool template'
+        }
+      };
+      mockCover.create.mockResolvedValue({ _id: 't-import' });
+
+      await importTemplate(mockReq, mockRes);
+
+      expect(mockCover.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Imported',
+          industry: 'technology',
+          style: 'modern',
+          content: 'Hello [NAME]'
+        })
+      );
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+    });
+
+    it('should parse stringified JSON in import', async () => {
+      mockReq.body = {
+        templateData: JSON.stringify({
+          name: 'StringImported',
+          industry: 'finance',
+          style: 'formal',
+          content: 'Dear Hiring Manager'
+        })
+      };
+      mockCover.create.mockResolvedValue({ _id: 't-str-import' });
+
+      await importTemplate(mockReq, mockRes);
+
+      expect(mockCover.create).toHaveBeenCalled();
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+    });
+
+    it('should return 400 when importing with missing fields', async () => {
+      mockReq.body = {
+        templateData: {
+          name: 'Incomplete'
+          // missing industry, style, content
+        }
+      };
+
+      await importTemplate(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should return 400 when templateData is missing', async () => {
+      mockReq.body = {};
+
+      await importTemplate(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should list templates with industry filter', async () => {
+      mockReq.query.industry = 'technology';
+      mockCover.countDocuments.mockResolvedValue(2);
+      mockCover.find.mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue([
+            { _id: 't1', industry: 'technology' },
+            { _id: 't2', industry: 'technology' }
+          ])
+        }),
+        sort: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue([
+            { _id: 't1', industry: 'technology' },
+            { _id: 't2', industry: 'technology' }
+          ])
+        })
+      });
+
+      await listTemplates(mockReq, mockRes);
+
+      expect(mockCover.find).toHaveBeenCalled();
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+    });
+
+    it('should list templates with style filter', async () => {
+      mockReq.query.style = 'modern';
+      mockCover.countDocuments.mockResolvedValue(1);
+      mockCover.find.mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue([{ _id: 't1', style: 'modern' }])
+        }),
+        sort: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue([{ _id: 't1', style: 'modern' }])
+        })
+      });
+
+      await listTemplates(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+    });
+
+    it('should return industry guidance for specific industry', async () => {
+      mockReq.query.industry = 'technology';
+
+      await getIndustryGuidance(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          data: expect.objectContaining({
+            industry: 'technology'
+          })
+        })
+      );
+    });
+
+    it('should return all industry guidance when no industry specified', async () => {
+      mockReq.query = {};
+
+      await getIndustryGuidance(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          data: expect.objectContaining({
+            guidance: expect.any(Object)
+          })
+        })
+      );
+    });
+
+    it('should validate tone in generateAICoverLetter', async () => {
+      mockReq.body = { jobId: 'job-1', tone: 'invalid-tone' };
+      mockJob.findOne.mockResolvedValue({ _id: 'job-1' });
+
+      await generateAICoverLetter(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: expect.stringContaining('Invalid tone')
+        })
+      );
+    });
+
+    it('should validate industry in generateAICoverLetter', async () => {
+      mockReq.body = { jobId: 'job-1', industry: 'invalid-industry' };
+      mockJob.findOne.mockResolvedValue({ _id: 'job-1' });
+
+      await generateAICoverLetter(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: expect.stringContaining('Invalid industry')
+        })
+      );
+    });
+
+    it('should validate companyCulture in generateAICoverLetter', async () => {
+      mockReq.body = { jobId: 'job-1', companyCulture: 'bad-culture' };
+      mockJob.findOne.mockResolvedValue({ _id: 'job-1' });
+
+      await generateAICoverLetter(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: expect.stringContaining('Invalid company culture')
+        })
+      );
+    });
+
+    it('should validate length in generateAICoverLetter', async () => {
+      mockReq.body = { jobId: 'job-1', length: 'too-long' };
+      mockJob.findOne.mockResolvedValue({ _id: 'job-1' });
+
+      await generateAICoverLetter(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: expect.stringContaining('Invalid length')
+        })
+      );
+    });
+
+    it('should validate writingStyle in generateAICoverLetter', async () => {
+      mockReq.body = { jobId: 'job-1', writingStyle: 'bad-style' };
+      mockJob.findOne.mockResolvedValue({ _id: 'job-1' });
+
+      await generateAICoverLetter(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: expect.stringContaining('Invalid writing style')
+        })
+      );
+    });
+
+    it('should validate variationCount is between 1 and 3', async () => {
+      mockReq.body = { jobId: 'job-1', variationCount: 5 };
+      mockJob.findOne.mockResolvedValue({ _id: 'job-1' });
+
+      await generateAICoverLetter(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: expect.stringContaining('between 1 and 3')
+        })
+      );
+    });
+
+    it('should validate customInstructions length', async () => {
+      mockReq.body = { jobId: 'job-1', customInstructions: 'x'.repeat(501) };
+      mockJob.findOne.mockResolvedValue({ _id: 'job-1' });
+
+      await generateAICoverLetter(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: expect.stringContaining('500 characters')
+        })
+      );
+    });
+
+    it('should generate cover letter with all parameters', async () => {
+      mockReq.body = {
+        jobId: 'job-complete',
+        tone: 'creative',
+        variationCount: 2,
+        industry: 'technology',
+        companyCulture: 'startup',
+        length: 'detailed',
+        writingStyle: 'narrative',
+        customInstructions: 'Be creative'
+      };
+
+      const job = {
+        _id: 'job-complete',
+        title: 'Dev',
+        company: 'Startup Inc',
+        description: 'We are looking for a developer',
+        requirements: ['JavaScript', 'React'],
+        location: 'San Francisco',
+        jobType: 'Full-time',
+        workMode: 'Remote'
+      };
+
+      const user = {
+        auth0Id: 'user-1',
+        employment: [{ position: 'Dev', company: 'OldCorp', description: 'Built stuff' }],
+        skills: ['JavaScript']
+      };
+
+      mockJob.findOne.mockResolvedValue(job);
+      mockUser.findOne.mockImplementation(() => ({ lean: jest.fn().mockResolvedValue(user) }));
+      mockResearch.researchCompany.mockResolvedValue({ info: 'company info' });
+      mockResearch.formatResearchForCoverLetter.mockReturnValue('Formatted research');
+      mockGemini.generateCoverLetter.mockResolvedValue(['Variation 1', 'Variation 2']);
+
+      await generateAICoverLetter(mockReq, mockRes);
+
+      expect(mockJob.findOne).toHaveBeenCalledWith({ _id: 'job-complete', userId: 'user-1' });
+      expect(mockGemini.generateCoverLetter).toHaveBeenCalled();
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+    });
+
+    it('should return 404 when job not found in generateAICoverLetter', async () => {
+      mockReq.body = { jobId: 'missing-job' };
+      mockJob.findOne.mockResolvedValue(null);
+
+      await generateAICoverLetter(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: expect.stringContaining('not found')
+        })
+      );
+    });
+
+    it('should return 404 when user profile not found', async () => {
+      mockReq.body = { jobId: 'job-1' };
+      mockJob.findOne.mockResolvedValue({
+        _id: 'job-1',
+        title: 'Dev',
+        description: 'Job desc',
+        requirements: []
+      });
+      mockUser.findOne.mockImplementation(() => ({ lean: jest.fn().mockResolvedValue(null) }));
+
+      await generateAICoverLetter(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(404);
+    });
+
+    it('should return 400 when user has no employment history', async () => {
+      mockReq.body = { jobId: 'job-1' };
+      const job = {
+        _id: 'job-1',
+        title: 'Dev',
+        description: 'Job desc',
+        requirements: []
+      };
+      const userWithoutEmployment = {
+        auth0Id: 'user-1',
+        employment: []
+      };
+
+      mockJob.findOne.mockResolvedValue(job);
+      mockUser.findOne.mockImplementation(() => ({ lean: jest.fn().mockResolvedValue(userWithoutEmployment) }));
+
+      await generateAICoverLetter(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should analyze culture with detailed job description', async () => {
+      mockReq.body = { jobDescription: 'Fast-paced, innovative startup environment' };
+      mockGemini.analyzeCompanyCulture.mockResolvedValue({
+        tone: 'creative',
+        culture: 'startup',
+        vibes: ['innovative', 'fast-paced']
+      });
+
+      await analyzeCulture(mockReq, mockRes);
+
+      expect(mockGemini.analyzeCompanyCulture).toHaveBeenCalledWith('Fast-paced, innovative startup environment');
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+    });
+
+    it('should handle error when analyzing culture fails', async () => {
+      mockReq.body = { jobDescription: 'Some job' };
+      mockGemini.analyzeCompanyCulture.mockRejectedValue(new Error('API error'));
+
+      await analyzeCulture(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(500);
+    });
+
+    it('should default tone to formal when not provided', async () => {
+      mockReq.body = { jobId: 'job-1' };
+      const job = {
+        _id: 'job-1',
+        title: 'Dev',
+        company: 'Corp',
+        description: 'Develop',
+        requirements: []
+      };
+      const user = {
+        auth0Id: 'user-1',
+        employment: [{ position: 'Dev', company: 'Corp' }],
+        skills: []
+      };
+
+      mockJob.findOne.mockResolvedValue(job);
+      mockUser.findOne.mockImplementation(() => ({ lean: jest.fn().mockResolvedValue(user) }));
+      mockResearch.researchCompany.mockResolvedValue({});
+      mockResearch.formatResearchForCoverLetter.mockReturnValue('');
+      mockGemini.generateCoverLetter.mockResolvedValue(['cover letter']);
+
+      await generateAICoverLetter(mockReq, mockRes);
+
+      // Verify the call was made with formal tone as default
+      expect(mockGemini.generateCoverLetter).toHaveBeenCalled();
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+    });
+
+    it('should return 400 when variationCount is less than 1', async () => {
+      mockReq.body = { jobId: 'job-1', variationCount: 0 };
+      mockJob.findOne.mockResolvedValue({ _id: 'job-1' });
+
+      await generateAICoverLetter(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+    });
+  });
 });

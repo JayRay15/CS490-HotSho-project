@@ -240,4 +240,108 @@ describe('jobMatchController', () => {
       expect(response.data.weakestCategory).toBeDefined();
     });
   });
+
+  describe('getAllMatches', () => {
+    it('returns enhanced matches with job details', async () => {
+      const matches = [ { jobId: 'j1', overallScore: 80 }, { jobId: 'j2', overallScore: 70 } ];
+      jmMod.JobMatch.find.mockReturnValue({ sort: jest.fn().mockReturnThis(), lean: jest.fn().mockResolvedValue(matches) });
+      jobMod.Job.find.mockReturnValue({ lean: jest.fn().mockResolvedValue([{ _id: 'j1', title: 'T1' }, { _id: 'j2', title: 'T2' }]) });
+
+      await (await import('../jobMatchController.js')).getAllMatches(req, res, res.__next);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalled();
+      const response = res.json.mock.calls[0][0];
+      expect(response.data.matches[0].job).toBeDefined();
+    });
+  });
+
+  describe('compareMatches', () => {
+    it('returns 400 for invalid jobIds input', async () => {
+      req.body = {};
+      await (await import('../jobMatchController.js')).compareMatches(req, res, res.__next);
+      expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    it('calculates missing matches and compares', async () => {
+      req.body = { jobIds: ['jA'] };
+  // No existing matches (ensure chainable .lean())
+  jmMod.JobMatch.find.mockReturnValue({ lean: jest.fn().mockResolvedValue([]) });
+      // User exists
+      userMod.User.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue({ auth0Id: 'user-1' }) });
+      // Unmatched job returned
+      jobMod.Job.find.mockReturnValue({ lean: jest.fn().mockResolvedValue([{ _id: 'jA', title: 'Job A' }]) });
+      svc.calculateJobMatch.mockResolvedValue({ overallScore: 75, categoryScores: {}, strengths: [], gaps: [], suggestions: [], metadata: {} });
+      jmMod.JobMatch.create.mockResolvedValue({ _id: 'newMatch' });
+      svc.compareJobMatches.mockReturnValue({ best: 'x' });
+
+      await (await import('../jobMatchController.js')).compareMatches(req, res, res.__next);
+
+      expect(jmMod.JobMatch.create).toHaveBeenCalled();
+      expect(svc.compareJobMatches).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+  });
+
+  describe('getMatchHistory', () => {
+    it('returns 404 when no history', async () => {
+      jmMod.JobMatch.find.mockReturnValue({ sort: jest.fn().mockReturnThis(), lean: jest.fn().mockResolvedValue([]) });
+      await (await import('../jobMatchController.js')).getMatchHistory(req, res, res.__next);
+      expect(res.status).toHaveBeenCalledWith(404);
+    });
+
+    it('returns history when matches exist', async () => {
+      const matches = [
+        { overallScore: 60, categoryScores: { skills: { score: 60 }, experience: { score: 60 }, education: { score: 60 }, additional: { score: 60 } }, createdAt: new Date('2025-01-01') },
+        { overallScore: 80, categoryScores: { skills: { score: 80 }, experience: { score: 80 }, education: { score: 80 }, additional: { score: 80 } }, createdAt: new Date('2025-02-01') }
+      ];
+      jmMod.JobMatch.find.mockReturnValue({ sort: jest.fn().mockReturnThis(), lean: jest.fn().mockResolvedValue(matches) });
+      await (await import('../jobMatchController.js')).getMatchHistory(req, res, res.__next);
+      expect(res.status).toHaveBeenCalledWith(200);
+      const response = res.json.mock.calls[0][0];
+      expect(response.data.trend).toBeDefined();
+      expect(response.data.timeline.length).toBe(2);
+    });
+  });
+
+  describe('calculateAllMatches', () => {
+    it('returns 404 when user not found', async () => {
+      userMod.User.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(null) });
+      await (await import('../jobMatchController.js')).calculateAllMatches(req, res, res.__next);
+      expect(res.status).toHaveBeenCalledWith(404);
+    });
+
+    it('returns early when no jobs', async () => {
+      userMod.User.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue({ auth0Id: 'user-1' }) });
+      jobMod.Job.find.mockReturnValue({ lean: jest.fn().mockResolvedValue([]) });
+      await (await import('../jobMatchController.js')).calculateAllMatches(req, res, res.__next);
+      expect(res.status).toHaveBeenCalledWith(200);
+      const response = res.json.mock.calls[0][0];
+      expect(response.data.calculatedMatches).toBe(0);
+    });
+
+    it('calculates matches for jobs and returns results', async () => {
+      userMod.User.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue({ auth0Id: 'user-1' }) });
+      const jobs = [ { _id: 'J1' }, { _id: 'J2' } ];
+      jobMod.Job.find.mockReturnValue({ lean: jest.fn().mockResolvedValue(jobs) });
+
+      // First job has existing match, second does not
+      const existing = { overallScore: 50, save: jest.fn().mockResolvedValue(true), metadata: { jobTitle: 'A', company: 'C' }, jobId: 'J1' };
+      // For the first call to JobMatch.findOne (inside loop), return existing, then null
+      let call = 0;
+      jmMod.JobMatch.findOne.mockImplementation(() => {
+        call += 1;
+        return call === 1 ? Promise.resolve(existing) : Promise.resolve(null);
+      });
+
+      svc.calculateJobMatch.mockResolvedValue({ overallScore: 90, categoryScores: {}, strengths: [], gaps: [], suggestions: [], metadata: { jobTitle: 'T', company: 'C' } });
+      jmMod.JobMatch.create.mockResolvedValue({ overallScore: 90, metadata: { jobTitle: 'T', company: 'C' }, jobId: 'J2' });
+
+      await (await import('../jobMatchController.js')).calculateAllMatches(req, res, res.__next);
+
+      expect(existing.save).toHaveBeenCalled();
+      expect(jmMod.JobMatch.create).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+  });
 });

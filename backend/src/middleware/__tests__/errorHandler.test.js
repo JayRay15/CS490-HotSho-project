@@ -140,6 +140,42 @@ describe('errorHandler middleware', () => {
     );
   });
 
+  it('should handle generic Multer errors (non-LIMIT_FILE_SIZE)', () => {
+    const err = {
+      name: 'MulterError',
+      code: 'SOME_OTHER_CODE',
+      message: 'Multer storage error'
+    };
+
+    errorHandler(err, mockReq, mockRes, mockNext);
+
+    expect(mockRes.status).toHaveBeenCalledWith(400);
+    expect(mockRes.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        message: 'Multer storage error',
+      })
+    );
+  });
+
+  it('should handle generic Multer errors with no message', () => {
+    const err = {
+      name: 'MulterError',
+      code: 'SOME_OTHER_CODE'
+      // no message provided
+    };
+
+    errorHandler(err, mockReq, mockRes, mockNext);
+
+    expect(mockRes.status).toHaveBeenCalledWith(400);
+    expect(mockRes.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        message: 'File upload error',
+      })
+    );
+  });
+
   it('should handle invalid file type errors', () => {
     const err = {
       message: 'Invalid file type. Only JPG, PNG, and GIF are allowed.',
@@ -172,6 +208,25 @@ describe('errorHandler middleware', () => {
         success: false,
         message: 'Custom error',
         errorCode: 'CUSTOM_ERROR',
+      })
+    );
+  });
+
+  it('should handle custom errors with statusCode but no errorCode (use default)', () => {
+    const err = {
+      message: 'Another custom error',
+      statusCode: 422
+      // no errorCode provided
+    };
+
+    errorHandler(err, mockReq, mockRes, mockNext);
+
+    expect(mockRes.status).toHaveBeenCalledWith(422);
+    expect(mockRes.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: false,
+        message: 'Another custom error',
+        errorCode: expect.any(Number)
       })
     );
   });

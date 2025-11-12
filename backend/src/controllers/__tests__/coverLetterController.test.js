@@ -17,6 +17,7 @@ const mockCoverLetterTemplate = {
 
 const mockJob = {
   countDocuments: jest.fn(),
+  findOne: jest.fn().mockImplementation(() => ({ lean: jest.fn().mockResolvedValue(null) })),
 };
 
 const mockUser = {
@@ -34,6 +35,25 @@ const mockSendResponse = jest.fn((res, response, statusCode) => {
 const mockSuccessResponse = (message, data, statusCode = 200) => ({ response: { success: true, message, data }, statusCode });
 const mockErrorResponse = (message, statusCode = 500, code = 'ERR') => ({ response: { success: false, message, code }, statusCode });
 
+// Mock Gemini services
+const mockGeminiServices = {
+  checkSpellingAndGrammar: jest.fn().mockResolvedValue({ errors: [] }),
+  getSynonymSuggestions: jest.fn().mockResolvedValue({ suggestions: [] }),
+  analyzeReadability: jest.fn().mockResolvedValue({ score: 8 }),
+  suggestRestructuring: jest.fn().mockResolvedValue({ suggestions: [] })
+};
+
+// Mock experience analyzer
+const mockExperienceAnalyzer = {
+  selectRelevantExperiences: jest.fn().mockReturnValue([]),
+  generateExperienceNarrative: jest.fn().mockReturnValue('narrative'),
+  connectToJobRequirements: jest.fn().mockReturnValue({}),
+  suggestAdditionalExperiences: jest.fn().mockReturnValue([]),
+  scoreExperiencePackage: jest.fn().mockReturnValue(0),
+  generateAlternativePresentations: jest.fn().mockReturnValue([]),
+  quantifyAchievements: jest.fn().mockReturnValue([])
+};
+
 jest.unstable_mockModule('../../models/User.js', () => ({
   User: mockUser,
 }));
@@ -47,7 +67,9 @@ jest.unstable_mockModule('../../utils/responseFormat.js', () => ({
     NOT_FOUND: 'NOT_FOUND',
     MISSING_REQUIRED_FIELD: 'MISSING',
     INVALID_INPUT: 'INVALID',
-    EXPORT_ERROR: 'EXPORT_ERR'
+    EXPORT_ERROR: 'EXPORT_ERR',
+    SERVER_ERROR: 'SERVER_ERR',
+    VALIDATION_ERROR: 'VAL_ERR'
   }
 }));
 
@@ -62,6 +84,10 @@ const mockExporters = {
 };
 
 jest.unstable_mockModule('../../utils/coverLetterExporter.js', () => (mockExporters));
+
+jest.unstable_mockModule('../../utils/geminiService.js', () => (mockGeminiServices));
+
+jest.unstable_mockModule('../../utils/experienceAnalyzer.js', () => (mockExperienceAnalyzer));
 
 jest.unstable_mockModule('../../models/CoverLetter.js', () => ({
   CoverLetter: mockCoverLetter,
@@ -86,6 +112,18 @@ const {
   archiveCoverLetter,
   unarchiveCoverLetter,
   cloneCoverLetter,
+  exportCoverLetterAsPdf,
+  exportCoverLetterAsDocx,
+  exportCoverLetterAsHtml,
+  exportCoverLetterAsText,
+  generateCoverLetterEmailTemplate,
+  checkCoverLetterSpelling,
+  getCoverLetterSynonyms,
+  analyzeCoverLetterReadability,
+  getSentenceRestructuring,
+  saveCoverLetterVersion,
+  getCoverLetterHistory,
+  analyzeExperienceForCoverLetter
 } = await import('../coverLetterController.js');
 
 describe('CoverLetterController', () => {
@@ -757,6 +795,452 @@ describe('CoverLetterController', () => {
       await generateCoverLetterEmailTemplate(mockReq, resEmail);
       expect(resEmail.status).toHaveBeenCalledWith(200);
       expect(resEmail.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    });
+  });
+
+  describe('AI-powered editing assistance endpoints', () => {
+    it('should check spelling and grammar successfully', async () => {
+      mockReq.body = { text: 'This is a test.' };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+
+      await checkCoverLetterSpelling(mockReq, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    });
+
+    it('should return 400 when text is missing for spelling check', async () => {
+      mockReq.body = {};
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+
+      await checkCoverLetterSpelling(mockReq, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
+    });
+
+    it('should return 400 when text is only whitespace for spelling check', async () => {
+      mockReq.body = { text: '   ' };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+
+      await checkCoverLetterSpelling(mockReq, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should get synonym suggestions', async () => {
+      mockReq.body = { word: 'amazing', context: 'experience' };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+
+      await getCoverLetterSynonyms(mockReq, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    });
+
+    it('should return 400 when word is missing for synonyms', async () => {
+      mockReq.body = { context: 'experience' };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+
+      await getCoverLetterSynonyms(mockReq, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should return 400 when word is only whitespace', async () => {
+      mockReq.body = { word: '   ' };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+
+      await getCoverLetterSynonyms(mockReq, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should analyze cover letter readability', async () => {
+      mockReq.body = { text: 'Dear Hiring Manager, I am writing to express interest.' };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+
+      await analyzeCoverLetterReadability(mockReq, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    });
+
+    it('should return 400 when text is missing for readability', async () => {
+      mockReq.body = {};
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+
+      await analyzeCoverLetterReadability(mockReq, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should return 400 when text is only whitespace for readability', async () => {
+      mockReq.body = { text: '  \n  ' };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+
+      await analyzeCoverLetterReadability(mockReq, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should get restructuring suggestions', async () => {
+      mockReq.body = { text: 'The quick brown fox jumps.', type: 'sentence' };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+
+      await getSentenceRestructuring(mockReq, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    });
+
+    it('should return 400 when text is missing for restructuring', async () => {
+      mockReq.body = { type: 'sentence' };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+
+      await getSentenceRestructuring(mockReq, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should return 400 when text is only whitespace for restructuring', async () => {
+      mockReq.body = { text: '\t\t' };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+
+      await getSentenceRestructuring(mockReq, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should save cover letter version', async () => {
+      mockReq.params.id = 'cl-123';
+      mockReq.body = { content: 'Updated content', note: 'First revision' };
+
+      const mockCoverLetterDoc = {
+        _id: 'cl-123',
+        userId: 'test-user-123',
+        editHistory: [],
+        save: jest.fn().mockResolvedValue(true)
+      };
+
+      mockCoverLetter.findOne.mockResolvedValue(mockCoverLetterDoc);
+
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+
+      await saveCoverLetterVersion(mockReq, res);
+
+      expect(mockCoverLetterDoc.save).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it('should return 404 when saving version for non-existent cover letter', async () => {
+      mockReq.params.id = 'missing';
+      mockReq.body = { content: 'Content' };
+      mockCoverLetter.findOne.mockResolvedValue(null);
+
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+
+      await saveCoverLetterVersion(mockReq, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+    });
+
+    it('should limit edit history to 20 versions', async () => {
+      mockReq.params.id = 'cl-123';
+      mockReq.body = { content: 'New version' };
+
+      const mockHistory = Array(20).fill({ content: 'old', timestamp: new Date() });
+      const mockCoverLetterDoc = {
+        _id: 'cl-123',
+        userId: 'test-user-123',
+        editHistory: mockHistory,
+        save: jest.fn().mockResolvedValue(true)
+      };
+
+      mockCoverLetter.findOne.mockResolvedValue(mockCoverLetterDoc);
+
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+
+      await saveCoverLetterVersion(mockReq, res);
+
+      expect(mockCoverLetterDoc.editHistory.length).toBeLessThanOrEqual(20);
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it('should get cover letter history', async () => {
+      mockReq.params.id = 'cl-123';
+
+      const mockCoverLetterDoc = {
+        _id: 'cl-123',
+        userId: 'test-user-123',
+        editHistory: [
+          { content: 'v1', timestamp: new Date() },
+          { content: 'v2', timestamp: new Date() }
+        ]
+      };
+
+      mockCoverLetter.findOne.mockReturnValue({
+        lean: jest.fn().mockResolvedValue(mockCoverLetterDoc)
+      });
+
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+
+      await getCoverLetterHistory(mockReq, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+    });
+
+    it('should return 404 when getting history for non-existent cover letter', async () => {
+      mockReq.params.id = 'missing';
+      mockCoverLetter.findOne.mockReturnValue({
+        lean: jest.fn().mockResolvedValue(null)
+      });
+
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+
+      await getCoverLetterHistory(mockReq, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+    });
+
+    it('should export DOCX with error handling', async () => {
+      mockReq.params.id = 'cl-err';
+      mockReq.body = { letterhead: false };
+
+      mockCoverLetter.findOne.mockReturnValue({
+        populate: jest.fn().mockReturnValue({
+          populate: jest.fn().mockReturnValue({
+            lean: jest.fn().mockResolvedValue(null)
+          })
+        })
+      });
+
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+
+      await exportCoverLetterAsDocx(mockReq, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+    });
+
+    it('should export HTML with all options', async () => {
+      mockReq.params.id = 'cl-html';
+      mockReq.body = { letterhead: true, printOptimized: true };
+
+      const mockCoverLetterObj = {
+        _id: 'cl-html',
+        userId: 'test-user-123',
+        style: 'modern',
+        templateId: { theme: { color: 'blue' } },
+        jobId: null
+      };
+
+      mockCoverLetter.findOne.mockReturnValue({
+        populate: jest.fn().mockReturnValue({
+          populate: jest.fn().mockReturnValue({
+            lean: jest.fn().mockResolvedValue(mockCoverLetterObj)
+          })
+        })
+      });
+
+      mockUser.findOne.mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue({ profile: { contactInfo: { phone: '123-456-7890' } } })
+        })
+      });
+
+      const res = { setHeader: jest.fn(), send: jest.fn() };
+
+      await exportCoverLetterAsHtml(mockReq, res);
+
+      expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'text/html');
+      expect(res.send).toHaveBeenCalled();
+    });
+
+    it('should export text with includeHeader option', async () => {
+      mockReq.params.id = 'cl-text';
+      mockReq.body = { includeHeader: true, jobDetails: { title: 'Dev' } };
+
+      const mockCoverLetterObj = {
+        _id: 'cl-text',
+        userId: 'test-user-123',
+        content: 'Dear Hiring Manager',
+        jobId: null
+      };
+
+      mockCoverLetter.findOne.mockReturnValue({
+        populate: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue(mockCoverLetterObj)
+        })
+      });
+
+      mockUser.findOne.mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue({ profile: { contactInfo: {} } })
+        })
+      });
+
+      const res = { setHeader: jest.fn(), send: jest.fn() };
+
+      await exportCoverLetterAsText(mockReq, res);
+
+      expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'text/plain');
+      expect(res.send).toHaveBeenCalled();
+    });
+
+    it('should generate email template with job details', async () => {
+      mockReq.params.id = 'cl-email';
+      mockReq.body = { jobDetails: { company: 'Tech Corp' } };
+
+      const mockCoverLetterObj = {
+        _id: 'cl-email',
+        userId: 'test-user-123',
+        content: 'My Cover Letter',
+        jobId: { company: 'OldCorp', jobTitle: 'Dev' }
+      };
+
+      mockCoverLetter.findOne.mockReturnValue({
+        populate: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue(mockCoverLetterObj)
+        })
+      });
+
+      mockUser.findOne.mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue({ profile: { contactInfo: { email: 'test@example.com' } } })
+        })
+      });
+
+      mockExporters.generateEmailTemplate.mockReturnValue({ subject: 'Application', body: 'Please consider' });
+
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+
+      await generateCoverLetterEmailTemplate(mockReq, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it('should return 404 when generating email template for missing cover letter', async () => {
+      mockReq.params.id = 'missing';
+      mockCoverLetter.findOne.mockReturnValue({
+        populate: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue(null)
+        })
+      });
+
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+
+      await generateCoverLetterEmailTemplate(mockReq, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+    });
+  });
+
+  describe('experience analysis and advanced features', () => {
+    it('should validate jobId is required for experience analysis', async () => {
+      mockReq.body = { maxExperiences: 3 };
+
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+
+      await analyzeExperienceForCoverLetter(mockReq, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should analyze experience and return recommendations for high overallScore', async () => {
+      mockReq.body = { jobId: 'job-high', maxExperiences: 3 };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+
+      // Job exists (mock chain .lean())
+      mockJob.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue({ _id: 'job-high', title: 'Senior Dev' }) });
+
+      // User has two employment entries (less than 3 -> triggers "expand" recommendation)
+      const employment = [
+        { position: 'Dev', company: 'A', startDate: '2020', endDate: '2021', description: '', isCurrentPosition: false },
+        { position: 'Eng', company: 'B', startDate: '2019', endDate: '2020', description: '', isCurrentPosition: false }
+      ];
+      mockUser.findOne.mockReturnValue({ select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue({ employment, skills: [] }) }) });
+
+      // Analyzer returns relevant experiences without quantified achievements
+      const relevant = employment.map(e => ({ ...e, achievements: [], relevance: 50 }));
+      mockExperienceAnalyzer.selectRelevantExperiences.mockReturnValue(relevant);
+      mockExperienceAnalyzer.generateExperienceNarrative.mockReturnValue(['narrative']);
+      mockExperienceAnalyzer.generateAlternativePresentations.mockReturnValue(['alt']);
+      mockExperienceAnalyzer.quantifyAchievements.mockReturnValue([]);
+      mockExperienceAnalyzer.connectToJobRequirements.mockReturnValue({ connected: true });
+      mockExperienceAnalyzer.suggestAdditionalExperiences.mockReturnValue([]);
+      mockExperienceAnalyzer.scoreExperiencePackage.mockReturnValue({ overallScore: 80, gaps: [] });
+
+      await analyzeExperienceForCoverLetter(mockReq, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        success: true,
+        message: 'Experience analysis completed',
+        data: expect.objectContaining({
+          recommendations: expect.arrayContaining([expect.objectContaining({ type: 'emphasis' })])
+        })
+      }));
+    });
+
+    it('should include transferable and skill-gaps recommendations for mid score with gaps and quantified achievements', async () => {
+      mockReq.body = { jobId: 'job-mid', maxExperiences: 5 };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+
+      mockJob.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue({ _id: 'job-mid' }) });
+      const employment = [
+        { position: 'Dev', company: 'A', startDate: '2020', endDate: '2020', description: '', achievements: ['Improved by 20%'], isCurrentPosition: false },
+        { position: 'Dev2', company: 'B', startDate: '2018', endDate: '2019', description: '', achievements: ['Reduced cost by 5%'], isCurrentPosition: false },
+        { position: 'Dev3', company: 'C', startDate: '2017', endDate: '2018', description: '', achievements: ['Led 3 projects'], isCurrentPosition: false }
+      ];
+      mockUser.findOne.mockReturnValue({ select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue({ employment, skills: ['JS'] }) }) });
+
+      const relevant = employment.map(e => ({ ...e, relevance: 60 }));
+      mockExperienceAnalyzer.selectRelevantExperiences.mockReturnValue(relevant);
+      mockExperienceAnalyzer.generateExperienceNarrative.mockReturnValue(['narr']);
+      mockExperienceAnalyzer.generateAlternativePresentations.mockReturnValue(['alt']);
+      mockExperienceAnalyzer.quantifyAchievements.mockReturnValue([{ text: '20%' }]);
+      mockExperienceAnalyzer.connectToJobRequirements.mockReturnValue({ reqs: [] });
+      mockExperienceAnalyzer.suggestAdditionalExperiences.mockReturnValue([{ experience: { title: 'X', company: 'Y' }, relevance: { score: 10 }, reason: 'reason' }]);
+      mockExperienceAnalyzer.scoreExperiencePackage.mockReturnValue({ overallScore: 60, gaps: ['Node.js'] });
+
+      await analyzeExperienceForCoverLetter(mockReq, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      const jsonArg = res.json.mock.calls[0][0];
+      expect(jsonArg.success).toBe(true);
+      expect(jsonArg.data.recommendations.some(r => r.type === 'transferable')).toBe(true);
+      expect(jsonArg.data.recommendations.some(r => r.type === 'skill-gaps')).toBe(true);
+      // quantify should not be included because achievements contain numbers
+      expect(jsonArg.data.recommendations.some(r => r.type === 'quantify')).toBe(false);
+    });
+
+    it('should include growth recommendation for low score', async () => {
+      mockReq.body = { jobId: 'job-low', maxExperiences: 2 };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+
+      mockJob.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue({ _id: 'job-low' }) });
+      const employment = [
+        { position: 'Intern', company: 'Small', startDate: '2019', endDate: '2020', description: '', achievements: [], isCurrentPosition: false }
+      ];
+      mockUser.findOne.mockReturnValue({ select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue({ employment, skills: [] }) }) });
+
+      const relevant = employment.map(e => ({ ...e, relevance: 10 }));
+      mockExperienceAnalyzer.selectRelevantExperiences.mockReturnValue(relevant);
+      mockExperienceAnalyzer.generateExperienceNarrative.mockReturnValue(['narr']);
+      mockExperienceAnalyzer.generateAlternativePresentations.mockReturnValue([]);
+      mockExperienceAnalyzer.quantifyAchievements.mockReturnValue([]);
+      mockExperienceAnalyzer.connectToJobRequirements.mockReturnValue({});
+      mockExperienceAnalyzer.suggestAdditionalExperiences.mockReturnValue([]);
+      mockExperienceAnalyzer.scoreExperiencePackage.mockReturnValue({ overallScore: 30, gaps: ['Leadership'] });
+
+      await analyzeExperienceForCoverLetter(mockReq, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      const jsonArg = res.json.mock.calls[0][0];
+      expect(jsonArg.data.recommendations.some(r => r.type === 'growth')).toBe(true);
+      expect(jsonArg.data.recommendations.some(r => r.type === 'skill-gaps')).toBe(true);
+      expect(jsonArg.data.recommendations.some(r => r.type === 'expand')).toBe(true);
     });
   });
 });
