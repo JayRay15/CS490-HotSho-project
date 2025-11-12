@@ -23,6 +23,7 @@ const mockAnalyzeReadability = jest.fn((req, res) => res.json({ success: true })
 const mockGetRestructuring = jest.fn((req, res) => res.json({ success: true }));
 const mockSaveVersion = jest.fn((req, res) => res.json({ success: true }));
 const mockGetHistory = jest.fn((req, res) => res.json({ success: true }));
+const mockAnalyzeExperience = jest.fn((req, res) => res.json({ success: true }));
 
 jest.unstable_mockModule('../../controllers/coverLetterController.js', () => ({
   listCoverLetters: mockList,
@@ -45,6 +46,7 @@ jest.unstable_mockModule('../../controllers/coverLetterController.js', () => ({
   getSentenceRestructuring: mockGetRestructuring,
   saveCoverLetterVersion: mockSaveVersion,
   getCoverLetterHistory: mockGetHistory,
+  analyzeExperienceForCoverLetter: mockAnalyzeExperience,
 }));
 
 // Mock middleware
