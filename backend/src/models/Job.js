@@ -205,6 +205,14 @@ const jobSchema = new mongoose.Schema(
       ref: 'Resume',
       default: null,
     },
+    // Status tracking fields
+    nextAction: {
+      type: String,
+      trim: true,
+    },
+    nextActionDate: {
+      type: Date,
+    },
   },
   {
     timestamps: true,

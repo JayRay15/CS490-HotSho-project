@@ -18,7 +18,7 @@ const PRIORITY_COLORS = {
   "High": "text-red-600",
 };
 
-export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange, isDragging, highlightTerms, isSelected, onToggleSelect, onArchive, onRestore, onScheduleInterview, onViewMatchScore }) {
+export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange, isDragging, highlightTerms, isSelected, onToggleSelect, onArchive, onRestore, onScheduleInterview, onViewMatchScore, onOpenStatusModal, onOpenTimeline, onOpenEmailDetector, applicationStatus }) {
   const [showDetails, setShowDetails] = useState(false);
   const navigate = useNavigate();
 
@@ -145,6 +145,51 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
         )}
       </div>
 
+      {/* Application Status Badge */}
+      {applicationStatus && (
+        <div className="mb-2">
+          {(() => {
+            const getStatusBadge = (status) => {
+              const statusMap = {
+                'Not Applied': { label: '⭕ Not Applied', color: 'bg-gray-100 text-gray-700' },
+                'Applied': { label: '📤 Applied', color: 'bg-blue-100 text-blue-700' },
+                'Under Review': { label: '👀 Under Review', color: 'bg-indigo-100 text-indigo-700' },
+                'Phone Screen': { label: '📞 Phone Screen', color: 'bg-yellow-100 text-yellow-700' },
+                'Technical Interview': { label: '💻 Technical', color: 'bg-purple-100 text-purple-700' },
+                'Onsite Interview': { label: '🏢 Onsite', color: 'bg-orange-100 text-orange-700' },
+                'Final Interview': { label: '🎯 Final Round', color: 'bg-pink-100 text-pink-700' },
+                'Offer Extended': { label: '🎉 Offer', color: 'bg-green-100 text-green-700' },
+                'Offer Accepted': { label: '✅ Accepted', color: 'bg-green-200 text-green-800' },
+                'Offer Declined': { label: '❌ Declined', color: 'bg-gray-200 text-gray-700' },
+                'Rejected': { label: '⛔ Rejected', color: 'bg-red-100 text-red-700' },
+                'Withdrawn': { label: '↩️ Withdrawn', color: 'bg-gray-200 text-gray-700' },
+                'Ghosted': { label: '👻 Ghosted', color: 'bg-gray-300 text-gray-800' }
+              };
+              return statusMap[status] || { label: status, color: 'bg-gray-100 text-gray-700' };
+            };
+            
+            const badge = getStatusBadge(applicationStatus.currentStatus);
+            const daysSinceUpdate = Math.floor((new Date() - new Date(applicationStatus.lastStatusChange)) / (1000 * 60 * 60 * 24));
+            
+            return (
+              <div className="flex items-center gap-2 text-xs">
+                <span className={`px-2 py-1 rounded-full font-medium ${badge.color}`}>
+                  {badge.label}
+                </span>
+                <span className="text-gray-500">
+                  {daysSinceUpdate === 0 ? 'Updated today' : `${daysSinceUpdate}d ago`}
+                </span>
+                {applicationStatus.nextAction && (
+                  <span className="text-indigo-600 truncate max-w-[150px]" title={applicationStatus.nextAction}>
+                    → {applicationStatus.nextAction}
+                  </span>
+                )}
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
       {/* Key Info */}
       <div className="space-y-1 text-sm text-gray-700 mb-3">
         {job.location && (
@@ -238,6 +283,34 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
               className="text-xs px-2 py-1 rounded bg-purple-100 hover:bg-purple-200 text-purple-700 font-medium"
             >
               📅 Schedule Interview
+            </button>
+          )}
+          {/* Status Tracking Actions */}
+          {onOpenStatusModal && !job.archived && (
+            <button
+              onClick={() => onOpenStatusModal(job)}
+              className="text-xs px-2 py-1 rounded bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-medium"
+              title="Update application status"
+            >
+              📝 Update Status
+            </button>
+          )}
+          {onOpenTimeline && !job.archived && applicationStatus && (
+            <button
+              onClick={() => onOpenTimeline(job)}
+              className="text-xs px-2 py-1 rounded bg-blue-100 hover:bg-blue-200 text-blue-700 font-medium"
+              title="View status timeline"
+            >
+              📊 Timeline
+            </button>
+          )}
+          {onOpenEmailDetector && !job.archived && (
+            <button
+              onClick={() => onOpenEmailDetector(job)}
+              className="text-xs px-2 py-1 rounded bg-purple-100 hover:bg-purple-200 text-purple-700 font-medium"
+              title="Detect status from email"
+            >
+              ✨ Detect from Email
             </button>
           )}
           {/* UC-067: Salary Research button */}
@@ -413,4 +486,8 @@ JobCard.propTypes = {
   onRestore: PropTypes.func,
   onScheduleInterview: PropTypes.func,
   onViewMatchScore: PropTypes.func,
+  onOpenStatusModal: PropTypes.func,
+  onOpenTimeline: PropTypes.func,
+  onOpenEmailDetector: PropTypes.func,
+  applicationStatus: PropTypes.object,
 };

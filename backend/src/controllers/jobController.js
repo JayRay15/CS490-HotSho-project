@@ -182,6 +182,8 @@ export const updateJob = asyncHandler(async (req, res) => {
     "tags",
     "archived",
     "companyInfo", // UC-062: Company information
+    "nextAction",
+    "nextActionDate",
   ];
 
   console.log("UPDATE JOB - Received data:", req.body);
@@ -205,7 +207,7 @@ export const updateJob = asyncHandler(async (req, res) => {
 export const updateJobStatus = asyncHandler(async (req, res) => {
   const userId = req.auth?.userId || req.auth?.payload?.sub;
   const { jobId } = req.params;
-  const { status, notes } = req.body;
+  const { status, notes, nextAction, nextActionDate } = req.body;
 
   if (!userId) {
     const { response, statusCode } = errorResponse(
@@ -253,6 +255,14 @@ export const updateJobStatus = asyncHandler(async (req, res) => {
   // Add notes to the latest status history entry if provided
   if (notes) {
     job.statusHistory[job.statusHistory.length - 1].notes = notes;
+  }
+
+  // Update next action fields
+  if (nextAction !== undefined) {
+    job.nextAction = nextAction || null;
+  }
+  if (nextActionDate !== undefined) {
+    job.nextActionDate = nextActionDate || null;
   }
 
   await job.save();
