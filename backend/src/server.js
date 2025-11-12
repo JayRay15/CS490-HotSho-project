@@ -19,10 +19,12 @@ import companyRoutes from "./routes/companyRoutes.js";
 import skillGapRoutes from "./routes/skillGapRoutes.js";
 import jobMatchRoutes from "./routes/jobMatchRoutes.js";
 import applicationRoutes from "./routes/applicationRoutes.js";
+import applicationStatusRoutes from "./routes/applicationStatusRoutes.js";
 import { getPublicProject } from "./controllers/profileController.js";
 import { startDeadlineReminderSchedule } from "./utils/deadlineReminders.js";
 import { startInterviewReminderSchedule } from "./utils/interviewReminders.js";
 import { startApplicationScheduler, startFollowUpScheduler } from "./utils/applicationScheduler.js";
+import { startStatusAutomationScheduler } from "./utils/statusAutomationScheduler.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 // Cleanup schedule no longer needed - accounts are deleted immediately
 // import { startCleanupSchedule } from "./utils/cleanupDeletedUsers.js";
@@ -68,6 +70,7 @@ app.use("/api/companies", companyRoutes);
 app.use("/api/skill-gaps", skillGapRoutes);
 app.use("/api/job-matches", jobMatchRoutes);
 app.use("/api/applications", applicationRoutes);
+app.use("/api/status", applicationStatusRoutes);
 // Mount profile routes under /api/profile (existing) and also under /api/users
 // so frontend requests to /api/users/... (used elsewhere in the app) resolve correctly.
 app.use("/api/profile", profileRoutes);
@@ -112,5 +115,11 @@ app.listen(PORT, () => {
     startFollowUpScheduler();
   } catch (err) {
     console.error('Failed to start application schedulers:', err?.message || err);
+  }
+  // Start status automation scheduler
+  try {
+    startStatusAutomationScheduler();
+  } catch (err) {
+    console.error('Failed to start status automation scheduler:', err?.message || err);
   }
 });

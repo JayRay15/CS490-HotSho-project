@@ -205,6 +205,14 @@ const jobSchema = new mongoose.Schema(
       ref: 'Resume',
       default: null,
     },
+    // Status tracking fields
+    nextAction: {
+      type: String,
+      trim: true,
+    },
+    nextActionDate: {
+      type: Date,
+    },
     // UC-62: Link cover letter to job application for performance tracking
     linkedCoverLetterId: {
       type: mongoose.Schema.Types.ObjectId,

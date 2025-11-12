@@ -21,7 +21,13 @@ import JobMatchScore from "../../components/JobMatchScore";
 import JobMatchComparison from "../../components/JobMatchComparison";
 import ApplicationPackageGenerator from "../../components/ApplicationPackageGenerator";
 import ApplicationAutomation from "../../components/ApplicationAutomation";
+import StatusUpdateModal from "../../components/StatusUpdateModal";
+import StatusTimeline from "../../components/StatusTimeline";
+import EmailStatusDetector from "../../components/EmailStatusDetector";
+import StatusStatistics from "../../components/StatusStatistics";
+import BulkStatusUpdate from "../../components/BulkStatusUpdate";
 import * as interviewsAPI from "../../api/interviews";
+import * as statusAPI from "../../api/applicationStatus";
 import { trackApplicationOutcome } from "../../api/coverLetterAnalytics";
 
 const PIPELINE_STAGES = ["Interested", "Applied", "Phone Screen", "Interview", "Offer", "Rejected"];
@@ -96,6 +102,15 @@ export default function Jobs() {
   const [selectedJobForPackage, setSelectedJobForPackage] = useState(null);
   const [bulkSelectionMode, setBulkSelectionMode] = useState(false);
 
+  // Application Status Tracking state
+  const [applicationStatuses, setApplicationStatuses] = useState({});
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showTimelineModal, setShowTimelineModal] = useState(false);
+  const [showEmailDetector, setShowEmailDetector] = useState(false);
+  const [showStatusStats, setShowStatusStats] = useState(false);
+  const [showBulkStatusUpdate, setShowBulkStatusUpdate] = useState(false);
+  const [selectedJobForStatus, setSelectedJobForStatus] = useState(null);
+
   // Form state for adding/editing jobs
   const [formData, setFormData] = useState({
     title: "",
@@ -143,7 +158,26 @@ export default function Jobs() {
     fetchJobs();
     fetchStats();
     fetchUpcomingInterviews();
+    loadApplicationStatuses();
   }, []);
+
+  // Load application statuses
+  const loadApplicationStatuses = async () => {
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      const statuses = await statusAPI.getAllApplicationStatuses();
+      
+      // Convert array to object map by jobId for easy lookup
+      const statusMap = {};
+      statuses.forEach(status => {
+        statusMap[status.jobId] = status;
+      });
+      setApplicationStatuses(statusMap);
+    } catch (error) {
+      console.error('Failed to load application statuses:', error);
+    }
+  };
 
   // Filter jobs when search or filter changes
   useEffect(() => {
@@ -1142,6 +1176,87 @@ export default function Jobs() {
     await handleDeleteJob(jobId);
   };
 
+  // Status Tracking Handlers
+  const handleOpenStatusModal = (job) => {
+    setSelectedJobForStatus(job);
+    setShowStatusModal(true);
+  };
+
+  const handleStatusUpdate = async (updateData) => {
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      
+      // Update the job's actual status in the pipeline using the dedicated status endpoint
+      await api.put(`/api/jobs/${selectedJobForStatus._id}/status`, {
+        status: updateData.status,
+        notes: updateData.notes,
+        nextAction: updateData.nextAction,
+        nextActionDate: updateData.nextActionDate
+      });
+      
+      // Also update priority and tags if they were changed
+      if (updateData.priority || updateData.tags) {
+        await api.put(`/api/jobs/${selectedJobForStatus._id}`, {
+          priority: updateData.priority,
+          tags: updateData.tags
+        });
+      }
+      
+      // Refresh the jobs list
+      await fetchJobs();
+      
+      setShowStatusModal(false);
+      setSelectedJobForStatus(null);
+      setSuccessMessage(`Job moved to ${updateData.status} stage!`);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (error) {
+      console.error('Failed to update status:', error);
+      throw error;
+    }
+  };
+
+  const handleOpenTimeline = (job) => {
+    setSelectedJobForStatus(job);
+    setShowTimelineModal(true);
+  };
+
+  const handleOpenEmailDetector = (job) => {
+    setSelectedJobForStatus(job);
+    setShowEmailDetector(true);
+  };
+
+  const handleDetectionConfirmed = async () => {
+    await fetchJobs(); // Refresh jobs to show updated status in pipeline
+    setSuccessMessage('Status updated from email detection!');
+    setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
+  const handleBulkApplicationStatusUpdate = async (newStatus) => {
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      
+      // Update each job's status in the pipeline
+      await api.post("/api/jobs/bulk-update-status", {
+        jobIds: selectedJobs,
+        status: newStatus,
+      });
+      
+      // Refresh jobs and clear selection
+      await fetchJobs();
+      await loadApplicationStatuses();
+      
+      setBulkSelectionMode(false);
+      setSelectedJobs([]);
+      setSuccessMessage(`${selectedJobs.length} job(s) moved to ${newStatus} stage!`);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (error) {
+      console.error('Failed to bulk update:', error);
+      throw error;
+    }
+  };
+
   if (loading) {
     return <LoadingSpinner fullScreen={true} size="lg" text="Loading jobs..." />;
   }
@@ -1317,6 +1432,9 @@ export default function Jobs() {
                 <Button onClick={() => setShowStatistics(true)} variant="secondary">
                   Statistics
                 </Button>
+                <Button onClick={() => setShowStatusStats(true)} variant="secondary">
+                  📊 Status Analytics
+                </Button>
                 <Button
                   onClick={() => {
                     setBulkSelectionMode(!bulkSelectionMode);
@@ -1328,13 +1446,22 @@ export default function Jobs() {
                   {bulkSelectionMode ? `Bulk Mode (${selectedJobs.length})` : "Bulk Select"}
                 </Button>
                 {selectedJobs.length > 0 && (
-                  <Button
-                    onClick={() => setShowAutomation(true)}
-                    variant="primary"
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    ⚡ Automate ({selectedJobs.length})
-                  </Button>
+                  <>
+                    <Button
+                      onClick={() => setShowAutomation(true)}
+                      variant="primary"
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      ⚡ Automate ({selectedJobs.length})
+                    </Button>
+                    <Button
+                      onClick={() => setShowBulkStatusUpdate(true)}
+                      variant="primary"
+                      className="bg-indigo-600 hover:bg-indigo-700"
+                    >
+                      📝 Update Status ({selectedJobs.length})
+                    </Button>
+                  </>
                 )}
                 <Button
                   onClick={() => setShowArchived(!showArchived)}
@@ -1676,6 +1803,10 @@ export default function Jobs() {
               onJobRestore={handleRestoreJob}
               onScheduleInterview={handleScheduleInterview}
               onViewMatchScore={handleViewMatchScore}
+              onOpenStatusModal={handleOpenStatusModal}
+              onOpenTimeline={handleOpenTimeline}
+              onOpenEmailDetector={handleOpenEmailDetector}
+              applicationStatuses={applicationStatuses}
               highlightTerms={[
                 searchTerm?.trim(),
                 filters.location?.trim(),
@@ -3144,6 +3275,29 @@ export default function Jobs() {
                   </Card>
                 )}
 
+                {/* Next Action Reminder */}
+                {(viewingJob.nextAction || viewingJob.nextActionDate) && (
+                  <Card title="Next Action Reminder" variant="elevated">
+                    <div className="space-y-2">
+                      {viewingJob.nextAction && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Action</p>
+                          <p className="text-gray-900">{viewingJob.nextAction}</p>
+                        </div>
+                      )}
+                      {viewingJob.nextActionDate && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">Due Date</p>
+                          <p className={`font-medium ${new Date(viewingJob.nextActionDate) < new Date() ? "text-red-600" : "text-gray-900"}`}>
+                            {new Date(viewingJob.nextActionDate).toLocaleDateString()}
+                            {new Date(viewingJob.nextActionDate) < new Date() && " (Overdue)"}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                )}
+
                 {/* Interview Notes */}
                 {viewingJob.interviewNotes && (
                   <Card title="Interview Notes" variant="elevated">
@@ -3463,6 +3617,85 @@ export default function Jobs() {
             setSelectedJobs([]);
             await fetchJobs(); // Refresh jobs
           }}
+        />
+      )}
+
+      {/* Status Update Modal */}
+      {showStatusModal && selectedJobForStatus && (
+        <StatusUpdateModal
+          job={selectedJobForStatus}
+          currentStatus={applicationStatuses[selectedJobForStatus._id]}
+          isOpen={showStatusModal}
+          onClose={() => {
+            setShowStatusModal(false);
+            setSelectedJobForStatus(null);
+          }}
+          onUpdate={handleStatusUpdate}
+        />
+      )}
+
+      {/* Status Timeline Modal */}
+      {showTimelineModal && selectedJobForStatus && (
+        <StatusTimeline
+          jobId={selectedJobForStatus._id}
+          isOpen={showTimelineModal}
+          onClose={() => {
+            setShowTimelineModal(false);
+            setSelectedJobForStatus(null);
+          }}
+        />
+      )}
+
+      {/* Email Status Detector Modal */}
+      {showEmailDetector && selectedJobForStatus && (
+        <EmailStatusDetector
+          jobId={selectedJobForStatus._id}
+          isOpen={showEmailDetector}
+          onClose={() => {
+            setShowEmailDetector(false);
+            setSelectedJobForStatus(null);
+          }}
+          onDetectionConfirmed={handleDetectionConfirmed}
+        />
+      )}
+
+      {/* Status Statistics Modal */}
+      {showStatusStats && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-7xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold text-gray-900">Application Status Analytics</h2>
+                <button
+                  onClick={() => setShowStatusStats(false)}
+                  className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
+                >
+                  ×
+                </button>
+              </div>
+              <StatusStatistics />
+              <div className="flex justify-end mt-6">
+                <Button
+                  onClick={() => setShowStatusStats(false)}
+                  variant="secondary"
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Status Update Modal */}
+      {showBulkStatusUpdate && selectedJobs.length > 0 && (
+        <BulkStatusUpdate
+          selectedJobs={getSelectedJobObjects()}
+          isOpen={showBulkStatusUpdate}
+          onClose={() => {
+            setShowBulkStatusUpdate(false);
+          }}
+          onUpdate={handleBulkApplicationStatusUpdate}
         />
       )}
     </div>
