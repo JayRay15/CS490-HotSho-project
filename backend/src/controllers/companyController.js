@@ -19,11 +19,18 @@ async function extractCompanyInfoWithAI(companyName, websiteUrl = '') {
     try {
         const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
 
-        const prompt = `You are a company research expert. Provide comprehensive information about ${companyName}${websiteUrl ? ` (website: ${websiteUrl})` : ''}.
+        const prompt = `You are a company research expert. Determine if ${companyName}${websiteUrl ? ` (website: ${websiteUrl})` : ''} is a real, existing company that you have knowledge about.
 
-Return ONLY a valid JSON object with the following structure. Do not include any markdown formatting, code blocks, or additional text:
+IMPORTANT: If this is NOT a real company, or you don't have reliable information about it, return this JSON:
+{
+  "exists": false,
+  "message": "Unable to find information about this company. Please verify the company name or provide more details."
+}
+
+If this IS a real company that you know about, return ONLY a valid JSON object with the following structure. Do not include any markdown formatting, code blocks, or additional text:
 
 {
+  "exists": true,
   "name": "Official company name",
   "website": "Company website URL starting with https://",
   "logo": "Company logo URL if available, or empty string",
@@ -33,23 +40,24 @@ Return ONLY a valid JSON object with the following structure. Do not include any
   "industry": "Primary industry/sector",
   "location": "City, State/Country (headquarters)",
   "glassdoor": {
-    "url": "Glassdoor URL in format: https://www.glassdoor.com/Overview/Working-at-COMPANY-NAME-EI_IEXXX.htm where XXX is the employer ID if known, otherwise use https://www.glassdoor.com/Reviews/COMPANY-NAME-Reviews-EXXX.htm format. Replace spaces with hyphens.",
-    "rating": "Estimated Glassdoor rating between 3.0-4.5 based on company reputation (use 3.5 as default for average companies, 4.0+ for well-known tech companies, 3.0-3.5 for smaller/newer companies)",
-    "reviewCount": "Estimated number of reviews (use 100-500 for small companies, 500-2000 for mid-size, 2000-10000 for large companies, 10000+ for major tech companies)"
+    "url": "https://www.glassdoor.com/Search/results.htm?keyword=COMPANY-NAME - Generic search URL to help users find the company on Glassdoor. Replace COMPANY-NAME with the actual company name with spaces replaced by hyphens. This is a search link, not a direct company page.",
+    "rating": "Leave as null - we cannot accurately estimate Glassdoor ratings",
+    "reviewCount": "Leave as null - we cannot accurately estimate review counts"
   }
 }
 
 Important guidelines:
-- Provide accurate, real information about ${companyName}
+- ONLY provide information if you are confident this is a real company
+- If the company name seems fake, made-up, or you have no knowledge of it, return exists: false
+- For real companies, provide accurate information based on your knowledge
 - For size, estimate based on your knowledge of the company's employee count
 - Keep descriptions concise and professional
 - Location should be the headquarters city and country/state
 - If logo URL is available from your knowledge, include it, otherwise leave empty
-- For Glassdoor URL, use the company's official name and replace spaces with hyphens
-- Provide reasonable estimates for rating and review count based on company size and reputation
-- Well-known companies (Google, Microsoft, etc.) should have ratings 4.0+ and 10000+ reviews
-- Mid-size companies should have ratings 3.5-4.0 and 500-5000 reviews
-- Smaller companies should have ratings 3.0-3.8 and 50-500 reviews`;
+- For Glassdoor URL, create a SEARCH link in format: https://www.glassdoor.com/Search/results.htm?keyword=Company-Name (replace spaces with hyphens)
+- DO NOT try to guess specific Glassdoor company page URLs - use search links only
+- Set rating and reviewCount to null - we cannot accurately estimate these values
+- The search link will help users find the company on Glassdoor themselves`;
 
         const result = await model.generateContent(prompt);
         const response = await result.response;
@@ -60,7 +68,16 @@ Important guidelines:
 
         const aiData = JSON.parse(text);
 
+        // Check if company exists
+        if (aiData.exists === false) {
+            return {
+                exists: false,
+                message: aiData.message || "Unable to find information about this company. Please verify the company name or provide more details."
+            };
+        }
+
         return {
+            exists: true,
             name: aiData.name || companyName,
             website: aiData.website || websiteUrl,
             logo: aiData.logo || '',
@@ -124,7 +141,17 @@ export const getCompanyInfo = asyncHandler(async (req, res) => {
         console.log(`Using AI to extract company info for ${companyData.name || domain}...`);
         const aiData = await extractCompanyInfoWithAI(companyData.name || domain, domain);
 
-        if (aiData) {
+        if (aiData && aiData.exists === false) {
+            // Company doesn't exist or no information available
+            const { response, statusCode } = errorResponse(
+                aiData.message || "Unable to find information about this company. Please verify the company name or provide more details.",
+                404,
+                ERROR_CODES.NOT_FOUND
+            );
+            return sendResponse(res, response, statusCode);
+        }
+
+        if (aiData && aiData.exists !== false) {
             // Use AI data for all fields
             companyData.name = aiData.name || companyData.name;
             companyData.website = aiData.website || companyData.website;
@@ -138,8 +165,8 @@ export const getCompanyInfo = asyncHandler(async (req, res) => {
             // Use AI-provided Glassdoor data if available
             if (aiData.glassdoor) {
                 companyData.glassdoorRating.url = aiData.glassdoor.url || '';
-                companyData.glassdoorRating.rating = aiData.glassdoor.rating;
-                companyData.glassdoorRating.reviewCount = aiData.glassdoor.reviewCount;
+                // Don't include rating/reviewCount since we can't get accurate data
+                // Users can click the search link to see actual ratings on Glassdoor
             }
         }
 
