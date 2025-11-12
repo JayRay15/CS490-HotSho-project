@@ -20,6 +20,7 @@
     "@clerk/express": "^1.7.42",
     "@google/genai": "^1.28.0",
     "@google/generative-ai": "^0.24.1",
+    "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "docx": "^9.5.1",
