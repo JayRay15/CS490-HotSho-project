@@ -100,7 +100,7 @@ function CareerTimeline({ employment }) {
 export default function Dashboard() {
   const { isLoaded, isSignedIn, signOut, getToken } = useAuth();
   const { user } = useUser();
-  
+  const navigate = useNavigate();
   const [isRegistering, setIsRegistering] = useState(false);
   const [isCheckingAccount, setIsCheckingAccount] = useState(true);
   const [accountStatus, setAccountStatus] = useState(null); // 'active', 'deleted', or null
