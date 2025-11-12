@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@clerk/clerk-react";
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { setAuthToken } from "../../api/axios";
 import { fetchTemplates, createTemplate as apiCreateTemplate, updateTemplate as apiUpdateTemplate, deleteTemplate as apiDeleteTemplate, importTemplate as apiImportTemplate } from "../../api/resumeTemplates";
 import { fetchCoverLetterTemplates, createCoverLetterTemplate, updateCoverLetterTemplate, deleteCoverLetterTemplate, trackCoverLetterTemplateUsage, importCoverLetterTemplate, exportCoverLetterTemplate, shareCoverLetterTemplate, getIndustryGuidance, getCoverLetterTemplateAnalytics, generateAICoverLetter } from "../../api/coverLetterTemplates";
-import { fetchCoverLetters, createCoverLetter, updateCoverLetter as apiUpdateCoverLetter, deleteCoverLetter as apiDeleteCoverLetter, setDefaultCoverLetter, archiveCoverLetter, unarchiveCoverLetter, cloneCoverLetter as apiCloneCoverLetter } from "../../api/coverLetters";
+import { fetchCoverLetters, getCoverLetterById as apiGetCoverLetterById, createCoverLetter, updateCoverLetter as apiUpdateCoverLetter, deleteCoverLetter as apiDeleteCoverLetter, setDefaultCoverLetter, archiveCoverLetter, unarchiveCoverLetter, cloneCoverLetter as apiCloneCoverLetter } from "../../api/coverLetters";
+import { getValidationStatus } from "../../api/resumeValidation";
 import {
   fetchResumes,
   updateResume as apiUpdateResume,
@@ -22,7 +24,6 @@ import {
   generateResumeVariations,
   regenerateResumeSection
 } from "../../api/aiResume";
-import { getValidationStatus } from "../../api/resumeValidation";
 import api from "../../api/axios";
 import Container from "../../components/Container";
 import Card from "../../components/Card";
@@ -168,6 +169,7 @@ const formatCoverLetterContent = (content) => {
 
 export default function ResumeTemplates() {
   const { getToken } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [templates, setTemplates] = useState([]);
   const [resumes, setResumes] = useState([]);
@@ -310,6 +312,11 @@ export default function ResumeTemplates() {
   const [showViewCoverLetterModal, setShowViewCoverLetterModal] = useState(false);
   const [viewingCoverLetter, setViewingCoverLetter] = useState(null);
   const [isCoverLetterEditMode, setIsCoverLetterEditMode] = useState(false);
+
+  // UC-62: Job linking and style rewrite state
+  const [availableJobs, setAvailableJobs] = useState([]);
+  const [linkedJobId, setLinkedJobId] = useState('');
+  const [isRewritingWithStyle, setIsRewritingWithStyle] = useState(false);
 
   // UC-054: Cover Letter Export State
   const [showCoverLetterExportModal, setShowCoverLetterExportModal] = useState(false);
@@ -776,10 +783,35 @@ export default function ResumeTemplates() {
     try {
       await authWrap();
       const response = await fetchCoverLetters(); // Fetch actual cover letters from /api/cover-letters
-      setSavedCoverLetters(response.data.data.coverLetters || []);
+      const letters = response.data.data.coverLetters || [];
+      
+      console.log('=== LOADING COVER LETTERS FROM API ===');
+      console.log('Total cover letters:', letters.length);
+      letters.forEach((letter, index) => {
+        console.log(`Cover Letter ${index + 1}:`, {
+          _id: letter._id,
+          name: letter.name,
+          linkedJobId: letter.linkedJobId,
+          style: letter.style
+        });
+      });
+      
+      setSavedCoverLetters(letters);
     } catch (err) {
       console.error("Failed to load saved cover letters:", err);
       setSavedCoverLetters([]);
+    }
+  };
+
+  // UC-62: Load available jobs for linking
+  const loadAvailableJobs = async () => {
+    try {
+      await authWrap();
+      const response = await api.get('/api/jobs?archived=false');
+      setAvailableJobs(response.data.data.jobs || []);
+    } catch (error) {
+      console.error("Failed to load jobs:", error);
+      setAvailableJobs([]);
     }
   };
 
@@ -787,7 +819,7 @@ export default function ResumeTemplates() {
     (async () => {
       try {
         setLoading(true);
-        await Promise.all([loadAll(), loadSavedCoverLetters()]);
+        await Promise.all([loadAll(), loadSavedCoverLetters(), loadAvailableJobs()]);
       } catch (e) {
         console.error(e);
         alert("Failed to load resume data");
@@ -796,6 +828,16 @@ export default function ResumeTemplates() {
       }
     })();
   }, []);
+
+  // UC-62: Initialize linkedJobId when viewing/editing a cover letter
+  useEffect(() => {
+    if (viewingCoverLetter && isCoverLetterEditMode) {
+      setLinkedJobId(viewingCoverLetter.linkedJobId || '');
+      setCustomCoverLetterName(viewingCoverLetter.name);
+      setCustomCoverLetterContent(viewingCoverLetter.content);
+      setCustomCoverLetterStyle(viewingCoverLetter.style || 'formal');
+    }
+  }, [viewingCoverLetter, isCoverLetterEditMode]);
 
   // Save section customization
   const saveSectionCustomization = async (resumeId, customization) => {
@@ -2061,7 +2103,22 @@ export default function ResumeTemplates() {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
-                  <span>View Analytics</span>
+                  <span>Template Analytics</span>
+                </button>
+                <button
+                  onClick={() => {
+                    navigate('/cover-letter-performance-analytics');
+                  }}
+                  className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                  style={{ backgroundColor: '#2563eb' }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#1d4ed8'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
+                  title="View cover letter performance analytics (UC-62)"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span>Performance Analytics</span>
                 </button>
               </div>
             </div>
@@ -2093,6 +2150,11 @@ export default function ResumeTemplates() {
                           className="h-64 p-4 flex flex-col justify-start border-b cursor-pointer"
                           style={{ backgroundColor: "#F9F9F9" }}
                           onClick={() => {
+                            console.log('=== CLICKING COVER LETTER ===');
+                            console.log('Letter object:', letter);
+                            console.log('Letter._id:', letter._id);
+                            console.log('Letter.linkedJobId:', letter.linkedJobId);
+                            
                             setViewingCoverLetter(letter);
                             setCustomCoverLetterName(letter.name);
                             setCustomCoverLetterContent(letter.content);
@@ -7224,7 +7286,15 @@ export default function ResumeTemplates() {
                   {!isCoverLetterEditMode && (
                     <button
                       onClick={() => {
+                        console.log('=== ENTERING EDIT MODE ===');
+                        console.log('viewingCoverLetter:', viewingCoverLetter);
+                        console.log('viewingCoverLetter._id:', viewingCoverLetter._id);
+                        console.log('viewingCoverLetter.linkedJobId:', viewingCoverLetter.linkedJobId);
+                        console.log('Setting editingCoverLetter to:', viewingCoverLetter);
+                        console.log('Setting linkedJobId to:', viewingCoverLetter.linkedJobId || '');
+                        
                         setEditingCoverLetter(viewingCoverLetter);
+                        setLinkedJobId(viewingCoverLetter.linkedJobId || ''); // UC-62: Load linked job
                         setIsCoverLetterEditMode(true);
                       }}
                       className="px-4 py-2 text-white rounded-lg transition flex items-center gap-2"
@@ -7333,7 +7403,42 @@ export default function ResumeTemplates() {
                     <select
                       className="w-full p-3 border border-gray-300 rounded-lg"
                       value={customCoverLetterStyle}
-                      onChange={(e) => setCustomCoverLetterStyle(e.target.value)}
+                      onChange={async (e) => {
+                        const newStyle = e.target.value;
+                        const oldStyle = customCoverLetterStyle;
+                        
+                        // UC-62: Ask user if they want to rewrite the cover letter in the new style
+                        if (oldStyle !== newStyle && customCoverLetterContent && customCoverLetterContent.trim()) {
+                          if (window.confirm(`Do you want to automatically rewrite this cover letter in ${newStyle} style?`)) {
+                            setIsRewritingWithStyle(true);
+                            try {
+                              await authWrap();
+                              
+                              // Call AI to rewrite in new style
+                              const response = await generateAICoverLetter({
+                                companyName: editingCoverLetter.companyName || 'Company',
+                                position: editingCoverLetter.positionTitle || 'Position',
+                                jobDescription: editingCoverLetter.jobDescription || '',
+                                tone: newStyle,
+                                variationCount: 1
+                              });
+                              
+                              if (response && response.length > 0 && response[0].content) {
+                                setCustomCoverLetterContent(response[0].content);
+                                alert('Cover letter has been rewritten in ' + newStyle + ' style!');
+                              }
+                            } catch (error) {
+                              console.error('Failed to rewrite cover letter:', error);
+                              alert('Failed to rewrite cover letter. Style updated without content change.');
+                            } finally {
+                              setIsRewritingWithStyle(false);
+                            }
+                          }
+                        }
+                        
+                        setCustomCoverLetterStyle(newStyle);
+                      }}
+                      disabled={isRewritingWithStyle}
                     >
                       <option value="formal">Formal</option>
                       <option value="casual">Casual</option>
@@ -7343,6 +7448,31 @@ export default function ResumeTemplates() {
                       <option value="technical">Technical</option>
                       <option value="executive">Executive</option>
                     </select>
+                    {isRewritingWithStyle && (
+                      <p className="text-sm text-blue-600 mt-2">Rewriting cover letter in new style...</p>
+                    )}
+                  </div>
+
+                  {/* UC-62: Link to Job Application */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Link to Job Application (Optional)
+                    </label>
+                    <select
+                      className="w-full p-3 border border-gray-300 rounded-lg"
+                      value={linkedJobId}
+                      onChange={(e) => setLinkedJobId(e.target.value)}
+                    >
+                      <option value="">No job linked</option>
+                      {availableJobs.map((job) => (
+                        <option key={job._id} value={job._id}>
+                          {job.title} at {job.company}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Link this cover letter to a job application for performance tracking
+                    </p>
                   </div>
 
                   <div className="mb-6">
@@ -7366,6 +7496,7 @@ export default function ResumeTemplates() {
                         setCustomCoverLetterName(viewingCoverLetter.name);
                         setCustomCoverLetterContent(viewingCoverLetter.content);
                         setCustomCoverLetterStyle(viewingCoverLetter.style || 'formal');
+                        setLinkedJobId(viewingCoverLetter.linkedJobId || ''); // UC-62: Reset linked job
                         setIsCoverLetterEditMode(false);
                       }}
                       className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
@@ -7384,25 +7515,52 @@ export default function ResumeTemplates() {
                             return;
                           }
 
-                          await authWrap();
-                          await apiUpdateCoverLetter(editingCoverLetter._id, {
+                          console.log('=== SAVING COVER LETTER ===');
+                          console.log('editingCoverLetter:', editingCoverLetter);
+                          console.log('editingCoverLetter._id:', editingCoverLetter._id);
+                          console.log('linkedJobId state:', linkedJobId);
+                          console.log('viewingCoverLetter:', viewingCoverLetter);
+
+                          const updatePayload = {
                             name: customCoverLetterName,
                             content: customCoverLetterContent,
-                            style: customCoverLetterStyle
-                          });
+                            style: customCoverLetterStyle,
+                            linkedJobId: linkedJobId || null // UC-62: Save linked job
+                          };
+
+                          console.log('Update payload:', updatePayload);
+                          console.log('Updating cover letter ID:', editingCoverLetter._id);
+
+                          await authWrap();
+                          const response = await apiUpdateCoverLetter(editingCoverLetter._id, updatePayload);
+
+                          console.log('Update response:', response);
 
                           // Update the viewing cover letter with new data
                           setViewingCoverLetter({
                             ...viewingCoverLetter,
                             name: customCoverLetterName,
                             content: customCoverLetterContent,
-                            style: customCoverLetterStyle
+                            style: customCoverLetterStyle,
+                            linkedJobId: linkedJobId || null // UC-62: Update local state
                           });
+
+                          // UC-62: Save the cover letter ID before clearing edit mode
+                          const coverLetterId = editingCoverLetter._id;
 
                           setIsCoverLetterEditMode(false);
                           setEditingCoverLetter(null);
 
                           await loadSavedCoverLetters();
+                          
+                          // UC-62: Refresh the viewing cover letter with updated data from server
+                          const refreshResponse = await apiGetCoverLetterById(coverLetterId);
+                          console.log('Refresh response:', refreshResponse);
+                          if (refreshResponse?.data?.data?.coverLetter) {
+                            setViewingCoverLetter(refreshResponse.data.data.coverLetter);
+                            console.log('Updated viewingCoverLetter with:', refreshResponse.data.data.coverLetter);
+                          }
+                          
                           alert("Cover letter updated successfully!");
                         } catch (err) {
                           console.error("Update failed:", err);

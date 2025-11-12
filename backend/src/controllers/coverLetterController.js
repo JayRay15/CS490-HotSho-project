@@ -39,7 +39,12 @@ export const listCoverLetters = async (req, res) => {
           userId,
           linkedCoverLetterId: coverLetter._id
         });
-        return { ...coverLetter, linkedJobCount: jobCount };
+        // UC-62: Convert linkedJobId ObjectId to string for frontend
+        return { 
+          ...coverLetter, 
+          linkedJobCount: jobCount,
+          linkedJobId: coverLetter.linkedJobId ? coverLetter.linkedJobId.toString() : null
+        };
       })
     );
 
@@ -130,6 +135,11 @@ export const getCoverLetterById = async (req, res) => {
       return sendResponse(res, response, statusCode);
     }
 
+    // UC-62: Convert linkedJobId ObjectId to string for frontend
+    if (coverLetter.linkedJobId) {
+      coverLetter.linkedJobId = coverLetter.linkedJobId.toString();
+    }
+
     const { response, statusCode } = successResponse("Cover letter fetched", { coverLetter });
     return sendResponse(res, response, statusCode);
   } catch (err) {
@@ -155,7 +165,13 @@ export const updateCoverLetter = async (req, res) => {
     Object.assign(coverLetter, updates);
     await coverLetter.save();
 
-    const { response, statusCode } = successResponse("Cover letter updated", { coverLetter });
+    // UC-62: Convert to plain object and ensure linkedJobId is a string
+    const coverLetterObj = coverLetter.toObject();
+    if (coverLetterObj.linkedJobId) {
+      coverLetterObj.linkedJobId = coverLetterObj.linkedJobId.toString();
+    }
+
+    const { response, statusCode } = successResponse("Cover letter updated", { coverLetter: coverLetterObj });
     return sendResponse(res, response, statusCode);
   } catch (err) {
     console.error("Failed to update cover letter:", err);

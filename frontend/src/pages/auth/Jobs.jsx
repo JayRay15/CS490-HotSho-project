@@ -22,6 +22,7 @@ import JobMatchComparison from "../../components/JobMatchComparison";
 import ApplicationPackageGenerator from "../../components/ApplicationPackageGenerator";
 import ApplicationAutomation from "../../components/ApplicationAutomation";
 import * as interviewsAPI from "../../api/interviews";
+import { trackApplicationOutcome } from "../../api/coverLetterAnalytics";
 
 const PIPELINE_STAGES = ["Interested", "Applied", "Phone Screen", "Interview", "Offer", "Rejected"];
 
@@ -556,6 +557,48 @@ export default function Jobs() {
       console.log("UPDATE JOB - Industry value:", formData.industry, "->", jobData.industry);
 
       await api.put(`/api/jobs/${editingJob._id}`, jobData);
+      
+      // UC-62: Track cover letter analytics if status changed and cover letter is linked
+      // Check both directions: job.linkedCoverLetterId OR find cover letter with linkedJobId
+      if (formData.status !== editingJob.status) {
+        let linkedCoverLetterId = editingJob.linkedCoverLetterId;
+        
+        if (!linkedCoverLetterId) {
+          try {
+            const coverLettersResponse = await api.get('/api/cover-letters');
+            const coverLetters = coverLettersResponse.data || [];
+            const linkedCoverLetter = coverLetters.find(cl => cl.linkedJobId === editingJob._id);
+            if (linkedCoverLetter) {
+              linkedCoverLetterId = linkedCoverLetter._id;
+            }
+          } catch (err) {
+            console.error('Failed to check for linked cover letters:', err);
+          }
+        }
+        
+        if (linkedCoverLetterId) {
+          try {
+            const outcomeData = {
+              outcome: formData.status.toLowerCase().replace(' ', '_'),
+              responseDate: new Date().toISOString()
+            };
+            
+            if (formData.status === 'Phone Screen' || formData.status === 'Interview') {
+              outcomeData.responseType = 'interview_request';
+            } else if (formData.status === 'Offer') {
+              outcomeData.responseType = 'offer';
+            } else if (formData.status === 'Rejected') {
+              outcomeData.responseType = 'rejection';
+            }
+            
+            await trackApplicationOutcome(editingJob._id, outcomeData);
+            console.log('Cover letter analytics updated for job:', editingJob._id);
+          } catch (analyticsError) {
+            console.error('Failed to track cover letter analytics:', analyticsError);
+          }
+        }
+      }
+      
       await fetchJobs();
       setShowEditModal(false);
       setEditingJob(null);
@@ -570,15 +613,61 @@ export default function Jobs() {
     try {
       const token = await getToken();
       setAuthToken(token);
+      
+      // Get the job to check if it has a linked cover letter
+      const job = jobs.find(j => j._id === jobId);
+      
       if (options.extendDeadlineDays) {
-        const job = jobs.find(j => j._id === jobId);
         const base = job?.deadline ? new Date(job.deadline) : new Date();
         const newDate = new Date(base);
         newDate.setDate(newDate.getDate() + options.extendDeadlineDays);
         await api.put(`/api/jobs/${jobId}`, { deadline: newDate.toISOString() });
       } else if (newStatus !== undefined) {
         await api.put(`/api/jobs/${jobId}/status`, { status: newStatus });
+        
+        // UC-62: Track cover letter performance if linked
+        // Check both directions: job.linkedCoverLetterId OR find cover letter with linkedJobId
+        let linkedCoverLetterId = job?.linkedCoverLetterId;
+        
+        if (!linkedCoverLetterId) {
+          // Check if any cover letter links to this job
+          try {
+            const coverLettersResponse = await api.get('/api/cover-letters');
+            const coverLetters = coverLettersResponse.data || [];
+            const linkedCoverLetter = coverLetters.find(cl => cl.linkedJobId === jobId);
+            if (linkedCoverLetter) {
+              linkedCoverLetterId = linkedCoverLetter._id;
+            }
+          } catch (err) {
+            console.error('Failed to check for linked cover letters:', err);
+          }
+        }
+        
+        if (linkedCoverLetterId) {
+          try {
+            const outcomeData = {
+              outcome: newStatus.toLowerCase().replace(' ', '_'), // Convert "Phone Screen" to "phone_screen"
+              responseDate: new Date().toISOString()
+            };
+            
+            // Add response type based on status
+            if (newStatus === 'Phone Screen' || newStatus === 'Interview') {
+              outcomeData.responseType = 'interview_request';
+            } else if (newStatus === 'Offer') {
+              outcomeData.responseType = 'offer';
+            } else if (newStatus === 'Rejected') {
+              outcomeData.responseType = 'rejection';
+            }
+            
+            await trackApplicationOutcome(jobId, outcomeData);
+            console.log('Cover letter analytics updated for job:', jobId);
+          } catch (analyticsError) {
+            console.error('Failed to track cover letter analytics:', analyticsError);
+            // Don't fail the status update if analytics tracking fails
+          }
+        }
       }
+      
       await fetchJobs();
       await fetchStats();
     } catch (error) {

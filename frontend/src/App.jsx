@@ -18,6 +18,7 @@ import SalaryResearch from "./components/SalaryResearch";
 import SalaryBenchmarksExplorer from "./components/SalaryBenchmarksExplorer";
 import SkillGapAnalysis from "./pages/auth/SkillGapAnalysis";
 import SkillTrends from "./pages/auth/SkillTrends";
+import CoverLetterAnalytics from "./components/CoverLetterAnalytics/CoverLetterAnalytics";
 
 function App() {
   return (
@@ -44,6 +45,7 @@ function App() {
           <Route path="/salary-benchmarks" element={<ProtectedRoute><SalaryBenchmarksExplorer /></ProtectedRoute>} />
           <Route path="/skill-gap-analysis/:jobId" element={<ProtectedRoute><SkillGapAnalysis /></ProtectedRoute>} />
           <Route path="/skill-trends" element={<ProtectedRoute><SkillTrends /></ProtectedRoute>} />
+          <Route path="/cover-letter-performance-analytics" element={<ProtectedRoute><CoverLetterAnalytics /></ProtectedRoute>} />
         </Routes>
       </Router>
     </ErrorBoundary>

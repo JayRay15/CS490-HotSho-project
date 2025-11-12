@@ -11,7 +11,8 @@ const coverLetterSchema = new mongoose.Schema(
       enum: ["formal", "casual", "enthusiastic", "analytical", "creative", "technical", "executive"], 
       default: "formal"
     },
-    jobId: { type: mongoose.Schema.Types.ObjectId, ref: "Job" }, // Optional: link to job application
+    jobId: { type: mongoose.Schema.Types.ObjectId, ref: "Job" }, // Optional: link to job application (legacy)
+    linkedJobId: { type: mongoose.Schema.Types.ObjectId, ref: "Job" }, // UC-62: Link to job application for performance tracking
     metadata: { type: Object, default: {} }, // { clonedFrom?, clonedAt?, tailoredForJob?, etc. }
     isDefault: { type: Boolean, default: false }, // Mark default cover letter
     isArchived: { type: Boolean, default: false, index: true }, // Archive functionality

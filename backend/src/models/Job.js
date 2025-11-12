@@ -205,6 +205,27 @@ const jobSchema = new mongoose.Schema(
       ref: 'Resume',
       default: null,
     },
+    // UC-62: Link cover letter to job application for performance tracking
+    linkedCoverLetterId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'CoverLetter',
+      default: null,
+    },
+    // UC-62: Application outcome data for cover letter analytics
+    applicationOutcome: {
+      responded: { type: Boolean, default: false },
+      responseDate: { type: Date },
+      responseType: { 
+        type: String, 
+        enum: ['interview_request', 'phone_screen', 'rejection', 'offer', 'other', ''],
+        default: ''
+      },
+      timeToResponse: { type: Number }, // Days from application to response
+      interviewCount: { type: Number, default: 0 },
+      reachedFinalRound: { type: Boolean, default: false },
+      offerReceived: { type: Boolean, default: false },
+      offerAccepted: { type: Boolean, default: false }
+    },
   },
   {
     timestamps: true,
