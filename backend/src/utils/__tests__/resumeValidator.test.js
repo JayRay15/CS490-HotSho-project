@@ -74,6 +74,15 @@ describe('resumeValidator utilities', () => {
       expect(res.errors.length).toBeGreaterThan(0);
       expect(res.section).toBe('summary');
     });
+
+    it('provides replacements for common misspellings', async () => {
+      const text = 'This is alot of work and skillfull effort';
+      const res = await checkGrammar(text, 'summary');
+      expect(res.errors.some(e => e.replacements && e.replacements.length > 0)).toBe(true);
+      const repl = res.errors.find(e => e.message.toLowerCase().includes('alot'));
+      expect(repl).toBeDefined();
+      expect(repl.replacements).toContain('a lot');
+    });
   });
 
   describe('countPdfPages and validateResumeLength', () => {
@@ -159,6 +168,42 @@ describe('resumeValidator utilities', () => {
       };
       const res = await validateResume(resume, Buffer.from('pdf'));
       expect(res).toBeDefined();
+    });
+
+    it('adds length warning when PDF page counting fails', async () => {
+      // Simulate PDFDocument.load throwing when counting pages
+      mockPdfDocument.load.mockRejectedValueOnce(new Error('PDF parse error'));
+      const resume = {
+        sections: {
+          contactInfo: { name: 'John', email: 'j@b.com', phone: '2123456789' },
+          summary: 'Experienced developer',
+          experience: [{ company: 'Google', title: 'SWE', description: 'Worked on systems' }],
+          education: [{ school: 'MIT', degree: 'BS' }],
+          skills: ['JavaScript', 'Python', 'Go']
+        }
+      };
+
+      const res = await validateResume(resume, Buffer.from('pdf'));
+      expect(res.warnings.some(w => w.message && w.message.includes('Unable to validate resume length'))).toBe(true);
+    });
+
+    it('includes tone issues from project descriptions and certifications', async () => {
+      mockPdfDocument.load.mockResolvedValue({ getPageCount: () => 1 });
+      const resume = {
+        sections: {
+          contactInfo: { name: 'Alex', email: 'alex@dev.com', phone: '2123456789' },
+          summary: 'Skilled developer',
+          experience: [{ company: 'X', description: 'Built services' }],
+          projects: [{ name: 'Proj1', description: 'I kinda did some quick hacks' }],
+          certifications: [{ name: 'Cert1', issuer: 'Org' }],
+          education: [{ school: 'U' }],
+          skills: ['JS','Node','React','SQL','Docker']
+        }
+      };
+
+      const res = await validateResume(resume, Buffer.from('pdf'));
+      // Tone issues from 'kinda' should be present
+      expect(res.warnings.some(w => w.message && w.message.toLowerCase().includes('kinda'))).toBe(true);
     });
   });
 
