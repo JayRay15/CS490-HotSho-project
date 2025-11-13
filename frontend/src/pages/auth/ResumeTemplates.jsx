@@ -299,6 +299,8 @@ export default function ResumeTemplates() {
   const [customCoverLetterName, setCustomCoverLetterName] = useState('');
   const [customCoverLetterContent, setCustomCoverLetterContent] = useState('');
   const [customCoverLetterStyle, setCustomCoverLetterStyle] = useState('formal');
+  const [editorContentKey, setEditorContentKey] = useState(0);
+  const [selectedJobForRegeneration, setSelectedJobForRegeneration] = useState('');
   const [isCreatingCoverLetterTemplate, setIsCreatingCoverLetterTemplate] = useState(false); // Track if creating template vs cover letter
   const [showAllCoverLetters, setShowAllCoverLetters] = useState(false);
   const [showCoverLetterAnalytics, setShowCoverLetterAnalytics] = useState(false);
@@ -743,11 +745,11 @@ export default function ResumeTemplates() {
     try {
       await authWrap();
       const response = await api.get("/api/jobs");
-      // Filter for saved and applied jobs
-      const savedAppliedJobs = response.data.data.jobs.filter(
-        job => job.status === "Interested" || job.status === "Applied"
+      // Filter for non-archived jobs (all statuses allowed for cover letter regeneration)
+      const activeJobs = response.data.data.jobs.filter(
+        job => !job.archived
       );
-      setJobs(savedAppliedJobs);
+      setJobs(activeJobs);
     } catch (err) {
       console.error("Failed to load jobs:", err);
       setJobs([]);
@@ -787,7 +789,7 @@ export default function ResumeTemplates() {
     (async () => {
       try {
         setLoading(true);
-        await Promise.all([loadAll(), loadSavedCoverLetters()]);
+        await Promise.all([loadAll(), loadSavedCoverLetters(), loadJobs()]);
       } catch (e) {
         console.error(e);
         alert("Failed to load resume data");
@@ -796,6 +798,13 @@ export default function ResumeTemplates() {
       }
     })();
   }, []);
+
+  // Load jobs when cover letter modal opens
+  useEffect(() => {
+    if (showViewCoverLetterModal && jobs.length === 0) {
+      loadJobs();
+    }
+  }, [showViewCoverLetterModal]);
 
   // Save section customization
   const saveSectionCustomization = async (resumeId, customization) => {
@@ -2092,13 +2101,18 @@ export default function ResumeTemplates() {
                         <div
                           className="h-64 p-4 flex flex-col justify-start border-b cursor-pointer"
                           style={{ backgroundColor: "#F9F9F9" }}
-                          onClick={() => {
+                          onClick={async () => {
                             setViewingCoverLetter(letter);
                             setCustomCoverLetterName(letter.name);
                             setCustomCoverLetterContent(letter.content);
                             setCustomCoverLetterStyle(letter.style || 'formal');
                             setIsCoverLetterEditMode(false);
+                            setSelectedJobForRegeneration(letter?.jobId || '');
                             setShowViewCoverLetterModal(true);
+                            // Load jobs when modal opens
+                            if (jobs.length === 0) {
+                              await loadJobs();
+                            }
                           }}
                         >
                           <div className="flex items-start justify-between mb-2">
@@ -2131,14 +2145,19 @@ export default function ResumeTemplates() {
                             <div className="flex items-center gap-1">
                               {/* View Button */}
                               <button
-                                onClick={(e) => {
+                                onClick={async (e) => {
                                   e.stopPropagation();
                                   setViewingCoverLetter(letter);
                                   setCustomCoverLetterName(letter.name);
                                   setCustomCoverLetterContent(letter.content);
                                   setCustomCoverLetterStyle(letter.style || 'formal');
                                   setIsCoverLetterEditMode(false);
+                                  setSelectedJobForRegeneration(letter?.jobId || '');
                                   setShowViewCoverLetterModal(true);
+                                  // Load jobs when modal opens
+                                  if (jobs.length === 0) {
+                                    await loadJobs();
+                                  }
                                 }}
                                 className="p-1 rounded-lg transition flex-shrink-0 flex items-center justify-center"
                                 style={{ color: '#6B7280' }}
@@ -2160,7 +2179,7 @@ export default function ResumeTemplates() {
 
                               {/* Edit Button */}
                               <button
-                                onClick={(e) => {
+                                onClick={async (e) => {
                                   e.stopPropagation();
                                   setViewingCoverLetter(letter);
                                   setEditingCoverLetter(letter);
@@ -2168,7 +2187,12 @@ export default function ResumeTemplates() {
                                   setCustomCoverLetterContent(letter.content);
                                   setCustomCoverLetterStyle(letter.style || 'formal');
                                   setIsCoverLetterEditMode(true);
+                                  setSelectedJobForRegeneration(letter?.jobId || '');
                                   setShowViewCoverLetterModal(true);
+                                  // Load jobs when modal opens
+                                  if (jobs.length === 0) {
+                                    await loadJobs();
+                                  }
                                 }}
                                 className="p-1 rounded-lg transition flex-shrink-0 flex items-center justify-center"
                                 style={{ color: '#6B7280' }}
@@ -6717,6 +6741,95 @@ export default function ResumeTemplates() {
                     </div>
                   </div>
 
+                  {/* Tone Adjustment and Regeneration */}
+                  <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center gap-4 flex-wrap">
+                      <div className="flex-1 min-w-[200px]">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Adjust Tone
+                        </label>
+                        <select
+                          className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          value={aiTone}
+                          onChange={(e) => {
+                            setAiTone(e.target.value);
+                            const warnings = validateToneConsistency(e.target.value, aiIndustry, aiCompanyCulture);
+                            setAiConsistencyWarnings(warnings);
+                          }}
+                        >
+                          {TONE_OPTIONS.map(option => (
+                            <option key={option.value} value={option.value}>
+                              {option.label} - {option.description}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex items-end">
+                        <Button
+                          variant="primary"
+                          onClick={async () => {
+                            if (!aiJobId) {
+                              setAiGenerationError('Please select a job to regenerate for');
+                              return;
+                            }
+
+                            try {
+                              setIsGeneratingAI(true);
+                              setAiGenerationError('');
+                              await authWrap();
+                              
+                              const response = await generateAICoverLetter({
+                                jobId: aiJobId,
+                                tone: aiTone,
+                                variationCount: aiVariationCount,
+                                industry: aiIndustry,
+                                companyCulture: aiCompanyCulture,
+                                length: aiLength,
+                                writingStyle: aiWritingStyle,
+                                customInstructions: aiCustomInstructions
+                              });
+
+                              setAiGeneratedVariations(response.data.data.variations);
+                              setSelectedAIVariation(0);
+                            } catch (err) {
+                              console.error('Regeneration failed:', err);
+                              setAiGenerationError(err.response?.data?.message || 'Failed to regenerate cover letter. Please try again.');
+                            } finally {
+                              setIsGeneratingAI(false);
+                            }
+                          }}
+                          disabled={isGeneratingAI || !aiJobId}
+                        >
+                          {isGeneratingAI ? (
+                            <>
+                              <svg className="animate-spin h-4 w-4 mr-2 inline-block" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Regenerating...
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-4 h-4 mr-2 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              </svg>
+                              Regenerate with New Tone
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                    {aiConsistencyWarnings.length > 0 && (
+                      <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded">
+                        {aiConsistencyWarnings.map((warning, idx) => (
+                          <p key={idx} className="text-xs text-amber-800 mb-1 last:mb-0">
+                            {warning}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                   {aiVariationCount > 1 && (
                     <div className="mb-6">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -7223,9 +7336,15 @@ export default function ResumeTemplates() {
                 <div className="flex items-center gap-3">
                   {!isCoverLetterEditMode && (
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         setEditingCoverLetter(viewingCoverLetter);
                         setIsCoverLetterEditMode(true);
+                        // Initialize selected job for regeneration
+                        setSelectedJobForRegeneration(viewingCoverLetter?.jobId || '');
+                        // Ensure jobs are loaded
+                        if (jobs.length === 0) {
+                          await loadJobs();
+                        }
                       }}
                       className="px-4 py-2 text-white rounded-lg transition flex items-center gap-2"
                       style={{ backgroundColor: '#777C6D' }}
@@ -7326,23 +7445,132 @@ export default function ResumeTemplates() {
                     />
                   </div>
 
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Cover Letter Style
-                    </label>
-                    <select
-                      className="w-full p-3 border border-gray-300 rounded-lg"
-                      value={customCoverLetterStyle}
-                      onChange={(e) => setCustomCoverLetterStyle(e.target.value)}
-                    >
-                      <option value="formal">Formal</option>
-                      <option value="casual">Casual</option>
-                      <option value="enthusiastic">Enthusiastic</option>
-                      <option value="analytical">Analytical</option>
-                      <option value="creative">Creative</option>
-                      <option value="technical">Technical</option>
-                      <option value="executive">Executive</option>
-                    </select>
+                  {/* Tone Adjustment and Regeneration */}
+                  <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Adjust Tone
+                          </label>
+                          <select
+                            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            value={customCoverLetterStyle}
+                            onChange={(e) => {
+                              setCustomCoverLetterStyle(e.target.value);
+                              // Update warnings when tone changes (if we have industry/culture info)
+                              if (selectedJobForRegeneration || viewingCoverLetter?.jobId) {
+                                const warnings = validateToneConsistency(e.target.value, aiIndustry, aiCompanyCulture);
+                                setAiConsistencyWarnings(warnings);
+                              }
+                            }}
+                          >
+                            {TONE_OPTIONS.map(option => (
+                              <option key={option.value} value={option.value}>
+                                {option.label} - {option.description}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Select Job for Regeneration *
+                          </label>
+                          <select
+                            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            value={selectedJobForRegeneration || viewingCoverLetter?.jobId || ''}
+                            onChange={(e) => {
+                              setSelectedJobForRegeneration(e.target.value);
+                              // Update warnings when job changes
+                              if (e.target.value) {
+                                const selectedJob = jobs.find(j => j._id === e.target.value);
+                                if (selectedJob) {
+                                  const warnings = validateToneConsistency(customCoverLetterStyle, aiIndustry, aiCompanyCulture);
+                                  setAiConsistencyWarnings(warnings);
+                                }
+                              }
+                            }}
+                          >
+                            <option value="">Select a job...</option>
+                            {jobs.filter(job => !job.archived).map(job => (
+                              <option key={job._id} value={job._id}>
+                                {job.title} at {job.company}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <div className="flex justify-end">
+                        <Button
+                          variant="primary"
+                          onClick={async () => {
+                            const jobIdToUse = selectedJobForRegeneration || viewingCoverLetter?.jobId;
+                            
+                            if (!jobIdToUse) {
+                              alert('Please select a job to regenerate the cover letter for.');
+                              return;
+                            }
+
+                            try {
+                              setIsGeneratingAI(true);
+                              await authWrap();
+                              
+                              const response = await generateAICoverLetter({
+                                jobId: jobIdToUse,
+                                tone: customCoverLetterStyle,
+                                variationCount: 1,
+                                industry: aiIndustry || 'general',
+                                companyCulture: aiCompanyCulture || 'corporate',
+                                length: aiLength || 'standard',
+                                writingStyle: aiWritingStyle || 'hybrid',
+                                customInstructions: ''
+                              });
+
+                              if (response.data.data.variations && response.data.data.variations.length > 0) {
+                                // Update the content with the regenerated version
+                                const newContent = response.data.data.variations[0].content;
+                                setCustomCoverLetterContent(newContent);
+                                // Force editor to re-render with new content
+                                setEditorContentKey(prev => prev + 1);
+                                alert('Cover letter regenerated with new tone! Review the changes and click Save to update.');
+                              }
+                            } catch (err) {
+                              console.error('Regeneration failed:', err);
+                              alert(err.response?.data?.message || 'Failed to regenerate cover letter. Please ensure your profile has work experience and try again.');
+                            } finally {
+                              setIsGeneratingAI(false);
+                            }
+                          }}
+                          disabled={isGeneratingAI || (!selectedJobForRegeneration && !viewingCoverLetter?.jobId)}
+                        >
+                          {isGeneratingAI ? (
+                            <>
+                              <svg className="animate-spin h-4 w-4 mr-2 inline-block" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Regenerating...
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-4 h-4 mr-2 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              </svg>
+                              Regenerate with New Tone
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                    {aiConsistencyWarnings.length > 0 && (selectedJobForRegeneration || viewingCoverLetter?.jobId) && (
+                      <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded">
+                        {aiConsistencyWarnings.map((warning, idx) => (
+                          <p key={idx} className="text-xs text-amber-800 mb-1 last:mb-0">
+                            {warning}
+                          </p>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="mb-6">
@@ -7350,6 +7578,7 @@ export default function ResumeTemplates() {
                       Cover Letter Content
                     </label>
                     <CoverLetterEditor
+                      key={editorContentKey}
                       initialContent={formatCoverLetterContent(customCoverLetterContent)}
                       onChange={(content) => setCustomCoverLetterContent(content)}
                       coverLetterId={editingCoverLetter._id}
