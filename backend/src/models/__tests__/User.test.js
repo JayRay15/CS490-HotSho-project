@@ -1086,5 +1086,77 @@ describe('User Model', () => {
       expect(error).toBeUndefined();
       expect(user.employment[0].location).toBe('New York, NY');
     });
+
+    it('should validate notifications required fields', () => {
+      const user = new User({
+        auth0Id: 'test-id-notify',
+        email: 'notify@example.com',
+        name: 'Notify User',
+        notifications: [
+          {
+            // missing required fields type and message
+          },
+        ],
+      });
+
+      const error = user.validateSync();
+      expect(error).toBeDefined();
+      // should report missing required fields inside notifications array
+      expect(error.errors['notifications.0.type']).toBeDefined();
+      expect(error.errors['notifications.0.message']).toBeDefined();
+    });
+
+    it('User.comparePassword should work against a hashed password', async () => {
+      const bcrypt = await import('bcrypt');
+      const plain = 'TestPassword123!';
+      const hashed = await bcrypt.hash(plain, 12);
+
+      // Create a user instance with a hashed password (no DB save required)
+      const user = new User({
+        auth0Id: 'test-id-compare',
+        email: 'compare@example.com',
+        name: 'Compare User',
+        password: hashed,
+      });
+
+      const match = await user.comparePassword(plain);
+      expect(match).toBe(true);
+
+      const notMatch = await user.comparePassword('wrongpassword');
+      expect(notMatch).toBe(false);
+    });
+
+    it('employment virtual displayPosition should prefer position then jobTitle', () => {
+      const userWithPosition = new User({
+        auth0Id: 'test-id',
+        email: 'test@example.com',
+        name: 'Test User',
+        employment: [
+          {
+            position: 'Lead Engineer',
+            jobTitle: 'Legacy Title',
+            company: 'Tech Corp',
+            startDate: new Date('2020-01-01')
+          }
+        ]
+      });
+
+      expect(userWithPosition.employment[0].displayPosition).toBe('Lead Engineer');
+
+      const userWithJobTitleOnly = new User({
+        auth0Id: 'test-id-2',
+        email: 'test2@example.com',
+        name: 'Test User 2',
+        employment: [
+          {
+            jobTitle: 'Legacy Only',
+            company: 'Tech Corp',
+            startDate: new Date('2020-01-01')
+          }
+        ]
+      });
+
+      expect(userWithJobTitleOnly.employment[0].displayPosition).toBe('Legacy Only');
+    });
   });
 });

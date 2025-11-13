@@ -22,6 +22,15 @@ describe('Company Research Service', () => {
       }).not.toThrow();
     });
 
+    it('should return object with researchSuccess false on error', async () => {
+      // Call with just company name (no API key means it will fail)
+      const result = await companyResearchService.researchCompany('TestCorp', 'Job description');
+      
+      expect(result.researchSuccess).toBe(false);
+      expect(result.companyName).toBe('TestCorp');
+      expect(result.background).toContain('TestCorp');
+    });
+
     it('should handle null job description', async () => {
       expect(() => {
         companyResearchService.researchCompany('TestCorp', null);
@@ -164,7 +173,182 @@ describe('Company Research Service', () => {
     });
   });
 
+  describe('conductComprehensiveResearch', () => {
+    it('should be defined as a function', () => {
+      expect(typeof companyResearchService.conductComprehensiveResearch).toBe('function');
+    });
+
+    it('should return a Promise', () => {
+      const result = companyResearchService.conductComprehensiveResearch('TestCorp');
+      expect(result instanceof Promise).toBe(true);
+    });
+
+    it('should handle company name only', async () => {
+      const result = await companyResearchService.conductComprehensiveResearch('TestCorp');
+      
+      expect(result).toBeDefined();
+      expect(result.companyName).toBe('TestCorp');
+    });
+
+    it('should include all required fields in response', async () => {
+      const result = await companyResearchService.conductComprehensiveResearch('TestCorp');
+      
+      const requiredFields = [
+        'companyName',
+        'researchDate',
+        'basicInfo',
+        'missionAndCulture',
+        'news',
+        'leadership',
+        'productsAndServices',
+        'competitive',
+        'socialMedia',
+        'summary',
+        'metadata'
+      ];
+      
+      requiredFields.forEach(field => {
+        expect(result).toHaveProperty(field);
+      });
+    });
+
+    it('should structure basicInfo correctly', async () => {
+      const result = await companyResearchService.conductComprehensiveResearch('TestCorp');
+      
+      const basicInfoFields = [
+        'name',
+        'size',
+        'industry',
+        'headquarters',
+        'website',
+        'description'
+      ];
+      
+      basicInfoFields.forEach(field => {
+        expect(result.basicInfo).toHaveProperty(field);
+      });
+    });
+
+    it('should structure missionAndCulture correctly', async () => {
+      const result = await companyResearchService.conductComprehensiveResearch('TestCorp');
+      
+      expect(result.missionAndCulture).toHaveProperty('mission');
+      expect(result.missionAndCulture).toHaveProperty('values');
+      expect(result.missionAndCulture).toHaveProperty('culture');
+    });
+
+    it('should structure news correctly', async () => {
+      const result = await companyResearchService.conductComprehensiveResearch('TestCorp');
+      
+      expect(result.news).toHaveProperty('recentNews');
+      expect(Array.isArray(result.news.recentNews)).toBe(true);
+      expect(result.news).toHaveProperty('pressReleases');
+      expect(result.news).toHaveProperty('majorAnnouncements');
+    });
+
+    it('should structure leadership correctly', async () => {
+      const result = await companyResearchService.conductComprehensiveResearch('TestCorp');
+      
+      expect(result.leadership).toHaveProperty('executives');
+      expect(Array.isArray(result.leadership.executives)).toBe(true);
+    });
+
+    it('should structure productsAndServices correctly', async () => {
+      const result = await companyResearchService.conductComprehensiveResearch('TestCorp');
+      
+      expect(result.productsAndServices).toHaveProperty('mainProducts');
+      expect(result.productsAndServices).toHaveProperty('services');
+      expect(result.productsAndServices).toHaveProperty('technologies');
+      expect(Array.isArray(result.productsAndServices.mainProducts)).toBe(true);
+    });
+
+    it('should structure competitive correctly', async () => {
+      const result = await companyResearchService.conductComprehensiveResearch('TestCorp');
+      
+      expect(result.competitive).toHaveProperty('mainCompetitors');
+      expect(result.competitive).toHaveProperty('marketPosition');
+      expect(result.competitive).toHaveProperty('uniqueValue');
+      expect(Array.isArray(result.competitive.mainCompetitors)).toBe(true);
+    });
+
+    it('should structure socialMedia correctly', async () => {
+      const result = await companyResearchService.conductComprehensiveResearch('TestCorp');
+      
+      expect(result.socialMedia).toHaveProperty('platforms');
+      expect(typeof result.socialMedia.platforms).toBe('object');
+    });
+
+    it('should include metadata with required fields', async () => {
+      const result = await companyResearchService.conductComprehensiveResearch('TestCorp');
+      
+      expect(result.metadata).toHaveProperty('researchSuccess');
+      expect(result.metadata).toHaveProperty('dataQuality');
+      expect(result.metadata).toHaveProperty('sources');
+      expect(result.metadata).toHaveProperty('lastUpdated');
+    });
+
+    it('should handle optional parameters', async () => {
+      const result = await companyResearchService.conductComprehensiveResearch(
+        'TestCorp',
+        'Senior Engineer position',
+        'https://testcorp.com'
+      );
+      
+      expect(result.companyName).toBe('TestCorp');
+      expect(result.basicInfo.website).toBe('https://testcorp.com');
+    });
+
+    it('should set researchSuccess to true on success', async () => {
+      const result = await companyResearchService.conductComprehensiveResearch('TestCorp');
+      
+      expect(result.metadata.researchSuccess).toBe(true);
+    });
+
+    it('should return consistent data on multiple calls', async () => {
+      const result1 = await companyResearchService.conductComprehensiveResearch('Company1');
+      const result2 = await companyResearchService.conductComprehensiveResearch('Company1');
+      
+      expect(result1.companyName).toBe(result2.companyName);
+      expect(result1.basicInfo.name).toBe(result2.basicInfo.name);
+    });
+
+    it('should handle error gracefully and return default structure', async () => {
+      // Force an error by providing invalid parameters
+      const result = await companyResearchService.conductComprehensiveResearch('');
+      
+      // Should still have basic structure even on error
+      expect(result).toBeDefined();
+      expect(typeof result).toBe('object');
+    });
+
+    it('should include summary field', async () => {
+      const result = await companyResearchService.conductComprehensiveResearch('TestCorp');
+      
+      expect(result).toHaveProperty('summary');
+      expect(typeof result.summary).toBe('string');
+    });
+
+    it('should set dataQuality as a number', async () => {
+      const result = await companyResearchService.conductComprehensiveResearch('TestCorp');
+      
+      expect(typeof result.metadata.dataQuality).toBe('number');
+      expect(result.metadata.dataQuality).toBeGreaterThanOrEqual(0);
+      expect(result.metadata.dataQuality).toBeLessThanOrEqual(100);
+    });
+
+    it('should include sources array in metadata', async () => {
+      const result = await companyResearchService.conductComprehensiveResearch('TestCorp');
+      
+      expect(Array.isArray(result.metadata.sources)).toBe(true);
+      expect(result.metadata.sources.length).toBeGreaterThan(0);
+    });
+  });
+
   describe('formatResearchForCoverLetter', () => {
+    it('should be defined as a function', () => {
+      expect(typeof companyResearchService.formatResearchForCoverLetter).toBe('function');
+    });
+
     it('should return empty string when researchSuccess is false', () => {
       const research = {
         companyName: 'TestCorp',
@@ -184,6 +368,274 @@ describe('Company Research Service', () => {
       const result = companyResearchService.formatResearchForCoverLetter(research);
 
       expect(result).toBe('');
+    });
+
+    it('should include company research insights header', () => {
+      const research = {
+        companyName: 'TestCorp',
+        background: 'A test company',
+        recentNews: [],
+        mission: null,
+        values: [],
+        initiatives: [],
+        industryContext: null,
+        size: null,
+        growth: null,
+        funding: null,
+        competitive: null,
+        researchSuccess: true
+      };
+
+      const result = companyResearchService.formatResearchForCoverLetter(research);
+
+      expect(result).toContain('COMPANY RESEARCH INSIGHTS');
+    });
+
+    it('should include background information when present', () => {
+      const research = {
+        companyName: 'TestCorp',
+        background: 'A leading technology company focused on AI solutions',
+        recentNews: [],
+        mission: null,
+        values: [],
+        initiatives: [],
+        industryContext: null,
+        size: null,
+        growth: null,
+        funding: null,
+        competitive: null,
+        researchSuccess: true
+      };
+
+      const result = companyResearchService.formatResearchForCoverLetter(research);
+
+      expect(result).toContain('Company Background');
+      expect(result).toContain('AI solutions');
+    });
+
+    it('should include mission when present', () => {
+      const research = {
+        companyName: 'TestCorp',
+        background: 'A company',
+        recentNews: [],
+        mission: 'To innovate and lead the industry',
+        values: [],
+        initiatives: [],
+        industryContext: null,
+        size: null,
+        growth: null,
+        funding: null,
+        competitive: null,
+        researchSuccess: true
+      };
+
+      const result = companyResearchService.formatResearchForCoverLetter(research);
+
+      expect(result).toContain('Mission');
+      expect(result).toContain('To innovate');
+    });
+
+    it('should include values when present', () => {
+      const research = {
+        companyName: 'TestCorp',
+        background: 'A company',
+        recentNews: [],
+        mission: null,
+        values: ['Innovation', 'Integrity', 'Teamwork'],
+        initiatives: [],
+        industryContext: null,
+        size: null,
+        growth: null,
+        funding: null,
+        competitive: null,
+        researchSuccess: true
+      };
+
+      const result = companyResearchService.formatResearchForCoverLetter(research);
+
+      expect(result).toContain('Core Values');
+      expect(result).toContain('Innovation');
+      expect(result).toContain('Integrity');
+    });
+
+    it('should include recent news/achievements when present', () => {
+      const research = {
+        companyName: 'TestCorp',
+        background: 'A company',
+        recentNews: ['Launched new AI product', 'Expanded to Asia market'],
+        mission: null,
+        values: [],
+        initiatives: [],
+        industryContext: null,
+        size: null,
+        growth: null,
+        funding: null,
+        competitive: null,
+        researchSuccess: true
+      };
+
+      const result = companyResearchService.formatResearchForCoverLetter(research);
+
+      expect(result).toContain('Recent Achievements/News');
+      expect(result).toContain('AI product');
+      expect(result).toContain('Asia');
+    });
+
+    it('should include initiatives/projects when present', () => {
+      const research = {
+        companyName: 'TestCorp',
+        background: 'A company',
+        recentNews: [],
+        mission: null,
+        values: [],
+        initiatives: ['AI Research Lab', 'Cloud Migration'],
+        industryContext: null,
+        size: null,
+        growth: null,
+        funding: null,
+        competitive: null,
+        researchSuccess: true
+      };
+
+      const result = companyResearchService.formatResearchForCoverLetter(research);
+
+      expect(result).toContain('Key Initiatives/Projects');
+      expect(result).toContain('AI Research Lab');
+    });
+
+    it('should include industry context when present', () => {
+      const research = {
+        companyName: 'TestCorp',
+        background: 'A company',
+        recentNews: [],
+        mission: null,
+        values: [],
+        initiatives: [],
+        industryContext: 'Rapidly growing AI and machine learning sector',
+        size: null,
+        growth: null,
+        funding: null,
+        competitive: null,
+        researchSuccess: true
+      };
+
+      const result = companyResearchService.formatResearchForCoverLetter(research);
+
+      expect(result).toContain('Industry Context');
+      expect(result).toContain('AI and machine learning');
+    });
+
+    it('should include company stage with size and growth', () => {
+      const research = {
+        companyName: 'TestCorp',
+        background: 'A company',
+        recentNews: [],
+        mission: null,
+        values: [],
+        initiatives: [],
+        industryContext: null,
+        size: '500-1000 employees',
+        growth: 'hypergrowth',
+        funding: null,
+        competitive: null,
+        researchSuccess: true
+      };
+
+      const result = companyResearchService.formatResearchForCoverLetter(research);
+
+      expect(result).toContain('Company Stage');
+      expect(result).toContain('500-1000');
+    });
+
+    it('should include funding information when present', () => {
+      const research = {
+        companyName: 'TestCorp',
+        background: 'A company',
+        recentNews: [],
+        mission: null,
+        values: [],
+        initiatives: [],
+        industryContext: null,
+        size: null,
+        growth: null,
+        funding: 'Series C - $100M round',
+        competitive: null,
+        researchSuccess: true
+      };
+
+      const result = companyResearchService.formatResearchForCoverLetter(research);
+
+      expect(result).toContain('Funding/Expansion');
+      expect(result).toContain('Series C');
+    });
+
+    it('should include competitive position when present', () => {
+      const research = {
+        companyName: 'TestCorp',
+        background: 'A company',
+        recentNews: [],
+        mission: null,
+        values: [],
+        initiatives: [],
+        industryContext: null,
+        size: null,
+        growth: null,
+        funding: null,
+        competitive: 'Market leader in enterprise AI solutions',
+        researchSuccess: true
+      };
+
+      const result = companyResearchService.formatResearchForCoverLetter(research);
+
+      expect(result).toContain('Competitive Position');
+      expect(result).toContain('Market leader');
+    });
+
+    it('should include instructions section', () => {
+      const research = {
+        companyName: 'TestCorp',
+        background: 'A company',
+        recentNews: [],
+        mission: null,
+        values: [],
+        initiatives: [],
+        industryContext: null,
+        size: null,
+        growth: null,
+        funding: null,
+        competitive: null,
+        researchSuccess: true
+      };
+
+      const result = companyResearchService.formatResearchForCoverLetter(research);
+
+      expect(result).toContain('INSTRUCTIONS');
+      expect(result).toContain('Reference');
+      expect(result).toContain('cover letter');
+    });
+
+    it('should format with all fields populated', () => {
+      const research = {
+        companyName: 'TechCorp',
+        background: 'A leading AI company',
+        recentNews: ['Launched GPT-5', 'Raised $2B'],
+        mission: 'To advance safe AI',
+        values: ['Safety', 'Innovation'],
+        initiatives: ['AI Safety Lab', 'Open Source'],
+        industryContext: 'Competitive AI market',
+        size: '10000+ employees',
+        growth: 'rapid growth',
+        funding: 'Well-funded',
+        competitive: 'Industry leader',
+        researchSuccess: true
+      };
+
+      const result = companyResearchService.formatResearchForCoverLetter(research);
+
+      expect(result).toContain('AI');
+      expect(result).toContain('Safety');
+      expect(result).toContain('GPT-5');
+      expect(result.length).toBeGreaterThan(200);
     });
 
     it('should return formatted string when researchSuccess is true', () => {
@@ -339,6 +791,63 @@ describe('Company Research Service', () => {
 
       expect(result).toBeTruthy();
       expect(result.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('formatComprehensiveResearch', () => {
+    it('should format all sections when data is fully populated', () => {
+      const research = {
+        summary: 'Test summary',
+        basicInfo: { industry: 'AI', size: '100-500', headquarters: 'NY, USA', founded: 2010 },
+        missionAndCulture: { mission: 'To build AI', values: ['Innovation'], culture: 'Fast-paced' },
+        productsAndServices: { mainProducts: ['Prod A', 'Prod B'], technologies: ['Node.js'] },
+        leadership: { executives: [{ name: 'Jane Doe', title: 'CEO' }], keyLeaders: ['Jane Doe - CEO'] },
+        competitive: { mainCompetitors: ['CompA', 'CompB'], marketPosition: 'Challenger', uniqueValue: 'Speed' },
+        socialMedia: { platforms: { linkedin: 'https://linkedin.com/company/test' }, engagement: 'High' }
+      };
+
+      const formatted = companyResearchService.formatComprehensiveResearch(research);
+
+      expect(formatted).toHaveProperty('overview', 'Test summary');
+      expect(Array.isArray(formatted.sections)).toBe(true);
+      // Check that each named section exists by title
+      const titles = formatted.sections.map(s => s.title);
+      expect(titles).toEqual(expect.arrayContaining([
+        'Company Overview',
+        'Mission & Culture',
+        'Products & Services',
+        'Leadership Team',
+        'Competitive Landscape',
+        'Social Media Presence'
+      ]));
+      // Check some content formatting
+      const overviewSection = formatted.sections.find(s => s.title === 'Company Overview');
+      expect(overviewSection.items).toEqual(expect.arrayContaining([
+        'Industry: AI',
+        'Size: 100-500',
+        'Headquarters: NY, USA',
+        'Founded: 2010'
+      ]));
+      const socialSection = formatted.sections.find(s => s.title === 'Social Media Presence');
+      expect(socialSection.items[0]).toMatch(/Linkedin: https:\/\/linkedin.com\/company\/test/i);
+    });
+
+    it('should return minimal formatted object when sections empty', () => {
+      const research = {
+        summary: 'Only summary',
+        basicInfo: { industry: null, size: null, headquarters: null, founded: null },
+        missionAndCulture: { mission: null, values: [], culture: null },
+        productsAndServices: { mainProducts: [], technologies: [] },
+        leadership: { executives: [], keyLeaders: [] },
+        competitive: { mainCompetitors: [], marketPosition: null, uniqueValue: null },
+        socialMedia: { platforms: {}, engagement: null }
+      };
+
+      const formatted = companyResearchService.formatComprehensiveResearch(research);
+
+      expect(formatted.overview).toBe('Only summary');
+      expect(Array.isArray(formatted.sections)).toBe(true);
+      expect(formatted.sections.length).toBe(0);
     });
   });
 });

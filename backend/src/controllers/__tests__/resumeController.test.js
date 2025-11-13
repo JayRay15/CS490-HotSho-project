@@ -1914,6 +1914,30 @@ describe('ResumeController', () => {
       expect(mockRes.status).toHaveBeenCalledWith(500);
     });
 
+    it('should return 400 if resume modified after validation (DOCX export)', async () => {
+      mockReq.params.id = 'resume-123';
+      mockReq.query = {};
+      const validatedAt = new Date('2024-01-01');
+      const mockResumeDoc = {
+        _id: 'resume-123',
+        userId: 'test-user-123',
+        name: 'My Resume',
+        sections: {},
+        templateId: 'template-123',
+        metadata: {
+          lastValidation: { isValid: true },
+          validatedAt: validatedAt,
+        },
+        updatedAt: new Date('2024-02-01'), // updated after validation
+      };
+
+      mockResume.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(mockResumeDoc) });
+
+      await exportResumeDocx(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+    });
+
     it('should return 500 if DB throws while fetching resume', async () => {
       mockReq.params.id = 'resume-123';
       mockReq.query = {};
@@ -2125,6 +2149,30 @@ describe('ResumeController', () => {
       await exportResumeText(mockReq, mockRes);
 
       expect(mockRes.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should return 500 if exportToPlainText throws', async () => {
+      mockReq.params.id = 'resume-123';
+      const validatedAt = new Date();
+      const mockResumeDoc = {
+        _id: 'resume-123',
+        userId: 'test-user-123',
+        name: 'My Resume',
+        sections: {},
+        templateId: 'template-123',
+        metadata: {
+          lastValidation: { isValid: true },
+          validatedAt: validatedAt,
+        },
+        updatedAt: validatedAt,
+      };
+
+      mockResume.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(mockResumeDoc) });
+      mockResumeExporter.exportToPlainText.mockImplementation(() => { throw new Error('render fail'); });
+
+      await exportResumeText(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(500);
     });
 
     it('should return 500 if DB throws while fetching resume', async () => {
