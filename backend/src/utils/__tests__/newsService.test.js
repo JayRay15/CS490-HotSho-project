@@ -1,3 +1,88 @@
+import * as newsService from '../newsService.js';
+
+describe('newsService utilities', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('categorizeNews returns matching category or general', () => {
+    expect(newsService.categorizeNews('Company raises capital', 'some summary')).toBe('funding');
+    expect(newsService.categorizeNews('We hire new team members', 'we are hiring')).toBe('hiring');
+    expect(newsService.categorizeNews('Unrelated title', 'no keywords here')).toBe('general');
+  });
+
+  test('analyzeSentiment positive/negative/neutral', () => {
+    expect(newsService.analyzeSentiment('Great success', 'innovation and growth')).toBe('positive');
+    expect(newsService.analyzeSentiment('Big loss reported', 'lawsuit and decline')).toBe('negative');
+    expect(newsService.analyzeSentiment('Neutral headline', 'just facts and nothing emotional')).toBe('neutral');
+  });
+
+  test('extractKeyPoints handles empty and filters by length', () => {
+    expect(newsService.extractKeyPoints('')).toEqual([]);
+    const summary = 'Short. This sentence is long enough to count as a key point because it has sufficient length. Another sufficiently long sentence follows here to be included.';
+    const points = newsService.extractKeyPoints(summary);
+    expect(points.length).toBeGreaterThanOrEqual(1);
+  });
+
+  test('extractTags returns up to 5 tags including business terms', () => {
+    const tags = newsService.extractTags('Funding Round', 'Company shows growth and innovation in technology and revenue');
+    expect(tags).toEqual(expect.arrayContaining(['funding']));
+    // limit enforced
+    expect(tags.length).toBeLessThanOrEqual(5);
+  });
+
+  test('processNewsItem produces expected shape and computes relevance', () => {
+    const raw = {
+      title: 'TestCo launches product',
+      summary: 'A new product that shows innovation and growth',
+      url: 'https://example.com',
+      date: new Date(),
+      source: 'UnitTest'
+    };
+
+    const processed = newsService.processNewsItem(raw, 'TestCo');
+    expect(processed).toHaveProperty('title', raw.title);
+    expect(processed).toHaveProperty('category');
+    expect(typeof processed.relevanceScore).toBe('number');
+    expect(Array.isArray(processed.keyPoints)).toBe(true);
+  });
+
+  test('parseWikipediaExtract returns items for recent years and ignores short matches', () => {
+    const year = new Date().getFullYear();
+    const extract = `${year} Company did something important that led to major growth and a notable announcement. ` +
+      `${year - 1} The company expanded and raised funds, increasing its market presence. ` +
+      `1990 An old short note.`;
+
+    const items = newsService.parseWikipediaExtract(extract, 'Test_Co', 'Test Co');
+    expect(items.length).toBeGreaterThanOrEqual(1);
+    items.forEach(item => {
+      expect(item).toHaveProperty('title');
+      expect(item.source).toBe('Wikipedia');
+    });
+  });
+
+  test('generateNewsSummary handles empty and populated lists', () => {
+    const empty = newsService.generateNewsSummary([], 'NoCo');
+    expect(empty.summary).toContain('No recent news available');
+
+    const newsItems = [
+      { title: 'A', category: 'funding', relevanceScore: 8, date: new Date() },
+      { title: 'B', category: 'product_launch', relevanceScore: 6, date: new Date() }
+    ];
+    const summary = newsService.generateNewsSummary(newsItems, 'SomeCo');
+    expect(summary.totalItems).toBe(2);
+    expect(typeof summary.averageRelevance).toBe('string');
+    expect(Array.isArray(summary.highlights)).toBe(true);
+  });
+});
+
+describe('fetchCompanyNews basic behavior in test env', () => {
+  test('fetchCompanyNews returns empty array in test environment by default', async () => {
+    const results = await newsService.fetchCompanyNews('NonExistentCompany123XYZ');
+    expect(Array.isArray(results)).toBe(true);
+    expect(results.length).toBe(0);
+  });
+});
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import {
   categorizeNews,
