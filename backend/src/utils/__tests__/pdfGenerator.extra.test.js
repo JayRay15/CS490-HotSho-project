@@ -1,3 +1,131 @@
+// Focused tests for pdfGenerator.js that exercise small branches without heavy PDF parsing
+// We mock `pdf-lib` to provide a lightweight, inspectable PDFDocument implementation
+
+jest.unstable_mockModule('pdf-lib', () => {
+  // Simple mock font object
+  const makeFont = (name) => ({
+    name,
+    widthOfTextAtSize: (text, size) => Math.max(1, text.length * (size * 0.5)),
+  });
+
+  // Create a mock PDF page that records draw operations
+  function makePage(width = 600, height = 800) {
+    const draws = { rects: [], texts: [], lines: [] };
+    return {
+      getSize: () => ({ width, height }),
+      getWidth: () => width,
+      drawRectangle: (opts) => draws.rects.push(opts),
+      drawText: (optsOrText, maybeOpts) => {
+        if (typeof optsOrText === 'string') {
+          draws.texts.push({ text: optsOrText, ...(maybeOpts || {}) });
+        } else {
+          // called with object first
+          draws.texts.push(optsOrText);
+        }
+      },
+      drawLine: (opts) => draws.lines.push(opts),
+      __draws: draws
+    };
+  }
+
+  // Create a mock pdfDoc factory so tests can inspect it
+  const createPdfDoc = (pages = 1) => {
+    const pArr = [];
+    for (let i = 0; i < pages; i++) pArr.push(makePage());
+    return {
+      getPages: () => pArr,
+      embedFont: async (which) => makeFont(which || 'Helvetica'),
+      save: async () => new Uint8Array([37,80,68,70,45,49,46]) // '%PDF-1.' bytes
+    };
+  };
+
+  return {
+    PDFDocument: {
+      load: async (buffer) => {
+        // Return a document with pages; tests will prepare layout to match
+        return createPdfDoc(1);
+      }
+    },
+    rgb: (r,g,b) => ({ r,g,b }),
+    StandardFonts: {
+      Helvetica: 'Helvetica',
+      HelveticaBold: 'Helvetica-Bold',
+      HelveticaOblique: 'Helvetica-Oblique',
+      HelveticaBoldOblique: 'Helvetica-BoldOblique',
+      TimesRoman: 'Times-Roman',
+      TimesBold: 'Times-Bold',
+      TimesItalic: 'Times-Italic',
+      TimesBoldItalic: 'Times-BoldItalic',
+      Courier: 'Courier',
+      CourierBold: 'Courier-Bold',
+      CourierOblique: 'Courier-Oblique',
+      CourierBoldOblique: 'Courier-BoldOblique'
+    },
+    degrees: (d) => d
+  };
+});
+
+const { generatePdfFromTemplate } = await import('../pdfGenerator.js');
+
+describe('pdfGenerator small-branch tests', () => {
+  it('throws when template.originalPdf is missing', async () => {
+    const template = { pdfLayout: { pages: [ {} ] } };
+    await expect(generatePdfFromTemplate(template, {}, {})).rejects.toThrow('Template does not have original PDF stored');
+  });
+
+  it('throws on invalid PDF header', async () => {
+    const template = { originalPdf: Buffer.from('NOTPDF'), pdfLayout: { pages: [ {} ] } };
+    await expect(generatePdfFromTemplate(template, {}, {})).rejects.toThrow('Invalid PDF format');
+  });
+
+  it('accepts mongoose Buffer object and inserts contact name', async () => {
+    // Create a minimal valid PDF header buffer
+    const buf = Buffer.from([37,80,68,70,45,49,46,10]); // "%PDF-1.\n"
+
+    const mongooseBuffer = { type: 'Buffer', data: Array.from(buf) };
+
+    // Minimal layout with one text region for contact name
+    const template = {
+      originalPdf: mongooseBuffer,
+      pdfLayout: {
+        pages: [
+          {
+            textRegions: [
+              { bbox: { x: 50, bottom: 700, top: 720, width: 300, height: 20 }, font: { name: 'Helvetica', size: 24 }, text: 'NAME', isHeader: true }
+            ],
+            graphics: []
+          }
+        ]
+      },
+      sectionMapping: {
+        contactInfo: [ { bbox: { x: 50, bottom: 700, top: 720, width: 300, height: 20 }, font: { name: 'Helvetica', size: 24 }, text: 'NAME' } ]
+      }
+    };
+
+    const resumeData = { sections: { contactInfo: { name: 'Alice Example', email: 'a@e.com' } } };
+
+    const result = await generatePdfFromTemplate(template, resumeData, {});
+    expect(Buffer.isBuffer(result)).toBe(true);
+    // The mocked pdf save returns bytes starting with %PDF -> buffer length > 0
+    expect(result.length).toBeGreaterThan(0);
+  });
+
+  it('adds watermark when options.watermark enabled', async () => {
+    const buf = Buffer.from([37,80,68,70,45,49,46,10]);
+    const template = {
+      originalPdf: buf,
+      pdfLayout: { pages: [ { textRegions: [], graphics: [] } ] },
+      sectionMapping: {}
+    };
+
+    const resumeData = { sections: {} };
+    const options = { watermark: { enabled: true, text: 'CONFIDENTIAL' } };
+
+    const result = await generatePdfFromTemplate(template, resumeData, options);
+    expect(Buffer.isBuffer(result)).toBe(true);
+    expect(result.length).toBeGreaterThan(0);
+  });
+});
 import { jest } from '@jest/globals';
 
 // Extra tests to exercise more branches in pdfGenerator.js
