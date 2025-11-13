@@ -24,7 +24,6 @@ import ApplicationAutomation from "../../components/ApplicationAutomation";
 import StatusUpdateModal from "../../components/StatusUpdateModal";
 import StatusTimeline from "../../components/StatusTimeline";
 import EmailStatusDetector from "../../components/EmailStatusDetector";
-import StatusStatistics from "../../components/StatusStatistics";
 import BulkStatusUpdate from "../../components/BulkStatusUpdate";
 import CoverLetterGeneratorModal from "../../components/CoverLetterGeneratorModal";
 import * as interviewsAPI from "../../api/interviews";
@@ -107,7 +106,6 @@ export default function Jobs() {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showTimelineModal, setShowTimelineModal] = useState(false);
   const [showEmailDetector, setShowEmailDetector] = useState(false);
-  const [showStatusStats, setShowStatusStats] = useState(false);
   const [showBulkStatusUpdate, setShowBulkStatusUpdate] = useState(false);
   const [selectedJobForStatus, setSelectedJobForStatus] = useState(null);
 
@@ -1358,9 +1356,6 @@ export default function Jobs() {
                 </Button>
                 <Button onClick={() => setShowStatistics(true)} variant="secondary">
                   Statistics
-                </Button>
-                <Button onClick={() => setShowStatusStats(true)} variant="secondary">
-                  📊 Status Analytics
                 </Button>
                 <Button
                   onClick={() => {
@@ -3583,34 +3578,6 @@ export default function Jobs() {
           }}
           onDetectionConfirmed={handleDetectionConfirmed}
         />
-      )}
-
-      {/* Status Statistics Modal */}
-      {showStatusStats && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-7xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-bold text-gray-900">Application Status Analytics</h2>
-                <button
-                  onClick={() => setShowStatusStats(false)}
-                  className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
-                >
-                  ×
-                </button>
-              </div>
-              <StatusStatistics />
-              <div className="flex justify-end mt-6">
-                <Button
-                  onClick={() => setShowStatusStats(false)}
-                  variant="secondary"
-                >
-                  Close
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
       )}
 
       {/* Bulk Status Update Modal */}
