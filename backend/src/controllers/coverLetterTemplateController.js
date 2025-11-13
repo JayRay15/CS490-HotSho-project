@@ -209,6 +209,12 @@ const defaultCoverLetterTemplates = [
 export const listTemplates = async (req, res) => {
   try {
     const userId = getUserId(req);
+    
+    if (!userId) {
+      const { response, statusCode } = errorResponse("Unauthorized: missing authentication credentials", 401, ERROR_CODES.UNAUTHORIZED);
+      return sendResponse(res, response, statusCode);
+    }
+    
     const { industry, style } = req.query;
     
     // First, check if user has any templates at all
