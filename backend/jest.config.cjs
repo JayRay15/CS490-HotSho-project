@@ -1,5 +1,6 @@
 module.exports = {
   testEnvironment: 'node',
+  collectCoverage: false, // Disable coverage to avoid compatibility issues
   collectCoverageFrom: [
     'src/**/*.js',
     '!src/server.js', // Exclude server entry point
