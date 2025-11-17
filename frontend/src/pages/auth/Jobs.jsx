@@ -27,6 +27,7 @@ import EmailStatusDetector from "../../components/EmailStatusDetector";
 import BulkStatusUpdate from "../../components/BulkStatusUpdate";
 import CoverLetterGeneratorModal from "../../components/CoverLetterGeneratorModal";
 import InterviewChecklist from "../../components/InterviewChecklist";
+import FollowUpTemplates from "../../components/FollowUpTemplates";
 import * as interviewsAPI from "../../api/interviews";
 import * as statusAPI from "../../api/applicationStatus";
 
@@ -117,6 +118,10 @@ export default function Jobs() {
   // Interview Checklist state
   const [showInterviewChecklist, setShowInterviewChecklist] = useState(false);
   const [selectedJobForChecklist, setSelectedJobForChecklist] = useState(null);
+
+  // Follow-Up Templates state
+  const [showFollowUpTemplates, setShowFollowUpTemplates] = useState(false);
+  const [selectedJobForFollowUp, setSelectedJobForFollowUp] = useState(null);
 
   // Form state for adding/editing jobs
   const [formData, setFormData] = useState({
@@ -1090,6 +1095,11 @@ export default function Jobs() {
     setShowInterviewChecklist(true);
   };
 
+  const handleOpenFollowUpTemplates = (job) => {
+    setSelectedJobForFollowUp(job);
+    setShowFollowUpTemplates(true);
+  };
+
   const handleCoverLetterSuccess = () => {
     setSuccessMessage('Cover letter generated and saved successfully!');
     setTimeout(() => setSuccessMessage(null), 3000);
@@ -1741,6 +1751,7 @@ export default function Jobs() {
               applicationStatuses={applicationStatuses}
               onGenerateCoverLetter={handleGenerateCoverLetter}
               onOpenInterviewChecklist={handleOpenInterviewChecklist}
+              onOpenFollowUpTemplates={handleOpenFollowUpTemplates}
               highlightTerms={[
                 searchTerm?.trim(),
                 filters.location?.trim(),
@@ -3630,6 +3641,29 @@ export default function Jobs() {
                   onClose={() => {
                     setShowInterviewChecklist(false);
                     setSelectedJobForChecklist(null);
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Follow-Up Templates Modal */}
+      {showFollowUpTemplates && selectedJobForFollowUp && (
+        <>
+          {/* Full-screen backdrop providing blur without a dark overlay. */}
+          <div className="fixed inset-0 z-40 pointer-events-none backdrop-blur-sm bg-white/5" />
+
+          {/* Floating card (clickable) above the blurred backdrop */}
+          <div className="fixed top-16 left-1/2 transform -translate-x-1/2 z-50 p-4 pointer-events-auto">
+            <div className="bg-white rounded-lg max-w-5xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+              <div className="p-6">
+                <FollowUpTemplates 
+                  job={selectedJobForFollowUp}
+                  onClose={() => {
+                    setShowFollowUpTemplates(false);
+                    setSelectedJobForFollowUp(null);
                   }}
                 />
               </div>
