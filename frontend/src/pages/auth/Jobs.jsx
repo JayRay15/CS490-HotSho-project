@@ -26,6 +26,7 @@ import StatusTimeline from "../../components/StatusTimeline";
 import EmailStatusDetector from "../../components/EmailStatusDetector";
 import BulkStatusUpdate from "../../components/BulkStatusUpdate";
 import CoverLetterGeneratorModal from "../../components/CoverLetterGeneratorModal";
+import InterviewChecklist from "../../components/InterviewChecklist";
 import * as interviewsAPI from "../../api/interviews";
 import * as statusAPI from "../../api/applicationStatus";
 
@@ -112,6 +113,10 @@ export default function Jobs() {
   // Cover Letter Generator state
   const [showCoverLetterGenerator, setShowCoverLetterGenerator] = useState(false);
   const [selectedJobForCoverLetter, setSelectedJobForCoverLetter] = useState(null);
+
+  // Interview Checklist state
+  const [showInterviewChecklist, setShowInterviewChecklist] = useState(false);
+  const [selectedJobForChecklist, setSelectedJobForChecklist] = useState(null);
 
   // Form state for adding/editing jobs
   const [formData, setFormData] = useState({
@@ -1080,6 +1085,11 @@ export default function Jobs() {
     setShowCoverLetterGenerator(true);
   };
 
+  const handleOpenInterviewChecklist = (job) => {
+    setSelectedJobForChecklist(job);
+    setShowInterviewChecklist(true);
+  };
+
   const handleCoverLetterSuccess = () => {
     setSuccessMessage('Cover letter generated and saved successfully!');
     setTimeout(() => setSuccessMessage(null), 3000);
@@ -1730,6 +1740,7 @@ export default function Jobs() {
               onOpenEmailDetector={handleOpenEmailDetector}
               applicationStatuses={applicationStatuses}
               onGenerateCoverLetter={handleGenerateCoverLetter}
+              onOpenInterviewChecklist={handleOpenInterviewChecklist}
               highlightTerms={[
                 searchTerm?.trim(),
                 filters.location?.trim(),
@@ -3602,6 +3613,29 @@ export default function Jobs() {
           }}
           onSuccess={handleCoverLetterSuccess}
         />
+      )}
+
+      {/* Interview Checklist Modal */}
+      {showInterviewChecklist && selectedJobForChecklist && (
+        <>
+          {/* Full-screen backdrop providing blur without a dark overlay. */}
+          <div className="fixed inset-0 z-40 pointer-events-none backdrop-blur-sm bg-white/5" />
+
+          {/* Floating card (clickable) above the blurred backdrop */}
+          <div className="fixed top-16 left-1/2 transform -translate-x-1/2 z-50 p-4 pointer-events-auto">
+            <div className="bg-white rounded-lg max-w-5xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+              <div className="p-6">
+                <InterviewChecklist 
+                  job={selectedJobForChecklist}
+                  onClose={() => {
+                    setShowInterviewChecklist(false);
+                    setSelectedJobForChecklist(null);
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
