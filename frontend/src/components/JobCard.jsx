@@ -18,7 +18,7 @@ const PRIORITY_COLORS = {
   "High": "text-red-600",
 };
 
-export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange, isDragging, highlightTerms, isSelected, onToggleSelect, onArchive, onRestore, onScheduleInterview, onViewMatchScore, onOpenStatusModal, onOpenTimeline, onOpenEmailDetector, applicationStatus, onGenerateCoverLetter }) {
+export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange, isDragging, highlightTerms, isSelected, onToggleSelect, onArchive, onRestore, onScheduleInterview, onViewMatchScore, onOpenStatusModal, onOpenTimeline, onOpenEmailDetector, applicationStatus, onGenerateCoverLetter, onOpenInterviewChecklist, onOpenFollowUpTemplates }) {
   const [showDetails, setShowDetails] = useState(false);
   const navigate = useNavigate();
 
@@ -285,6 +285,26 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
               📅 Schedule Interview
             </button>
           )}
+          {/* Interview Checklist - Only for Interview stage */}
+          {onOpenInterviewChecklist && !job.archived && job.status === "Interview" && (
+            <button
+              onClick={() => onOpenInterviewChecklist(job)}
+              className="text-xs px-2 py-1 rounded bg-green-100 hover:bg-green-200 text-green-700 font-medium"
+              title="Open interview preparation checklist"
+            >
+              ✅ Interview Checklist
+            </button>
+          )}
+          {/* Follow-Up Templates - For Interview, Phone Screen, Offer, and Rejected stages */}
+          {onOpenFollowUpTemplates && !job.archived && ["Interview", "Phone Screen", "Offer", "Rejected"].includes(job.status) && (
+            <button
+              onClick={() => onOpenFollowUpTemplates(job)}
+              className="text-xs px-2 py-1 rounded bg-teal-100 hover:bg-teal-200 text-teal-700 font-medium"
+              title="Generate follow-up email templates"
+            >
+              📧 Follow-Up Templates
+            </button>
+          )}
           {/* Generate Cover Letter */}
           {onGenerateCoverLetter && !job.archived && (
             <button
@@ -501,4 +521,6 @@ JobCard.propTypes = {
   onOpenEmailDetector: PropTypes.func,
   applicationStatus: PropTypes.object,
   onGenerateCoverLetter: PropTypes.func,
+  onOpenInterviewChecklist: PropTypes.func,
+  onOpenFollowUpTemplates: PropTypes.func,
 };
