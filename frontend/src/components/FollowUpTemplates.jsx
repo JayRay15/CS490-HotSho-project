@@ -533,17 +533,29 @@ export default function FollowUpTemplates({ job, onClose }) {
                   </div>
                 )}
                 
-                {!followUp.responseReceived && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleMarkResponse(followUp._id, true);
-                    }}
-                    className="mt-3 text-sm text-blue-600 hover:text-blue-800 font-medium"
-                  >
-                    Mark as Responded
-                  </button>
-                )}
+                <div className="mt-3">
+                  {!followUp.responseReceived ? (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleMarkResponse(followUp._id, true);
+                      }}
+                      className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      Mark as Responded
+                    </button>
+                  ) : (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleMarkResponse(followUp._id, false);
+                      }}
+                      className="text-sm text-gray-600 hover:text-gray-800 font-medium"
+                    >
+                      Mark as Not Responded
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
