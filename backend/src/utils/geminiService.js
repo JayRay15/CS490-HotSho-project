@@ -1464,6 +1464,28 @@ Generate a personalized referral request message that:
 
 Return ONLY valid JSON, no markdown formatting.`;
 
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    let textResponse = response.text().trim();
+    
+    // Clean markdown formatting
+    if (textResponse.startsWith('```json')) {
+      textResponse = textResponse.slice(7);
+    } else if (textResponse.startsWith('```')) {
+      textResponse = textResponse.slice(3);
+    }
+    if (textResponse.endsWith('```')) {
+      textResponse = textResponse.slice(0, -3);
+    }
+    
+    return JSON.parse(textResponse.trim());
+  } catch (error) {
+    console.error('Referral Template Generation Error:', error);
+    throw new Error(`Failed to generate referral template: ${error.message}`);
+  }
+}
+
+/**
  * Generate comprehensive AI coaching feedback for interview response (UC-076)
  * @param {string} question - The interview question
  * @param {string} response - The user's response
@@ -1778,6 +1800,7 @@ function calculateTimingScore(lastContactDate, nextFollowUpDate) {
   }
   
   return Math.max(0, Math.min(10, score));
+}
 
 /**
  * Generate sample interview questions by category
