@@ -1374,6 +1374,96 @@ Return ONLY valid JSON, no markdown formatting.`;
 }
 
 /**
+ * Generate personalized referral request template
+ * @param {Object} job - The job application to request referral for
+ * @param {Object} contact - The contact who may provide the referral
+ * @param {Object} userProfile - The user's profile data
+ * @param {string} tone - Desired tone (formal, friendly, professional, casual)
+ * @returns {Promise<Object>} Generated referral request with etiquette guidance
+ */
+export async function generateReferralTemplate(job, contact, userProfile, tone = 'professional') {
+  try {
+    const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+
+    // Build relationship context
+    const relationshipStrength = contact.relationshipStrength || 'New';
+    const relationshipType = contact.relationshipType || 'Other';
+    const lastContactDate = contact.lastContactDate 
+      ? new Date(contact.lastContactDate).toLocaleDateString() 
+      : 'Unknown';
+
+    const prompt = `You are an expert networking and career coach. Generate a personalized referral request message for a job application.
+
+**JOB DETAILS:**
+- Position: ${job.title}
+- Company: ${job.company}
+- Description: ${job.description || 'Not provided'}
+- Location: ${job.location || 'Not specified'}
+
+**CONTACT INFORMATION:**
+- Name: ${contact.firstName} ${contact.lastName}
+- Company: ${contact.company || 'Unknown'}
+- Job Title: ${contact.jobTitle || 'Unknown'}
+- Relationship Type: ${relationshipType}
+- Relationship Strength: ${relationshipStrength}
+- Last Contact: ${lastContactDate}
+- Notes: ${contact.notes || 'No additional context'}
+
+**YOUR PROFILE:**
+${userProfile.employment?.[0] ? `Current/Recent Role: ${userProfile.employment[0].jobTitle} at ${userProfile.employment[0].company}` : 'No employment history'}
+Skills: ${userProfile.skills?.slice(0, 5).map(s => s.name).join(', ') || 'Not specified'}
+${userProfile.education?.[0] ? `Education: ${userProfile.education[0].degree} from ${userProfile.education[0].institution}` : ''}
+
+**TONE REQUIREMENT: ${tone}**
+- formal: Professional and respectful, suitable for senior contacts or distant relationships
+- friendly: Warm and personable, suitable for close colleagues
+- professional: Balanced professionalism with warmth
+- casual: Relaxed and conversational, suitable for close friends in your industry
+
+**TASK:**
+Generate a personalized referral request message that:
+1. Acknowledges the relationship and recent interactions
+2. Clearly states the request for a referral
+3. Explains why you're interested in the role and company
+4. Highlights relevant qualifications briefly
+5. Makes it easy for them to help (provide specific details)
+6. Expresses gratitude and offers reciprocity
+7. Includes appropriate timing considerations
+8. Follows proper referral etiquette
+
+**OUTPUT FORMAT (JSON):**
+{
+  "subject": "Email subject line (if email format)",
+  "message": "The complete referral request message",
+  "etiquetteGuidance": [
+    "Specific etiquette tip 1",
+    "Specific etiquette tip 2",
+    "Specific etiquette tip 3"
+  ],
+  "timingRecommendation": "When to send this request (e.g., 'Send on a Tuesday morning', 'Wait 2 weeks after last contact')",
+  "followUpSuggestion": "When and how to follow up if no response",
+  "reciprocityIdeas": [
+    "Way to offer value back to this contact",
+    "Another way to maintain relationship health"
+  ],
+  "relationshipImpact": "Brief assessment of how this request might affect the relationship",
+  "successProbability": "high|medium|low - likelihood of positive response based on relationship strength and context",
+  "improvementTips": [
+    "Tip to improve this specific request",
+    "Another improvement suggestion"
+  ]
+}
+
+**IMPORTANT:**
+- Keep the message concise (150-250 words for the main message)
+- Be authentic and personalize based on the contact's role and relationship
+- Never sound entitled or demanding
+- Show that you've done your research on the company
+- Make it easy for them to say yes (or no)
+- Consider the relationship strength when crafting tone
+
+Return ONLY valid JSON, no markdown formatting.`;
+
  * Generate comprehensive AI coaching feedback for interview response (UC-076)
  * @param {string} question - The interview question
  * @param {string} response - The user's response
@@ -1573,6 +1663,7 @@ Return ONLY valid JSON with all fields populated. Be specific, actionable, and e
     const response = await result.response;
     let textResponse = response.text().trim();
     
+    // Clean JSON markers
     // Clean markdown formatting
     if (textResponse.startsWith('```json')) {
       textResponse = textResponse.slice(7);
@@ -1583,6 +1674,43 @@ Return ONLY valid JSON with all fields populated. Be specific, actionable, and e
       textResponse = textResponse.slice(0, -3);
     }
     
+    const generatedContent = JSON.parse(textResponse.trim());
+
+    // Post-process message to replace placeholder signatures like [Your name] with actual user name
+    try {
+      const displayName = (userProfile && (userProfile.name || (userProfile.profile && userProfile.profile.name))) || '';
+      if (displayName && generatedContent.message && typeof generatedContent.message === 'string') {
+        let msg = generatedContent.message;
+        // Common placeholder patterns to replace: [Your name], [Your Name], <Your Name>, {{your_name}}, YOUR NAME
+        const placeholderPatterns = [
+          /\[\s*Your\s+name\s*\]/gi,
+          /\[\s*Your\s+Name\s*\]/gi,
+          /<\s*Your\s+Name\s*>/gi,
+          /\{\{\s*your_name\s*\}\}/gi,
+          /YOUR\s+NAME/gi,
+          /Your\s+name/gi
+        ];
+        for (const pat of placeholderPatterns) {
+          msg = msg.replace(pat, displayName);
+        }
+        // Also handle simple occurrences like 'Your name' on its own (but avoid accidental replacements inside words)
+        msg = msg.replace(/\bYour\s+name\b/gi, displayName);
+        generatedContent.message = msg;
+      }
+    } catch (e) {
+      // If replacement fails for any reason, proceed with original generatedContent
+      console.warn('Failed to replace name placeholder in generated referral message', e);
+    }
+
+    // Calculate etiquette and timing scores
+    const etiquetteScore = calculateEtiquetteScore(relationshipStrength, lastContactDate);
+    const timingScore = calculateTimingScore(lastContactDate, contact.nextFollowUpDate);
+
+    return {
+      ...generatedContent,
+      etiquetteScore,
+      timingScore
+    };
     const feedback = JSON.parse(textResponse.trim());
     
     // Validate and ensure all required fields exist
@@ -1602,6 +1730,54 @@ Return ONLY valid JSON with all fields populated. Be specific, actionable, and e
     throw new Error(`Failed to generate interview response feedback: ${error.message}`);
   }
 }
+
+    
+
+
+/**
+ * Calculate etiquette score based on relationship factors
+ */
+function calculateEtiquetteScore(relationshipStrength, lastContactDate) {
+  let score = 5; // Base score
+  
+  // Adjust based on relationship strength
+  if (relationshipStrength === 'Strong') score += 3;
+  else if (relationshipStrength === 'Medium') score += 1;
+  else if (relationshipStrength === 'Weak') score -= 1;
+  else if (relationshipStrength === 'New') score -= 2;
+  
+  // Adjust based on recent contact
+  if (lastContactDate && lastContactDate !== 'Unknown') {
+    const daysSinceContact = Math.floor((Date.now() - new Date(lastContactDate)) / (1000 * 60 * 60 * 24));
+    if (daysSinceContact < 30) score += 2;
+    else if (daysSinceContact < 90) score += 1;
+    else if (daysSinceContact > 365) score -= 1;
+  }
+  
+  return Math.max(0, Math.min(10, score));
+}
+
+/**
+ * Calculate timing score for the referral request
+ */
+function calculateTimingScore(lastContactDate, nextFollowUpDate) {
+  let score = 5; // Base score
+  
+  // Check if this is a good time based on last contact
+  if (lastContactDate && lastContactDate !== 'Unknown') {
+    const daysSinceContact = Math.floor((Date.now() - new Date(lastContactDate)) / (1000 * 60 * 60 * 24));
+    if (daysSinceContact >= 7 && daysSinceContact <= 60) score += 3; // Sweet spot
+    else if (daysSinceContact < 7) score -= 2; // Too soon
+    else if (daysSinceContact > 180) score -= 1; // Been a while
+  }
+  
+  // Check if there's a scheduled follow-up
+  if (nextFollowUpDate) {
+    const daysUntilFollowUp = Math.floor((new Date(nextFollowUpDate) - Date.now()) / (1000 * 60 * 60 * 24));
+    if (Math.abs(daysUntilFollowUp) < 7) score += 2; // Good timing near scheduled contact
+  }
+  
+  return Math.max(0, Math.min(10, score));
 
 /**
  * Generate sample interview questions by category
