@@ -1,14 +1,14 @@
 import express from 'express';
 import { requireAuth } from '@clerk/express';
 import {
-  submitInterviewResponse,
-  getInterviewResponses,
-  getInterviewResponseById,
-  updateInterviewResponse,
-  deleteInterviewResponse,
-  getPracticeStats,
-  generateQuestions,
-  compareVersions
+    submitInterviewResponse,
+    getInterviewResponses,
+    getInterviewResponseById,
+    updateInterviewResponse,
+    deleteInterviewResponse,
+    getPracticeStats,
+    generateQuestions,
+    compareVersions
 } from '../controllers/interviewCoachingController.js';
 
 const router = express.Router();
