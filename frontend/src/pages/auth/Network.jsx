@@ -31,6 +31,8 @@ export default function Network() {
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [selectedContactForReferral, setSelectedContactForReferral] = useState(null);
   const [referralRefreshTrigger, setReferralRefreshTrigger] = useState(0);
+  // Show all contacts or just 3
+  const [showAllContacts, setShowAllContacts] = useState(false);
 
   // Fetch contacts and stats
   const fetchData = async () => {
@@ -256,18 +258,34 @@ export default function Network() {
             )}
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-            {filteredContacts.map((contact) => (
-              <ContactCard
-                key={contact._id}
-                contact={contact}
-                onEdit={handleEditContact}
-                onDelete={handleDeleteContact}
-                onRequestReferral={handleRequestReferral}
-              />
-            ))}
-          </div>
-        )}
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+              {(showAllContacts ? filteredContacts : filteredContacts.slice(0, 3)).map((contact) => (
+                <ContactCard
+                  key={contact._id}
+                  contact={contact}
+                  onEdit={handleEditContact}
+                  onDelete={handleDeleteContact}
+                  onRequestReferral={handleRequestReferral}
+                />
+              ))}
+            </div>
+            {filteredContacts.length > 3 && (
+              <div className="flex justify-center mt-2 mb-8">
+                <button
+                  type="button"
+                  onClick={() => setShowAllContacts(v => !v)}
+                  className="px-6 py-2 text-white rounded-lg transition focus:outline-none focus:ring-2 focus:ring-offset-2"
+                  style={{ backgroundColor: '#777C6D' }}
+                  onMouseOver={e => e.currentTarget.style.backgroundColor = '#656A5C'}
+                  onMouseOut={e => e.currentTarget.style.backgroundColor = '#777C6D'}
+                >
+                  {showAllContacts ? 'View Less' : `View More (${filteredContacts.length - 3} more)`}
+                </button>
+              </div>
+            )}
+          </>
+    		)}
 
         {/* Referral Requests Section */}
         <div className="mt-12 pt-8 border-t">

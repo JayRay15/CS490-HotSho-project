@@ -21,6 +21,7 @@ const ReferralList = ({ refreshTrigger }) => {
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('all');
   const [expandedId, setExpandedId] = useState(null);
+  const [showAll, setShowAll] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingReferral, setDeletingReferral] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -134,7 +135,7 @@ const ReferralList = ({ refreshTrigger }) => {
               onClick={() => setFilterStatus(status)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
                 filterStatus === status
-                  ? 'bg-purple-600 text-white'
+                  ? 'bg-[#777C6D] text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -158,9 +159,8 @@ const ReferralList = ({ refreshTrigger }) => {
         </div>
       ) : (
         <div className="space-y-4">
-          {referrals.map(referral => {
+          {(showAll ? referrals : referrals.slice(0, 3)).map(referral => {
             const isExpanded = expandedId === referral._id;
-            
             return (
               <div
                 key={referral._id}
@@ -328,6 +328,21 @@ const ReferralList = ({ refreshTrigger }) => {
               </div>
             );
           })}
+          {/* View More / View Less Button */}
+          {referrals.length > 3 && (
+            <div className="flex justify-center mt-2">
+              <button
+                type="button"
+                onClick={() => setShowAll(v => !v)}
+                className="px-6 py-2 text-white rounded-lg transition focus:outline-none focus:ring-2 focus:ring-offset-2"
+                style={{ backgroundColor: '#777C6D' }}
+                onMouseOver={e => e.currentTarget.style.backgroundColor = '#656A5C'}
+                onMouseOut={e => e.currentTarget.style.backgroundColor = '#777C6D'}
+              >
+                {showAll ? 'View Less' : `View More (${referrals.length - 3} more)`}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
