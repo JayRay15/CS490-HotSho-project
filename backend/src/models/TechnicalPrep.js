@@ -153,8 +153,7 @@ const performanceMetricsSchema = new mongoose.Schema({
 
 const technicalPrepSchema = new mongoose.Schema({
   userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+    type: String,
     required: true,
     unique: true
   },
@@ -206,26 +205,39 @@ technicalPrepSchema.statics.getOrCreate = async function(userId) {
 // Method to update performance metrics
 technicalPrepSchema.methods.updatePerformance = function() {
   const submissions = this.submissions;
-  
   if (submissions.length === 0) return;
-  
+
+  // Ensure performance object is initialized
+  if (!this.performance) {
+    this.performance = {
+      totalChallengesAttempted: 0,
+      totalChallengesCompleted: 0,
+      averageScore: 0,
+      totalTimeSpent: 0,
+      strengthAreas: [],
+      improvementAreas: [],
+      categoryPerformance: [],
+      difficultyPerformance: []
+    };
+  }
+
   // Calculate overall metrics
   this.performance.totalChallengesAttempted = submissions.length;
   this.performance.totalChallengesCompleted = submissions.filter(s => s.testsPassed === s.totalTests).length;
   this.performance.averageScore = submissions.reduce((sum, s) => sum + (s.score || 0), 0) / submissions.length;
   this.performance.totalTimeSpent = submissions.reduce((sum, s) => sum + (s.timeSpent || 0), 0);
-  
+
   // Calculate category performance
   const categoryMap = new Map();
   submissions.forEach(sub => {
     // Note: Would need to populate challenge to get category
     // For now, placeholder logic
   });
-  
+
   // Identify strengths and areas for improvement
   const scores = submissions.map(s => s.score || 0);
   const avgScore = this.performance.averageScore;
-  
+
   if (avgScore >= 80) {
     this.performance.strengthAreas = ['Problem Solving', 'Code Quality'];
   } else if (avgScore < 60) {

@@ -35,9 +35,24 @@ const CodingChallenge = () => {
   const [timerRunning, setTimerRunning] = useState(true);
   const [isBookmarked, setIsBookmarked] = useState(false);
 
+
+  // Restore code from localStorage if available
   useEffect(() => {
-    loadChallenge();
-  }, [challengeId]);
+    const savedCode = localStorage.getItem(`coding-challenge-code-${challengeId}-${language}`);
+    if (savedCode) {
+      setCode(savedCode);
+    } else {
+      loadChallenge();
+    }
+  }, [challengeId, language]);
+
+
+  // Save code to localStorage on change
+  useEffect(() => {
+    if (challengeId && language) {
+      localStorage.setItem(`coding-challenge-code-${challengeId}-${language}`, code);
+    }
+  }, [code, challengeId, language]);
 
   useEffect(() => {
     let interval;
@@ -442,7 +457,7 @@ const CodingChallenge = () => {
 
             {/* Solution Modal */}
             {showSolution && solution && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                 <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-xl font-semibold">Optimal Solution</h3>

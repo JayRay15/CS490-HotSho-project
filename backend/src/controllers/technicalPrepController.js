@@ -5,7 +5,7 @@ import { generateCompleteTechnicalPrep } from '../utils/technicalPrepService.js'
 // Get user's technical prep profile
 export const getTechnicalPrep = async (req, res) => {
   try {
-    const userId = req.user.sub;
+    const userId = req.auth.userId;
     const prep = await TechnicalPrep.getOrCreate(userId);
     
     res.json(prep);
@@ -18,7 +18,7 @@ export const getTechnicalPrep = async (req, res) => {
 // Update technical prep settings
 export const updateTechnicalPrep = async (req, res) => {
   try {
-    const userId = req.user.sub;
+    const userId = req.auth.userId;
     const { targetRole, targetTechStack, targetCompanies } = req.body;
     
     const prep = await TechnicalPrep.findOneAndUpdate(
@@ -86,7 +86,7 @@ export const getCodingChallenge = async (req, res) => {
 // Submit coding challenge solution
 export const submitCodingSolution = async (req, res) => {
   try {
-    const userId = req.user.sub;
+    const userId = req.auth.userId;
     const { challengeId } = req.params;
     const { code, language, timeSpent } = req.body;
     
@@ -161,7 +161,7 @@ export const getHint = async (req, res) => {
 // Get solution after successful completion
 export const getSolution = async (req, res) => {
   try {
-    const userId = req.user.sub;
+    const userId = req.auth.userId;
     const { id } = req.params;
     
     const prep = await TechnicalPrep.findOne({ userId });
@@ -229,7 +229,7 @@ export const getSystemDesignQuestion = async (req, res) => {
 // Submit system design solution
 export const submitSystemDesignSolution = async (req, res) => {
   try {
-    const userId = req.user.sub;
+    const userId = req.auth.userId;
     const { questionId } = req.params;
     const { solution, timeSpent } = req.body;
     
@@ -312,7 +312,7 @@ export const getCaseStudy = async (req, res) => {
 // Submit case study solution
 export const submitCaseStudySolution = async (req, res) => {
   try {
-    const userId = req.user.sub;
+    const userId = req.auth.userId;
     const { caseStudyId } = req.params;
     const { solution, timeSpent } = req.body;
     
@@ -422,7 +422,7 @@ export const generateJobSpecificChallenges = async (req, res) => {
 // Get performance analytics
 export const getPerformanceAnalytics = async (req, res) => {
   try {
-    const userId = req.user.sub;
+    const userId = req.auth.userId;
     const prep = await TechnicalPrep.findOne({ userId });
     
     if (!prep) {
@@ -439,7 +439,7 @@ export const getPerformanceAnalytics = async (req, res) => {
 // Bookmark a challenge
 export const bookmarkChallenge = async (req, res) => {
   try {
-    const userId = req.user.sub;
+    const userId = req.auth.userId;
     const { challengeType, challengeId } = req.body;
     
     let prep = await TechnicalPrep.findOne({ userId });
@@ -468,7 +468,7 @@ export const bookmarkChallenge = async (req, res) => {
 // Get bookmarked challenges
 export const getBookmarkedChallenges = async (req, res) => {
   try {
-    const userId = req.user.sub;
+    const userId = req.auth.userId;
     const prep = await TechnicalPrep.findOne({ userId });
     
     if (!prep || !prep.bookmarkedChallenges.length) {

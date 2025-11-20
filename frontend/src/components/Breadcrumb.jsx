@@ -42,24 +42,37 @@ export default function Breadcrumb() {
         return crumbs;
     }, [location.pathname, jobLabel]);
 
-    // Fetch job details if last segment is ObjectId
+    // Fetch job/challenge details if last segment is ObjectId
     React.useEffect(() => {
         const paths = location.pathname.split('/').filter(Boolean);
         const last = paths[paths.length - 1];
         if (/^[a-f\d]{24}$/i.test(last)) {
-            // Try to fetch job details
-            import('../api/salary').then(api => {
-                api.getSalaryResearch(last).then(res => {
-                    const job = res.data?.data?.job;
-                    if (job && job.title && job.company) {
-                        setJobLabel(`${job.title} @ ${job.company}`);
-                    } else if (job && job.title) {
-                        setJobLabel(job.title);
-                    }
-                }).catch(() => {
-                    setJobLabel(null);
+            // Detect technical prep coding challenge route
+            if (paths.includes('technical-prep') && paths.includes('coding')) {
+                import('../api/technicalPrep').then(api => {
+                    api.technicalPrepAPI.getCodingChallenge(last).then(challenge => {
+                        if (challenge && challenge.title) {
+                            setJobLabel(challenge.title);
+                        } else {
+                            setJobLabel(null);
+                        }
+                    }).catch(() => setJobLabel(null));
                 });
-            });
+            } else {
+                // Default: Try to fetch job details
+                import('../api/salary').then(api => {
+                    api.getSalaryResearch(last).then(res => {
+                        const job = res.data?.data?.job;
+                        if (job && job.title && job.company) {
+                            setJobLabel(`${job.title} @ ${job.company}`);
+                        } else if (job && job.title) {
+                            setJobLabel(job.title);
+                        }
+                    }).catch(() => {
+                        setJobLabel(null);
+                    });
+                });
+            }
         } else {
             setJobLabel(null);
         }
