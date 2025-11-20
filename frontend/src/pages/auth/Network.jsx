@@ -3,9 +3,11 @@ import { useAuth } from '@clerk/clerk-react';
 import api, { setAuthToken } from '../../api/axios';
 import Container from '../../components/Container';
 import Card from '../../components/Card';
+import ContactStatsCards from '../../components/network/ContactStatsCards';
 import Button from '../../components/Button';
 import ContactCard from '../../components/network/ContactCard';
 import ContactFormModal from '../../components/network/ContactFormModal';
+import DeleteContactModal from '../../components/network/DeleteContactModal';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ErrorMessage from '../../components/ErrorMessage';
 
@@ -18,6 +20,9 @@ export default function Network() {
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [contactToDelete, setContactToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [relationshipFilter, setRelationshipFilter] = useState('All');
   const [sortBy, setSortBy] = useState('recent');
@@ -86,19 +91,33 @@ export default function Network() {
     setIsModalOpen(true);
   };
 
-  const handleDeleteContact = async (contactId) => {
-    if (!window.confirm('Are you sure you want to delete this contact?')) {
-      return;
-    }
+  // Open delete confirmation modal for a contact
+  const handleDeleteContact = (contactIdOrObj) => {
+    // Accept either id or full contact object
+    const contactObj = typeof contactIdOrObj === 'string'
+      ? contacts.find(c => c._id === contactIdOrObj)
+      : contactIdOrObj;
 
+    setContactToDelete(contactObj || { _id: contactIdOrObj, name: 'Contact' });
+    setShowDeleteModal(true);
+  };
+
+  // Perform delete when user confirms
+  const confirmDeleteContact = async () => {
+    if (!contactToDelete?._id) return;
+    setIsDeleting(true);
     try {
       const token = await getToken();
       setAuthToken(token);
-      await api.delete(`/api/contacts/${contactId}`);
+      await api.delete(`/api/contacts/${contactToDelete._id}`);
+      setShowDeleteModal(false);
+      setContactToDelete(null);
       await fetchData();
     } catch (err) {
       console.error('Error deleting contact:', err);
       alert(err.response?.data?.message || 'Failed to delete contact');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -138,37 +157,8 @@ export default function Network() {
 
         {error && <ErrorMessage message={error} />}
 
-        {/* Statistics Cards */}
-        {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <Card className="bg-blue-50">
-              <div className="text-center">
-                <p className="text-3xl font-bold text-blue-600">{stats.total}</p>
-                <p className="text-sm text-gray-600">Total Contacts</p>
-              </div>
-            </Card>
-            <Card className="bg-green-50">
-              <div className="text-center">
-                <p className="text-3xl font-bold text-green-600">{stats.recentInteractions}</p>
-                <p className="text-sm text-gray-600">Recent Interactions</p>
-              </div>
-            </Card>
-            <Card className="bg-purple-50">
-              <div className="text-center">
-                <p className="text-3xl font-bold text-purple-600">{stats.withUpcomingFollowUps}</p>
-                <p className="text-sm text-gray-600">Upcoming Follow-ups</p>
-              </div>
-            </Card>
-            <Card className="bg-orange-50">
-              <div className="text-center">
-                <p className="text-3xl font-bold text-orange-600">
-                  {stats.byRelationshipStrength?.Strong || 0}
-                </p>
-                <p className="text-sm text-gray-600">Strong Connections</p>
-              </div>
-            </Card>
-          </div>
-        )}
+        {/* Statistics Cards (refactored) */}
+        <ContactStatsCards stats={stats} onRefresh={fetchData} />
 
         {/* Filters and Search */}
         <Card className="mb-6">
@@ -271,6 +261,14 @@ export default function Network() {
           onSave={handleContactSaved}
         />
       )}
+      {/* Delete Confirmation Modal for contacts */}
+      <DeleteContactModal
+        showModal={showDeleteModal}
+        contact={contactToDelete}
+        onClose={() => { setShowDeleteModal(false); setContactToDelete(null); }}
+        onConfirm={confirmDeleteContact}
+        isDeleting={isDeleting}
+      />
     </Container>
   );
 }
