@@ -24,6 +24,7 @@ import TechnicalPrepPerformance from "./pages/TechnicalPrepPerformance";
 import CodingChallenge from "./components/CodingChallenge";
 import SystemDesignPractice from "./components/SystemDesignPractice";
 import CaseStudyPractice from "./components/CaseStudyPractice";
+import Network from "./pages/auth/Network";
 
 function App() {
   return (
@@ -56,6 +57,7 @@ function App() {
           <Route path="/technical-prep/coding/:challengeId" element={<ProtectedRoute><CodingChallenge /></ProtectedRoute>} />
           <Route path="/technical-prep/system-design/:questionId" element={<ProtectedRoute><SystemDesignPractice /></ProtectedRoute>} />
           <Route path="/technical-prep/case-study/:caseStudyId" element={<ProtectedRoute><CaseStudyPractice /></ProtectedRoute>} />
+          <Route path="/network" element={<ProtectedRoute><Network /></ProtectedRoute>} />
         </Routes>
       </Router>
     </ErrorBoundary>
