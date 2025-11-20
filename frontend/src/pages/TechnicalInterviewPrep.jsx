@@ -233,7 +233,7 @@ const TechnicalInterviewPrep = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Current Streak</p>
-              <p className="text-3xl font-bold text-orange-600">7 days</p>
+                <p className="text-3xl font-bold text-orange-600">{performance.currentStreak || 0} days</p>
             </div>
             <FireIcon className="h-12 w-12 text-orange-600 opacity-20" />
           </div>

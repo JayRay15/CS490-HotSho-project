@@ -233,13 +233,25 @@ Return ONLY valid JSON in this exact format (no markdown, no code blocks, no ext
  */
 export async function generateCompleteTechnicalPrep(jobDetails) {
   try {
+    // Infer level from title if not provided
+    let inferredLevel = jobDetails.level;
+    if (!inferredLevel && jobDetails.title) {
+      const titleLower = jobDetails.title.toLowerCase();
+      if (titleLower.includes('senior')) inferredLevel = 'Senior';
+      else if (titleLower.includes('staff')) inferredLevel = 'Staff';
+      else if (titleLower.includes('principal')) inferredLevel = 'Principal';
+      else if (titleLower.includes('lead')) inferredLevel = 'Lead';
+    }
+
+    const jobDetailsWithLevel = { ...jobDetails, level: inferredLevel };
+
     const [codingChallenges, systemDesignQuestions, caseStudies] = await Promise.all([
-      generateCodingChallenges(jobDetails),
-      jobDetails.level && ['Senior', 'Staff', 'Principal', 'Lead'].some(l => jobDetails.level?.includes(l))
-        ? generateSystemDesignQuestions(jobDetails)
+      generateCodingChallenges(jobDetailsWithLevel),
+      inferredLevel && ['Senior', 'Staff', 'Principal', 'Lead'].some(l => inferredLevel.includes(l))
+        ? generateSystemDesignQuestions(jobDetailsWithLevel)
         : Promise.resolve([]),
       ['Business', 'Consulting', 'Product', 'Analyst'].some(term => jobDetails.title?.includes(term))
-        ? generateCaseStudies(jobDetails)
+        ? generateCaseStudies(jobDetailsWithLevel)
         : Promise.resolve([])
     ]);
 
