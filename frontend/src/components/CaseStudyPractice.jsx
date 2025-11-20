@@ -44,20 +44,6 @@ const CaseStudyPractice = () => {
   // Load case study when caseStudyId changes
   useEffect(() => {
     loadCaseStudy();
-    hasRestoredRef.current = false;
-    
-    // Restore answers from localStorage
-    if (caseStudyId) {
-      const savedAnswers = localStorage.getItem(`case-study-answers-${caseStudyId}`);
-      if (savedAnswers && !hasRestoredRef.current) {
-        try {
-          setAnswers(JSON.parse(savedAnswers));
-          hasRestoredRef.current = true;
-        } catch (e) {
-          console.error('Failed to parse saved answers:', e);
-        }
-      }
-    }
   }, [caseStudyId]);
 
   // Save answers to localStorage whenever they change

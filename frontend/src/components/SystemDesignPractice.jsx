@@ -57,20 +57,6 @@ const SystemDesignPractice = () => {
   // Load question when questionId changes
   useEffect(() => {
     loadQuestion();
-    hasRestoredRef.current = false;
-    
-    // Restore solution from localStorage
-    if (questionId) {
-      const savedSolution = localStorage.getItem(`system-design-solution-${questionId}`);
-      if (savedSolution && !hasRestoredRef.current) {
-        try {
-          setSolution(JSON.parse(savedSolution));
-          hasRestoredRef.current = true;
-        } catch (e) {
-          console.error('Failed to parse saved solution:', e);
-        }
-      }
-    }
   }, [questionId]);
 
   // Save solution to localStorage whenever it changes

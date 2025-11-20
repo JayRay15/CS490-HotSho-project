@@ -14,6 +14,11 @@ export default function Breadcrumb() {
         // Always start with Home
         crumbs.push({ label: 'Home', path: '/' });
 
+        // Check if we're on a detail page (last segment is ObjectId)
+        const isDetailPage = paths.length > 0 && /^[a-f\d]{24}$/i.test(paths[paths.length - 1]);
+        const isOnTechnicalPrepDetail = isDetailPage && paths.includes('technical-prep') && 
+                                        (paths.includes('coding') || paths.includes('system-design') || paths.includes('case-study'));
+
         // Build breadcrumb trail
         let currentPath = '';
         paths.forEach((path, index) => {
@@ -31,6 +36,12 @@ export default function Breadcrumb() {
             // If last segment looks like a MongoDB ObjectId, use jobLabel if available
             if (index === paths.length - 1 && /^[a-f\d]{24}$/i.test(path) && jobLabel) {
                 label = jobLabel;
+            }
+
+            // Skip the intermediate path (coding/system-design/case-study) if on detail page
+            if (isOnTechnicalPrepDetail && index === paths.length - 2 && 
+                ['coding', 'system-design', 'case-study'].includes(path)) {
+                return; // Skip this breadcrumb
             }
 
             crumbs.push({
