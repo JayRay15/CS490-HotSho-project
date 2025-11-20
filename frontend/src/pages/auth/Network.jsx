@@ -8,6 +8,8 @@ import Button from '../../components/Button';
 import ContactCard from '../../components/network/ContactCard';
 import ContactFormModal from '../../components/network/ContactFormModal';
 import DeleteContactModal from '../../components/network/DeleteContactModal';
+import ReferralRequestModal from '../../components/network/ReferralRequestModal';
+import ReferralList from '../../components/network/ReferralList';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ErrorMessage from '../../components/ErrorMessage';
 
@@ -26,6 +28,9 @@ export default function Network() {
   const [searchTerm, setSearchTerm] = useState('');
   const [relationshipFilter, setRelationshipFilter] = useState('All');
   const [sortBy, setSortBy] = useState('recent');
+  const [showReferralModal, setShowReferralModal] = useState(false);
+  const [selectedContactForReferral, setSelectedContactForReferral] = useState(null);
+  const [referralRefreshTrigger, setReferralRefreshTrigger] = useState(0);
 
   // Fetch contacts and stats
   const fetchData = async () => {
@@ -129,6 +134,17 @@ export default function Network() {
   const handleContactSaved = () => {
     fetchData();
     handleModalClose();
+  };
+
+  const handleRequestReferral = (contact) => {
+    setSelectedContactForReferral(contact);
+    setShowReferralModal(true);
+  };
+
+  const handleReferralSuccess = () => {
+    setReferralRefreshTrigger(prev => prev + 1);
+    setShowReferralModal(false);
+    setSelectedContactForReferral(null);
   };
 
   if (loading) {
@@ -240,17 +256,23 @@ export default function Network() {
             )}
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
             {filteredContacts.map((contact) => (
               <ContactCard
                 key={contact._id}
                 contact={contact}
                 onEdit={handleEditContact}
                 onDelete={handleDeleteContact}
+                onRequestReferral={handleRequestReferral}
               />
             ))}
           </div>
         )}
+
+        {/* Referral Requests Section */}
+        <div className="mt-12 pt-8 border-t">
+          <ReferralList refreshTrigger={referralRefreshTrigger} />
+        </div>
       </div>
 
       {/* Contact Form Modal */}
@@ -261,6 +283,20 @@ export default function Network() {
           onSave={handleContactSaved}
         />
       )}
+      
+      {/* Referral Request Modal */}
+      {showReferralModal && selectedContactForReferral && (
+        <ReferralRequestModal
+          isOpen={showReferralModal}
+          onClose={() => {
+            setShowReferralModal(false);
+            setSelectedContactForReferral(null);
+          }}
+          contact={selectedContactForReferral}
+          onSuccess={handleReferralSuccess}
+        />
+      )}
+      
       {/* Delete Confirmation Modal for contacts */}
       <DeleteContactModal
         showModal={showDeleteModal}
