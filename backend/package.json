@@ -10,7 +10,8 @@
     "start": "node src/server.js",
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
     "test:watch": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --watch",
-    "test:coverage": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --coverage"
+    "test:coverage": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --coverage",
+    "seed:questions": "node scripts/seedBehavioralQuestions.js"
   },
   "keywords": [],
   "author": "",

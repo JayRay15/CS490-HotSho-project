@@ -95,9 +95,19 @@ export default function Navbar() {
                             <NavLink to="/resumes" className={navLinkClass} aria-label="Resumes">
                                 Resumes & Cover Letters
                             </NavLink>
-                            <NavLink to="/technical-prep" className={navLinkClass} aria-label="Technical Interview Prep">
-                                Tech Prep
-                            </NavLink>
+                                                        <div className="relative group">
+                                                            <NavLink to="/prep" className={navLinkClass} aria-label="Prep">
+                                                                Prep
+                                                            </NavLink>
+                                                            <div className="absolute left-0 mt-2 w-48 bg-white rounded shadow-lg z-10 hidden group-hover:block">
+                                                                <NavLink to="/prep" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Technical Prep">
+                                                                    Technical Prep
+                                                                </NavLink>
+                                                                <NavLink to="/writing-practice" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Writing Practice">
+                                                                    Writing Practice
+                                                                </NavLink>
+                                                            </div>
+                                                        </div>
                             <NavLink to="/network" className={navLinkClass} aria-label="Professional Network">
                                 Network
                             </NavLink>
@@ -277,8 +287,31 @@ export default function Navbar() {
                         >
                             Resumes
                         </NavLink>
+                                                <div className="relative group">
+                                                    <NavLink 
+                                                            to="/prep" 
+                                                            className={({ isActive }) => 
+                                                                    `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${
+                                                                            isActive 
+                                                                                    ? 'bg-primary-900 text-white shadow-md' 
+                                                                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                                                    }`
+                                                            }
+                                                            aria-label="Prep"
+                                                    >
+                                                            Prep
+                                                    </NavLink>
+                                                    <div className="absolute left-0 mt-2 w-48 bg-white rounded shadow-lg z-10 hidden group-hover:block">
+                                                        <NavLink to="/prep" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Technical Prep">
+                                                            Technical Prep
+                                                        </NavLink>
+                                                        <NavLink to="/writing-practice" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Writing Practice">
+                                                            Writing Practice
+                                                        </NavLink>
+                                                    </div>
+                                                </div>
                         <NavLink 
-                            to="/technical-prep" 
+                            to="/writing-practice" 
                             className={({ isActive }) => 
                                 `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${
                                     isActive 
@@ -286,9 +319,9 @@ export default function Navbar() {
                                         : 'text-white hover:bg-primary-700 active:bg-primary-900'
                                 }`
                             }
-                            aria-label="Technical Interview Prep"
+                            aria-label="Writing Practice"
                         >
-                            Technical Prep
+                            Writing Practice
                         </NavLink>
                         <NavLink 
                             to="/network" 
