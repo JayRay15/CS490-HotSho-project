@@ -10,6 +10,7 @@ import ContactFormModal from '../../components/network/ContactFormModal';
 import DeleteContactModal from '../../components/network/DeleteContactModal';
 import ReferralRequestModal from '../../components/network/ReferralRequestModal';
 import ReferralList from '../../components/network/ReferralList';
+import NetworkingEventList from '../../components/network/NetworkingEventList';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ErrorMessage from '../../components/ErrorMessage';
 
@@ -290,6 +291,11 @@ export default function Network() {
         {/* Referral Requests Section */}
         <div className="mt-12 pt-8 border-t">
           <ReferralList refreshTrigger={referralRefreshTrigger} />
+        </div>
+
+        {/* Networking Events Section */}
+        <div className="mt-12 pt-8 border-t">
+          <NetworkingEventList refreshTrigger={referralRefreshTrigger} />
         </div>
       </div>
 
