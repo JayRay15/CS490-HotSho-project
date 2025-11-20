@@ -19,6 +19,11 @@ import SalaryBenchmarksExplorer from "./components/SalaryBenchmarksExplorer";
 import SkillGapAnalysis from "./pages/auth/SkillGapAnalysis";
 import SkillTrends from "./pages/auth/SkillTrends";
 import InterviewChecklist from "./components/InterviewChecklist";
+import TechnicalInterviewPrep from "./pages/TechnicalInterviewPrep";
+import TechnicalPrepPerformance from "./pages/TechnicalPrepPerformance";
+import CodingChallenge from "./components/CodingChallenge";
+import SystemDesignPractice from "./components/SystemDesignPractice";
+import CaseStudyPractice from "./components/CaseStudyPractice";
 
 function App() {
   return (
@@ -46,6 +51,11 @@ function App() {
           <Route path="/skill-gap-analysis/:jobId" element={<ProtectedRoute><SkillGapAnalysis /></ProtectedRoute>} />
           <Route path="/skill-trends" element={<ProtectedRoute><SkillTrends /></ProtectedRoute>} />
           <Route path="/interview-checklist" element={<ProtectedRoute><InterviewChecklist /></ProtectedRoute>} />
+          <Route path="/technical-prep" element={<ProtectedRoute><TechnicalInterviewPrep /></ProtectedRoute>} />
+          <Route path="/technical-prep/performance" element={<ProtectedRoute><TechnicalPrepPerformance /></ProtectedRoute>} />
+          <Route path="/technical-prep/coding/:challengeId" element={<ProtectedRoute><CodingChallenge /></ProtectedRoute>} />
+          <Route path="/technical-prep/system-design/:questionId" element={<ProtectedRoute><SystemDesignPractice /></ProtectedRoute>} />
+          <Route path="/technical-prep/case-study/:caseStudyId" element={<ProtectedRoute><CaseStudyPractice /></ProtectedRoute>} />
         </Routes>
       </Router>
     </ErrorBoundary>
