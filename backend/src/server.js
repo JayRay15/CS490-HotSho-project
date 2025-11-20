@@ -23,6 +23,7 @@ import followUpRoutes from "./routes/followUp.js";
 import technicalPrepRoutes from "./routes/technicalPrepRoutes.js";
 import writingPracticeRoutes from "./routes/writingPracticeRoutes.js";
 import contactRoutes from "./routes/contactRoutes.js";
+import interviewCoachingRoutes from "./routes/interviewCoachingRoutes.js";
 import { getPublicProject } from "./controllers/profileController.js";
 import { startDeadlineReminderSchedule } from "./utils/deadlineReminders.js";
 import { startInterviewReminderSchedule } from "./utils/interviewReminders.js";
@@ -77,6 +78,7 @@ app.use("/api/follow-ups", followUpRoutes);
 app.use("/api/technical-prep", technicalPrepRoutes);
 app.use("/api/writing-practice", writingPracticeRoutes);
 app.use("/api/contacts", contactRoutes);
+app.use("/api/interview-coaching", interviewCoachingRoutes);
 // Mount profile routes under /api/profile (existing) and also under /api/users
 // so frontend requests to /api/users/... (used elsewhere in the app) resolve correctly.
 app.use("/api/profile", profileRoutes);

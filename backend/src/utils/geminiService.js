@@ -1373,3 +1373,294 @@ Return ONLY valid JSON, no markdown formatting.`;
   }
 }
 
+/**
+ * Generate comprehensive AI coaching feedback for interview response (UC-076)
+ * @param {string} question - The interview question
+ * @param {string} response - The user's response
+ * @param {string} category - Question category (Behavioral, Technical, etc.)
+ * @param {number} targetDuration - Target response duration in seconds
+ * @param {Object} context - Optional context (jobTitle, company, industry)
+ * @returns {Object} Comprehensive feedback with scores, analysis, and suggestions
+ */
+export async function generateInterviewResponseFeedback(question, response, category, targetDuration = 120, context = {}) {
+  const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+
+  const contextInfo = context.jobTitle || context.company || context.industry
+    ? `\n**CONTEXT:**
+${context.jobTitle ? `Job Title: ${context.jobTitle}` : ''}
+${context.company ? `Company: ${context.company}` : ''}
+${context.industry ? `Industry: ${context.industry}` : ''}`
+    : '';
+
+  const prompt = `You are an expert interview coach with extensive experience helping candidates improve their interview responses. Analyze this interview response and provide comprehensive, actionable feedback.
+
+**INTERVIEW QUESTION:**
+"${question}"
+
+**QUESTION CATEGORY:** ${category}
+
+**CANDIDATE'S RESPONSE:**
+"${response}"
+
+**TARGET DURATION:** ${targetDuration} seconds (approximately ${Math.round(targetDuration / 60)} minute${targetDuration >= 120 ? 's' : ''})
+${contextInfo}
+
+**ANALYSIS REQUIRED:**
+
+Provide a comprehensive analysis in the following JSON format:
+
+{
+  "contentScore": 85,
+  "structureScore": 80,
+  "clarityScore": 90,
+  "relevanceScore": 88,
+  "specificityScore": 75,
+  "impactScore": 82,
+  "overallScore": 83,
+  "strengths": [
+    "Strong opening that addresses the question directly",
+    "Good use of specific metrics and quantifiable results"
+  ],
+  "weaknesses": [
+    "Could provide more context about the situation",
+    "Conclusion feels rushed and lacks impact"
+  ],
+  "suggestions": [
+    "Add more details about the initial challenge to set the scene",
+    "Include the broader impact of your actions on the team or organization",
+    "End with a stronger takeaway or lesson learned"
+  ],
+  "weakLanguagePatterns": [
+    {
+      "pattern": "I just",
+      "context": "I just decided to implement a new system",
+      "alternative": "I strategically decided to implement a new system",
+      "reason": "The word 'just' minimizes your contribution and makes the action seem trivial"
+    },
+    {
+      "pattern": "kind of",
+      "context": "It was kind of challenging",
+      "alternative": "It was significantly challenging",
+      "reason": "Hedging words like 'kind of' weaken your message and show lack of confidence"
+    }
+  ],
+  "lengthAnalysis": {
+    "wordCount": 185,
+    "estimatedDuration": 95,
+    "recommendation": "Slightly Short",
+    "idealRange": {
+      "min": 100,
+      "max": 140
+    },
+    "adjustmentSuggestion": "Your response is well-structured but could benefit from 20-30 more seconds of content. Consider expanding on the specific actions you took or the measurable results achieved."
+  },
+  "starAnalysis": {
+    "hasStructure": true,
+    "components": {
+      "situation": {
+        "present": true,
+        "score": 85,
+        "feedback": "Good context provided about the initial situation, though more details about the challenge would strengthen it"
+      },
+      "task": {
+        "present": true,
+        "score": 90,
+        "feedback": "Clear description of your responsibility and what needed to be accomplished"
+      },
+      "action": {
+        "present": true,
+        "score": 80,
+        "feedback": "Actions are described but could be more specific about the steps taken"
+      },
+      "result": {
+        "present": true,
+        "score": 95,
+        "feedback": "Excellent use of quantifiable metrics to demonstrate impact"
+      }
+    },
+    "overallAdherence": 87,
+    "recommendations": [
+      "Strengthen the Situation section by adding more context about why this was challenging",
+      "In the Action section, break down your approach into clear, sequential steps",
+      "Consider adding a reflection or lesson learned at the end to show growth"
+    ]
+  },
+  "alternativeApproaches": [
+    {
+      "title": "Results-First Approach",
+      "description": "Start with the impressive outcome, then explain how you achieved it",
+      "example": "I increased team productivity by 40% in three months. Here's how: When I joined as team lead, our sprint completion rate was only 60%...",
+      "whenToUse": "When you have strong quantifiable results that will immediately grab attention"
+    },
+    {
+      "title": "Challenge-Solution Framework",
+      "description": "Emphasize the difficulty of the problem before describing your solution",
+      "example": "We were facing a critical deadline with half our team unavailable. The challenge was daunting, but I approached it systematically...",
+      "whenToUse": "When the complexity of the problem itself demonstrates your capabilities"
+    }
+  ]
+}
+
+**SCORING CRITERIA:**
+
+1. **Content Score (0-100):** Quality and relevance of the information provided
+   - Does the response answer the question?
+   - Is the content meaningful and substantive?
+   - Are there specific examples and details?
+
+2. **Structure Score (0-100):** Organization and flow of the response
+   - Is there a clear beginning, middle, and end?
+   - Does the response follow a logical progression?
+   - Is it easy to follow?
+
+3. **Clarity Score (0-100):** How clearly the response is communicated
+   - Is the language clear and concise?
+   - Are ideas expressed without ambiguity?
+   - Is the response easy to understand?
+
+4. **Relevance Score (0-100):** How well the response addresses the question
+   - Does it stay on topic?
+   - Does it directly address what was asked?
+   - Is all information relevant?
+
+5. **Specificity Score (0-100):** Level of detail and concrete examples
+   - Are there specific examples rather than generalities?
+   - Are there metrics, numbers, or quantifiable results?
+   - Is there sufficient detail to be credible?
+
+6. **Impact Score (0-100):** How compelling and memorable the response is
+   - Does it demonstrate value and achievement?
+   - Does it show growth or learning?
+   - Would it impress an interviewer?
+
+7. **Overall Score (0-100):** Average of all scores weighted by importance
+
+**WEAK LANGUAGE PATTERNS TO IDENTIFY:**
+- Hedging words: "kind of", "sort of", "maybe", "possibly"
+- Minimizing words: "just", "only", "simply"
+- Passive voice: "was done", "was implemented" instead of "I did", "I implemented"
+- Vague terms: "things", "stuff", "a lot"
+- Filler words: "like", "um", "you know"
+- Self-deprecating language: "I'm not sure but", "This might be wrong"
+
+**LENGTH ANALYSIS:**
+- Calculate word count
+- Estimate speaking duration (average 120-150 words per minute)
+- Compare to target duration
+- Provide specific guidance: "Too Short", "Slightly Short", "Optimal", "Slightly Long", "Too Long"
+- Suggest specific adjustments
+
+**STAR METHOD ANALYSIS:**
+For ${category} questions, evaluate STAR framework adherence:
+- **Situation:** Context and background (20-25% of response)
+- **Task:** Your responsibility or challenge (15-20% of response)
+- **Action:** Specific steps you took (40-45% of response)
+- **Result:** Outcomes and impact (20-25% of response)
+
+Score each component and provide specific feedback on strengthening each part.
+
+**ALTERNATIVE APPROACHES:**
+Suggest 2-3 different ways to structure the same response, each with:
+- Title of the approach
+- Brief description
+- Example opening or key phrases
+- When this approach works best
+
+Return ONLY valid JSON with all fields populated. Be specific, actionable, and encouraging while being honest about areas for improvement.`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    let textResponse = response.text().trim();
+    
+    // Clean markdown formatting
+    if (textResponse.startsWith('```json')) {
+      textResponse = textResponse.slice(7);
+    } else if (textResponse.startsWith('```')) {
+      textResponse = textResponse.slice(3);
+    }
+    if (textResponse.endsWith('```')) {
+      textResponse = textResponse.slice(0, -3);
+    }
+    
+    const feedback = JSON.parse(textResponse.trim());
+    
+    // Validate and ensure all required fields exist
+    const requiredFields = ['contentScore', 'structureScore', 'clarityScore', 'relevanceScore', 
+                            'specificityScore', 'impactScore', 'overallScore', 'strengths', 
+                            'weaknesses', 'suggestions', 'lengthAnalysis', 'starAnalysis'];
+    
+    for (const field of requiredFields) {
+      if (!feedback[field]) {
+        throw new Error(`Missing required field: ${field}`);
+      }
+    }
+    
+    return feedback;
+  } catch (error) {
+    console.error('Interview Response Feedback Error:', error);
+    throw new Error(`Failed to generate interview response feedback: ${error.message}`);
+  }
+}
+
+/**
+ * Generate sample interview questions by category
+ * @param {string} category - Question category
+ * @param {Object} context - Optional context (jobTitle, company, industry)
+ * @param {number} count - Number of questions to generate
+ * @returns {Array} Array of interview questions
+ */
+export async function generateInterviewQuestions(category, context = {}, count = 5) {
+  const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+
+  const contextInfo = context.jobTitle || context.company || context.industry
+    ? `\n**CONTEXT:**
+${context.jobTitle ? `Job Title: ${context.jobTitle}` : ''}
+${context.company ? `Company: ${context.company}` : ''}
+${context.industry ? `Industry: ${context.industry}` : ''}`
+    : '';
+
+  const prompt = `You are an expert interview coach. Generate ${count} realistic, high-quality ${category} interview questions.
+${contextInfo}
+
+Generate questions that are:
+- Commonly asked in real interviews
+- Appropriate for the category and context
+- Varied in difficulty and focus
+- Designed to elicit STAR method responses for behavioral questions
+
+Return a JSON array of question objects:
+
+[
+  {
+    "text": "Tell me about a time when you had to deal with a difficult team member.",
+    "category": "${category}",
+    "difficulty": "Medium",
+    "tips": "Focus on your conflict resolution skills and ability to maintain professionalism. Use the STAR method to structure your response."
+  }
+]
+
+Return ONLY valid JSON array, no markdown formatting.`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    let textResponse = response.text().trim();
+    
+    // Clean markdown formatting
+    if (textResponse.startsWith('```json')) {
+      textResponse = textResponse.slice(7);
+    } else if (textResponse.startsWith('```')) {
+      textResponse = textResponse.slice(3);
+    }
+    if (textResponse.endsWith('```')) {
+      textResponse = textResponse.slice(0, -3);
+    }
+    
+    return JSON.parse(textResponse.trim());
+  } catch (error) {
+    console.error('Generate Interview Questions Error:', error);
+    throw new Error(`Failed to generate interview questions: ${error.message}`);
+  }
+}
+
