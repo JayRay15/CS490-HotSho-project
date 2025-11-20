@@ -1,44 +1,288 @@
-│
+├── .git/
+├── .github/
+├── .gitignore
+├── APPLICATION_AUTOMATION_GUIDE.md
 ├── backend/
-│   ├── src/
-│   │   ├── controllers/
-│   │   │   ├── userController.js
-│   │   │   ├── authController.js
-│   │   │   └── profileController.js
-│   │   ├── middleware/
-│   │   │   └── checkJwt.js
-│   │   ├── models/
-│   │   │   └── User.js
-│   │   ├── routes/
-│   │   │   ├── userRoutes.js
-│   │   │   ├── authRoutes.js
-│   │   │   └── profileRoutes.js
-│   │   ├── utils/
-│   │   │   ├── db.js
-│   │   │   └── responseFormat.js
-│   │   └── server.js
-│   ├── test_scripts/
-│   │   └── test-endpoints.js
 │   ├── .env
-│   ├── package.json
-│   ├── package-lock.json
-│   ├── requirements.txt
-│   ├── jest.config.js
+│   ├── .env.example
+│   ├── .gitignore
 │   ├── API_ENDPOINTS.md
-│   └── README.md
-│
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   ├── context/
-│   │   ├── hooks/
-│   │   ├── App.tsx
-│   │   ├── main.tsx
-│   │   └── auth/
-│   │       └── Auth0ProviderWithNavigate.tsx
-│   ├── vite.config.ts
+│   ├── cleanup-duplicate-templates.js
+│   ├── coverage/
+│   ├── EMAIL_QUICK_REFERENCE.md
+│   ├── EMAIL_SETUP_GUIDE.md
+│   ├── jest.config.cjs
+│   ├── move-ghosted-jobs.js
+│   ├── node_modules/
+│   ├── package-lock.json
 │   ├── package.json
-│   └── .env
-│
-└── README.md
+│   ├── PASSWORD_RESET_GUIDE.md
+│   ├── QUICK_START.md
+│   ├── README.md
+│   ├── requirements.txt
+│   ├── src/
+│   │   ├── config/
+│   │   │   ├── coverLetterTones.js
+│   │   │   └── __tests__/
+│   │   ├── controllers/
+│   │   │   ├── applicationAutomationController.js
+│   │   │   ├── applicationStatusController.js
+│   │   │   ├── authController.js
+│   │   │   ├── companyController.js
+│   │   │   ├── coverLetterController.js
+│   │   │   ├── coverLetterTemplateController.js
+│   │   │   ├── followUpController.js
+│   │   │   ├── interviewController.js
+│   │   │   ├── interviewInsightsController.js
+│   │   │   ├── jobController.js
+│   │   │   ├── jobMatchController.js
+│   │   │   ├── jobScraperController.js
+│   │   │   ├── pdfAnalysisController.js
+│   │   │   ├── profileController.js
+│   │   │   ├── resumeController.js
+│   │   │   ├── resumeShareController.js
+│   │   │   ├── resumeValidationController.js
+│   │   │   ├── salaryController.js
+│   │   │   ├── skillGapController.js
+│   │   │   ├── userController.js
+│   │   │   └── __tests__/
+│   │   ├── middleware/
+│   │   │   ├── checkJwt.js
+│   │   │   ├── errorHandler.js
+│   │   │   ├── shareAccess.js
+│   │   │   └── __tests__/
+│   │   ├── models/
+│   │   │   ├── ApplicationAutomation.js
+│   │   │   ├── ApplicationPackage.js
+│   │   │   ├── ApplicationStatus.js
+│   │   │   ├── CoverLetter.js
+│   │   │   ├── CoverLetterTemplate.js
+│   │   │   ├── FollowUp.js
+│   │   │   ├── Interview.js
+│   │   │   ├── Job.js
+│   │   │   ├── JobMatch.js
+│   │   │   ├── Resume.js
+│   │   │   ├── ResumeFeedback.js
+│   │   │   ├── ResumeTemplate.js
+│   │   │   ├── User.js
+│   │   │   └── __tests__/
+│   │   ├── routes/
+│   │   │   ├── applicationRoutes.js
+│   │   │   ├── applicationStatusRoutes.js
+│   │   │   ├── authRoutes.js
+│   │   │   ├── companyRoutes.js
+│   │   │   ├── coverLetterRoutes.js
+│   │   │   ├── coverLetterTemplateRoutes.js
+│   │   │   ├── followUp.js
+│   │   │   ├── interviewRoutes.js
+│   │   │   ├── jobMatchRoutes.js
+│   │   │   ├── jobRoutes.js
+│   │   │   ├── pdfAnalysisRoutes.js
+│   │   │   ├── profileRoutes.js
+│   │   │   ├── resumeRoutes.js
+│   │   │   ├── salaryRoutes.js
+│   │   │   ├── skillGapRoutes.js
+│   │   │   ├── userRoutes.js
+│   │   │   └── __tests__/
+│   │   ├── server.js
+│   │   ├── test_scripts/
+│   │   │   └── test-cover-letter-export.js
+│   │   └── utils/
+│   │       ├── applicationScheduler.js
+│   │       ├── cleanupDeletedUsers.js
+│   │       ├── companyResearchService.js
+│   │       ├── coverLetterExporter.js
+│   │       ├── db.js
+│   │       ├── deadlineReminders.js
+│   │       ├── email.js
+│   │       ├── emailService.js
+│   │       ├── emailStatusDetector.js
+│   │       ├── experienceAnalyzer.js
+│   │       ├── geminiService.js
+│   │       ├── htmlToPdf.js
+│   │       ├── interviewReminders.js
+│   │       ├── jobDataFetcher.js
+│   │       ├── jobMatchingService.js
+│   │       ├── newsService.js
+│   │       ├── pdfGenerator.js
+│   │       ├── pdfLayoutExtractor.js
+│   │       ├── responseFormat.js
+│   │       ├── resumeExporter.js
+│   │       ├── resumeValidator.js
+│   │       ├── skillGapAnalysis.js
+│   │       ├── statusAutomationScheduler.js
+│   │       ├── statusNotifications.js
+│   │       └── __tests__/
+│   ├── test-gemini.js
+│   ├── test_scripts/
+│   │   ├── check-mongodb-users.js
+│   │   ├── fix-orphaned-accounts.js
+│   │   ├── test-account-deletion.js
+│   │   ├── test-analytics-data.js
+│   │   ├── test-api-analytics.js
+│   │   ├── test-application-automation.js
+│   │   ├── test-company-news.js
+│   │   ├── test-company-research.js
+│   │   ├── test-deletion-complete.js
+│   │   ├── test-endpoints.js
+│   │   ├── test-error-handling.js
+│   │   ├── test-experience-endpoint.js
+│   │   ├── test-skill-gap-analysis.js
+│   │   └── watch-users.js
+│   ├── test_summary.txt
+│   └── coverage/
+├── coverage/
+├── directoryOrganization.txt
+├── frontend/
+│   ├── .env
+│   ├── .env.example
+│   ├── .gitignore
+│   ├── CARD_SYSTEM_GUIDE.md
+│   ├── coverage/
+│   ├── dist/
+│   ├── eslint.config.js
+│   ├── index.html
+│   ├── NAVIGATION.md
+│   ├── node_modules/
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── postcss.config.js
+│   ├── public/
+│   ├── README.md
+│   ├── src/
+│   │   ├── api/
+│   │   │   ├── aiResume.js
+│   │   │   ├── applications.js
+│   │   │   ├── applicationStatus.js
+│   │   │   ├── axios.js
+│   │   │   ├── coverLetters.js
+│   │   │   ├── coverLetterTemplates.js
+│   │   │   ├── interviews.js
+│   │   │   ├── jobs.js
+│   │   │   ├── profile.js
+│   │   │   ├── resumes.js
+│   │   │   ├── resumeShare.js
+│   │   │   ├── resumeTemplates.js
+│   │   │   ├── resumeValidation.js
+│   │   │   ├── salary.js
+│   │   │   ├── skillGaps.js
+│   │   │   └── __tests__/
+│   │   ├── App.css
+│   │   ├── App.jsx
+│   │   ├── assets/
+│   │   │   ├── logo-full.svg
+│   │   │   ├── logo-icon.svg
+│   │   │   ├── logo-text.svg
+│   │   │   ├── logo-white.svg
+│   │   │   ├── logo.svg
+│   │   │   └── react.svg
+│   │   ├── components/
+│   │   │   ├── ApplicationAutomation.jsx
+│   │   │   ├── ApplicationPackageGenerator.jsx
+│   │   │   ├── ArchiveModal.jsx
+│   │   │   ├── AutoArchiveModal.jsx
+│   │   │   ├── Breadcrumb.jsx
+│   │   │   ├── BulkStatusUpdate.jsx
+│   │   │   ├── Button.jsx
+│   │   │   ├── Card.jsx
+│   │   │   ├── CompanyInfoCard.jsx
+│   │   │   ├── CompanyNewsSection.jsx
+│   │   │   ├── CompanyResearchReport.jsx
+│   │   │   ├── Container.jsx
+│   │   │   ├── CoverLetterEditor.jsx
+│   │   │   ├── CoverLetterExportModal.jsx
+│   │   │   ├── CoverLetterGeneratorModal.jsx
+│   │   │   ├── DeadlineCalendar.jsx
+│   │   │   ├── EmailStatusDetector.jsx
+│   │   │   ├── ErrorBoundary.jsx
+│   │   │   ├── ErrorMessage.jsx
+│   │   │   ├── ExperienceHighlighter.jsx
+│   │   │   ├── FollowUpTemplates.jsx
+│   │   │   ├── InputField.jsx
+│   │   │   ├── InterviewCard.jsx
+│   │   │   ├── InterviewChecklist.css
+│   │   │   ├── InterviewChecklist.jsx
+│   │   │   ├── InterviewInsights.jsx
+│   │   │   ├── InterviewScheduler.jsx
+│   │   │   ├── JobCard.jsx
+│   │   │   ├── JobMatchComparison.jsx
+│   │   │   ├── JobMatchScore.jsx
+│   │   │   ├── JobPipeline.jsx
+│   │   │   ├── JobStatistics.jsx
+│   │   │   ├── LoadingSpinner.jsx
+│   │   │   ├── Logo.jsx
+│   │   │   ├── Navbar.jsx
+│   │   │   ├── ProfileCompleteness.jsx
+│   │   │   ├── ProfileCompletenessBar.jsx
+│   │   │   ├── ProfilePictureUpload.jsx
+│   │   │   ├── projects/
+│   │   │   ├── ProtectedRoute.jsx
+│   │   │   ├── resume/
+│   │   │   ├── SalaryBenchmarksExplorer.jsx
+│   │   │   ├── SalaryCard.jsx
+│   │   │   ├── SalaryResearch.jsx
+│   │   │   ├── SkillGapAnalysis.jsx
+│   │   │   ├── SkillGapTrends.jsx
+│   │   │   ├── StatusStatistics.jsx
+│   │   │   ├── StatusTimeline.jsx
+│   │   │   ├── StatusUpdateModal.jsx
+│   │   │   └── __tests__/
+│   │   ├── hooks/
+│   │   │   ├── useAccountDeletionCheck.js
+│   │   │   ├── useExperienceTailoring.js
+│   │   │   ├── useResumeValidation.js
+│   │   │   ├── useSkillsOptimization.js
+│   │   │   ├── useVersionManagement.js
+│   │   │   └── __tests__/
+│   │   ├── index.css
+│   │   ├── main.jsx
+│   │   ├── pages/
+│   │   │   ├── auth/
+│   │   │   │   ├── Certifications.jsx
+│   │   │   │   ├── Dashboard.jsx
+│   │   │   │   ├── ForgotPassword.jsx
+│   │   │   │   ├── Jobs.jsx
+│   │   │   │   ├── Login.jsx
+│   │   │   │   ├── Portfolio.jsx
+│   │   │   │   ├── Profile.jsx
+│   │   │   │   ├── ProfilePage.jsx
+│   │   │   │   ├── ProjectPublic.jsx
+│   │   │   │   ├── Projects.jsx
+│   │   │   │   ├── Register.jsx
+│   │   │   │   ├── ResumeTemplates.jsx
+│   │   │   │   ├── SkillGapAnalysis.jsx
+│   │   │   │   └── SkillTrends.jsx
+│   │   │   └── public/
+│   │   │       └── SharedResumeView.jsx
+│   │   ├── setupTests.js
+│   │   └── utils/
+│   │       ├── coverLetterToneConfig.js
+│   │       ├── imageUtils.js
+│   │       ├── profileCompleteness.js
+│   │       ├── resumeConstants.js
+│   │       ├── resumeHelpers.jsx
+│   │       ├── themePresets.js
+│   │       └── __tests__/
+│   ├── tailwind.config.js
+│   ├── test-api.html
+│   ├── TYPOGRAPHY.md
+│   ├── vite.config.js
+│   └── vitest.config.js
+├── LOGIN_TESTING_GUIDE.md
+├── LOGOUT_VERIFICATION.md
+├── node_modules/
+├── OAUTH_QUICK_SETUP.md
+├── package-lock.json
+├── package.json
+├── PASSWORD_RESET_CLICKABLE_LINK.md
+├── PASSWORD_RESET_VERIFICATION.md
+├── README.md
+├── SKILLS_CATEGORY_ORGANIZATION_GUIDE.md
+├── Sprint1Demo.md
+├── Sprint1PRD.md
+├── Sprint2Demo.md
+├── Sprint2PRD.md
+├── Sprint3PRD.md
+├── techStack.md
+├── TEMPLATE_CLEANUP_GUIDE.md
+└── test-company-research.html
