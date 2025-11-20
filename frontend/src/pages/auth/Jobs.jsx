@@ -11,6 +11,7 @@ import Button from "../../components/Button";
 import ArchiveModal from "../../components/ArchiveModal";
 import AutoArchiveModal from "../../components/AutoArchiveModal";
 import JobStatistics from "../../components/JobStatistics";
+import DeleteConfirmationModal from "../../components/resume/DeleteConfirmationModal";
 import InterviewInsights from "../../components/InterviewInsights";
 import InterviewScheduler from "../../components/InterviewScheduler";
 import InterviewCard from "../../components/InterviewCard";
@@ -1084,6 +1085,33 @@ export default function Jobs() {
     setShowMatchScore(true);
   };
 
+  // Delete confirmation modal state and handlers
+  const [jobToDelete, setJobToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const requestDeleteJob = (jobId) => {
+    const job = jobs.find((j) => j._id === jobId) || { _id: jobId, title: '', company: '' };
+    setJobToDelete(job);
+  };
+
+  const closeDeleteModal = () => {
+    setJobToDelete(null);
+    setIsDeleting(false);
+  };
+
+  const confirmDeleteJob = async () => {
+    if (!jobToDelete) return;
+    try {
+      setIsDeleting(true);
+      await handleDeleteJob(jobToDelete._id);
+      closeDeleteModal();
+    } catch (error) {
+      console.error('Failed to delete job:', error);
+      alert('Failed to delete job. Please try again.');
+      setIsDeleting(false);
+    }
+  };
+
   // Cover Letter Generator Handler
   const handleGenerateCoverLetter = (job) => {
     setSelectedJobForCoverLetter(job);
@@ -1323,12 +1351,12 @@ export default function Jobs() {
 
             {/* Filters Row */}
             <div className="flex flex-col md:flex-row gap-4">
-              <div className="w-full md:w-48">
+              <div className="w-full md:w-56 min-w-0">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Status</label>
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="all">All Statuses</option>
                   {PIPELINE_STAGES.map((stage) => (
@@ -1338,12 +1366,12 @@ export default function Jobs() {
                   ))}
                 </select>
               </div>
-              <div className="w-full md:w-40">
+              <div className="w-full md:w-56 min-w-0">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="dateAdded">Date Added</option>
                   <option value="deadline">Deadline</option>
@@ -1352,12 +1380,12 @@ export default function Jobs() {
                   <option value="title">Title</option>
                 </select>
               </div>
-              <div className="w-full md:w-32">
+              <div className="w-full md:w-36 min-w-0">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Order</label>
                 <select
                   value={sortOrder}
                   onChange={(e) => setSortOrder(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="desc">↓ Desc</option>
                   <option value="asc">↑ Asc</option>
@@ -1737,7 +1765,7 @@ export default function Jobs() {
               jobs={filteredJobs}
               onJobStatusChange={handleJobStatusChange}
               onJobEdit={handleEditJob}
-              onJobDelete={showArchived ? handleDeleteJobWithConfirm : handleDeleteJob}
+              onJobDelete={requestDeleteJob}
               onJobView={handleViewJob}
               selectedJobs={selectedJobs}
               onToggleSelect={toggleSelectJob}
@@ -1764,10 +1792,33 @@ export default function Jobs() {
 
       {/* Add Job Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={() => {
+            setShowAddModal(false);
+            resetForm();
+          }}
+        >
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 shadow-2xl mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-gray-50 border-b px-6 py-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-heading font-semibold text-gray-900">Add New Job</h3>
+                <button
+                  onClick={() => {
+                    setShowAddModal(false);
+                    resetForm();
+                  }}
+                  className="text-gray-400 hover:text-gray-600 transition"
+                  aria-label="Close"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
             <div className="p-6">
-              <h2 className="text-2xl font-bold mb-4">Add New Job</h2>
               <form onSubmit={handleAddJob} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <InputField
@@ -2328,20 +2379,26 @@ export default function Jobs() {
                   </div>
                 </details>
 
-                <div className="flex justify-end gap-3 pt-4">
-                  <Button
+                <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t">
+                  <button
                     type="button"
                     onClick={() => {
                       setShowAddModal(false);
                       resetForm();
                     }}
-                    variant="secondary"
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
                   >
                     Cancel
-                  </Button>
-                  <Button type="submit" variant="primary">
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-white rounded-lg transition"
+                    style={{ backgroundColor: '#777C6D' }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                  >
                     Add Job
-                  </Button>
+                  </button>
                 </div>
               </form>
             </div>
@@ -2351,10 +2408,35 @@ export default function Jobs() {
 
       {/* Edit Job Modal */}
       {showEditModal && editingJob && (
-        <div className="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={() => {
+            setShowEditModal(false);
+            setEditingJob(null);
+            resetForm();
+          }}
+        >
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 shadow-2xl mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-gray-50 border-b px-6 py-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-heading font-semibold text-gray-900">Edit Job</h3>
+                <button
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingJob(null);
+                    resetForm();
+                  }}
+                  className="text-gray-400 hover:text-gray-600 transition"
+                  aria-label="Close"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
             <div className="p-6">
-              <h2 className="text-2xl font-bold mb-4">Edit Job</h2>
               <form onSubmit={handleUpdateJob} className="space-y-4">
                 {/* Same form fields as Add Job Modal */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2921,21 +3003,27 @@ export default function Jobs() {
                   </div>
                 </details>
 
-                <div className="flex justify-end gap-3 pt-4">
-                  <Button
+                <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t">
+                  <button
                     type="button"
                     onClick={() => {
                       setShowEditModal(false);
                       setEditingJob(null);
                       resetForm();
                     }}
-                    variant="secondary"
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
                   >
                     Cancel
-                  </Button>
-                  <Button type="submit" variant="primary">
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-white rounded-lg transition"
+                    style={{ backgroundColor: '#777C6D' }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                  >
                     Save Changes
-                  </Button>
+                  </button>
                 </div>
               </form>
             </div>
@@ -2945,10 +3033,16 @@ export default function Jobs() {
 
       {/* Detailed Job View Modal */}
       {showDetailModal && viewingJob && (
-        <div className="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              {/* Header */}
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={() => {
+            setShowDetailModal(false);
+            setViewingJob(null);
+          }}
+        >
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 shadow-2xl mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-white border-b px-6 py-4">
               <div className="flex items-start justify-between mb-6">
                 <div>
                   <h2 className="text-3xl font-bold text-gray-900">{viewingJob.title}</h2>
@@ -3403,15 +3497,15 @@ export default function Jobs() {
 
               {/* Close Button */}
               <div className="flex justify-end mt-6">
-                <Button
+                <button
                   onClick={() => {
                     setShowDetailModal(false);
                     setViewingJob(null);
                   }}
-                  variant="secondary"
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
                 >
                   Close
-                </Button>
+                </button>
               </div>
             </div>
           </div>
@@ -3431,6 +3525,17 @@ export default function Jobs() {
       />
 
       {/* Auto-Archive Modal */}
+      {/* Delete Confirmation Modal (reusable styled modal) */}
+      <DeleteConfirmationModal
+        showModal={!!jobToDelete}
+        itemToDelete={jobToDelete}
+        itemDetails={{ name: jobToDelete?.title, subtitle: jobToDelete?.company }}
+        itemType="Job"
+        isDeleting={isDeleting}
+        onClose={closeDeleteModal}
+        onConfirm={confirmDeleteJob}
+      />
+
       <AutoArchiveModal
         isOpen={showAutoArchiveModal}
         onClose={() => setShowAutoArchiveModal(false)}
@@ -3470,8 +3575,15 @@ export default function Jobs() {
 
       {/* UC-063: Job Match Score Modal */}
       {showMatchScore && matchJobId && (
-        <div className="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={() => {
+            setShowMatchScore(false);
+            setMatchJobId(null);
+          }}
+        >
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 shadow-2xl mx-4" onClick={(e) => e.stopPropagation()}>
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-bold text-gray-900">Job Match Analysis</h2>
@@ -3487,15 +3599,15 @@ export default function Jobs() {
               </div>
               <JobMatchScore jobId={matchJobId} />
               <div className="flex justify-end mt-6">
-                <Button
+                <button
                   onClick={() => {
                     setShowMatchScore(false);
                     setMatchJobId(null);
                   }}
-                  variant="secondary"
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
                 >
                   Close
-                </Button>
+                </button>
               </div>
             </div>
           </div>
@@ -3504,8 +3616,12 @@ export default function Jobs() {
 
       {/* UC-063: Job Comparison Modal */}
       {showComparison && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={() => setShowComparison(false)}
+        >
+          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 shadow-2xl mx-4" onClick={(e) => e.stopPropagation()}>
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-bold text-gray-900">Compare Job Matches</h2>
@@ -3518,12 +3634,12 @@ export default function Jobs() {
               </div>
               <JobMatchComparison />
               <div className="flex justify-end mt-6">
-                <Button
+                <button
                   onClick={() => setShowComparison(false)}
-                  variant="secondary"
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
                 >
                   Close
-                </Button>
+                </button>
               </div>
             </div>
           </div>

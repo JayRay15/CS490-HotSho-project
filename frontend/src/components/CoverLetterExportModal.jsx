@@ -175,7 +175,7 @@ const CoverLetterExportModal = ({
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}>
             <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
                 {/* Header */}
                 <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
@@ -271,9 +271,18 @@ const CoverLetterExportModal = ({
                                                             letterhead: { ...exportOptions.letterhead, alignment: align }
                                                         })}
                                                         className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${exportOptions.letterhead.alignment === align
-                                                                ? 'bg-blue-600 text-white'
+                                                                ? ''
                                                                 : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                                                             }`}
+                                                        style={exportOptions.letterhead.alignment === align ? { backgroundColor: '#777C6D', color: '#FFFFFF' } : undefined}
+                                                        onMouseOver={(e) => {
+                                                            if (exportOptions.letterhead.alignment === align) return;
+                                                            e.currentTarget.style.backgroundColor = '#F8F9F7';
+                                                        }}
+                                                        onMouseOut={(e) => {
+                                                            if (exportOptions.letterhead.alignment === align) return;
+                                                            e.currentTarget.style.backgroundColor = 'transparent';
+                                                        }}
                                                     >
                                                         {align.charAt(0).toUpperCase() + align.slice(1)}
                                                     </button>
@@ -465,7 +474,10 @@ const CoverLetterExportModal = ({
                                         <button
                                             onClick={handleGenerateEmailTemplate}
                                             disabled={isExporting}
-                                            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 text-sm font-medium"
+                                            className="px-4 py-2 text-white rounded-md transition-colors disabled:opacity-50 text-sm font-medium"
+                                            style={{ backgroundColor: '#777C6D' }}
+                                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
                                         >
                                             Generate Email Template
                                         </button>
@@ -501,8 +513,11 @@ const CoverLetterExportModal = ({
                                         />
                                         <button
                                             onClick={() => copyToClipboard(emailTemplate?.subject || '')}
-                                            className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                                            className="px-3 py-2 rounded-md transition-colors"
                                             title="Copy subject"
+                                            style={{ backgroundColor: '#F3F4F2', color: '#4F5348' }}
+                                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#E8EAE6'}
+                                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#F3F4F2'}
                                         >
                                             📋
                                         </button>
@@ -515,7 +530,10 @@ const CoverLetterExportModal = ({
                                         <label className="block text-sm font-medium text-gray-700">Body:</label>
                                         <button
                                             onClick={() => copyToClipboard(emailTemplate?.body || '')}
-                                            className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors"
+                                            className="px-3 py-1.5 text-sm rounded-md transition-colors"
+                                            style={{ backgroundColor: '#777C6D', color: '#FFFFFF' }}
+                                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
                                         >
                                             Copy Body
                                         </button>
@@ -551,7 +569,10 @@ const CoverLetterExportModal = ({
                         <button
                             onClick={handleExport}
                             disabled={isExporting}
-                            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center space-x-2"
+                            className="px-6 py-2 text-white rounded-md transition-colors disabled:opacity-50 flex items-center space-x-2"
+                            style={{ backgroundColor: '#777C6D' }}
+                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
                         >
                             {isExporting ? (
                                 <>

@@ -19,7 +19,7 @@ export default function Button({
         large: "py-3 px-6 text-lg"
     };
 
-    const base = "rounded-lg font-medium transition focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed min-h-11";
+    const base = "rounded-lg font-medium transition focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed min-h-11 hover:shadow-md";
     const styles = {
         primary: "bg-primary hover:bg-primary-600 active:bg-primary-700 text-text-inverse focus:ring-primary-400 disabled:bg-primary-300",
         secondary: "bg-accent hover:bg-accent-500 active:bg-accent-600 text-text-primary focus:ring-accent-400 disabled:bg-accent-300",

@@ -198,8 +198,8 @@ export default function JobStatistics({ onClose }) {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-8">
+      <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }} onClick={onClose}>
+        <div className="bg-white rounded-lg p-8 border border-gray-200 shadow-2xl mx-4" onClick={(e) => e.stopPropagation()}>
           <LoadingSpinner size="lg" text="Loading analytics..." />
         </div>
       </div>
@@ -208,13 +208,13 @@ export default function JobStatistics({ onClose }) {
 
   if (error) {
     return (
-      <div className="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg max-w-md w-full p-6">
+      <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }} onClick={onClose}>
+        <div className="bg-white rounded-lg max-w-md w-full p-6 border border-gray-200 shadow-2xl mx-4" onClick={(e) => e.stopPropagation()}>
           <h2 className="text-xl font-bold text-red-600 mb-4">Error Loading Analytics</h2>
           <p className="text-gray-700 mb-4">{error}</p>
           <div className="flex gap-3">
-            <Button onClick={fetchAnalytics} variant="primary">Retry</Button>
-            <Button onClick={onClose} variant="secondary">Close</Button>
+            <button onClick={fetchAnalytics} className="px-4 py-2 text-white rounded-lg transition" style={{ backgroundColor: '#777C6D' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}>Retry</button>
+            <button onClick={onClose} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition">Close</button>
           </div>
         </div>
       </div>
@@ -224,8 +224,8 @@ export default function JobStatistics({ onClose }) {
   if (!analytics) return null;
 
   return (
-    <div className="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-7xl w-full h-[90vh] flex flex-col">
+    <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }} onClick={onClose}>
+      <div className="bg-white rounded-lg max-w-7xl w-full h-[90vh] flex flex-col border border-gray-200 shadow-2xl mx-4" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="shrink-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-lg">
           <div className="flex items-center justify-between">
@@ -234,9 +234,9 @@ export default function JobStatistics({ onClose }) {
               <p className="text-sm text-gray-600 mt-1">Comprehensive insights to optimize your job search strategy</p>
             </div>
             <div className="flex items-center gap-3">
-              <Button onClick={exportToCSV} variant="primary" size="small">
+              <button onClick={exportToCSV} className="px-3 py-1 text-white rounded-md text-sm" style={{ backgroundColor: '#777C6D' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}>
                 📥 Export Report
-              </Button>
+              </button>
               <button
                 onClick={onClose}
                 className="text-gray-400 hover:text-gray-600 transition"
@@ -468,7 +468,7 @@ export default function JobStatistics({ onClose }) {
                             <div key={stage.label} className="w-full flex flex-col items-center">
                               <div className="flex items-center justify-center gap-4 w-full">
                                 <div
-                                  className={`relative h-16 bg-${stage.color}-500 rounded-lg shadow-lg flex items-center justify-center text-white font-bold transition-all hover:scale-105`}
+                                  className={`relative h-16 bg-${stage.color}-500 rounded-lg shadow-lg flex items-center justify-center text-white font-bold transition-shadow hover:shadow-2xl`}
                                   style={{ width: `${stage.width}%` }}
                                 >
                                   <div className="text-center w-full">
@@ -805,9 +805,7 @@ export default function JobStatistics({ onClose }) {
             <p className="text-xs text-gray-600">
               📅 Report generated on {new Date().toLocaleString()} • Data refreshes automatically
             </p>
-            <Button onClick={onClose} variant="secondary" size="small">
-              Close Dashboard
-            </Button>
+            <button onClick={onClose} className="px-3 py-1 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-100 transition text-sm">Close Dashboard</button>
           </div>
         </div>
       </div>
