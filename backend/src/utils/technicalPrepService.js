@@ -224,8 +224,14 @@ Return ONLY valid JSON in this exact format (no markdown, no code blocks, no ext
     cleanedResponse = cleanedResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '');
   }
   
-  const parsed = JSON.parse(cleanedResponse);
-  return parsed.caseStudies;
+  try {
+    const parsed = JSON.parse(cleanedResponse);
+    return parsed.caseStudies || [];
+  } catch (error) {
+    console.error('Failed to parse case studies response:', error);
+    console.error('Response:', cleanedResponse.substring(0, 500));
+    return [];
+  }
 }
 
 /**
@@ -235,8 +241,10 @@ export async function generateCompleteTechnicalPrep(jobDetails) {
   try {
     // Infer level from title if not provided
     let inferredLevel = jobDetails.level;
+    
     if (!inferredLevel && jobDetails.title) {
       const titleLower = jobDetails.title.toLowerCase();
+      
       if (titleLower.includes('senior')) inferredLevel = 'Senior';
       else if (titleLower.includes('staff')) inferredLevel = 'Staff';
       else if (titleLower.includes('principal')) inferredLevel = 'Principal';
@@ -244,13 +252,26 @@ export async function generateCompleteTechnicalPrep(jobDetails) {
     }
 
     const jobDetailsWithLevel = { ...jobDetails, level: inferredLevel };
+    
+    const shouldGenerateSystemDesign = inferredLevel && ['Senior', 'Staff', 'Principal', 'Lead'].some(l => inferredLevel.includes(l));
+    const shouldGenerateCaseStudy = ['Business', 'Consulting', 'Product', 'Analyst', 'Finance', 'Financial'].some(term => 
+      jobDetails.title?.toLowerCase().includes(term.toLowerCase())
+    );
+    
+    // Skip coding challenges for pure business/analyst roles
+    const shouldGenerateCoding = !shouldGenerateCaseStudy || 
+      jobDetails.title?.toLowerCase().includes('technical') ||
+      jobDetails.title?.toLowerCase().includes('engineer') ||
+      jobDetails.title?.toLowerCase().includes('developer');
 
     const [codingChallenges, systemDesignQuestions, caseStudies] = await Promise.all([
-      generateCodingChallenges(jobDetailsWithLevel),
-      inferredLevel && ['Senior', 'Staff', 'Principal', 'Lead'].some(l => inferredLevel.includes(l))
+      shouldGenerateCoding
+        ? generateCodingChallenges(jobDetailsWithLevel)
+        : Promise.resolve([]),
+      shouldGenerateSystemDesign
         ? generateSystemDesignQuestions(jobDetailsWithLevel)
         : Promise.resolve([]),
-      ['Business', 'Consulting', 'Product', 'Analyst'].some(term => jobDetails.title?.includes(term))
+      shouldGenerateCaseStudy
         ? generateCaseStudies(jobDetailsWithLevel)
         : Promise.resolve([])
     ]);

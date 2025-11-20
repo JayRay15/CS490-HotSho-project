@@ -47,17 +47,38 @@ export default function Breadcrumb() {
         const paths = location.pathname.split('/').filter(Boolean);
         const last = paths[paths.length - 1];
         if (/^[a-f\d]{24}$/i.test(last)) {
-            // Detect technical prep coding challenge route
-            if (paths.includes('technical-prep') && paths.includes('coding')) {
-                import('../api/technicalPrep').then(api => {
-                    api.technicalPrepAPI.getCodingChallenge(last).then(challenge => {
-                        if (challenge && challenge.title) {
-                            setJobLabel(challenge.title);
-                        } else {
-                            setJobLabel(null);
-                        }
-                    }).catch(() => setJobLabel(null));
-                });
+            if (paths.includes('technical-prep')) {
+                if (paths.includes('coding')) {
+                    import('../api/technicalPrep').then(api => {
+                        api.technicalPrepAPI.getCodingChallenge(last).then(challenge => {
+                            if (challenge && challenge.title) {
+                                setJobLabel(challenge.title);
+                            } else {
+                                setJobLabel(null);
+                            }
+                        }).catch(() => setJobLabel(null));
+                    });
+                } else if (paths.includes('system-design')) {
+                    import('../api/technicalPrep').then(api => {
+                        api.technicalPrepAPI.getSystemDesignQuestion(last).then(question => {
+                            if (question && question.title) {
+                                setJobLabel(question.title);
+                            } else {
+                                setJobLabel(null);
+                            }
+                        }).catch(() => setJobLabel(null));
+                    });
+                } else if (paths.includes('case-study')) {
+                    import('../api/technicalPrep').then(api => {
+                        api.technicalPrepAPI.getCaseStudy(last).then(caseStudy => {
+                            if (caseStudy && caseStudy.title) {
+                                setJobLabel(caseStudy.title);
+                            } else {
+                                setJobLabel(null);
+                            }
+                        }).catch(() => setJobLabel(null));
+                    });
+                }
             } else {
                 // Default: Try to fetch job details
                 import('../api/salary').then(api => {

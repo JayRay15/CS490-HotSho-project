@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import technicalPrepAPI from '../api/technicalPrep';
 import Button from './Button';
@@ -18,17 +18,33 @@ import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
 const SystemDesignPractice = () => {
   const { questionId } = useParams();
   const navigate = useNavigate();
+  const hasRestoredRef = useRef(false);
   
   const [question, setQuestion] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [solution, setSolution] = useState({
-    architecture: '',
-    components: [],
-    dataFlow: '',
-    scalingStrategy: '',
-    tradeoffs: []
+  
+  // Initialize solution from localStorage if available
+  const [solution, setSolution] = useState(() => {
+    if (questionId) {
+      const savedSolution = localStorage.getItem(`system-design-solution-${questionId}`);
+      if (savedSolution) {
+        try {
+          return JSON.parse(savedSolution);
+        } catch (e) {
+          console.error('Failed to parse saved solution:', e);
+        }
+      }
+    }
+    return {
+      architecture: '',
+      components: [],
+      dataFlow: '',
+      scalingStrategy: '',
+      tradeoffs: []
+    };
   });
+  
   const [componentInput, setComponentInput] = useState({ name: '', description: '', technology: '' });
   const [tradeoffInput, setTradeoffInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -38,9 +54,31 @@ const SystemDesignPractice = () => {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [showSampleSolution, setShowSampleSolution] = useState(false);
 
+  // Load question when questionId changes
   useEffect(() => {
     loadQuestion();
+    hasRestoredRef.current = false;
+    
+    // Restore solution from localStorage
+    if (questionId) {
+      const savedSolution = localStorage.getItem(`system-design-solution-${questionId}`);
+      if (savedSolution && !hasRestoredRef.current) {
+        try {
+          setSolution(JSON.parse(savedSolution));
+          hasRestoredRef.current = true;
+        } catch (e) {
+          console.error('Failed to parse saved solution:', e);
+        }
+      }
+    }
   }, [questionId]);
+
+  // Save solution to localStorage whenever it changes
+  useEffect(() => {
+    if (questionId) {
+      localStorage.setItem(`system-design-solution-${questionId}`, JSON.stringify(solution));
+    }
+  }, [solution, questionId]);
 
   useEffect(() => {
     let interval;
@@ -109,6 +147,9 @@ const SystemDesignPractice = () => {
       
       setEvaluation(response.evaluation);
       setTimerRunning(false);
+      
+      // Clear saved solution after successful submission
+      localStorage.removeItem(`system-design-solution-${questionId}`);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to submit solution');
     } finally {
@@ -118,10 +159,11 @@ const SystemDesignPractice = () => {
 
   const handleBookmark = async () => {
     try {
-      await technicalPrepAPI.bookmarkChallenge({
-        challengeType: 'systemDesign',
-        challengeId: questionId
-      });
+      if (isBookmarked) {
+        await technicalPrepAPI.removeBookmark(questionId);
+      } else {
+        await technicalPrepAPI.bookmarkChallenge(questionId);
+      }
       setIsBookmarked(!isBookmarked);
     } catch (err) {
       console.error('Failed to bookmark question:', err);
@@ -527,8 +569,8 @@ const SystemDesignPractice = () => {
 
         {/* Sample Solution Modal */}
         {showSampleSolution && question.solutionFramework && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-xl">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-semibold">Sample Solution</h3>
                 <button

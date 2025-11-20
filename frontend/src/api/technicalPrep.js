@@ -68,7 +68,7 @@ export const technicalPrepAPI = {
     return response.data;
   },
 
-  submitCaseStudySolution: async (caseStudyId, data) => {
+  submitCaseStudy: async (caseStudyId, data) => {
     const response = await api.post(`/api/technical-prep/case-studies/${caseStudyId}/submit`, data);
     return response.data;
   },
@@ -86,8 +86,13 @@ export const technicalPrepAPI = {
   },
 
   // Bookmarks
-  bookmarkChallenge: async (data) => {
-    const response = await api.post('/api/technical-prep/bookmark', data);
+  bookmarkChallenge: async (challengeId) => {
+    const response = await api.post('/api/technical-prep/bookmark', { challengeId });
+    return response.data;
+  },
+
+  removeBookmark: async (challengeId) => {
+    const response = await api.delete(`/api/technical-prep/bookmark/${challengeId}`);
     return response.data;
   },
 

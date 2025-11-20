@@ -396,7 +396,7 @@ export const generateJobSpecificChallenges = async (req, res) => {
     }
     
     const savedCaseStudies = [];
-    for (const caseStudy of generatedContent.caseStudies) {
+    for (const caseStudy of (generatedContent.caseStudies || [])) {
       try {
         const saved = await CaseStudy.create(caseStudy);
         savedCaseStudies.push(saved);
