@@ -43,8 +43,12 @@ export default function AutoArchiveModal({ isOpen, onClose, onAutoArchive }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-md w-full p-6">
+    <div
+      className="fixed inset-0 flex items-center justify-center z-50"
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+      onClick={onClose}
+    >
+      <div className="bg-white rounded-lg max-w-md w-full p-6 border border-gray-200 shadow-2xl mx-4" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between mb-4">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Auto-Archive Jobs</h2>
@@ -128,18 +132,21 @@ export default function AutoArchiveModal({ isOpen, onClose, onAutoArchive }) {
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
-            <Button
+            <button
               type="button"
               onClick={onClose}
-              variant="secondary"
               disabled={isSubmitting}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition disabled:opacity-50"
             >
               Cancel
-            </Button>
-            <Button 
-              type="submit" 
-              variant="primary"
+            </button>
+            <button
+              type="submit"
               disabled={isSubmitting}
+              className="px-4 py-2 text-white rounded-lg transition"
+              style={{ backgroundColor: '#777C6D' }}
+              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
             >
               {isSubmitting ? (
                 <span className="flex items-center">
@@ -152,7 +159,7 @@ export default function AutoArchiveModal({ isOpen, onClose, onAutoArchive }) {
               ) : (
                 'Run Auto-Archive'
               )}
-            </Button>
+            </button>
           </div>
         </form>
       </div>

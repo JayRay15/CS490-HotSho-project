@@ -6,6 +6,7 @@ import { setAuthToken } from "../../api/axios";
 import { fetchTemplates, createTemplate as apiCreateTemplate, updateTemplate as apiUpdateTemplate, deleteTemplate as apiDeleteTemplate, importTemplate as apiImportTemplate } from "../../api/resumeTemplates";
 import { fetchCoverLetterTemplates, createCoverLetterTemplate, updateCoverLetterTemplate, deleteCoverLetterTemplate, trackCoverLetterTemplateUsage, importCoverLetterTemplate, exportCoverLetterTemplate, shareCoverLetterTemplate, getIndustryGuidance, getCoverLetterTemplateAnalytics, generateAICoverLetter } from "../../api/coverLetterTemplates";
 import { fetchCoverLetters, createCoverLetter, updateCoverLetter as apiUpdateCoverLetter, deleteCoverLetter as apiDeleteCoverLetter, setDefaultCoverLetter, archiveCoverLetter, unarchiveCoverLetter, cloneCoverLetter as apiCloneCoverLetter } from "../../api/coverLetters";
+// import { ModalShell, SuccessModal } from "../../components/coverLetters/CoverLetterModals";
 import {
   fetchResumes,
   updateResume as apiUpdateResume,
@@ -55,6 +56,16 @@ import SectionFormattingModal from "../../components/resume/SectionFormattingMod
 import CustomizeTemplateModal from "../../components/resume/CustomizeTemplateModal";
 import RenameResumeModal from "../../components/resume/RenameResumeModal";
 import DeleteConfirmationModal from "../../components/resume/DeleteConfirmationModal";
+import {
+  ModalOverlay,
+  ModalCard,
+  ModalHeader,
+  ModalContent,
+  ModalFooter,
+  CancelButton,
+  DangerButton,
+  SuccessPill
+} from "../../components/resume/coverLetterModalStyles";
 import ViewIssuesButton from "../../components/resume/ViewIssuesButton";
 import { THEME_PRESETS, getThemePresetNames, getThemePreset } from "../../utils/themePresets";
 import { TEMPLATE_TYPES, DEFAULT_SECTIONS, SECTION_PRESETS, formatDate } from "../../utils/resumeConstants";
@@ -315,6 +326,10 @@ export default function ResumeTemplates() {
 
   // UC-054: Cover Letter Export State
   const [showCoverLetterExportModal, setShowCoverLetterExportModal] = useState(false);
+  const [coverLetterSuccessMessage, setCoverLetterSuccessMessage] = useState(null);
+  const [showCoverLetterDeleteModal, setShowCoverLetterDeleteModal] = useState(false);
+  const [coverLetterToDelete, setCoverLetterToDelete] = useState(null);
+  const [isCoverLetterDeleting, setIsCoverLetterDeleting] = useState(false);
   const [exportingCoverLetter, setExportingCoverLetter] = useState(null);
 
   // AI Cover Letter Generation State
@@ -1403,6 +1418,26 @@ export default function ResumeTemplates() {
     setShowDeleteModal(true);
   };
 
+  // Cover Letter delete handlers (styled modal)
+  const handleConfirmDeleteCoverLetter = async () => {
+    if (!coverLetterToDelete) return;
+    setIsCoverLetterDeleting(true);
+    try {
+      await authWrap();
+      await apiDeleteCoverLetter(coverLetterToDelete._id);
+      setShowCoverLetterDeleteModal(false);
+      setCoverLetterToDelete(null);
+      await loadSavedCoverLetters();
+      setCoverLetterSuccessMessage("Cover letter deleted successfully!");
+      setTimeout(() => setCoverLetterSuccessMessage(null), 3000);
+    } catch (err) {
+      console.error("Delete failed:", err);
+      alert("Failed to delete cover letter.");
+    } finally {
+      setIsCoverLetterDeleting(false);
+    }
+  };
+
   const handleConfirmDelete = async () => {
     if (!deletingResume) return;
 
@@ -2075,6 +2110,23 @@ export default function ResumeTemplates() {
               </div>
             </div>
 
+            {coverLetterSuccessMessage && (
+              <div className="mx-0 mb-4 p-4 rounded-lg border" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }}>
+                <div className="flex items-start justify-between gap-4">
+                  <p className="font-medium" style={{ color: '#166534' }}>{coverLetterSuccessMessage}</p>
+                  <button
+                    onClick={() => setCoverLetterSuccessMessage(null)}
+                    className="text-green-700 hover:text-green-900 transition ml-4"
+                    aria-label="Dismiss success message"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {savedCoverLetters.length === 0 ? (
               <Card variant="elevated" className="text-center py-12">
                 <div className="text-gray-500 mb-4">
@@ -2237,19 +2289,10 @@ export default function ResumeTemplates() {
 
                               {/* Delete Button */}
                               <button
-                                onClick={async (e) => {
+                                onClick={(e) => {
                                   e.stopPropagation();
-                                  if (confirm(`Delete "${letter.name}"?`)) {
-                                    try {
-                                      await authWrap();
-                                      await apiDeleteCoverLetter(letter._id);
-                                      await loadSavedCoverLetters();
-                                      alert("Cover letter deleted successfully!");
-                                    } catch (err) {
-                                      console.error("Delete failed:", err);
-                                      alert("Failed to delete cover letter.");
-                                    }
-                                  }
+                                  setCoverLetterToDelete(letter);
+                                  setShowCoverLetterDeleteModal(true);
                                 }}
                                 className="p-1 rounded-lg transition flex-shrink-0 flex items-center justify-center"
                                 style={{ color: '#6B7280' }}
@@ -3234,6 +3277,28 @@ export default function ResumeTemplates() {
           subtitle: deletingTemplate ? `${deletingTemplate.type.charAt(0).toUpperCase() + deletingTemplate.type.slice(1)} template` : ''
         }}
       />
+
+      {/* Cover Letter Delete Confirmation (styled) */}
+      {showCoverLetterDeleteModal && coverLetterToDelete && (
+        <ModalOverlay onClick={() => setShowCoverLetterDeleteModal(false)}>
+          <ModalCard onClick={(e) => e.stopPropagation()}>
+            <ModalHeader title="Confirm Deletion" onClose={() => setShowCoverLetterDeleteModal(false)} variant="danger" />
+            <ModalContent>
+              <p className="text-gray-700 mb-4">Are you sure you want to delete this cover letter?</p>
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+                <p className="font-semibold text-gray-900">{coverLetterToDelete?.name}</p>
+                {coverLetterToDelete?.templateName && <p className="text-sm text-gray-600">{coverLetterToDelete.templateName}</p>}
+              </div>
+              <p className="text-sm text-red-600 font-medium">This action cannot be undone.</p>
+            </ModalContent>
+            <ModalFooter>
+              <CancelButton onClick={() => setShowCoverLetterDeleteModal(false)} disabled={isCoverLetterDeleting} />
+              <DangerButton onClick={handleConfirmDeleteCoverLetter} loading={isCoverLetterDeleting} disabled={isCoverLetterDeleting} />
+            </ModalFooter>
+          </ModalCard>
+        </ModalOverlay>
+      )}
+
 
       {/* Rename Resume Modal */}
       <RenameResumeModal
@@ -5995,7 +6060,8 @@ export default function ResumeTemplates() {
                         setIsCreatingCoverLetterTemplate(false);
 
                         await loadSavedCoverLetters();
-                        alert("Cover letter saved successfully!");
+                          setCoverLetterSuccessMessage("Cover letter saved successfully!");
+                          setTimeout(() => setCoverLetterSuccessMessage(null), 3000);
                       }
                     } catch (err) {
                       console.error("Save failed:", err);
@@ -6917,7 +6983,8 @@ export default function ResumeTemplates() {
                               setAiJobId('');
                               
                               await loadSavedCoverLetters();
-                              alert('AI-generated cover letter saved successfully!');
+                              setCoverLetterSuccessMessage('AI-generated cover letter saved successfully!');
+                              setTimeout(() => setCoverLetterSuccessMessage(null), 3000);
                             } else {
                               throw new Error('Unexpected response format');
                             }
@@ -6943,7 +7010,7 @@ export default function ResumeTemplates() {
       {showManageCoverLetterTemplates && (
         <div
           className="fixed inset-0 flex items-center justify-center z-50 p-4"
-          style={{ backgroundColor: 'rgba(0, 0 0, 0.48)' }}
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
           onClick={() => setShowManageCoverLetterTemplates(false)}
         >
           <div

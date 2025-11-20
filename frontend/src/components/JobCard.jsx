@@ -105,7 +105,7 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
 
   return (
     <div
-      className={`rounded-lg border-2 p-4 mb-3 transition-all ${cardColorClass} ${isDragging ? "opacity-50 rotate-2 shadow-lg" : "hover:shadow-md"
+      className={`relative rounded-lg border-2 p-4 mb-3 transition-all ${cardColorClass} ${isDragging ? "opacity-50 rotate-2 shadow-lg" : "hover:shadow-md"
         } ${isSelected ? 'ring-2 ring-blue-400' : ''}`}
     >
       {/* Header */}
@@ -392,16 +392,26 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
               </button>
             )
           )}
+          {/* Delete action rendered as a bottom-right trash icon to match project style */}
           {onDelete && (
             <button
-              onClick={() => {
-                if (window.confirm(`Delete "${job.title}" at ${job.company}?`)) {
-                  onDelete(job._id);
-                }
+              onClick={(e) => { e.stopPropagation(); onDelete(job._id); }}
+              aria-label={`Delete ${job.title}`}
+              title={`Delete ${job.title}`}
+              className="absolute right-3 bottom-3 p-1 rounded-lg transition flex-shrink-0 flex items-center justify-center"
+              style={{ color: '#6B7280' }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.color = '#B91C1C';
+                e.currentTarget.style.backgroundColor = '#FEE2E2';
               }}
-              className="text-xs px-2 py-1 rounded bg-red-100 hover:bg-red-200 text-red-700"
+              onMouseOut={(e) => {
+                e.currentTarget.style.color = '#6B7280';
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
             >
-              Delete
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
             </button>
           )}
         </div>
