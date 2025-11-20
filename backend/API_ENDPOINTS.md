@@ -1213,3 +1213,497 @@ Batch calculate match scores for all active (non-archived) jobs.
 - **Education** (default 15%): Degree level, field of study, academic performance
 - **Additional** (default 15%): Location, work mode, certifications, projects
 
+---
+
+## Interview Response Coaching (UC-076)
+
+### Submit Interview Response and Get AI Feedback
+Submit a practice interview response and receive comprehensive AI coaching feedback.
+
+**Endpoint:** `POST /api/interview-coaching/responses`
+
+**Request Body:**
+```json
+{
+  "question": "Tell me about a time when you had to deal with a difficult team member.",
+  "response": "In my previous role as a software engineer... (full response text)",
+  "category": "Behavioral",
+  "difficulty": "Medium",
+  "targetDuration": 120,
+  "context": {
+    "jobTitle": "Senior Software Engineer",
+    "company": "Google",
+    "industry": "Technology"
+  },
+  "tags": ["teamwork", "conflict-resolution"],
+  "notes": "Practice for Google interview"
+}
+```
+
+**Parameters:**
+- `question` (required): The interview question text
+- `response` (required): Your response (minimum 20 words)
+- `category` (optional): Question category - Behavioral, Technical, Situational, Leadership, Teamwork, Problem-Solving, Other (default: Behavioral)
+- `difficulty` (optional): Easy, Medium, Hard (default: Medium)
+- `targetDuration` (optional): Target duration in seconds (default: 120)
+- `context` (optional): Job context for tailored feedback
+- `tags` (optional): Array of tags for organization
+- `notes` (optional): Personal notes
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Interview response submitted successfully",
+  "data": {
+    "interviewResponse": {
+      "_id": "response123",
+      "question": {
+        "text": "Tell me about a time...",
+        "category": "Behavioral",
+        "difficulty": "Medium"
+      },
+      "response": "Full response text...",
+      "feedback": {
+        "contentScore": 85,
+        "structureScore": 80,
+        "clarityScore": 90,
+        "relevanceScore": 88,
+        "specificityScore": 75,
+        "impactScore": 82,
+        "overallScore": 83,
+        "strengths": [
+          "Strong opening that addresses the question directly",
+          "Good use of specific metrics and quantifiable results"
+        ],
+        "weaknesses": [
+          "Could provide more context about the situation",
+          "Conclusion feels rushed and lacks impact"
+        ],
+        "suggestions": [
+          "Add more details about the initial challenge",
+          "Include the broader impact on the team"
+        ],
+        "weakLanguagePatterns": [
+          {
+            "pattern": "I just",
+            "context": "I just decided to implement a new system",
+            "alternative": "I strategically decided to implement a new system",
+            "reason": "The word 'just' minimizes your contribution"
+          }
+        ],
+        "lengthAnalysis": {
+          "wordCount": 185,
+          "estimatedDuration": 95,
+          "recommendation": "Slightly Short",
+          "idealRange": { "min": 100, "max": 140 },
+          "adjustmentSuggestion": "Your response could benefit from 20-30 more seconds..."
+        },
+        "starAnalysis": {
+          "hasStructure": true,
+          "components": {
+            "situation": {
+              "present": true,
+              "score": 85,
+              "feedback": "Good context provided..."
+            },
+            "task": {
+              "present": true,
+              "score": 90,
+              "feedback": "Clear description of responsibility..."
+            },
+            "action": {
+              "present": true,
+              "score": 80,
+              "feedback": "Actions described but could be more specific..."
+            },
+            "result": {
+              "present": true,
+              "score": 95,
+              "feedback": "Excellent use of quantifiable metrics..."
+            }
+          },
+          "overallAdherence": 87,
+          "recommendations": [
+            "Strengthen the Situation section",
+            "Break down actions into clear steps"
+          ]
+        },
+        "alternativeApproaches": [
+          {
+            "title": "Results-First Approach",
+            "description": "Start with the impressive outcome...",
+            "example": "I increased team productivity by 40%...",
+            "whenToUse": "When you have strong quantifiable results"
+          }
+        ]
+      },
+      "version": 1,
+      "improvementTracking": {
+        "attempts": 1,
+        "firstAttemptScore": 83,
+        "bestScore": 83,
+        "overallImprovement": 0
+      },
+      "createdAt": "2025-11-20T10:00:00.000Z"
+    },
+    "improvementMetrics": {
+      "scoreChange": 0,
+      "percentageImprovement": 0,
+      "attempts": 1,
+      "currentScore": 83,
+      "firstScore": 83,
+      "bestScore": 83
+    }
+  }
+}
+```
+
+**Features:**
+- AI-powered comprehensive feedback on 6 key dimensions
+- STAR method framework adherence analysis
+- Length analysis with speaking time estimates
+- Weak language pattern identification
+- Alternative response approaches
+- Automatic improvement tracking across attempts
+- Scoring on relevance, specificity, and impact
+
+---
+
+### Get All Interview Responses
+Retrieve all practice interview responses with optional filtering.
+
+**Endpoint:** `GET /api/interview-coaching/responses`
+
+**Query Parameters:**
+- `category` (optional): Filter by question category
+- `includeArchived` (optional): Include archived responses (default: false)
+- `limit` (optional): Number of results per page (default: 50)
+- `skip` (optional): Number of results to skip (default: 0)
+- `sortBy` (optional): Sort field (default: createdAt)
+- `sortOrder` (optional): asc or desc (default: desc)
+
+**Example:** `GET /api/interview-coaching/responses?category=Behavioral&limit=10`
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Interview responses retrieved successfully",
+  "data": {
+    "responses": [
+      {
+        "_id": "response123",
+        "question": {
+          "text": "Tell me about a time...",
+          "category": "Behavioral",
+          "difficulty": "Medium"
+        },
+        "response": "In my previous role...",
+        "feedback": { /* feedback object */ },
+        "version": 2,
+        "improvementTracking": {
+          "attempts": 2,
+          "firstAttemptScore": 75,
+          "bestScore": 85,
+          "overallImprovement": 13.3
+        },
+        "tags": ["teamwork", "leadership"],
+        "createdAt": "2025-11-20T10:00:00.000Z"
+      }
+    ],
+    "pagination": {
+      "total": 25,
+      "limit": 10,
+      "skip": 0,
+      "hasMore": true
+    }
+  }
+}
+```
+
+---
+
+### Get Interview Response by ID
+Retrieve a specific interview response with previous versions.
+
+**Endpoint:** `GET /api/interview-coaching/responses/:id`
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Interview response retrieved successfully",
+  "data": {
+    "interviewResponse": { /* full response object */ },
+    "previousVersions": [
+      { /* previous attempt 1 */ },
+      { /* previous attempt 2 */ }
+    ],
+    "improvementMetrics": {
+      "scoreChange": 10,
+      "percentageImprovement": 13.3,
+      "attempts": 3,
+      "currentScore": 85,
+      "firstScore": 75,
+      "bestScore": 85
+    }
+  }
+}
+```
+
+---
+
+### Update Interview Response
+Update notes, tags, or archive status of a response.
+
+**Endpoint:** `PATCH /api/interview-coaching/responses/:id`
+
+**Request Body:**
+```json
+{
+  "notes": "This was a great practice session",
+  "tags": ["teamwork", "conflict-resolution", "leadership"],
+  "isArchived": false
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Interview response updated successfully",
+  "data": {
+    "interviewResponse": { /* updated response */ }
+  }
+}
+```
+
+---
+
+### Delete Interview Response
+Delete a practice response.
+
+**Endpoint:** `DELETE /api/interview-coaching/responses/:id`
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Interview response deleted successfully",
+  "data": {
+    "deletedId": "response123"
+  }
+}
+```
+
+---
+
+### Get Practice Statistics
+Get comprehensive practice statistics and improvement metrics.
+
+**Endpoint:** `GET /api/interview-coaching/stats`
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Practice statistics retrieved successfully",
+  "data": {
+    "totalPracticed": 25,
+    "averageScore": 82.5,
+    "averageImprovement": 15.8,
+    "scoresTrend": [
+      { "score": 75, "date": "2025-11-15T10:00:00.000Z" },
+      { "score": 80, "date": "2025-11-16T10:00:00.000Z" },
+      { "score": 85, "date": "2025-11-17T10:00:00.000Z" }
+    ],
+    "byCategory": [
+      {
+        "category": "Behavioral",
+        "count": 15,
+        "avgScore": 85.2,
+        "bestScore": 95,
+        "avgContentScore": 88,
+        "avgStructureScore": 82,
+        "avgClarityScore": 87,
+        "avgRelevanceScore": 85,
+        "avgSpecificityScore": 80,
+        "avgImpactScore": 84
+      },
+      {
+        "category": "Technical",
+        "count": 10,
+        "avgScore": 78.5,
+        "bestScore": 90,
+        "avgContentScore": 80,
+        "avgStructureScore": 75,
+        "avgClarityScore": 82,
+        "avgRelevanceScore": 78,
+        "avgSpecificityScore": 76,
+        "avgImpactScore": 77
+      }
+    ]
+  }
+}
+```
+
+**Features:**
+- Overall practice statistics
+- Score trends over time (last 10 responses)
+- Performance breakdown by question category
+- Detailed scoring metrics for each category
+- Average improvement tracking
+
+---
+
+### Generate Interview Questions
+Generate sample interview questions for practice.
+
+**Endpoint:** `POST /api/interview-coaching/questions/generate`
+
+**Request Body:**
+```json
+{
+  "category": "Leadership",
+  "context": {
+    "jobTitle": "Engineering Manager",
+    "company": "Tech Corp",
+    "industry": "Technology"
+  },
+  "count": 5
+}
+```
+
+**Parameters:**
+- `category` (required): Question category
+- `context` (optional): Job context for tailored questions
+- `count` (optional): Number of questions to generate (default: 5)
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Interview questions generated successfully",
+  "data": {
+    "questions": [
+      {
+        "text": "Tell me about a time when you had to make a difficult decision that affected your team.",
+        "category": "Leadership",
+        "difficulty": "Medium",
+        "tips": "Focus on your decision-making process and how you considered different perspectives. Use the STAR method."
+      },
+      {
+        "text": "Describe a situation where you had to motivate a demotivated team member.",
+        "category": "Leadership",
+        "difficulty": "Hard",
+        "tips": "Highlight your emotional intelligence and ability to understand individual motivations."
+      }
+    ]
+  }
+}
+```
+
+---
+
+### Compare Response Versions
+Compare multiple versions of the same response to track improvement.
+
+**Endpoint:** `GET /api/interview-coaching/responses/:id/compare`
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Version comparison retrieved successfully",
+  "data": {
+    "versions": [
+      { /* version 1 */ },
+      { /* version 2 */ },
+      { /* version 3 */ }
+    ],
+    "comparison": {
+      "question": "Tell me about a time...",
+      "totalVersions": 3,
+      "scoreProgression": [
+        {
+          "version": 1,
+          "date": "2025-11-15T10:00:00.000Z",
+          "overallScore": 75,
+          "contentScore": 70,
+          "structureScore": 75,
+          "clarityScore": 78,
+          "relevanceScore": 76,
+          "specificityScore": 72,
+          "impactScore": 74
+        },
+        {
+          "version": 2,
+          "date": "2025-11-16T10:00:00.000Z",
+          "overallScore": 82,
+          "contentScore": 80,
+          "structureScore": 82,
+          "clarityScore": 85,
+          "relevanceScore": 83,
+          "specificityScore": 78,
+          "impactScore": 80
+        }
+      ],
+      "improvement": {
+        "overall": 7,
+        "content": 10,
+        "structure": 7,
+        "clarity": 7
+      },
+      "bestVersion": { /* best scoring version */ }
+    }
+  }
+}
+```
+
+**Features:**
+- Track score progression across multiple attempts
+- Identify best performing version
+- Measure improvement in each scoring dimension
+- Compare different approaches to the same question
+
+---
+
+**Feedback Scoring Criteria:**
+
+1. **Content Score (0-100):** Quality and relevance of information
+   - Answer completeness
+   - Meaningful and substantive content
+   - Specific examples and details
+
+2. **Structure Score (0-100):** Organization and flow
+   - Clear beginning, middle, and end
+   - Logical progression
+   - Easy to follow
+
+3. **Clarity Score (0-100):** Communication effectiveness
+   - Clear and concise language
+   - Unambiguous expression
+   - Easy to understand
+
+4. **Relevance Score (0-100):** Question alignment
+   - Stays on topic
+   - Directly addresses the question
+   - All information is relevant
+
+5. **Specificity Score (0-100):** Detail and concreteness
+   - Specific examples vs. generalities
+   - Metrics and quantifiable results
+   - Sufficient detail for credibility
+
+6. **Impact Score (0-100):** Memorability and impression
+   - Demonstrates value and achievement
+   - Shows growth or learning
+   - Would impress an interviewer
+
+**STAR Method Components:**
+- **Situation (20-25%):** Context and background
+- **Task (15-20%):** Your responsibility or challenge
+- **Action (40-45%):** Specific steps you took
+- **Result (20-25%):** Outcomes and impact
+
