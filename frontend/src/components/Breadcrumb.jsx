@@ -58,6 +58,22 @@ export default function Breadcrumb() {
         const paths = location.pathname.split('/').filter(Boolean);
         const objectId = paths.find(p => /^[a-f\d]{24}$/i.test(p));
         if (objectId) {
+            // Mock interview session label override
+            if (paths.includes('mock-interviews')) {
+                import('../api/mockInterviews').then(api => {
+                    api.getMockInterviewSession(objectId).then(res => {
+                        const session = res.data?.data;
+                        if (session?.roleTitle || session?.company) {
+                            const base = session.roleTitle ? session.roleTitle : 'Mock Interview';
+                            const comp = session.company ? ` @ ${session.company}` : '';
+                            setJobLabel(`${base}${comp}`);
+                        } else {
+                            setJobLabel('Mock Interview');
+                        }
+                    }).catch(() => setJobLabel('Mock Interview'));
+                });
+                return; // prevent other fetch attempts
+            }
             if (paths.includes('goals')) {
                 // Fetch goal details
                 import('../api/goals').then(api => {
