@@ -393,6 +393,15 @@ export default function InterviewCard({ interview, onUpdate, onEdit, onDelete, c
               🎤 Interview Prep
             </Button>
           )}
+          {/* Company Research Button */}
+          <Button
+            onClick={() => navigate(`/interviews/${interview._id}/company-research`)}
+            size="sm"
+            className="bg-purple-600 hover:bg-purple-700 text-white"
+            title="View company research for this interview"
+          >
+            🔍 Company Research
+          </Button>
           {interview.status === "Scheduled" && (
             <Button onClick={handleConfirm} disabled={loading} size="sm">
               Confirm

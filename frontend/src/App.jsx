@@ -32,6 +32,7 @@ import NewGoalPage from "./pages/NewGoalPage";
 import EditGoalPage from "./pages/EditGoalPage";
 import GoalDetailPage from "./pages/GoalDetailPage";
 import InterviewPrepPage from "./pages/InterviewPrepPage.jsx";
+import CompanyResearch from "./pages/interviews/CompanyResearch.jsx";
 
 function App() {
   return (
@@ -77,6 +78,7 @@ function App() {
           <Route path="/goals/:id/edit" element={<ProtectedRoute><EditGoalPage /></ProtectedRoute>} />
           <Route path="/goals/:id" element={<ProtectedRoute><GoalDetailPage /></ProtectedRoute>} />
           <Route path="/jobs/:jobId/interview-prep" element={<ProtectedRoute><InterviewPrepPage /></ProtectedRoute>} />
+          <Route path="/interviews/:interviewId/company-research" element={<ProtectedRoute><CompanyResearch /></ProtectedRoute>} />
         </Routes>
       </Router>
     </ErrorBoundary>

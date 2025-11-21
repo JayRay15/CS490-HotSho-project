@@ -20,6 +20,7 @@ export default function CompanyResearch() {
   const fetchResearch = async () => {
     try {
       setLoading(true);
+      setError('');
       const token = await window.Clerk.session.getToken();
       const response = await fetch(`http://localhost:5000/api/company-research/interview/${interviewId}`, {
         headers: {
@@ -30,16 +31,17 @@ export default function CompanyResearch() {
       if (response.ok) {
         const data = await response.json();
         setResearch(data.data.research);
+        setLoading(false);
       } else if (response.status === 404) {
-        // No research found, show generate option
-        setResearch(null);
+        // No research found, auto-generate it
+        console.log('No research found, auto-generating...');
+        await handleGenerate();
       } else {
         throw new Error('Failed to fetch company research');
       }
     } catch (err) {
       console.error('Error fetching research:', err);
       setError(err.message);
-    } finally {
       setLoading(false);
     }
   };
@@ -47,6 +49,7 @@ export default function CompanyResearch() {
   const handleGenerate = async () => {
     try {
       setGenerating(true);
+      setLoading(true);
       setError('');
       
       const token = await window.Clerk.session.getToken();
@@ -87,16 +90,19 @@ export default function CompanyResearch() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate research');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to generate research');
       }
 
       const data = await response.json();
       setResearch(data.data.research);
+      setError('');
     } catch (err) {
       console.error('Error generating research:', err);
       setError(err.message);
     } finally {
       setGenerating(false);
+      setLoading(false);
     }
   };
 
@@ -141,12 +147,14 @@ export default function CompanyResearch() {
     }
   };
 
-  if (loading) {
+  if (loading || generating) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading company research...</p>
+          <p className="mt-4 text-gray-600">
+            {generating ? 'Generating company research...' : 'Loading company research...'}
+          </p>
         </div>
       </div>
     );
@@ -154,39 +162,21 @@ export default function CompanyResearch() {
 
   if (!research) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-lg shadow-md p-8 text-center">
-            <div className="mb-6">
-              <svg className="mx-auto h-16 w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">No Research Generated Yet</h2>
-            <p className="text-gray-600 mb-6">
-              Generate comprehensive company research to prepare for your interview.
-              This will include company profile, leadership info, competitive analysis, and intelligent questions to ask.
-            </p>
-            {error && (
-              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-red-600">{error}</p>
-              </div>
-            )}
-            <Button
-              onClick={handleGenerate}
-              disabled={generating}
-            >
-              {generating ? 'Generating...' : 'Generate Company Research'}
-            </Button>
-            <div className="mt-4">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Preparing company research...</p>
+          {error && (
+            <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-red-600 text-sm">{error}</p>
               <button
                 onClick={() => navigate(-1)}
-                className="text-blue-600 hover:text-blue-700"
+                className="mt-2 text-blue-600 hover:text-blue-700 text-sm"
               >
-                ← Back
+                ← Go Back
               </button>
             </div>
-          </div>
+          )}
         </div>
       </div>
     );
