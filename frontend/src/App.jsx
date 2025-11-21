@@ -27,6 +27,10 @@ import CaseStudyPractice from "./components/CaseStudyPractice";
 import InterviewCoaching from "./pages/InterviewCoaching";
 import Network from "./pages/auth/Network";
 import WritingPracticePage from "./pages/WritingPracticePage";
+import GoalsPage from "./pages/GoalsPage";
+import NewGoalPage from "./pages/NewGoalPage";
+import EditGoalPage from "./pages/EditGoalPage";
+import GoalDetailPage from "./pages/GoalDetailPage";
 import InterviewPrepPage from "./pages/InterviewPrepPage.jsx";
 
 function App() {
@@ -68,7 +72,10 @@ function App() {
           <Route path="/interview-coaching" element={<ProtectedRoute><InterviewCoaching /></ProtectedRoute>} />
           <Route path="/network" element={<ProtectedRoute><Network /></ProtectedRoute>} />
           <Route path="/writing-practice" element={<ProtectedRoute><WritingPracticePage /></ProtectedRoute>} />
-          <Route path="/jobs/:jobId/interview-prep" element={<ProtectedRoute><InterviewPrepPage /></ProtectedRoute>} />
+          <Route path="/goals" element={<ProtectedRoute><GoalsPage /></ProtectedRoute>} />
+          <Route path="/goals/new" element={<ProtectedRoute><NewGoalPage /></ProtectedRoute>} />
+          <Route path="/goals/:id/edit" element={<ProtectedRoute><EditGoalPage /></ProtectedRoute>} />
+          <Route path="/goals/:id" element={<ProtectedRoute><GoalDetailPage /></ProtectedRoute>} />
         </Routes>
       </Router>
     </ErrorBoundary>

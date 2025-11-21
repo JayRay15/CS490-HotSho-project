@@ -11,6 +11,8 @@ export default function Navbar() {
     const location = useLocation();
     const [profilePicture, setProfilePicture] = useState(null);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [careerDropdownOpen, setCareerDropdownOpen] = useState(false);
+    const [dropdownTimeout, setDropdownTimeout] = useState(null);
 
     // Fetch user's custom profile picture
     useEffect(() => {
@@ -96,25 +98,58 @@ export default function Navbar() {
                             </NavLink>
                             {/* Interview Prep (dynamic job selection) */}
                             <DynamicInterviewPrepLink navLinkClass={navLinkClass} />
-                            <div className="relative group">
-                                <NavLink to="/prep" className={navLinkClass} aria-label="Prep">
-                                    Prep
-                                </NavLink>
-                                <div className="absolute left-0 mt-2 w-48 bg-white rounded shadow-lg z-10 hidden group-hover:block">
-                                    <NavLink to="/prep" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Technical Prep">
-                                        Technical Prep
-                                    </NavLink>
-                                    <NavLink to="/writing-practice" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Writing Practice">
-                                        Writing Practice
-                                    </NavLink>
-                                </div>
+                            <div
+                                className="relative"
+                                onMouseLeave={() => {
+                                    const timeout = setTimeout(() => setCareerDropdownOpen(false), 300);
+                                    setDropdownTimeout(timeout);
+                                }}
+                                onMouseEnter={() => {
+                                    if (dropdownTimeout) clearTimeout(dropdownTimeout);
+                                    setCareerDropdownOpen(true);
+                                }}
+                            >
+                                <button
+                                    className={navLinkClass({ isActive: false })}
+                                    aria-label="Career Tools"
+                                    onClick={() => setCareerDropdownOpen((open) => !open)}
+                                    onMouseEnter={() => {
+                                        if (dropdownTimeout) clearTimeout(dropdownTimeout);
+                                        setCareerDropdownOpen(true);
+                                    }}
+                                    tabIndex={0}
+                                >
+                                    Career Tools
+                                    <svg className="inline w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                                {careerDropdownOpen && (
+                                    <div
+                                        className="absolute left-0 mt-2 w-56 bg-white rounded shadow-lg z-10"
+                                        onMouseEnter={() => {
+                                            if (dropdownTimeout) clearTimeout(dropdownTimeout);
+                                            setCareerDropdownOpen(true);
+                                        }}
+                                    >
+                                        <NavLink to="/goals" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Career Goals" onClick={() => setCareerDropdownOpen(false)}>
+                                            Career Goals
+                                        </NavLink>
+                                        <NavLink to="/interview-coaching" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Interview Coaching" onClick={() => setCareerDropdownOpen(false)}>
+                                            Interview Coaching
+                                        </NavLink>
+                                        <NavLink to="/prep" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Technical Prep" onClick={() => setCareerDropdownOpen(false)}>
+                                            Technical Prep
+                                        </NavLink>
+                                        <NavLink to="/writing-practice" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Writing Practice" onClick={() => setCareerDropdownOpen(false)}>
+                                            Writing Practice
+                                        </NavLink>
+                                        <NavLink to="/network" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Professional Network" onClick={() => setCareerDropdownOpen(false)}>
+                                            Network
+                                        </NavLink>
+                                    </div>
+                                )}
                             </div>
-                            <NavLink to="/interview-coaching" className={navLinkClass} aria-label="Interview Coaching">
-                                Interview Coaching
-                            </NavLink>
-                            <NavLink to="/network" className={navLinkClass} aria-label="Professional Network">
-                                Network
-                            </NavLink>
                             <div className="ml-3 custom-user-button">
                                 <UserButton
                                     afterSignOutUrl="/login"
@@ -283,7 +318,6 @@ export default function Navbar() {
                         >
                             Resumes
                         </NavLink>
-                        <DynamicInterviewPrepLinkMobile />
                         <div className="relative group">
                             <NavLink
                                 to="/prep"
@@ -307,16 +341,16 @@ export default function Navbar() {
                             </div>
                         </div>
                         <NavLink
-                            to="/writing-practice"
+                            to="/goals"
                             className={({ isActive }) =>
                                 `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
                                     ? 'bg-primary-900 text-white shadow-md'
                                     : 'text-white hover:bg-primary-700 active:bg-primary-900'
                                 }`
                             }
-                            aria-label="Writing Practice"
+                            aria-label="Career Goals"
                         >
-                            Writing Practice
+                            Career Goals
                         </NavLink>
                         <NavLink
                             to="/interview-coaching"
@@ -329,6 +363,30 @@ export default function Navbar() {
                             aria-label="Interview Coaching"
                         >
                             Interview Coaching
+                        </NavLink>
+                        <NavLink
+                            to="/prep"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                }`
+                            }
+                            aria-label="Technical Prep"
+                        >
+                            Technical Prep
+                        </NavLink>
+                        <NavLink
+                            to="/writing-practice"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                }`
+                            }
+                            aria-label="Writing Practice"
+                        >
+                            Writing Practice
                         </NavLink>
                         <NavLink
                             to="/network"

@@ -58,7 +58,18 @@ export default function Breadcrumb() {
         const paths = location.pathname.split('/').filter(Boolean);
         const last = paths[paths.length - 1];
         if (/^[a-f\d]{24}$/i.test(last)) {
-            if (paths.includes('technical-prep')) {
+            if (paths.includes('goals')) {
+                // Fetch goal details
+                import('../api/goals').then(api => {
+                    api.getGoalById(last).then(response => {
+                        if (response && response.goal && response.goal.title) {
+                            setJobLabel(response.goal.title);
+                        } else {
+                            setJobLabel(null);
+                        }
+                    }).catch(() => setJobLabel(null));
+                });
+            } else if (paths.includes('technical-prep')) {
                 if (paths.includes('coding')) {
                     import('../api/technicalPrep').then(api => {
                         api.technicalPrepAPI.getCodingChallenge(last).then(challenge => {
