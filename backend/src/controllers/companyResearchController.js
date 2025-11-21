@@ -299,10 +299,74 @@ async function generateLeadershipInfo(research, companyName) {
 }
 
 async function generateCompetitiveAnalysis(research, job) {
+  const industry = job.industry || 'Technology';
+  const companyName = research.companyName;
+  
+  // Industry-specific competitor mapping
+  const industryCompetitors = {
+    'Technology': ['Microsoft', 'Google', 'Amazon', 'Meta', 'Apple'],
+    'Software': ['Salesforce', 'Oracle', 'SAP', 'Adobe', 'ServiceNow'],
+    'Cloud Computing': ['Amazon Web Services', 'Microsoft Azure', 'Google Cloud', 'IBM Cloud'],
+    'Finance': ['JPMorgan Chase', 'Goldman Sachs', 'Morgan Stanley', 'Bank of America', 'Wells Fargo'],
+    'Banking': ['Chase', 'Bank of America', 'Citibank', 'Wells Fargo', 'US Bank'],
+    'FinTech': ['PayPal', 'Square', 'Stripe', 'Robinhood', 'Coinbase'],
+    'Cryptocurrency': ['Coinbase', 'Binance', 'Kraken', 'Gemini', 'Crypto.com'],
+    'Healthcare': ['UnitedHealth Group', 'CVS Health', 'Johnson & Johnson', 'Pfizer', 'Anthem'],
+    'Pharmaceuticals': ['Pfizer', 'Johnson & Johnson', 'Merck', 'Novartis', 'Roche'],
+    'Biotechnology': ['Amgen', 'Gilead Sciences', 'Biogen', 'Moderna', 'Regeneron'],
+    'Medical Devices': ['Medtronic', 'Johnson & Johnson', 'Abbott Laboratories', 'Boston Scientific', 'Stryker'],
+    'E-commerce': ['Amazon', 'Shopify', 'eBay', 'Etsy', 'Walmart'],
+    'Retail': ['Walmart', 'Target', 'Costco', 'Home Depot', 'Best Buy'],
+    'Manufacturing': ['General Electric', '3M', 'Honeywell', 'Caterpillar', 'Siemens'],
+    'Automotive': ['Toyota', 'Ford', 'General Motors', 'Tesla', 'Honda'],
+    'Energy': ['ExxonMobil', 'Chevron', 'BP', 'Shell', 'TotalEnergies'],
+    'Telecommunications': ['Verizon', 'AT&T', 'T-Mobile', 'Comcast', 'Charter Communications'],
+    'Media': ['Disney', 'Comcast', 'Warner Bros Discovery', 'Paramount', 'Netflix'],
+    'Entertainment': ['Netflix', 'Disney', 'Warner Bros', 'Sony Pictures', 'Universal'],
+    'Consulting': ['McKinsey', 'Boston Consulting Group', 'Bain & Company', 'Deloitte', 'Accenture'],
+    'Aerospace': ['Boeing', 'Lockheed Martin', 'Northrop Grumman', 'Raytheon', 'Airbus'],
+    'Defense': ['Lockheed Martin', 'Raytheon', 'Northrop Grumman', 'General Dynamics', 'BAE Systems'],
+    'Education': ['Pearson', 'McGraw-Hill', 'Coursera', 'Udemy', 'Khan Academy'],
+    'Real Estate': ['CBRE', 'Jones Lang LaSalle', 'Cushman & Wakefield', 'Colliers', 'Newmark'],
+    'Insurance': ['State Farm', 'Berkshire Hathaway', 'Progressive', 'Allstate', 'Liberty Mutual'],
+    'Food & Beverage': ['Coca-Cola', 'PepsiCo', 'Nestlé', 'Mondelez', 'General Mills'],
+    'Hospitality': ['Marriott', 'Hilton', 'Hyatt', 'IHG', 'Airbnb'],
+    'Transportation': ['FedEx', 'UPS', 'Union Pacific', 'Norfolk Southern', 'J.B. Hunt'],
+    'Logistics': ['DHL', 'FedEx', 'UPS', 'XPO Logistics', 'C.H. Robinson'],
+    'Agriculture': ['Cargill', 'Archer Daniels Midland', 'Bunge', 'Corteva', 'John Deere'],
+    'Construction': ['Bechtel', 'Fluor', 'AECOM', 'Kiewit', 'Turner Construction'],
+    'Chemicals': ['Dow', 'BASF', 'DuPont', 'LyondellBasell', 'SABIC'],
+    'Telecommunications Equipment': ['Cisco', 'Nokia', 'Ericsson', 'Juniper Networks', 'Arista Networks'],
+    'Semiconductors': ['Intel', 'NVIDIA', 'AMD', 'Qualcomm', 'Texas Instruments'],
+    'Gaming': ['Electronic Arts', 'Activision Blizzard', 'Take-Two Interactive', 'Epic Games', 'Roblox'],
+    'Social Media': ['Meta', 'X (Twitter)', 'Snap', 'Pinterest', 'Reddit'],
+    'Cybersecurity': ['Palo Alto Networks', 'CrowdStrike', 'Fortinet', 'Cisco Security', 'Check Point'],
+    'Data Analytics': ['Tableau', 'Splunk', 'Databricks', 'Snowflake', 'Palantir'],
+    'AI/Machine Learning': ['OpenAI', 'Anthropic', 'DeepMind', 'Scale AI', 'DataRobot'],
+    'Advertising': ['WPP', 'Omnicom', 'Publicis Groupe', 'Interpublic', 'Dentsu'],
+    'Publishing': ['Penguin Random House', 'HarperCollins', 'Simon & Schuster', 'Hachette', 'Macmillan'],
+    'Sports': ['Nike', 'Adidas', 'Under Armour', 'Puma', 'New Balance'],
+    'Fashion': ['LVMH', 'Kering', 'Richemont', 'Inditex', 'H&M'],
+  };
+  
+  // Get competitors for the specific industry, excluding the company itself
+  let competitors = industryCompetitors[industry] || industryCompetitors['Technology'];
+  competitors = competitors.filter(comp => !comp.toLowerCase().includes(companyName.toLowerCase()));
+  
+  // If the company name matches a competitor, remove it and get alternatives
+  if (competitors.length < 3) {
+    const allCompetitors = Object.values(industryCompetitors).flat();
+    const uniqueCompetitors = [...new Set(allCompetitors)];
+    competitors = uniqueCompetitors.filter(comp => !comp.toLowerCase().includes(companyName.toLowerCase())).slice(0, 5);
+  }
+  
+  // Take top 3-5 competitors
+  competitors = competitors.slice(0, 5);
+  
   research.competitive = {
-    industry: job.industry || 'Technology',
-    marketPosition: `${research.companyName} is positioned as a competitive player in the ${job.industry || 'technology'} market.`,
-    competitors: ['Competitor 1', 'Competitor 2', 'Competitor 3'],
+    industry: industry,
+    marketPosition: `${companyName} is positioned as a competitive player in the ${industry.toLowerCase()} market.`,
+    competitors: competitors,
     differentiators: [
       'Strong technical capabilities',
       'Innovative product offerings',

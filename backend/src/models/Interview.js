@@ -190,6 +190,7 @@ interviewSchema.virtual("timeUntilInterview").get(function () {
 
 // Virtual for formatted interview date
 interviewSchema.virtual("formattedDate").get(function () {
+  if (!this.scheduledDate) return null;
   return this.scheduledDate.toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",

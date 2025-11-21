@@ -69,6 +69,18 @@ export default function Breadcrumb() {
                         }
                     }).catch(() => setJobLabel(null));
                 });
+            } else if (paths.includes('interviews')) {
+                // Fetch interview details and show company name
+                import('../api/interviews').then(api => {
+                    api.getInterview(objectId).then(response => {
+                        const interview = response.data?.interview || response.data?.data?.interview;
+                        if (interview && interview.company) {
+                            setJobLabel(interview.company);
+                        } else {
+                            setJobLabel(null);
+                        }
+                    }).catch(() => setJobLabel(null));
+                });
             } else if (paths.includes('technical-prep')) {
                 if (paths.includes('coding')) {
                     import('../api/technicalPrep').then(api => {
