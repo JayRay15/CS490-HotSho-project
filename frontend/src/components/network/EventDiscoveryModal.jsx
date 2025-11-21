@@ -5,6 +5,12 @@ import { toast } from 'react-hot-toast';
 import Button from '../Button';
 
 export default function EventDiscoveryModal({ onClose, onImport }) {
+  // Close modal when clicking on backdrop (but not when clicking modal content)
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
   const [searchParams, setSearchParams] = useState({
     location: '',
     q: 'networking',
@@ -115,16 +121,22 @@ export default function EventDiscoveryModal({ onClose, onImport }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 overflow-y-auto">
-      <div className="bg-white rounded-xl w-full max-w-5xl m-4 max-h-[90vh] overflow-y-auto">
+    <div
+      className="fixed inset-0 flex items-center justify-center z-50 p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.48)' }}
+      onClick={handleBackdropClick}
+    >
+      <div className="bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
           <h2 className="text-2xl font-bold text-gray-900">Discover Networking Events</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition"
+            className="text-gray-400 hover:text-gray-600"
             aria-label="Close modal"
           >
-            <X size={24} />
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
         </div>
 
@@ -143,7 +155,7 @@ export default function EventDiscoveryModal({ onClose, onImport }) {
                   value={searchParams.location}
                   onChange={handleInputChange}
                   placeholder="City, State or 'online'"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
               </div>
 
@@ -158,7 +170,7 @@ export default function EventDiscoveryModal({ onClose, onImport }) {
                   value={searchParams.q}
                   onChange={handleInputChange}
                   placeholder="networking, tech, business..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
               </div>
 
@@ -170,7 +182,7 @@ export default function EventDiscoveryModal({ onClose, onImport }) {
                   name="categories"
                   value={searchParams.categories}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 >
                   <option value="">All Categories</option>
                   {categories.map(cat => (
@@ -191,7 +203,7 @@ export default function EventDiscoveryModal({ onClose, onImport }) {
                   name="startDate"
                   value={searchParams.startDate}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
               </div>
 
@@ -204,7 +216,7 @@ export default function EventDiscoveryModal({ onClose, onImport }) {
                   name="endDate"
                   value={searchParams.endDate}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
               </div>
 
@@ -212,7 +224,7 @@ export default function EventDiscoveryModal({ onClose, onImport }) {
                 <Button
                   onClick={() => handleSearch(1)}
                   disabled={searching}
-                  className="w-full"
+                  className="w-full bg-[#777C6D] hover:bg-[#656A5C] text-white"
                 >
                   {searching ? (
                     <>
@@ -292,6 +304,7 @@ export default function EventDiscoveryModal({ onClose, onImport }) {
                             onClick={() => handleImport(event)}
                             disabled={loading}
                             size="small"
+                            className="bg-[#777C6D] hover:bg-[#656A5C] text-white"
                           >
                             Import
                           </Button>
