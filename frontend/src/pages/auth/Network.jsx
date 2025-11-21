@@ -169,7 +169,7 @@ export default function Network() {
         <div className="flex justify-between items-start mb-6">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Professional Network</h1>
-            <p className="text-gray-600">Manage your professional contacts and relationships</p>
+            <p className="text-gray-600">Manage and expand your network</p>
           </div>
           <div className="flex gap-2">
             <Button onClick={() => setIsImportModalOpen(true)} variant="outline">
