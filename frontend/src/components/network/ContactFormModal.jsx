@@ -11,17 +11,29 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
 
   const [formData, setFormData] = useState({
     firstName: '',
+    middleName: '',
     lastName: '',
+    phoneticFirstName: '',
+    phoneticMiddleName: '',
+    phoneticLastName: '',
+    prefix: '',
+    suffix: '',
+    nickname: '',
+    fileAs: '',
     email: '',
+    emailLabel: '',
     phone: '',
     company: '',
     jobTitle: '',
+    department: '',
     industry: '',
     relationshipType: 'Other',
     relationshipStrength: 'New',
     linkedInUrl: '',
     location: '',
+    birthday: '',
     notes: '',
+    photo: '',
     personalInterests: '',
     professionalInterests: '',
     mutualConnections: '',
@@ -42,17 +54,29 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
     if (contact) {
       setFormData({
         firstName: contact.firstName || '',
+        middleName: contact.middleName || '',
         lastName: contact.lastName || '',
+        phoneticFirstName: contact.phoneticFirstName || '',
+        phoneticMiddleName: contact.phoneticMiddleName || '',
+        phoneticLastName: contact.phoneticLastName || '',
+        prefix: contact.prefix || '',
+        suffix: contact.suffix || '',
+        nickname: contact.nickname || '',
+        fileAs: contact.fileAs || '',
         email: contact.email || '',
+        emailLabel: contact.emailLabel || '',
         phone: contact.phone || '',
         company: contact.company || '',
         jobTitle: contact.jobTitle || '',
+        department: contact.department || '',
         industry: contact.industry || '',
         relationshipType: contact.relationshipType || 'Other',
         relationshipStrength: contact.relationshipStrength || 'New',
         linkedInUrl: contact.linkedInUrl || '',
         location: contact.location || '',
+        birthday: contact.birthday || '',
         notes: contact.notes || '',
+        photo: contact.photo || '',
         personalInterests: contact.personalInterests || '',
         professionalInterests: contact.professionalInterests || '',
         mutualConnections: contact.mutualConnections?.join(', ') || '',
@@ -191,7 +215,7 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
           {/* Basic Information */}
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   First Name <span className="text-red-500">*</span>
@@ -207,14 +231,55 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Last Name <span className="text-red-500">*</span>
+                  Middle Name
+                </label>
+                <input
+                  type="text"
+                  name="middleName"
+                  value={formData.middleName}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Last Name
                 </label>
                 <input
                   type="text"
                   name="lastName"
                   value={formData.lastName}
                   onChange={handleChange}
-                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Prefix</label>
+                <input
+                  type="text"
+                  name="prefix"
+                  value={formData.prefix}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Suffix</label>
+                <input
+                  type="text"
+                  name="suffix"
+                  value={formData.suffix}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nickname</label>
+                <input
+                  type="text"
+                  name="nickname"
+                  value={formData.nickname}
+                  onChange={handleChange}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
               </div>
@@ -235,6 +300,17 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Birthday</label>
+                <input
+                  type="text"
+                  name="birthday"
+                  value={formData.birthday}
+                  onChange={handleChange}
+                  placeholder="YYYY-MM-DD"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
               </div>
@@ -261,6 +337,16 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
                   type="text"
                   name="jobTitle"
                   value={formData.jobTitle}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                <input
+                  type="text"
+                  name="department"
+                  value={formData.department}
                   onChange={handleChange}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />

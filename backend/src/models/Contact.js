@@ -30,7 +30,7 @@ const contactSchema = new mongoose.Schema({
   },
   lastName: {
     type: String,
-    required: true,
+    required: false,
     trim: true
   },
   email: {
@@ -114,6 +114,54 @@ const contactSchema = new mongoose.Schema({
   isReference: {
     type: Boolean,
     default: false
+  },
+  middleName: {
+    type: String,
+    trim: true
+  },
+  phoneticFirstName: {
+    type: String,
+    trim: true
+  },
+  phoneticMiddleName: {
+    type: String,
+    trim: true
+  },
+  phoneticLastName: {
+    type: String,
+    trim: true
+  },
+  prefix: {
+    type: String,
+    trim: true
+  },
+  suffix: {
+    type: String,
+    trim: true
+  },
+  nickname: {
+    type: String,
+    trim: true
+  },
+  fileAs: {
+    type: String,
+    trim: true
+  },
+  department: {
+    type: String,
+    trim: true
+  },
+  birthday: {
+    type: String,
+    trim: true
+  },
+  photo: {
+    type: String,
+    trim: true
+  },
+  emailLabel: {
+    type: String,
+    trim: true
   }
 }, {
   timestamps: true
@@ -126,7 +174,7 @@ contactSchema.index({ userId: 1, relationshipType: 1 });
 contactSchema.index({ userId: 1, nextFollowUpDate: 1 });
 
 // Virtual for full name
-contactSchema.virtual('fullName').get(function() {
+contactSchema.virtual('fullName').get(function () {
   return `${this.firstName} ${this.lastName}`;
 });
 
