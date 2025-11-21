@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import PropTypes from "prop-types";
 import Card from "./Card";
 import Button from "./Button";
@@ -36,6 +37,7 @@ const TYPE_ICONS = {
 };
 
 export default function InterviewCard({ interview, onUpdate, onEdit, onDelete, compact = false }) {
+  const navigate = useNavigate();
   const [showDetails, setShowDetails] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showOutcomeForm, setShowOutcomeForm] = useState(false);
@@ -370,6 +372,27 @@ export default function InterviewCard({ interview, onUpdate, onEdit, onDelete, c
 
         {/* Actions */}
         <div className="flex flex-wrap gap-2 pt-4 border-t">
+          {/* Interview Prep Button: Only show if interview has a jobId */}
+          {interview.jobId && (
+            <Button
+              onClick={() => {
+                const raw = interview.jobId;
+                const id = typeof raw === 'object' ? (raw._id || raw.id) : raw;
+                if (id) {
+                  try {
+                    window.localStorage.setItem('activeJobId', id);
+                    window.sessionStorage.setItem('activeJobId', id);
+                  } catch (e) { /* ignore storage errors */ }
+                  navigate(`/jobs/${id}/interview-prep`);
+                }
+              }}
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              title="Go to Interview Prep for this job"
+            >
+              🎤 Interview Prep
+            </Button>
+          )}
           {interview.status === "Scheduled" && (
             <Button onClick={handleConfirm} disabled={loading} size="sm">
               Confirm

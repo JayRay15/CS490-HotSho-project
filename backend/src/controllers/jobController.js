@@ -124,6 +124,46 @@ export const addJob = asyncHandler(async (req, res) => {
   return sendResponse(res, response, statusCode);
 });
 
+// GET /api/jobs/:jobId - Get single job
+export const getJobById = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { jobId } = req.params;
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+  if (!jobId) {
+    const { response, statusCode } = errorResponse(
+      "Job ID is required",
+      400,
+      ERROR_CODES.VALIDATION_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+  const job = await Job.findOne({ _id: jobId, userId });
+  if (!job) {
+    const { response, statusCode } = errorResponse(
+      "Job not found",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+  // Derived field: daysInStage based on last statusHistory entry
+  const lastStatusEntry = job.statusHistory?.[job.statusHistory.length - 1];
+  let daysInStage = 0;
+  if (lastStatusEntry) {
+    const diffMs = Date.now() - new Date(lastStatusEntry.timestamp).getTime();
+    daysInStage = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  }
+  const { response, statusCode } = successResponse("Job retrieved", { job, daysInStage });
+  return sendResponse(res, response, statusCode);
+});
+
 // PUT /api/jobs/:jobId - Update a job
 export const updateJob = asyncHandler(async (req, res) => {
   const userId = req.auth?.userId || req.auth?.payload?.sub;

@@ -30,6 +30,11 @@ const checkJwt = (req, res, next) => {
       return sendResponse(res, response, statusCode);
     }
     
+    // Set req.user for controller compatibility
+    req.user = {
+      id: auth.userId || auth.payload?.sub
+    };
+    
     next();
   });
 };
