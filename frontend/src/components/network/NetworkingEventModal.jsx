@@ -4,6 +4,12 @@ import Button from '../Button';
 import InputField from '../InputField';
 
 export default function NetworkingEventModal({ event, onClose, onSave }) {
+  // Close modal when clicking on backdrop (but not when clicking modal content)
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
   const [formData, setFormData] = useState({
     name: '',
     eventDate: '',
@@ -146,6 +152,7 @@ export default function NetworkingEventModal({ event, onClose, onSave }) {
     <div
       className="fixed inset-0 flex items-center justify-center z-50 p-4"
       style={{ backgroundColor: 'rgba(0,0,0,0.48)' }}
+      onClick={handleBackdropClick}
     >
       <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
