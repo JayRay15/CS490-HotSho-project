@@ -7,9 +7,11 @@ import ContactStatsCards from '../../components/network/ContactStatsCards';
 import Button from '../../components/Button';
 import ContactCard from '../../components/network/ContactCard';
 import ContactFormModal from '../../components/network/ContactFormModal';
+import ContactImportModal from '../../components/network/ContactImportModal';
 import DeleteContactModal from '../../components/network/DeleteContactModal';
 import ReferralRequestModal from '../../components/network/ReferralRequestModal';
 import ReferralList from '../../components/network/ReferralList';
+import NetworkingEventList from '../../components/network/NetworkingEventList';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ErrorMessage from '../../components/ErrorMessage';
 
@@ -33,6 +35,7 @@ export default function Network() {
   const [referralRefreshTrigger, setReferralRefreshTrigger] = useState(0);
   // Show all contacts or just 3
   const [showAllContacts, setShowAllContacts] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   // Fetch contacts and stats
   const fetchData = async () => {
@@ -166,11 +169,16 @@ export default function Network() {
         <div className="flex justify-between items-start mb-6">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Professional Network</h1>
-            <p className="text-gray-600">Manage your professional contacts and relationships</p>
+            <p className="text-gray-600">Manage and expand your network</p>
           </div>
-          <Button onClick={handleAddContact} className="bg-[#777C6D] hover:bg-[#656A5C] text-white">
-            Add New Contact
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setIsImportModalOpen(true)} variant="outline">
+              Import Contacts
+            </Button>
+            <Button onClick={handleAddContact} className="bg-[#777C6D] hover:bg-[#656A5C] text-white">
+              Add New Contact
+            </Button>
+          </div>
         </div>
 
         {error && <ErrorMessage message={error} />}
@@ -285,11 +293,16 @@ export default function Network() {
               </div>
             )}
           </>
-    		)}
+        )}
 
         {/* Referral Requests Section */}
         <div className="mt-12 pt-8 border-t">
           <ReferralList refreshTrigger={referralRefreshTrigger} />
+        </div>
+
+        {/* Networking Events Section */}
+        <div className="mt-12 pt-8 border-t">
+          <NetworkingEventList refreshTrigger={referralRefreshTrigger} />
         </div>
       </div>
 
@@ -301,7 +314,7 @@ export default function Network() {
           onSave={handleContactSaved}
         />
       )}
-      
+
       {/* Referral Request Modal */}
       {showReferralModal && selectedContactForReferral && (
         <ReferralRequestModal
@@ -314,7 +327,7 @@ export default function Network() {
           onSuccess={handleReferralSuccess}
         />
       )}
-      
+
       {/* Delete Confirmation Modal for contacts */}
       <DeleteContactModal
         showModal={showDeleteModal}
@@ -323,6 +336,17 @@ export default function Network() {
         onConfirm={confirmDeleteContact}
         isDeleting={isDeleting}
       />
+
+      {/* Import Contacts Modal */}
+      {isImportModalOpen && (
+        <ContactImportModal
+          onClose={() => setIsImportModalOpen(false)}
+          onSuccess={() => {
+            setIsImportModalOpen(false);
+            fetchData();
+          }}
+        />
+      )}
     </Container>
   );
 }

@@ -96,6 +96,8 @@ export default function Navbar() {
                             <NavLink to="/resumes" className={navLinkClass} aria-label="Resumes">
                                 Resumes & Cover Letters
                             </NavLink>
+                            {/* Interview Prep (dynamic job selection) */}
+                            <DynamicInterviewPrepLink navLinkClass={navLinkClass} />
                             <div
                                 className="relative"
                                 onMouseLeave={() => {
@@ -316,8 +318,27 @@ export default function Navbar() {
                         >
                             Resumes
                         </NavLink>
-                        <div className="pl-4 pt-2 pb-1">
-                            <span className="text-xs text-primary-200 uppercase tracking-wider">Career Tools</span>
+                        <div className="relative group">
+                            <NavLink
+                                to="/prep"
+                                className={({ isActive }) =>
+                                    `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                        ? 'bg-primary-900 text-white shadow-md'
+                                        : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                    }`
+                                }
+                                aria-label="Prep"
+                            >
+                                Prep
+                            </NavLink>
+                            <div className="absolute left-0 mt-2 w-48 bg-white rounded shadow-lg z-10 hidden group-hover:block">
+                                <NavLink to="/prep" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Technical Prep">
+                                    Technical Prep
+                                </NavLink>
+                                <NavLink to="/writing-practice" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Writing Practice">
+                                    Writing Practice
+                                </NavLink>
+                            </div>
                         </div>
                         <NavLink
                             to="/goals"
@@ -433,3 +454,48 @@ export default function Navbar() {
         </nav>
     );
 }
+// Helper functions & dynamic Interview Prep links
+function getActiveJobId() {
+    const keys = ['activeJobId', 'currentJobId', 'selectedJobId'];
+    for (const k of keys) {
+        const v = typeof window !== 'undefined' ? (window.localStorage.getItem(k) || window.sessionStorage.getItem(k)) : null;
+        if (v) return v;
+    }
+    return null;
+}
+
+function DynamicInterviewPrepLink({ navLinkClass }) {
+    const jobId = typeof window !== 'undefined' ? getActiveJobId() : null;
+    const target = jobId ? `/jobs/${jobId}/interview-prep` : '/jobs';
+    return (
+        <NavLink
+            to={target}
+            className={navLinkClass}
+            aria-label="Interview Prep"
+            title={jobId ? 'Open interview prep for active job' : 'Select a job then open Interview Prep'}
+        >
+            Interview Prep
+        </NavLink>
+    );
+}
+
+function DynamicInterviewPrepLinkMobile() {
+    const jobId = typeof window !== 'undefined' ? getActiveJobId() : null;
+    const target = jobId ? `/jobs/${jobId}/interview-prep` : '/jobs';
+    return (
+        <NavLink
+            to={target}
+            className={({ isActive }) =>
+                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                    ? 'bg-primary-900 text-white shadow-md'
+                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                }`
+            }
+            aria-label="Interview Prep"
+            title={jobId ? 'Open interview prep for active job' : 'Select a job then open Interview Prep'}
+        >
+            Interview Prep
+        </NavLink>
+    );
+}
+

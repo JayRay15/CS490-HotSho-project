@@ -7,10 +7,10 @@ import { Job } from '../models/Job.js';
 export const getContacts = async (req, res) => {
   try {
     const { search, relationshipType, company, sortBy } = req.query;
-    
+
     // Build query
     const query = { userId: req.auth.userId };
-    
+
     // Search filter
     if (search) {
       query.$or = [
@@ -20,17 +20,17 @@ export const getContacts = async (req, res) => {
         { jobTitle: { $regex: search, $options: 'i' } }
       ];
     }
-    
+
     // Relationship type filter
     if (relationshipType && relationshipType !== 'All') {
       query.relationshipType = relationshipType;
     }
-    
+
     // Company filter
     if (company) {
       query.company = { $regex: company, $options: 'i' };
     }
-    
+
     // Build sort
     let sort = {};
     switch (sortBy) {
@@ -49,11 +49,11 @@ export const getContacts = async (req, res) => {
       default:
         sort = { createdAt: -1 };
     }
-    
+
     const contacts = await Contact.find(query)
       .sort(sort)
       .populate('linkedJobIds', 'company jobTitle');
-    
+
     res.status(200).json({
       success: true,
       count: contacts.length,
@@ -78,14 +78,14 @@ export const getContactById = async (req, res) => {
       _id: req.params.id,
       userId: req.auth.userId
     }).populate('linkedJobIds', 'company jobTitle status');
-    
+
     if (!contact) {
       return res.status(404).json({
         success: false,
         message: 'Contact not found'
       });
     }
-    
+
     res.status(200).json({
       success: true,
       data: contact
@@ -109,14 +109,14 @@ export const createContact = async (req, res) => {
       ...req.body,
       userId: req.auth.userId
     };
-    
+
     // Set lastContactDate to now if first interaction exists
     if (contactData.interactions && contactData.interactions.length > 0) {
       contactData.lastContactDate = contactData.interactions[0].date || new Date();
     }
-    
+
     const contact = await Contact.create(contactData);
-    
+
     res.status(201).json({
       success: true,
       message: 'Contact created successfully',
@@ -141,29 +141,29 @@ export const updateContact = async (req, res) => {
       _id: req.params.id,
       userId: req.auth.userId
     });
-    
+
     if (!contact) {
       return res.status(404).json({
         success: false,
         message: 'Contact not found'
       });
     }
-    
+
     // Update fields
     Object.keys(req.body).forEach(key => {
       contact[key] = req.body[key];
     });
-    
+
     // Update lastContactDate if interactions were modified
     if (req.body.interactions && req.body.interactions.length > 0) {
-      const sortedInteractions = [...req.body.interactions].sort((a, b) => 
+      const sortedInteractions = [...req.body.interactions].sort((a, b) =>
         new Date(b.date) - new Date(a.date)
       );
       contact.lastContactDate = sortedInteractions[0].date;
     }
-    
+
     await contact.save();
-    
+
     res.status(200).json({
       success: true,
       message: 'Contact updated successfully',
@@ -188,14 +188,14 @@ export const deleteContact = async (req, res) => {
       _id: req.params.id,
       userId: req.auth.userId
     });
-    
+
     if (!contact) {
       return res.status(404).json({
         success: false,
         message: 'Contact not found'
       });
     }
-    
+
     res.status(200).json({
       success: true,
       message: 'Contact deleted successfully'
@@ -219,25 +219,25 @@ export const addInteraction = async (req, res) => {
       _id: req.params.id,
       userId: req.auth.userId
     });
-    
+
     if (!contact) {
       return res.status(404).json({
         success: false,
         message: 'Contact not found'
       });
     }
-    
+
     const interaction = {
       date: req.body.date || new Date(),
       type: req.body.type,
       notes: req.body.notes
     };
-    
+
     contact.interactions.push(interaction);
     contact.lastContactDate = interaction.date;
-    
+
     await contact.save();
-    
+
     res.status(200).json({
       success: true,
       message: 'Interaction added successfully',
@@ -260,11 +260,11 @@ export const getUpcomingFollowUps = async (req, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + 30);
     futureDate.setHours(23, 59, 59, 999);
-    
+
     const contacts = await Contact.find({
       userId: req.auth.userId,
       reminderEnabled: true,
@@ -273,7 +273,7 @@ export const getUpcomingFollowUps = async (req, res) => {
         $lte: futureDate
       }
     }).sort({ nextFollowUpDate: 1 });
-    
+
     res.status(200).json({
       success: true,
       count: contacts.length,
@@ -295,7 +295,7 @@ export const getUpcomingFollowUps = async (req, res) => {
 export const getContactStats = async (req, res) => {
   try {
     const contacts = await Contact.find({ userId: req.auth.userId });
-    
+
     const stats = {
       total: contacts.length,
       byRelationshipType: {},
@@ -303,30 +303,30 @@ export const getContactStats = async (req, res) => {
       withUpcomingFollowUps: 0,
       recentInteractions: 0
     };
-    
+
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
+
     contacts.forEach(contact => {
       // Count by relationship type
-      stats.byRelationshipType[contact.relationshipType] = 
+      stats.byRelationshipType[contact.relationshipType] =
         (stats.byRelationshipType[contact.relationshipType] || 0) + 1;
-      
+
       // Count by relationship strength
-      stats.byRelationshipStrength[contact.relationshipStrength] = 
+      stats.byRelationshipStrength[contact.relationshipStrength] =
         (stats.byRelationshipStrength[contact.relationshipStrength] || 0) + 1;
-      
+
       // Count upcoming follow-ups
       if (contact.nextFollowUpDate && contact.nextFollowUpDate >= new Date()) {
         stats.withUpcomingFollowUps++;
       }
-      
+
       // Count recent interactions
       if (contact.lastContactDate && contact.lastContactDate >= thirtyDaysAgo) {
         stats.recentInteractions++;
       }
     });
-    
+
     res.status(200).json({
       success: true,
       data: stats
@@ -350,32 +350,32 @@ export const linkContactToJob = async (req, res) => {
       _id: req.params.id,
       userId: req.auth.userId
     });
-    
+
     if (!contact) {
       return res.status(404).json({
         success: false,
         message: 'Contact not found'
       });
     }
-    
+
     const job = await Job.findOne({
       _id: req.params.jobId,
       userId: req.auth.userId
     });
-    
+
     if (!job) {
       return res.status(404).json({
         success: false,
         message: 'Job not found'
       });
     }
-    
+
     // Add job to contact's linkedJobIds if not already present
     if (!contact.linkedJobIds.includes(req.params.jobId)) {
       contact.linkedJobIds.push(req.params.jobId);
       await contact.save();
     }
-    
+
     res.status(200).json({
       success: true,
       message: 'Contact linked to job successfully',
@@ -386,6 +386,50 @@ export const linkContactToJob = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to link contact to job',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Batch create contacts
+// @route   POST /api/contacts/batch
+// @access  Private
+export const batchCreateContacts = async (req, res) => {
+  try {
+    const contacts = req.body.contacts;
+
+    if (!contacts || !Array.isArray(contacts) || contacts.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No contacts provided'
+      });
+    }
+
+    // Add userId to each contact
+    const contactsWithUser = contacts.map(contact => ({
+      ...contact,
+      userId: req.auth.userId,
+      // Ensure defaults
+      relationshipType: contact.relationshipType || 'Other',
+      relationshipStrength: contact.relationshipStrength || 'New'
+    }));
+
+    // Filter out duplicates based on email if provided
+    // This is a simple check, a more robust one would check against DB
+    // For now, we rely on the client to handle duplicates or let MongoDB handle unique constraints if any (email is not unique in schema)
+
+    const createdContacts = await Contact.insertMany(contactsWithUser);
+
+    res.status(201).json({
+      success: true,
+      message: `Successfully imported ${createdContacts.length} contacts`,
+      data: createdContacts
+    });
+  } catch (error) {
+    console.error('Error batch creating contacts:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to import contacts',
       error: error.message
     });
   }

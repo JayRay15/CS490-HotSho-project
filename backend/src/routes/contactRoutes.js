@@ -9,7 +9,8 @@ import {
   addInteraction,
   getUpcomingFollowUps,
   getContactStats,
-  linkContactToJob
+  linkContactToJob,
+  batchCreateContacts
 } from '../controllers/contactController.js';
 
 const router = express.Router();
@@ -43,5 +44,8 @@ router.post('/:id/interactions', addInteraction);
 
 // POST /api/contacts/:id/link-job/:jobId - Link contact to job
 router.post('/:id/link-job/:jobId', linkContactToJob);
+
+// POST /api/contacts/batch - Batch create contacts
+router.post('/batch', batchCreateContacts);
 
 export default router;
