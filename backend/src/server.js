@@ -85,6 +85,8 @@ app.use("/api/contacts", contactRoutes);
 app.use("/api/referrals", referralRoutes);
 app.use("/api/networking-events", networkingEventRoutes);
 app.use("/api/interview-coaching", interviewCoachingRoutes);
+app.use("/api/goals", goalRoutes);
+app.use("/api/interview-question-bank", interviewQuestionBankRoutes);
 // Mount profile routes under /api/profile (existing) and also under /api/users
 // so frontend requests to /api/users/... (used elsewhere in the app) resolve correctly.
 app.use("/api/profile", profileRoutes);

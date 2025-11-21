@@ -295,10 +295,10 @@ const GoalDetail = () => {
         {/* Quick Actions */}
         {goal.status === 'Completed' && !goal.celebrated && (
           <Button
-            variant="primary"
+            variant="success"
             onClick={handleCelebrate}
             disabled={celebrating}
-            className="w-full bg-linear-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600"
+            className="w-full bg-success-600 hover:bg-success-700 text-white shadow-md rounded-xl"
           >
             {celebrating ? (
               <>
@@ -307,7 +307,7 @@ const GoalDetail = () => {
               </>
             ) : (
               <>
-                <PartyPopper className="w-5 h-5 mr-2" />
+                <PartyPopper className="w-5 h-5 mr-2 text-success-200" />
                 Celebrate Achievement!
               </>
             )}
@@ -335,23 +335,23 @@ const GoalDetail = () => {
 
       {/* Celebration */}
       {celebration && (
-        <Card className="border-yellow-200 bg-linear-to-br from-yellow-50 to-orange-50">
+        <Card className="border-success-200 bg-linear-to-br from-success-50 to-success-100">
           <div className="text-center mb-4">
-            <Trophy className="w-16 h-16 text-yellow-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Congratulations!</h2>
+            <Trophy className="w-16 h-16 text-success-600 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-success-900 mb-2">Congratulations!</h2>
           </div>
           <div className="prose prose-sm max-w-none">
-            <p className="text-gray-700 whitespace-pre-line">{celebration.celebrationMessage}</p>
+            <p className="text-success-700 whitespace-pre-line">{celebration.celebrationMessage}</p>
           </div>
           
           {celebration.achievementHighlights && celebration.achievementHighlights.length > 0 && (
             <div className="mt-6">
-              <h3 className="font-bold text-gray-900 mb-3">Achievement Highlights</h3>
+              <h3 className="font-bold text-success-900 mb-3">Achievement Highlights</h3>
               <ul className="space-y-2">
                 {celebration.achievementHighlights.map((highlight, index) => (
                   <li key={index} className="flex items-start gap-2">
-                    <Award className="w-5 h-5 text-yellow-600 shrink-0 mt-0.5" />
-                    <span className="text-gray-700">{highlight}</span>
+                    <Award className="w-5 h-5 text-success-600 shrink-0 mt-0.5" />
+                    <span className="text-success-700">{highlight}</span>
                   </li>
                 ))}
               </ul>
@@ -359,9 +359,9 @@ const GoalDetail = () => {
           )}
 
           {celebration.shareableMessage && (
-            <div className="mt-6 p-4 bg-white rounded-lg border border-yellow-200">
-              <p className="text-sm font-medium text-gray-700 mb-2">Share Your Success:</p>
-              <p className="text-gray-600 italic">{celebration.shareableMessage}</p>
+            <div className="mt-6 p-4 bg-success-50 rounded-lg border border-success-200">
+              <p className="text-sm font-medium text-success-700 mb-2">Share Your Success:</p>
+              <p className="text-success-600 italic">{celebration.shareableMessage}</p>
             </div>
           )}
         </Card>

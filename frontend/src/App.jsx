@@ -72,6 +72,10 @@ function App() {
           <Route path="/interview-coaching" element={<ProtectedRoute><InterviewCoaching /></ProtectedRoute>} />
           <Route path="/network" element={<ProtectedRoute><Network /></ProtectedRoute>} />
           <Route path="/writing-practice" element={<ProtectedRoute><WritingPracticePage /></ProtectedRoute>} />
+          <Route path="/goals" element={<ProtectedRoute><GoalsPage /></ProtectedRoute>} />
+          <Route path="/goals/new" element={<ProtectedRoute><NewGoalPage /></ProtectedRoute>} />
+          <Route path="/goals/:id/edit" element={<ProtectedRoute><EditGoalPage /></ProtectedRoute>} />
+          <Route path="/goals/:id" element={<ProtectedRoute><GoalDetailPage /></ProtectedRoute>} />
         </Routes>
       </Router>
     </ErrorBoundary>
