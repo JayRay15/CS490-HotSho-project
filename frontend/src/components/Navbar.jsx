@@ -12,6 +12,7 @@ export default function Navbar() {
     const [profilePicture, setProfilePicture] = useState(null);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [careerDropdownOpen, setCareerDropdownOpen] = useState(false);
+    const [dropdownTimeout, setDropdownTimeout] = useState(null);
 
     // Fetch user's custom profile picture
     useEffect(() => {
@@ -95,12 +96,25 @@ export default function Navbar() {
                             <NavLink to="/resumes" className={navLinkClass} aria-label="Resumes">
                                 Resumes & Cover Letters
                             </NavLink>
-                            <div className="relative" onMouseLeave={() => setCareerDropdownOpen(false)}>
+                            <div
+                                className="relative"
+                                onMouseLeave={() => {
+                                    const timeout = setTimeout(() => setCareerDropdownOpen(false), 300);
+                                    setDropdownTimeout(timeout);
+                                }}
+                                onMouseEnter={() => {
+                                    if (dropdownTimeout) clearTimeout(dropdownTimeout);
+                                    setCareerDropdownOpen(true);
+                                }}
+                            >
                                 <button
                                     className={navLinkClass({ isActive: false })}
                                     aria-label="Career Tools"
                                     onClick={() => setCareerDropdownOpen((open) => !open)}
-                                    onMouseEnter={() => setCareerDropdownOpen(true)}
+                                    onMouseEnter={() => {
+                                        if (dropdownTimeout) clearTimeout(dropdownTimeout);
+                                        setCareerDropdownOpen(true);
+                                    }}
                                     tabIndex={0}
                                 >
                                     Career Tools
@@ -111,7 +125,10 @@ export default function Navbar() {
                                 {careerDropdownOpen && (
                                     <div
                                         className="absolute left-0 mt-2 w-56 bg-white rounded shadow-lg z-10"
-                                        onMouseEnter={() => setCareerDropdownOpen(true)}
+                                        onMouseEnter={() => {
+                                            if (dropdownTimeout) clearTimeout(dropdownTimeout);
+                                            setCareerDropdownOpen(true);
+                                        }}
                                     >
                                         <NavLink to="/goals" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Career Goals" onClick={() => setCareerDropdownOpen(false)}>
                                             Career Goals

@@ -498,8 +498,7 @@ const GoalForm = ({ goal, isEdit = false }) => {
               />
             </div>
             <div>
-              <Button type="button" variant="outline" onClick={addMilestone} className="w-full">
-                <Plus className="w-4 h-4 mr-2" />
+              <Button type="button" variant="primary" onClick={addMilestone} className="w-full px-6 py-3 text-base rounded-xl">
                 Add
               </Button>
             </div>
@@ -550,9 +549,9 @@ const GoalForm = ({ goal, isEdit = false }) => {
           <Button
             type="submit"
             variant="primary"
-            size="lg"
+            size="large"
             disabled={loading}
-            className="flex-1"
+            className="flex-1 px-6 py-3 text-lg rounded-xl"
           >
             {loading ? (
               <>
@@ -568,9 +567,10 @@ const GoalForm = ({ goal, isEdit = false }) => {
           <Button
             type="button"
             variant="outline"
-            size="lg"
+            size="large"
             onClick={() => navigate('/goals')}
             disabled={loading}
+            className="px-6 py-3 text-lg rounded-xl min-w-[100px]"
           >
             Cancel
           </Button>

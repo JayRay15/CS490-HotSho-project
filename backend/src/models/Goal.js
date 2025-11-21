@@ -440,7 +440,11 @@ goalSchema.methods.addProgressUpdate = function(value, notes = '', metrics = {})
     notes,
     metrics
   });
-  this.measurable.currentValue = value;
+  if (typeof this.measurable.currentValue === 'number') {
+    this.measurable.currentValue += value;
+  } else {
+    this.measurable.currentValue = value;
+  }
   return this.save();
 };
 

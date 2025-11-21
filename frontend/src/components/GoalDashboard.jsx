@@ -196,61 +196,62 @@ const GoalDashboard = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <Target className="w-8 h-8 text-primary-600" />
-            Career Goals
-          </h1>
-          <p className="text-gray-600 mt-1">Track your progress and achieve your career objectives</p>
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-6 w-full justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+              <Target className="w-8 h-8 text-primary-600" />
+              Career Goals
+            </h1>
+            <p className="text-gray-600 mt-1">Track your progress and achieve your career objectives</p>
+          </div>
+          <Link to="/goals/new" className="self-start md:self-center">
+            <Button variant="success" size="large" className="px-6 py-3 text-lg rounded-xl shadow-md w-full md:w-auto block mx-auto text-center">
+              Create New Goal
+            </Button>
+          </Link>
         </div>
-        <Link to="/goals/new">
-          <Button variant="primary" size="md">
-            <Target className="w-5 h-5 mr-2" />
-            Create New Goal
-          </Button>
-        </Link>
       </div>
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-br from-primary-50 to-primary-100 border-primary-200">
+        <Card className="bg-linear-to-br from-primary-50 to-primary-100 border-primary-200">
           <div className="flex items-center justify-between">
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-primary-700">Total Goals</p>
               <p className="text-3xl font-bold text-primary-900 mt-1">{stats.total}</p>
             </div>
-            <Target className="w-10 h-10 text-primary-600 opacity-50 flex-shrink-0 ml-2" />
+            <Target className="w-10 h-10 text-primary-600 opacity-50 shrink-0 ml-2" />
           </div>
         </Card>
 
-        <Card className="bg-gradient-to-br from-success-50 to-success-100 border-success-200">
+        <Card className="bg-linear-to-br from-success-50 to-success-100 border-success-200">
           <div className="flex items-center justify-between">
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-success-700">Completed</p>
               <p className="text-3xl font-bold text-success-900 mt-1">{stats.completed}</p>
               <p className="text-xs text-success-600 mt-1">{stats.completionRate}% success rate</p>
             </div>
-            <CheckCircle className="w-10 h-10 text-success-600 opacity-50 flex-shrink-0 ml-2" />
+            <CheckCircle className="w-10 h-10 text-success-600 opacity-50 shrink-0 ml-2" />
           </div>
         </Card>
 
-        <Card className="bg-gradient-to-br from-accent-50 to-accent-100 border-accent-200">
+        <Card className="bg-linear-to-br from-accent-50 to-accent-100 border-accent-200">
           <div className="flex items-center justify-between">
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-accent-700">In Progress</p>
               <p className="text-3xl font-bold text-accent-900 mt-1">{stats.inProgress}</p>
             </div>
-            <TrendingUp className="w-10 h-10 text-accent-600 opacity-50 flex-shrink-0 ml-2" />
+            <TrendingUp className="w-10 h-10 text-accent-600 opacity-50 shrink-0 ml-2" />
           </div>
         </Card>
 
-        <Card className="bg-gradient-to-br from-error-50 to-error-100 border-error-200">
+        <Card className="bg-linear-to-br from-error-50 to-error-100 border-error-200">
           <div className="flex items-center justify-between">
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-error-700">At Risk</p>
               <p className="text-3xl font-bold text-error-900 mt-1">{stats.atRisk}</p>
             </div>
-            <AlertCircle className="w-10 h-10 text-error-600 opacity-50 flex-shrink-0 ml-2" />
+            <AlertCircle className="w-10 h-10 text-error-600 opacity-50 shrink-0 ml-2" />
           </div>
         </Card>
       </div>
@@ -298,7 +299,7 @@ const GoalDashboard = () => {
                 activeTab === tab
                   ? 'border-primary-600 text-primary-700'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm capitalize transition-colors flex-shrink-0`}
+              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm capitalize transition-colors shrink-0`}
             >
               {tab}
             </button>
@@ -411,7 +412,7 @@ const GoalDashboard = () => {
 
         {/* Active Goals Tab */}
         {activeTab === 'active' && (
-          <div className="space-y-4">
+          <div className="flex flex-col gap-8">
             {activeGoals && activeGoals.length > 0 ? (
               activeGoals.map((goal) => {
                 const statusInfo = formatGoalStatus(goal.status);
@@ -423,7 +424,7 @@ const GoalDashboard = () => {
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
                             <h3 className="text-lg font-bold text-gray-900">{goal.title}</h3>
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap flex-shrink-0 ${
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap shrink-0 ${
                               goal.status === 'At Risk' ? 'bg-error-100 text-error-800' :
                               goal.status === 'On Track' ? 'bg-success-100 text-success-800' :
                               'bg-primary-100 text-primary-800'
@@ -440,7 +441,7 @@ const GoalDashboard = () => {
                             <span className="font-medium">{goal.priority} Priority</span>
                           </div>
                         </div>
-                        <div className="text-left sm:text-right flex-shrink-0">
+                        <div className="text-left sm:text-right shrink-0">
                           <div className="mb-2">
                             <div className="text-2xl font-bold text-primary-600">{goal.progressPercentage}%</div>
                             <div className="text-xs text-gray-500">Complete</div>
@@ -482,7 +483,7 @@ const GoalDashboard = () => {
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No Active Goals</h3>
                 <p className="text-gray-600 mb-6">Start achieving your career objectives by creating your first goal</p>
                 <Link to="/goals/new">
-                  <Button variant="primary">Create Your First Goal</Button>
+                  <Button variant="success">Create Your First Goal</Button>
                 </Link>
               </Card>
             )}
@@ -491,7 +492,7 @@ const GoalDashboard = () => {
 
         {/* Completed Goals Tab */}
         {activeTab === 'completed' && (
-          <div className="space-y-4">
+          <div className="flex flex-col gap-8">
             {recentCompletions && recentCompletions.length > 0 ? (
               recentCompletions.map((goal) => (
                 <Link key={goal._id} to={`/goals/${goal._id}`}>
@@ -542,7 +543,9 @@ const GoalDashboard = () => {
                   Get personalized career goal suggestions based on your profile and current progress
                 </p>
                 <Button
-                  variant="primary"
+                  variant="success"
+                  size="large"
+                  className="w-full max-w-xs mx-auto px-6 py-3 text-lg rounded-xl shadow-md block text-center"
                   onClick={loadRecommendations}
                   disabled={loadingRecommendations}
                 >
@@ -552,10 +555,7 @@ const GoalDashboard = () => {
                       Generating...
                     </>
                   ) : (
-                    <>
-                      <Lightbulb className="w-5 h-5 mr-2" />
-                      Generate Recommendations
-                    </>
+                    <>Generate Recommendations</> 
                   )}
                 </Button>
               </Card>
@@ -654,7 +654,9 @@ const GoalDashboard = () => {
                   Discover what works best for you and optimize your goal-setting strategy
                 </p>
                 <Button
-                  variant="primary"
+                  variant="success"
+                  size="large"
+                  className="w-full max-w-xs mx-auto px-6 py-3 text-lg rounded-xl shadow-md block text-center"
                   onClick={loadPatterns}
                   disabled={loadingPatterns || (stats.total < 3)}
                 >
@@ -664,10 +666,7 @@ const GoalDashboard = () => {
                       Analyzing...
                     </>
                   ) : (
-                    <>
-                      <BarChart3 className="w-5 h-5 mr-2" />
-                      Analyze Patterns
-                    </>
+                    <>Analyze Patterns</>
                   )}
                 </Button>
                 {stats.total < 3 && (

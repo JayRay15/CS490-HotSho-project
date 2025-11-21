@@ -71,15 +71,25 @@ const GoalDetail = () => {
 
   const handleProgressUpdate = async (e) => {
     e.preventDefault();
-    if (!progressValue || progressValue < 0) {
+    const numValue = parseFloat(progressValue);
+    if (!progressValue || numValue < 0) {
       toast.error('Please enter a valid progress value');
       return;
     }
 
     try {
       setUpdatingProgress(true);
-      const response = await addProgressUpdate(id, parseFloat(progressValue), progressNotes);
-      setGoal(response.goal);
+      const response = await addProgressUpdate(id, numValue, progressNotes);
+      const updatedGoal = response.goal;
+      
+      // Ensure progressPercentage is recalculated if not present in response
+      if (!updatedGoal.progressPercentage && updatedGoal.measurable && updatedGoal.measurable.targetValue) {
+        updatedGoal.progressPercentage = Math.round((updatedGoal.measurable.currentValue / updatedGoal.measurable.targetValue) * 100);
+      }
+      
+      // Force a re-render by creating a new object
+      setGoal({ ...updatedGoal });
+      setProgressValue(updatedGoal.measurable?.currentValue || 0);
       setProgressNotes('');
       toast.success('Progress updated successfully!');
     } catch (err) {
@@ -94,7 +104,7 @@ const GoalDetail = () => {
     try {
       const response = await completeMilestone(id, milestoneId);
       setGoal(response.goal);
-      toast.success('Milestone completed! 🎉');
+      toast.success('Milestone completed!');
     } catch (err) {
       console.error('Complete Milestone Error:', err);
       toast.error('Failed to complete milestone');
@@ -122,7 +132,7 @@ const GoalDetail = () => {
       const response = await celebrateGoal(id);
       setCelebration(response.celebration);
       setGoal(response.goal);
-      toast.success('🎉 Congratulations on your achievement!');
+      toast.success('Congratulations on your achievement!');
     } catch (err) {
       console.error('Celebrate Goal Error:', err);
       toast.error('Failed to generate celebration');
@@ -168,18 +178,16 @@ const GoalDetail = () => {
         </Link>
         <div className="flex gap-2">
           <Link to={`/goals/${id}/edit`}>
-            <Button variant="outline" size="sm">
-              <Edit className="w-4 h-4 mr-2" />
+            <Button variant="primary" size="large" className="px-6 py-3 text-lg rounded-xl">
               Edit
             </Button>
           </Link>
           <Button
-            variant="outline"
-            size="sm"
+            variant="danger"
+            size="large"
             onClick={() => setShowDeleteConfirm(true)}
-            className="text-red-600 hover:text-red-800 hover:border-red-600"
+            className="px-6 py-3 text-lg rounded-xl"
           >
-            <Trash2 className="w-4 h-4 mr-2" />
             Delete
           </Button>
         </div>
@@ -187,7 +195,7 @@ const GoalDetail = () => {
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center z-50 w-screen h-screen">
           <Card className="max-w-md">
             <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Goal?</h3>
             <p className="text-gray-600 mb-6">
@@ -290,7 +298,7 @@ const GoalDetail = () => {
             variant="primary"
             onClick={handleCelebrate}
             disabled={celebrating}
-            className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600"
+            className="w-full bg-linear-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600"
           >
             {celebrating ? (
               <>
@@ -300,7 +308,7 @@ const GoalDetail = () => {
             ) : (
               <>
                 <PartyPopper className="w-5 h-5 mr-2" />
-                Celebrate Achievement! 🎉
+                Celebrate Achievement!
               </>
             )}
           </Button>
@@ -319,10 +327,7 @@ const GoalDetail = () => {
                 Analyzing...
               </>
             ) : (
-              <>
-                <Sparkles className="w-5 h-5 mr-2" />
-                Analyze Progress with AI
-              </>
+              <>Analyze Progress with AI</>
             )}
           </Button>
         )}
@@ -330,10 +335,10 @@ const GoalDetail = () => {
 
       {/* Celebration */}
       {celebration && (
-        <Card className="border-yellow-200 bg-gradient-to-br from-yellow-50 to-orange-50">
+        <Card className="border-yellow-200 bg-linear-to-br from-yellow-50 to-orange-50">
           <div className="text-center mb-4">
             <Trophy className="w-16 h-16 text-yellow-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">🎉 Congratulations! 🎉</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Congratulations!</h2>
           </div>
           <div className="prose prose-sm max-w-none">
             <p className="text-gray-700 whitespace-pre-line">{celebration.celebrationMessage}</p>
@@ -345,7 +350,7 @@ const GoalDetail = () => {
               <ul className="space-y-2">
                 {celebration.achievementHighlights.map((highlight, index) => (
                   <li key={index} className="flex items-start gap-2">
-                    <Award className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                    <Award className="w-5 h-5 text-yellow-600 shrink-0 mt-0.5" />
                     <span className="text-gray-700">{highlight}</span>
                   </li>
                 ))}
@@ -513,8 +518,7 @@ const GoalDetail = () => {
       {/* Progress Update Form */}
       {goal.status !== 'Completed' && goal.status !== 'Abandoned' && (
         <Card>
-          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-green-600" />
+          <h2 className="text-lg font-bold text-gray-900 mb-4">
             Update Progress
           </h2>
           <form onSubmit={handleProgressUpdate} className="space-y-4">
@@ -554,10 +558,7 @@ const GoalDetail = () => {
                   Updating...
                 </>
               ) : (
-                <>
-                  <CheckCircle className="w-5 h-5 mr-2" />
-                  Update Progress
-                </>
+                <>Update Progress</>
               )}
             </Button>
           </form>
@@ -602,7 +603,8 @@ const GoalDetail = () => {
                   {!milestone.completed && goal.status !== 'Completed' && (
                     <Button
                       variant="outline"
-                      size="sm"
+                      size="md"
+                      className="px-6"
                       onClick={() => handleMilestoneComplete(milestone._id)}
                     >
                       Complete
