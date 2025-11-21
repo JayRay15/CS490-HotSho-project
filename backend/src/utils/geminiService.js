@@ -1863,3 +1863,417 @@ Return ONLY valid JSON array, no markdown formatting.`;
   }
 }
 
+/**
+ * Generate personalized goal recommendations based on user profile and current goals
+ * @param {Object} userProfile - User's profile data
+ * @param {Array} currentGoals - User's current goals
+ * @param {Object} jobSearchData - User's job search analytics
+ * @returns {Promise<Object>} Goal recommendations with strategies and resources
+ */
+export async function generateGoalRecommendations(userProfile, currentGoals = [], jobSearchData = {}) {
+  const model = genAI.getGenerativeModel({ model: "models/gemini-flash-latest" });
+
+  const prompt = `You are an expert career coach and goal-setting strategist. Analyze the user's profile and current goals to generate personalized career goal recommendations.
+
+**USER PROFILE:**
+Skills: ${userProfile.skills?.map(s => `${s.name} (${s.level})`).join(', ') || 'None listed'}
+Experience: ${userProfile.employment?.map(e => `${e.position || e.jobTitle} at ${e.company}`).join(', ') || 'None listed'}
+Education: ${userProfile.education?.map(e => `${e.degree} in ${e.fieldOfStudy}`).join(', ') || 'None listed'}
+Target Roles: ${userProfile.targetRoles?.join(', ') || 'Not specified'}
+Career Interests: ${userProfile.careerInterests?.join(', ') || 'Not specified'}
+
+**CURRENT GOALS:**
+${currentGoals.length > 0 ? currentGoals.map((g, i) => `
+${i + 1}. ${g.title} (${g.category})
+   Status: ${g.status}
+   Progress: ${g.progressPercentage || 0}%
+   Target: ${g.measurable?.targetValue} ${g.measurable?.unit}
+   Deadline: ${new Date(g.timeBound?.targetDate).toLocaleDateString()}
+`).join('\n') : 'No active goals'}
+
+**JOB SEARCH DATA:**
+Applications Sent: ${jobSearchData.totalApplications || 0}
+Interviews: ${jobSearchData.totalInterviews || 0}
+Offers: ${jobSearchData.totalOffers || 0}
+Response Rate: ${jobSearchData.responseRate || 0}%
+
+**TASK:**
+Generate 5-7 personalized SMART goal recommendations that will help advance the user's career. Consider:
+1. Gaps in their current goal coverage
+2. Career progression opportunities
+3. Skill development needs
+4. Job search optimization
+5. Networking and personal brand building
+
+For each recommendation, provide:
+- **Goal Title** (concise and actionable)
+- **Category** (Job Search, Skill Development, Networking, etc.)
+- **Type** (Short-term or Long-term)
+- **Priority** (Low, Medium, High, Critical)
+- **Specific Description** (What exactly to accomplish)
+- **Measurable Metric** (How to measure progress with target value and unit)
+- **Timeline** (Recommended duration in days)
+- **Key Milestones** (3-5 actionable steps)
+- **Success Strategies** (2-3 specific strategies to achieve this goal)
+- **Resources** (2-3 helpful resources, tools, or platforms)
+- **Why It Matters** (Impact on career success)
+
+**OUTPUT FORMAT (JSON):**
+{
+  "recommendations": [
+    {
+      "title": "Goal title",
+      "category": "Category name",
+      "type": "Short-term or Long-term",
+      "priority": "Priority level",
+      "specific": "Specific description",
+      "measurable": {
+        "metric": "What to measure",
+        "targetValue": 10,
+        "unit": "applications|interviews|skills|etc"
+      },
+      "timeline": 30,
+      "milestones": ["Milestone 1", "Milestone 2", "Milestone 3"],
+      "strategies": ["Strategy 1", "Strategy 2"],
+      "resources": ["Resource 1", "Resource 2"],
+      "impact": "Why this matters"
+    }
+  ],
+  "overallStrategy": "One paragraph strategic summary",
+  "priorityActions": ["Top 3 immediate actions to take"]
+}
+
+Return ONLY valid JSON, no markdown formatting.`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+    const cleanedText = text.replace(/```json\n?|```\n?/g, '').trim();
+    return JSON.parse(cleanedText);
+  } catch (error) {
+    console.error('Generate Goal Recommendations Error:', error);
+    throw new Error(`Failed to generate goal recommendations: ${error.message}`);
+  }
+}
+
+/**
+ * Analyze goal progress and generate insights
+ * @param {Object} goal - The goal to analyze
+ * @param {Object} userProfile - User's profile data
+ * @returns {Promise<Object>} Progress insights and recommendations
+ */
+export async function analyzeGoalProgress(goal, userProfile = {}) {
+  const model = genAI.getGenerativeModel({ model: "models/gemini-flash-latest" });
+
+  const progressHistory = goal.progressUpdates?.slice(-10) || [];
+  const recentMilestones = goal.milestones?.slice(-5) || [];
+
+  const prompt = `You are an expert career coach analyzing goal progress. Provide detailed insights and actionable recommendations.
+
+**GOAL DETAILS:**
+Title: ${goal.title}
+Category: ${goal.category}
+Type: ${goal.type}
+Status: ${goal.status}
+Priority: ${goal.priority}
+
+Description: ${goal.description}
+
+**SMART CRITERIA:**
+Specific: ${goal.specific}
+Measurable: ${goal.measurable?.metric} - Target: ${goal.measurable?.targetValue} ${goal.measurable?.unit}, Current: ${goal.measurable?.currentValue} ${goal.measurable?.unit}
+Achievable: ${goal.achievable}
+Relevant: ${goal.relevant}
+Time-bound: Started ${new Date(goal.timeBound?.startDate).toLocaleDateString()}, Target ${new Date(goal.timeBound?.targetDate).toLocaleDateString()}
+
+**PROGRESS DATA:**
+Overall Progress: ${goal.progressPercentage || 0}%
+Days Remaining: ${goal.daysRemaining || 0}
+Milestone Completion: ${goal.milestoneCompletionRate || 0}%
+On Track: ${goal.isOnTrack ? 'Yes' : 'No'}
+
+Recent Progress Updates:
+${progressHistory.length > 0 ? progressHistory.map((p, i) => `
+${i + 1}. ${new Date(p.date).toLocaleDateString()}: ${p.value} ${goal.measurable?.unit}
+   ${p.notes ? `Notes: ${p.notes}` : ''}
+`).join('\n') : 'No progress updates yet'}
+
+Milestones:
+${recentMilestones.length > 0 ? recentMilestones.map((m, i) => `
+${i + 1}. ${m.title} - ${m.completed ? 'Completed ✓' : 'Pending'}
+   Target: ${new Date(m.targetDate).toLocaleDateString()}
+`).join('\n') : 'No milestones defined'}
+
+**TASK:**
+Analyze this goal and provide comprehensive insights:
+
+1. **Progress Assessment** (Current state and trajectory)
+2. **Risk Analysis** (Potential obstacles and challenges)
+3. **Patterns Identified** (Positive and negative patterns in progress)
+4. **Adjustment Recommendations** (Specific changes to timeline, approach, or metrics)
+5. **Motivation Strategies** (How to stay motivated and overcome challenges)
+6. **Success Predictions** (Likelihood of achieving goal on time)
+
+**OUTPUT FORMAT (JSON):**
+{
+  "progressAssessment": {
+    "overallStatus": "On track|Behind schedule|Ahead of schedule",
+    "velocityTrend": "Accelerating|Steady|Slowing|Stagnant",
+    "summary": "1-2 sentence assessment"
+  },
+  "riskAnalysis": {
+    "riskLevel": "Low|Medium|High|Critical",
+    "identifiedRisks": ["Risk 1", "Risk 2"],
+    "mitigationStrategies": ["Strategy 1", "Strategy 2"]
+  },
+  "patterns": {
+    "positive": ["Pattern 1", "Pattern 2"],
+    "negative": ["Pattern 1", "Pattern 2"],
+    "recommendations": "How to leverage good patterns and fix bad ones"
+  },
+  "adjustments": [
+    {
+      "type": "Timeline|Metric|Strategy|Approach",
+      "recommendation": "Specific adjustment to make",
+      "rationale": "Why this adjustment is needed",
+      "priority": "Low|Medium|High"
+    }
+  ],
+  "motivationStrategies": [
+    "Strategy 1",
+    "Strategy 2",
+    "Strategy 3"
+  ],
+  "successPrediction": {
+    "likelihood": 75,
+    "confidence": "Low|Medium|High",
+    "keyFactors": ["Factor 1", "Factor 2"],
+    "criticalActions": ["Action 1", "Action 2"]
+  },
+  "nextSteps": ["Immediate action 1", "Immediate action 2", "Immediate action 3"]
+}
+
+Return ONLY valid JSON, no markdown formatting.`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+    const cleanedText = text.replace(/```json\n?|```\n?/g, '').trim();
+    return JSON.parse(cleanedText);
+  } catch (error) {
+    console.error('Analyze Goal Progress Error:', error);
+    throw new Error(`Failed to analyze goal progress: ${error.message}`);
+  }
+}
+
+/**
+ * Generate achievement celebration message and success analysis
+ * @param {Object} goal - The completed goal
+ * @param {Object} userProfile - User's profile data
+ * @param {Array} allGoals - All user goals for context
+ * @returns {Promise<Object>} Celebration message and achievement insights
+ */
+export async function generateAchievementCelebration(goal, userProfile = {}, allGoals = []) {
+  const model = genAI.getGenerativeModel({ model: "models/gemini-flash-latest" });
+
+  const completedGoals = allGoals.filter(g => g.status === 'Completed');
+  const timeToComplete = goal.timeBound?.completedDate && goal.timeBound?.startDate
+    ? Math.ceil((new Date(goal.timeBound.completedDate) - new Date(goal.timeBound.startDate)) / (1000 * 60 * 60 * 24))
+    : 0;
+
+  const prompt = `You are an enthusiastic career coach celebrating a goal achievement. Generate a motivating celebration message and insightful success analysis.
+
+**ACHIEVED GOAL:**
+Title: ${goal.title}
+Category: ${goal.category}
+Description: ${goal.description}
+Target: ${goal.measurable?.targetValue} ${goal.measurable?.unit}
+Final Value: ${goal.measurable?.currentValue} ${goal.measurable?.unit}
+Time to Complete: ${timeToComplete} days
+Milestones Completed: ${goal.milestones?.filter(m => m.completed).length || 0}
+
+**USER CONTEXT:**
+Total Goals: ${allGoals.length}
+Completed Goals: ${completedGoals.length}
+Success Rate: ${allGoals.length > 0 ? Math.round((completedGoals.length / allGoals.length) * 100) : 0}%
+
+**IMPACT METRICS:**
+Job Applications: ${goal.impactMetrics?.jobApplications || 0}
+Interviews Secured: ${goal.impactMetrics?.interviewsSecured || 0}
+Offers Received: ${goal.impactMetrics?.offersReceived || 0}
+Skills Acquired: ${goal.impactMetrics?.skillsAcquired || 0}
+Connections Gained: ${goal.impactMetrics?.connectionsGained || 0}
+
+**TASK:**
+Generate an inspiring celebration and comprehensive success analysis:
+
+1. **Celebration Message** (Enthusiastic 2-3 paragraph congratulatory message)
+2. **Achievement Highlights** (Key accomplishments and milestones)
+3. **Success Factors** (What contributed to success)
+4. **Lessons Learned** (Transferable insights for future goals)
+5. **Career Impact** (How this achievement advances their career)
+6. **Next Level Goals** (Suggestions for building on this success)
+
+Make the tone celebratory, personal, and motivating!
+
+**OUTPUT FORMAT (JSON):**
+{
+  "celebrationMessage": "Enthusiastic multi-paragraph celebration",
+  "achievementHighlights": [
+    "Highlight 1",
+    "Highlight 2",
+    "Highlight 3"
+  ],
+  "successFactors": [
+    {
+      "factor": "Success factor name",
+      "description": "How this contributed",
+      "impact": "High|Medium|Low"
+    }
+  ],
+  "lessonsLearned": [
+    "Lesson 1",
+    "Lesson 2",
+    "Lesson 3"
+  ],
+  "careerImpact": {
+    "immediate": "Immediate impact description",
+    "longTerm": "Long-term impact description",
+    "opportunities": ["New opportunity 1", "New opportunity 2"]
+  },
+  "nextLevelGoals": [
+    {
+      "title": "Next goal suggestion",
+      "description": "Why this is a good next step",
+      "category": "Goal category"
+    }
+  ],
+  "shareableMessage": "Short shareable achievement message for social/accountability"
+}
+
+Return ONLY valid JSON, no markdown formatting.`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+    const cleanedText = text.replace(/```json\n?|```\n?/g, '').trim();
+    return JSON.parse(cleanedText);
+  } catch (error) {
+    console.error('Generate Achievement Celebration Error:', error);
+    throw new Error(`Failed to generate achievement celebration: ${error.message}`);
+  }
+}
+
+/**
+ * Identify success patterns across multiple goals
+ * @param {Array} goals - User's goals (completed and in-progress)
+ * @param {Object} userProfile - User's profile data
+ * @returns {Promise<Object>} Success patterns and optimization strategies
+ */
+export async function identifySuccessPatterns(goals, userProfile = {}) {
+  const model = genAI.getGenerativeModel({ model: "models/gemini-flash-latest" });
+
+  const completedGoals = goals.filter(g => g.status === 'Completed');
+  const failedGoals = goals.filter(g => g.status === 'Abandoned' || g.status === 'At Risk');
+  const activeGoals = goals.filter(g => g.status === 'In Progress' || g.status === 'On Track');
+
+  const prompt = `You are a data-driven career strategist analyzing goal achievement patterns. Identify what works and what doesn't.
+
+**GOAL STATISTICS:**
+Total Goals: ${goals.length}
+Completed: ${completedGoals.length}
+Failed/At Risk: ${failedGoals.length}
+Active: ${activeGoals.length}
+Success Rate: ${goals.length > 0 ? Math.round((completedGoals.length / goals.length) * 100) : 0}%
+
+**COMPLETED GOALS:**
+${completedGoals.slice(0, 5).map((g, i) => `
+${i + 1}. ${g.title} (${g.category})
+   Progress: ${g.progressPercentage || 0}%
+   Timeline: ${g.duration || 0} days planned, ${g.timeBound?.completedDate && g.timeBound?.startDate ? Math.ceil((new Date(g.timeBound.completedDate) - new Date(g.timeBound.startDate)) / (1000 * 60 * 60 * 24)) : 0} days actual
+   Priority: ${g.priority}
+`).join('\n')}
+
+**FAILED/AT RISK GOALS:**
+${failedGoals.slice(0, 5).map((g, i) => `
+${i + 1}. ${g.title} (${g.category})
+   Progress: ${g.progressPercentage || 0}%
+   Status: ${g.status}
+   Priority: ${g.priority}
+`).join('\n')}
+
+**ACTIVE GOALS:**
+${activeGoals.slice(0, 5).map((g, i) => `
+${i + 1}. ${g.title} (${g.category})
+   Progress: ${g.progressPercentage || 0}%
+   On Track: ${g.isOnTrack ? 'Yes' : 'No'}
+`).join('\n')}
+
+**TASK:**
+Analyze these goals to identify patterns and provide optimization strategies:
+
+1. **Success Patterns** (What characteristics lead to goal completion?)
+2. **Failure Patterns** (What characteristics correlate with abandonment?)
+3. **Optimal Goal Characteristics** (Best timeline, priority, category combinations)
+4. **Recommended Adjustments** (How to improve active goals based on patterns)
+5. **Goal-Setting Strategy** (Personalized approach for future goals)
+
+**OUTPUT FORMAT (JSON):**
+{
+  "successPatterns": [
+    {
+      "pattern": "Pattern description",
+      "frequency": "High|Medium|Low",
+      "examples": ["Example 1", "Example 2"],
+      "recommendation": "How to apply this pattern"
+    }
+  ],
+  "failurePatterns": [
+    {
+      "pattern": "Pattern description",
+      "frequency": "High|Medium|Low",
+      "examples": ["Example 1", "Example 2"],
+      "avoidance": "How to avoid this pattern"
+    }
+  ],
+  "optimalCharacteristics": {
+    "timeline": "Optimal duration in days",
+    "priorityBalance": "How to balance priorities",
+    "categoryFocus": "Which categories to focus on",
+    "milestoneStrategy": "How to structure milestones"
+  },
+  "activeGoalAdjustments": [
+    {
+      "goalId": "Goal ID if available",
+      "goalTitle": "Goal title",
+      "adjustmentType": "Timeline|Priority|Approach",
+      "recommendation": "Specific adjustment",
+      "rationale": "Why this adjustment"
+    }
+  ],
+  "personalizedStrategy": {
+    "strengths": ["Strength 1", "Strength 2"],
+    "weaknesses": ["Weakness 1", "Weakness 2"],
+    "recommendations": ["Rec 1", "Rec 2", "Rec 3"],
+    "focusAreas": ["Area 1", "Area 2"]
+  },
+  "benchmarks": {
+    "averageCompletionTime": "X days",
+    "optimalGoalLoad": "X active goals",
+    "recommendedCategories": ["Category 1", "Category 2"]
+  }
+}
+
+Return ONLY valid JSON, no markdown formatting.`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+    const cleanedText = text.replace(/```json\n?|```\n?/g, '').trim();
+    return JSON.parse(cleanedText);
+  } catch (error) {
+    console.error('Identify Success Patterns Error:', error);
+    throw new Error(`Failed to identify success patterns: ${error.message}`);
+  }
+}
+
