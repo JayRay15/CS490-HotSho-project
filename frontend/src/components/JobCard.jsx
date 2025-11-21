@@ -107,6 +107,17 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
     <div
       className={`relative rounded-lg border-2 p-4 mb-3 transition-all ${cardColorClass} ${isDragging ? "opacity-50 rotate-2 shadow-lg" : "hover:shadow-md"
         } ${isSelected ? 'ring-2 ring-blue-400' : ''}`}
+      onClick={() => {
+        try {
+          if (job?._id) {
+            window.localStorage.setItem('activeJobId', job._id);
+            window.sessionStorage.setItem('activeJobId', job._id);
+          }
+        } catch (e) { /* ignore storage errors */ }
+      }}
+      role="group"
+      aria-label={`Job card for ${job.title} at ${job.company}`}
+      title="Click to set active job for Interview Prep"
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-2">

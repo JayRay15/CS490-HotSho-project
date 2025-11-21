@@ -94,6 +94,8 @@ export default function Navbar() {
                             <NavLink to="/resumes" className={navLinkClass} aria-label="Resumes">
                                 Resumes & Cover Letters
                             </NavLink>
+                            {/* Interview Prep (dynamic job selection) */}
+                            <DynamicInterviewPrepLink navLinkClass={navLinkClass} />
                             <div className="relative group">
                                 <NavLink to="/prep" className={navLinkClass} aria-label="Prep">
                                     Prep
@@ -281,6 +283,7 @@ export default function Navbar() {
                         >
                             Resumes
                         </NavLink>
+                        <DynamicInterviewPrepLinkMobile />
                         <div className="relative group">
                             <NavLink
                                 to="/prep"
@@ -393,3 +396,48 @@ export default function Navbar() {
         </nav>
     );
 }
+// Helper functions & dynamic Interview Prep links
+function getActiveJobId() {
+    const keys = ['activeJobId', 'currentJobId', 'selectedJobId'];
+    for (const k of keys) {
+        const v = typeof window !== 'undefined' ? (window.localStorage.getItem(k) || window.sessionStorage.getItem(k)) : null;
+        if (v) return v;
+    }
+    return null;
+}
+
+function DynamicInterviewPrepLink({ navLinkClass }) {
+    const jobId = typeof window !== 'undefined' ? getActiveJobId() : null;
+    const target = jobId ? `/jobs/${jobId}/interview-prep` : '/jobs';
+    return (
+        <NavLink
+            to={target}
+            className={navLinkClass}
+            aria-label="Interview Prep"
+            title={jobId ? 'Open interview prep for active job' : 'Select a job then open Interview Prep'}
+        >
+            Interview Prep
+        </NavLink>
+    );
+}
+
+function DynamicInterviewPrepLinkMobile() {
+    const jobId = typeof window !== 'undefined' ? getActiveJobId() : null;
+    const target = jobId ? `/jobs/${jobId}/interview-prep` : '/jobs';
+    return (
+        <NavLink
+            to={target}
+            className={({ isActive }) =>
+                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                    ? 'bg-primary-900 text-white shadow-md'
+                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                }`
+            }
+            aria-label="Interview Prep"
+            title={jobId ? 'Open interview prep for active job' : 'Select a job then open Interview Prep'}
+        >
+            Interview Prep
+        </NavLink>
+    );
+}
+
