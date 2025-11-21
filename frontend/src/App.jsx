@@ -27,6 +27,7 @@ import CaseStudyPractice from "./components/CaseStudyPractice";
 import InterviewCoaching from "./pages/InterviewCoaching";
 import Network from "./pages/auth/Network";
 import WritingPracticePage from "./pages/WritingPracticePage";
+import InterviewPrepPage from "./pages/InterviewPrepPage.jsx";
 
 function App() {
   return (
@@ -67,6 +68,7 @@ function App() {
           <Route path="/interview-coaching" element={<ProtectedRoute><InterviewCoaching /></ProtectedRoute>} />
           <Route path="/network" element={<ProtectedRoute><Network /></ProtectedRoute>} />
           <Route path="/writing-practice" element={<ProtectedRoute><WritingPracticePage /></ProtectedRoute>} />
+          <Route path="/jobs/:jobId/interview-prep" element={<ProtectedRoute><InterviewPrepPage /></ProtectedRoute>} />
         </Routes>
       </Router>
     </ErrorBoundary>
