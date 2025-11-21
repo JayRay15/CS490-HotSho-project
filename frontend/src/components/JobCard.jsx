@@ -255,6 +255,7 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
       {/* Actions */}
       <div className="flex flex-col gap-2 pt-2 border-t border-gray-200">
         <div className="flex flex-wrap items-center gap-2">
+          {/* Interview Prep Button removed as requested */}
           <button
             onClick={() => setShowDetails(!showDetails)}
             className="text-xs text-blue-600 hover:text-blue-800"

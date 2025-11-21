@@ -76,6 +76,7 @@ function App() {
           <Route path="/goals/new" element={<ProtectedRoute><NewGoalPage /></ProtectedRoute>} />
           <Route path="/goals/:id/edit" element={<ProtectedRoute><EditGoalPage /></ProtectedRoute>} />
           <Route path="/goals/:id" element={<ProtectedRoute><GoalDetailPage /></ProtectedRoute>} />
+          <Route path="/jobs/:jobId/interview-prep" element={<ProtectedRoute><InterviewPrepPage /></ProtectedRoute>} />
         </Routes>
       </Router>
     </ErrorBoundary>

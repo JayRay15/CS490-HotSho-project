@@ -33,8 +33,8 @@ export default function Breadcrumb() {
                 label = 'Resumes & Cover Letters';
             }
 
-            // If last segment looks like a MongoDB ObjectId, use jobLabel if available
-            if (index === paths.length - 1 && /^[a-f\d]{24}$/i.test(path) && jobLabel) {
+            // If ANY segment looks like an ObjectId and we have a jobLabel, use it (support nested routes like /jobs/:id/interview-prep)
+            if (/^[a-f\d]{24}$/i.test(path) && jobLabel) {
                 label = jobLabel;
             }
 
@@ -53,15 +53,15 @@ export default function Breadcrumb() {
         return crumbs;
     }, [location.pathname, jobLabel]);
 
-    // Fetch job/challenge details if last segment is ObjectId
+    // Fetch job/challenge details if ANY segment is an ObjectId (supports nested routes like /jobs/:id/interview-prep)
     React.useEffect(() => {
         const paths = location.pathname.split('/').filter(Boolean);
-        const last = paths[paths.length - 1];
-        if (/^[a-f\d]{24}$/i.test(last)) {
+        const objectId = paths.find(p => /^[a-f\d]{24}$/i.test(p));
+        if (objectId) {
             if (paths.includes('goals')) {
                 // Fetch goal details
                 import('../api/goals').then(api => {
-                    api.getGoalById(last).then(response => {
+                    api.getGoalById(objectId).then(response => {
                         if (response && response.goal && response.goal.title) {
                             setJobLabel(response.goal.title);
                         } else {
@@ -72,7 +72,7 @@ export default function Breadcrumb() {
             } else if (paths.includes('technical-prep')) {
                 if (paths.includes('coding')) {
                     import('../api/technicalPrep').then(api => {
-                        api.technicalPrepAPI.getCodingChallenge(last).then(challenge => {
+                        api.technicalPrepAPI.getCodingChallenge(objectId).then(challenge => {
                             if (challenge && challenge.title) {
                                 setJobLabel(challenge.title);
                             } else {
@@ -82,7 +82,7 @@ export default function Breadcrumb() {
                     });
                 } else if (paths.includes('system-design')) {
                     import('../api/technicalPrep').then(api => {
-                        api.technicalPrepAPI.getSystemDesignQuestion(last).then(question => {
+                        api.technicalPrepAPI.getSystemDesignQuestion(objectId).then(question => {
                             if (question && question.title) {
                                 setJobLabel(question.title);
                             } else {
@@ -92,7 +92,7 @@ export default function Breadcrumb() {
                     });
                 } else if (paths.includes('case-study')) {
                     import('../api/technicalPrep').then(api => {
-                        api.technicalPrepAPI.getCaseStudy(last).then(caseStudy => {
+                        api.technicalPrepAPI.getCaseStudy(objectId).then(caseStudy => {
                             if (caseStudy && caseStudy.title) {
                                 setJobLabel(caseStudy.title);
                             } else {
@@ -102,17 +102,44 @@ export default function Breadcrumb() {
                     });
                 }
             } else {
-                // Default: Try to fetch job details
-                import('../api/salary').then(api => {
-                    api.getSalaryResearch(last).then(res => {
-                        const job = res.data?.data?.job;
-                        if (job && job.title && job.company) {
-                            setJobLabel(`${job.title} @ ${job.company}`);
-                        } else if (job && job.title) {
-                            setJobLabel(job.title);
+                // Try direct job lookup first; fallback to salary research if unavailable
+                import('../api/jobs').then(apiJobs => {
+                    apiJobs.getJob(objectId).then(res => {
+                        const job = res.data?.data?.job || res.data?.data?.job || res.data?.job; // handle various wrappers
+                        const core = job || res.data?.data?.job;
+                        if (core && core.title && core.company) {
+                            setJobLabel(`${core.title} @ ${core.company}`);
+                        } else if (core && core.title) {
+                            setJobLabel(core.title);
+                        } else {
+                            // fallback to salary research method
+                            import('../api/salary').then(api => {
+                                api.getSalaryResearch(objectId).then(res2 => {
+                                    const job2 = res2.data?.data?.job;
+                                    if (job2 && job2.title && job2.company) {
+                                        setJobLabel(`${job2.title} @ ${job2.company}`);
+                                    } else if (job2 && job2.title) {
+                                        setJobLabel(job2.title);
+                                    } else {
+                                        setJobLabel(null);
+                                    }
+                                }).catch(() => setJobLabel(null));
+                            });
                         }
                     }).catch(() => {
-                        setJobLabel(null);
+                        // fallback if direct job lookup fails
+                        import('../api/salary').then(api => {
+                            api.getSalaryResearch(objectId).then(res2 => {
+                                const job2 = res2.data?.data?.job;
+                                if (job2 && job2.title && job2.company) {
+                                    setJobLabel(`${job2.title} @ ${job2.company}`);
+                                } else if (job2 && job2.title) {
+                                    setJobLabel(job2.title);
+                                } else {
+                                    setJobLabel(null);
+                                }
+                            }).catch(() => setJobLabel(null));
+                        });
                     });
                 });
             }

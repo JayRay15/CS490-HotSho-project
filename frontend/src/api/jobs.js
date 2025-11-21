@@ -1,5 +1,9 @@
 import api, { retryRequest } from "./axios";
 
+// GET single job details
+export const getJob = (jobId) =>
+  retryRequest(() => api.get(`/api/jobs/${jobId}`));
+
 // UC-52: Link resume to job application
 export const linkResumeToJob = (jobId, resumeId) => 
   retryRequest(() => api.put(`/api/jobs/${jobId}/link-resume`, { resumeId }));

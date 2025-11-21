@@ -26,6 +26,10 @@ function generateQuestions(job, skills) {
   const company = job.company || "Company";
   const industry = job.industry || "Industry";
   const coreSkills = skills.slice(0, 8);
+  
+  // Default technical skills if none found
+  const defaultTechnicalSkills = ['problem-solving', 'communication', 'teamwork', 'time management'];
+  const technicalSkills = coreSkills.length > 0 ? coreSkills : defaultTechnicalSkills;
 
   const behavioralPrompts = [
     `Handling conflict within a team while working on a ${industry} project`,
@@ -33,7 +37,7 @@ function generateQuestions(job, skills) {
     `Resolving ambiguity in a high-impact ${industry} deliverable`,
     `Adapting to change during a product shift at ${company}`,
   ];
-  const technicalPrompts = coreSkills.map(s => `Applying '${s}' in a production scenario at ${company}`);
+  const technicalPrompts = technicalSkills.map(s => `Applying '${s}' in a ${role} role at ${company}`);
   const situationalPrompts = [
     `Approach if first 90 days in ${role} at ${company}`,
     `Strategy for addressing a legacy system performance issue in ${industry}`,
@@ -55,8 +59,8 @@ function generateQuestions(job, skills) {
     questions.push({
       text: `Explain your experience ${p}.`,
       category: "Technical",
-      difficulty: idx < 3 ? "Easy" : idx < 6 ? "Medium" : "Hard",
-      linkedSkills: [coreSkills[idx % coreSkills.length]].filter(Boolean),
+      difficulty: idx < 2 ? "Easy" : idx < 4 ? "Medium" : "Hard",
+      linkedSkills: [technicalSkills[idx % technicalSkills.length]].filter(Boolean),
       companyContext: `${company} / ${industry}`,
     });
   });
@@ -65,7 +69,7 @@ function generateQuestions(job, skills) {
       text: `How would you approach ${p}?`,
       category: "Situational",
       difficulty: idx === 0 ? "Easy" : idx === 1 ? "Medium" : "Hard",
-      linkedSkills: coreSkills.slice(idx, idx + 2),
+      linkedSkills: technicalSkills.slice(idx, idx + 2),
       companyContext: `${company} / ${industry}`,
     });
   });
