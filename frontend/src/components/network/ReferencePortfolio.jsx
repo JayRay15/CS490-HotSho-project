@@ -5,7 +5,229 @@ export default function ReferencePortfolio({ references, onClose }) {
   const printRef = useRef();
 
   const handlePrint = () => {
-    window.print();
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Please allow popups to print this document');
+      return;
+    }
+
+    // Build the HTML content
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Professional References</title>
+          <style>
+            @page {
+              size: letter;
+              margin: 0.4in;
+            }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+              color: #1f2937;
+              line-height: 1.4;
+              margin: 0;
+              padding: 10px;
+            }
+            .header {
+              text-align: center;
+              margin-bottom: 16px;
+              padding-bottom: 8px;
+              border-bottom: 2px solid #d1d5db;
+            }
+            .header h1 {
+              font-size: 24px;
+              font-weight: bold;
+              color: #111827;
+              margin-bottom: 4px;
+            }
+            .header p {
+              color: #4b5563;
+              margin: 2px 0;
+              font-size: 13px;
+            }
+            .reference-item {
+              border-bottom: 1px solid #e5e7eb;
+              padding-bottom: 12px;
+              margin-bottom: 12px;
+              page-break-inside: avoid;
+            }
+            .reference-item:last-child {
+              border-bottom: none;
+            }
+            .reference-name {
+              font-size: 16px;
+              font-weight: bold;
+              color: #111827;
+              margin-bottom: 4px;
+            }
+            .reference-title {
+              font-size: 14px;
+              color: #374151;
+              margin-bottom: 2px;
+            }
+            .reference-company {
+              color: #4b5563;
+              font-size: 13px;
+              margin-bottom: 8px;
+            }
+            .info-grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 12px;
+              margin-top: 8px;
+            }
+            .info-section h3 {
+              font-size: 12px;
+              font-weight: 600;
+              color: #374151;
+              margin-bottom: 4px;
+            }
+            .info-row {
+              display: flex;
+              margin-bottom: 2px;
+              font-size: 12px;
+            }
+            .info-label {
+              font-weight: 500;
+              color: #4b5563;
+              min-width: 70px;
+            }
+            .info-value {
+              color: #111827;
+            }
+            .notes {
+              margin-top: 8px;
+            }
+            .notes h3 {
+              font-size: 12px;
+              font-weight: 600;
+              color: #374151;
+              margin-bottom: 2px;
+            }
+            .notes p {
+              font-size: 12px;
+              color: #4b5563;
+              font-style: italic;
+            }
+            .footer {
+              margin-top: 16px;
+              padding-top: 8px;
+              border-top: 1px solid #d1d5db;
+              text-align: center;
+            }
+            .footer p {
+              font-size: 11px;
+              color: #6b7280;
+              margin: 2px 0;
+            }
+            @media print {
+              body {
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Professional References</h1>
+            <p>List of Professional References</p>
+            <p style="font-size: 11px; color: #6b7280; margin-top: 4px;">
+              Generated on ${new Date().toLocaleDateString()}
+            </p>
+          </div>
+
+          <div class="references-list">
+            ${references.map((ref, index) => `
+              <div class="reference-item">
+                <div class="reference-name">
+                  ${index + 1}. ${ref.firstName || ''} ${ref.lastName || ''}
+                </div>
+                ${ref.jobTitle ? `<div class="reference-title">${ref.jobTitle}</div>` : ''}
+                ${ref.company ? `<div class="reference-company">${ref.company}</div>` : ''}
+                
+                <div class="info-grid">
+                  <div class="info-section">
+                    <h3>Contact Information</h3>
+                    ${ref.email ? `
+                      <div class="info-row">
+                        <span class="info-label">Email:</span>
+                        <span class="info-value">${ref.email}</span>
+                      </div>
+                    ` : ''}
+                    ${ref.phone ? `
+                      <div class="info-row">
+                        <span class="info-label">Phone:</span>
+                        <span class="info-value">${ref.phone}</span>
+                      </div>
+                    ` : ''}
+                    ${ref.location ? `
+                      <div class="info-row">
+                        <span class="info-label">Location:</span>
+                        <span class="info-value">${ref.location}</span>
+                      </div>
+                    ` : ''}
+                    ${ref.linkedInUrl ? `
+                      <div class="info-row">
+                        <span class="info-label">LinkedIn:</span>
+                        <span class="info-value" style="word-break: break-all; font-size: 12px;">${ref.linkedInUrl}</span>
+                      </div>
+                    ` : ''}
+                  </div>
+                  
+                  <div class="info-section">
+                    <h3>Relationship</h3>
+                    <div class="info-row">
+                      <span class="info-label">Type:</span>
+                      <span class="info-value">${ref.relationshipType || 'Professional Contact'}</span>
+                    </div>
+                    <div class="info-row">
+                      <span class="info-label">Strength:</span>
+                      <span class="info-value">${ref.relationshipStrength || 'Medium'}</span>
+                    </div>
+                    ${ref.industry ? `
+                      <div class="info-row">
+                        <span class="info-label">Industry:</span>
+                        <span class="info-value">${ref.industry}</span>
+                      </div>
+                    ` : ''}
+                  </div>
+                </div>
+                
+                ${ref.notes ? `
+                  <div class="notes">
+                    <h3>Notes</h3>
+                    <p>${ref.notes}</p>
+                  </div>
+                ` : ''}
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="footer">
+            <p>
+              This document contains ${references.length} professional reference${references.length !== 1 ? 's' : ''}
+            </p>
+            <p>
+              Please contact references directly using the information provided above
+            </p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    
+    // Wait for content to load, then print
+    printWindow.onload = () => {
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.afterprint = () => printWindow.close();
+      }, 250);
+    };
   };
 
   const handleCopyText = () => {
@@ -59,28 +281,8 @@ Relationship: ${ref.relationshipType || 'Professional Contact'}
           </div>
 
           {/* Printable Content */}
-          <div ref={printRef} className="print:p-8 px-6">
-            <style>{`
-              @media print {
-                body * {
-                  visibility: hidden;
-                }
-                .printable-content, .printable-content * {
-                  visibility: visible;
-                }
-                .printable-content {
-                  position: absolute;
-                  left: 0;
-                  top: 0;
-                  width: 100%;
-                }
-                .print-hide {
-                  display: none !important;
-                }
-              }
-            `}</style>
-
-            <div className="printable-content px-6">
+          <div ref={printRef} className="px-6">
+            <div className="px-6">
               {/* Header */}
               <div className="text-center mb-8 pb-4 border-b-2 border-gray-300">
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">Professional References</h1>
@@ -189,24 +391,6 @@ Relationship: ${ref.relationshipType || 'Professional Contact'}
         </div>
       </div>
 
-      {/* Print-specific styles */}
-      <style>{`
-        @page {
-          size: letter;
-          margin: 0.5in;
-        }
-        
-        @media print {
-          .print-hide {
-            display: none !important;
-          }
-          
-          body {
-            print-color-adjust: exact;
-            -webkit-print-color-adjust: exact;
-          }
-        }
-      `}</style>
     </>
   );
 }
