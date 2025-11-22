@@ -20,7 +20,7 @@ const strengthColors = {
   New: 'text-gray-600'
 };
 
-export default function ContactCard({ contact, onEdit, onDelete, onRequestReferral }) {
+export default function ContactCard({ contact, onEdit, onDelete, onRequestReferral, customActions, showControls = true }) {
   const [showDetails, setShowDetails] = useState(false);
 
   const formatDate = (date) => {
@@ -54,56 +54,58 @@ export default function ContactCard({ contact, onEdit, onDelete, onRequestReferr
               <p className="text-sm text-gray-500">{contact.company}</p>
             )}
           </div>
-          <div className="flex space-x-2">
-            <button
-              onClick={() => onEdit(contact)}
-              className="p-1 rounded-lg transition flex-shrink-0 flex items-center justify-center"
-              style={{ color: '#6B7280' }}
-              onMouseOver={e => {
-                e.currentTarget.style.color = '#2563EB';
-                e.currentTarget.style.backgroundColor = '#EFF6FF';
-              }}
-              onMouseOut={e => {
-                e.currentTarget.style.color = '#6B7280';
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-              aria-label="Edit contact"
-              title="Edit contact"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                />
-              </svg>
-            </button>
-            <button
-              onClick={() => onDelete(contact._id)}
-              className="p-1 rounded-lg transition flex-shrink-0 flex items-center justify-center"
-              style={{ color: '#6B7280' }}
-              onMouseOver={e => {
-                e.currentTarget.style.color = '#B91C1C';
-                e.currentTarget.style.backgroundColor = '#FEE2E2';
-              }}
-              onMouseOut={e => {
-                e.currentTarget.style.color = '#6B7280';
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-              aria-label="Delete contact"
-              title="Delete contact"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                />
-              </svg>
-            </button>
-          </div>
+          {showControls && (
+            <div className="flex space-x-2">
+              <button
+                onClick={() => onEdit(contact)}
+                className="p-1 rounded-lg transition flex-shrink-0 flex items-center justify-center"
+                style={{ color: '#6B7280' }}
+                onMouseOver={e => {
+                  e.currentTarget.style.color = '#2563EB';
+                  e.currentTarget.style.backgroundColor = '#EFF6FF';
+                }}
+                onMouseOut={e => {
+                  e.currentTarget.style.color = '#6B7280';
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+                aria-label="Edit contact"
+                title="Edit contact"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  />
+                </svg>
+              </button>
+              <button
+                onClick={() => onDelete(contact._id)}
+                className="p-1 rounded-lg transition flex-shrink-0 flex items-center justify-center"
+                style={{ color: '#6B7280' }}
+                onMouseOver={e => {
+                  e.currentTarget.style.color = '#B91C1C';
+                  e.currentTarget.style.backgroundColor = '#FEE2E2';
+                }}
+                onMouseOut={e => {
+                  e.currentTarget.style.color = '#6B7280';
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+                aria-label="Delete contact"
+                title="Delete contact"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Badges */}
@@ -241,6 +243,13 @@ export default function ContactCard({ contact, onEdit, onDelete, onRequestReferr
             </svg>
             Request Referral
           </button>
+        )}
+
+        {/* Custom Actions (for References tab, etc.) */}
+        {customActions && (
+          <div className="mt-3">
+            {customActions}
+          </div>
         )}
 
         {/* Expandable Details */}

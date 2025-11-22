@@ -434,3 +434,69 @@ export const batchCreateContacts = async (req, res) => {
     });
   }
 };
+
+// @desc    Generate reference request email
+// @route   POST /api/contacts/reference-request
+// @access  Private
+export const generateReferenceRequest = async (req, res) => {
+  try {
+    const { referenceId, jobId } = req.body;
+
+    if (!referenceId || !jobId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Reference ID and Job ID are required'
+      });
+    }
+
+    // Fetch the reference contact
+    const reference = await Contact.findOne({
+      _id: referenceId,
+      userId: req.auth.userId
+    });
+
+    if (!reference) {
+      return res.status(404).json({
+        success: false,
+        message: 'Reference contact not found'
+      });
+    }
+
+    // Fetch the job
+    const job = await Job.findOne({
+      _id: jobId,
+      userId: req.auth.userId
+    });
+
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: 'Job application not found'
+      });
+    }
+
+    // Fetch user profile (we'll need to import User model or get data from elsewhere)
+    // For now, we'll create a minimal profile from available data
+    const userProfile = {
+      employment: [],
+      headline: '',
+      // In a real implementation, fetch from User/Profile model
+    };
+
+    // Generate the reference request using Gemini
+    const { generateReferenceRequestEmail } = await import('../utils/geminiService.js');
+    const requestData = await generateReferenceRequestEmail(reference, job, userProfile);
+
+    res.status(200).json({
+      success: true,
+      data: requestData
+    });
+  } catch (error) {
+    console.error('Error generating reference request:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate reference request',
+      error: error.message
+    });
+  }
+};
