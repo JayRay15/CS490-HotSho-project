@@ -4,7 +4,7 @@ import api, { setAuthToken } from '../../api/axios';
 import Button from '../Button';
 import LoadingSpinner from '../LoadingSpinner';
 
-export default function ReferenceRequestModal({ isOpen, onClose, reference }) {
+export default function ReferenceRequestModal({ isOpen, onClose, reference, onSuccess }) {
   const { getToken } = useAuth();
   const [jobs, setJobs] = useState([]);
   const [selectedJobId, setSelectedJobId] = useState('');
@@ -59,6 +59,7 @@ export default function ReferenceRequestModal({ isOpen, onClose, reference }) {
       });
 
       setGeneratedRequest(response.data.data);
+      if (onSuccess) onSuccess();
     } catch (err) {
       console.error('Error generating request:', err);
       setError(err.response?.data?.message || 'Failed to generate reference request');
@@ -117,138 +118,138 @@ export default function ReferenceRequestModal({ isOpen, onClose, reference }) {
 
         <div className="p-6 space-y-6">
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
-          </div>
-        )}
-
-        {!generatedRequest ? (
-          <>
-            {/* Job Selection */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Select Job Application
-              </label>
-              {loading ? (
-                <div className="flex justify-center py-4">
-                  <LoadingSpinner />
-                </div>
-              ) : (
-                <select
-                  value={selectedJobId}
-                  onChange={(e) => setSelectedJobId(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                >
-                  <option value="">-- Select a job --</option>
-                  {jobs.map((job) => (
-                    <option key={job._id} value={job._id}>
-                      {job.jobTitle || job.title} at {job.company} ({job.status})
-                    </option>
-                  ))}
-                </select>
-              )}
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+              {error}
             </div>
+          )}
 
-            <div className="flex justify-end gap-3">
-              <Button onClick={onClose} variant="outline">
-                Cancel
-              </Button>
-              <Button
-                onClick={handleGenerate}
-                disabled={!selectedJobId || generating}
-                className="bg-[#777C6D] hover:bg-[#656A5C] text-white"
-              >
-                {generating ? 'Generating...' : 'Generate Request'}
-              </Button>
-            </div>
-          </>
-        ) : (
-          <>
-            {/* Generated Email */}
-            <div className="space-y-6">
-              <div>
+          {!generatedRequest ? (
+            <>
+              {/* Job Selection */}
+              <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email Subject
+                  Select Job Application
                 </label>
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                  <p className="text-gray-900">{generatedRequest.subject}</p>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email Body
-                </label>
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                  <pre className="whitespace-pre-wrap text-gray-900 font-sans text-sm">
-                    {generatedRequest.emailBody}
-                  </pre>
-                </div>
-              </div>
-
-              {/* Talking Points */}
-              {generatedRequest.talkingPoints && generatedRequest.talkingPoints.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">
-                    Suggested Talking Points for Reference
-                  </h4>
-                  <div className="space-y-3">
-                    {generatedRequest.talkingPoints.map((point, index) => (
-                      <div key={index} className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                        <p className="font-medium text-blue-900">{point.point}</p>
-                        <p className="text-sm text-blue-700 mt-1">{point.context}</p>
-                        <p className="text-xs text-blue-600 mt-1">
-                          <strong>Impact:</strong> {point.impact}
-                        </p>
-                      </div>
-                    ))}
+                {loading ? (
+                  <div className="flex justify-center py-4">
+                    <LoadingSpinner />
                   </div>
-                </div>
-              )}
-
-              {/* Preparation Tips */}
-              {generatedRequest.preparationTips && generatedRequest.preparationTips.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">
-                    Preparation Tips
-                  </h4>
-                  <ul className="list-disc list-inside space-y-1 text-sm text-gray-600">
-                    {generatedRequest.preparationTips.map((tip, index) => (
-                      <li key={index}>{tip}</li>
+                ) : (
+                  <select
+                    value={selectedJobId}
+                    onChange={(e) => setSelectedJobId(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  >
+                    <option value="">-- Select a job --</option>
+                    {jobs.map((job) => (
+                      <option key={job._id} value={job._id}>
+                        {job.jobTitle || job.title} at {job.company} ({job.status})
+                      </option>
                     ))}
-                  </ul>
-                </div>
-              )}
+                  </select>
+                )}
+              </div>
 
-              {/* Timeline */}
-              {generatedRequest.timeline && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                  <p className="text-sm">
-                    <strong className="text-yellow-900">Timeline:</strong>{' '}
-                    <span className="text-yellow-700">{generatedRequest.timeline}</span>
-                  </p>
-                </div>
-              )}
-
-              {/* Actions */}
-              <div className="flex justify-end gap-3 pt-4 border-t pb-4">
-                <Button onClick={() => setGeneratedRequest(null)} variant="outline">
-                  Generate New
+              <div className="flex justify-end gap-3">
+                <Button onClick={onClose} variant="outline">
+                  Cancel
                 </Button>
                 <Button
-                  onClick={handleCopyEmail}
+                  onClick={handleGenerate}
+                  disabled={!selectedJobId || generating}
                   className="bg-[#777C6D] hover:bg-[#656A5C] text-white"
                 >
-                  Copy Email
-                </Button>
-                <Button onClick={onClose} variant="outline">
-                  Close
+                  {generating ? 'Generating...' : 'Generate Request'}
                 </Button>
               </div>
-            </div>
-          </>
-        )}
+            </>
+          ) : (
+            <>
+              {/* Generated Email */}
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email Subject
+                  </label>
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                    <p className="text-gray-900">{generatedRequest.subject}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email Body
+                  </label>
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <pre className="whitespace-pre-wrap text-gray-900 font-sans text-sm">
+                      {generatedRequest.emailBody}
+                    </pre>
+                  </div>
+                </div>
+
+                {/* Talking Points */}
+                {generatedRequest.talkingPoints && generatedRequest.talkingPoints.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">
+                      Suggested Talking Points for Reference
+                    </h4>
+                    <div className="space-y-3">
+                      {generatedRequest.talkingPoints.map((point, index) => (
+                        <div key={index} className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                          <p className="font-medium text-blue-900">{point.point}</p>
+                          <p className="text-sm text-blue-700 mt-1">{point.context}</p>
+                          <p className="text-xs text-blue-600 mt-1">
+                            <strong>Impact:</strong> {point.impact}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Preparation Tips */}
+                {generatedRequest.preparationTips && generatedRequest.preparationTips.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">
+                      Preparation Tips
+                    </h4>
+                    <ul className="list-disc list-inside space-y-1 text-sm text-gray-600">
+                      {generatedRequest.preparationTips.map((tip, index) => (
+                        <li key={index}>{tip}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Timeline */}
+                {generatedRequest.timeline && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                    <p className="text-sm">
+                      <strong className="text-yellow-900">Timeline:</strong>{' '}
+                      <span className="text-yellow-700">{generatedRequest.timeline}</span>
+                    </p>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex justify-end gap-3 pt-4 border-t pb-4">
+                  <Button onClick={() => setGeneratedRequest(null)} variant="outline">
+                    Generate New
+                  </Button>
+                  <Button
+                    onClick={handleCopyEmail}
+                    className="bg-[#777C6D] hover:bg-[#656A5C] text-white"
+                  >
+                    Copy Email
+                  </Button>
+                  <Button onClick={onClose} variant="outline">
+                    Close
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

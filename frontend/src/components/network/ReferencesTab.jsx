@@ -8,6 +8,9 @@ import LoadingSpinner from '../LoadingSpinner';
 import ErrorMessage from '../ErrorMessage';
 import ReferenceRequestModal from './ReferenceRequestModal';
 import ReferencePortfolio from './ReferencePortfolio';
+import ReferenceFeedbackModal from './ReferenceFeedbackModal';
+import ReferenceHistoryModal from './ReferenceHistoryModal';
+import { Users, FileText, MessageSquare, ThumbsUp } from 'lucide-react';
 
 export default function ReferencesTab() {
   const { getToken } = useAuth();
@@ -20,6 +23,11 @@ export default function ReferencesTab() {
   const [selectedReference, setSelectedReference] = useState(null);
   const [showPortfolio, setShowPortfolio] = useState(false);
   const [selectedForPortfolio, setSelectedForPortfolio] = useState([]);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [selectedForFeedback, setSelectedForFeedback] = useState(null);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [selectedForHistory, setSelectedForHistory] = useState(null);
+  const [stats, setStats] = useState(null);
 
   // Fetch references
   const fetchReferences = async () => {
@@ -30,11 +38,16 @@ export default function ReferencesTab() {
 
       const response = await api.get('/api/contacts');
       const allContacts = response.data.data;
-      
+
       // Filter for references
       const refs = allContacts.filter(contact => contact.isReference);
       setReferences(refs);
       setAllContacts(allContacts);
+
+      // Fetch stats
+      const statsResponse = await api.get('/api/contacts/stats');
+      setStats(statsResponse.data.data);
+
       setError(null);
     } catch (err) {
       console.error('Error fetching references:', err);
@@ -89,7 +102,7 @@ export default function ReferencesTab() {
   };
 
   const handleTogglePortfolioSelection = (referenceId) => {
-    setSelectedForPortfolio(prev => 
+    setSelectedForPortfolio(prev =>
       prev.includes(referenceId)
         ? prev.filter(id => id !== referenceId)
         : [...prev, referenceId]
@@ -102,6 +115,38 @@ export default function ReferencesTab() {
       return;
     }
     setShowPortfolio(true);
+  };
+
+  const handleRecordFeedback = (reference) => {
+    setSelectedForFeedback(reference);
+    setShowFeedbackModal(true);
+  };
+
+  const handleViewHistory = (reference) => {
+    setSelectedForHistory(reference);
+    setShowHistoryModal(true);
+  };
+
+  const getLastUsedInfo = (reference) => {
+    if (!reference.interactions || reference.interactions.length === 0) return null;
+
+    // Find last reference request
+    const requests = reference.interactions
+      .filter(i => i.type === 'Reference Request')
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    if (requests.length === 0) return null;
+
+    const lastRequest = requests[0];
+    const dateStr = new Date(lastRequest.date).toLocaleDateString();
+
+    const job = reference.linkedJobIds?.find(j => j._id === lastRequest.jobId);
+
+    if (job) {
+      return `Last used: ${dateStr} for ${job.jobTitle} at ${job.company}`;
+    }
+
+    return `Last used: ${dateStr}`;
   };
 
   if (loading) {
@@ -125,14 +170,14 @@ export default function ReferencesTab() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button 
-            onClick={() => setShowAddModal(true)} 
+          <Button
+            onClick={() => setShowAddModal(true)}
             variant="outline"
           >
             Add Reference
           </Button>
           {selectedForPortfolio.length > 0 && (
-            <Button 
+            <Button
               onClick={handleGeneratePortfolio}
               className="bg-[#777C6D] hover:bg-[#656A5C] text-white"
             >
@@ -141,6 +186,60 @@ export default function ReferencesTab() {
           )}
         </div>
       </div>
+
+      {/* Stats Cards */}
+      {stats && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-xl border border-gray-200">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Users size={24} className="text-blue-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-gray-900">{stats.totalReferences || 0}</div>
+                <div className="text-sm text-gray-600">Total References</div>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white p-4 rounded-xl border border-gray-200">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <FileText size={24} className="text-purple-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-gray-900">{stats.referenceRequests || 0}</div>
+                <div className="text-sm text-gray-600">Requests Made</div>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white p-4 rounded-xl border border-gray-200">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <MessageSquare size={24} className="text-green-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-gray-900">{stats.referenceFeedback || 0}</div>
+                <div className="text-sm text-gray-600">Feedback Recorded</div>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white p-4 rounded-xl border border-gray-200">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-yellow-100 rounded-lg">
+                <ThumbsUp size={24} className="text-yellow-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {stats.referenceRequests > 0
+                    ? Math.round((stats.referenceFeedback / stats.referenceRequests) * 100)
+                    : 0}%
+                </div>
+                <div className="text-sm text-gray-600">Response Rate</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {error && <ErrorMessage message={error} />}
 
@@ -182,25 +281,44 @@ export default function ReferencesTab() {
 
               <ContactCard
                 contact={reference}
-                onEdit={() => {}} // Not implementing edit in this view
-                onDelete={() => {}} // Not implementing delete in this view
+                onEdit={() => { }} // Not implementing edit in this view
+                onDelete={() => { }} // Not implementing delete in this view
                 showControls={false}
                 customActions={
-                  <div className="flex gap-2 mt-4">
-                    <Button
-                      onClick={() => handleRequestReference(reference)}
-                      variant="outline"
-                      className="flex-1"
-                    >
-                      Request Reference
-                    </Button>
-                    <Button
-                      onClick={() => handleRemoveReference(reference._id)}
-                      variant="outline"
-                      className="flex-1 text-red-600 hover:bg-red-50"
-                    >
-                      Remove
-                    </Button>
+                  <div className="flex flex-col gap-2 mt-4">
+                    {getLastUsedInfo(reference) && (
+                      <div className="text-xs text-gray-500 italic mb-1">
+                        {getLastUsedInfo(reference)}
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => handleRequestReference(reference)}
+                        className="flex-1 text-xs px-2 bg-[#777C6D] hover:bg-[#656A5C] text-white flex items-center justify-center text-center"
+                      >
+                        Request
+                      </Button>
+                      <Button
+                        onClick={() => handleRecordFeedback(reference)}
+                        variant="outline"
+                        className="flex-1 text-xs px-2 flex items-center justify-center text-center"
+                      >
+                        Feedback
+                      </Button>
+                      <Button
+                        onClick={() => handleViewHistory(reference)}
+                        variant="outline"
+                        className="flex-1 text-xs px-2 flex items-center justify-center text-center"
+                      >
+                        History
+                      </Button>
+                      <Button
+                        onClick={() => handleRemoveReference(reference._id)}
+                        className="flex-1 bg-red-600 hover:bg-red-700 text-white text-xs px-2 flex items-center justify-center text-center"
+                      >
+                        Remove
+                      </Button>
+                    </div>
                   </div>
                 }
               />
@@ -281,6 +399,20 @@ export default function ReferencesTab() {
             setSelectedReference(null);
           }}
           reference={selectedReference}
+          onSuccess={fetchReferences}
+        />
+      )}
+
+      {/* Reference Feedback Modal */}
+      {showFeedbackModal && selectedForFeedback && (
+        <ReferenceFeedbackModal
+          isOpen={showFeedbackModal}
+          onClose={() => {
+            setShowFeedbackModal(false);
+            setSelectedForFeedback(null);
+          }}
+          reference={selectedForFeedback}
+          onSuccess={fetchReferences}
         />
       )}
 
@@ -289,6 +421,18 @@ export default function ReferencesTab() {
         <ReferencePortfolio
           references={references.filter(ref => selectedForPortfolio.includes(ref._id))}
           onClose={() => setShowPortfolio(false)}
+        />
+      )}
+
+      {/* Reference History Modal */}
+      {showHistoryModal && selectedForHistory && (
+        <ReferenceHistoryModal
+          isOpen={showHistoryModal}
+          onClose={() => {
+            setShowHistoryModal(false);
+            setSelectedForHistory(null);
+          }}
+          reference={selectedForHistory}
         />
       )}
     </div>
