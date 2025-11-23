@@ -1,8 +1,11 @@
 import express from "express";
 import { checkJwt } from "../middleware/checkJwt.js";
-import { startMockInterview, getSession, answerQuestion, finishSession, getSummary } from "../controllers/mockInterviewController.js";
+import { startMockInterview, getSession, answerQuestion, finishSession, getSummary, getUserSessions } from "../controllers/mockInterviewController.js";
 
 const router = express.Router();
+
+// Get all user's sessions (history)
+router.get("/", checkJwt, getUserSessions);
 
 // Start a new mock interview session
 router.post("/start", checkJwt, startMockInterview);

@@ -14,3 +14,6 @@ export const finishMockInterviewSession = (sessionId) =>
 
 export const getMockInterviewSummary = (sessionId) =>
   retryRequest(() => api.get(`/api/mock-interviews/${sessionId}/summary`));
+
+export const getUserMockInterviewSessions = () =>
+  retryRequest(() => api.get('/api/mock-interviews'));
