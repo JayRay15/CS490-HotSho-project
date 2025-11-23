@@ -56,6 +56,16 @@ import SectionFormattingModal from "../../components/resume/SectionFormattingMod
 import CustomizeTemplateModal from "../../components/resume/CustomizeTemplateModal";
 import RenameResumeModal from "../../components/resume/RenameResumeModal";
 import DeleteConfirmationModal from "../../components/resume/DeleteConfirmationModal";
+import AICoverLetterModal from "../../components/coverLetters/AICoverLetterModal";
+import CoverLetterTemplateBrowserModal from "../../components/coverLetters/CoverLetterTemplateBrowserModal";
+import ViewEditCoverLetterModal from "../../components/coverLetters/ViewEditCoverLetterModal";
+import ManageCoverLetterTemplatesModal from "../../components/coverLetters/ManageCoverLetterTemplatesModal";
+import CoverLetterAnalyticsModal from "../../components/coverLetters/CoverLetterAnalyticsModal";
+import CoverLetterImportModal from "../../components/coverLetters/CoverLetterImportModal";
+import CoverLetterShareModal from "../../components/coverLetters/CoverLetterShareModal";
+import AddCoverLetterModal from "../../components/coverLetters/AddCoverLetterModal";
+import SkillsOptimizationModal from "../../components/resume/SkillsOptimizationModal";
+import MergeResumeModal from "../../components/resume/MergeResumeModal";
 import {
   ModalOverlay,
   ModalCard,
@@ -69,11 +79,11 @@ import {
 import ViewIssuesButton from "../../components/resume/ViewIssuesButton";
 import { THEME_PRESETS, getThemePresetNames, getThemePreset } from "../../utils/themePresets";
 import { TEMPLATE_TYPES, DEFAULT_SECTIONS, SECTION_PRESETS, formatDate } from "../../utils/resumeConstants";
-import { 
-  TONE_OPTIONS, 
-  INDUSTRY_OPTIONS, 
-  COMPANY_CULTURE_OPTIONS, 
-  LENGTH_OPTIONS, 
+import {
+  TONE_OPTIONS,
+  INDUSTRY_OPTIONS,
+  COMPANY_CULTURE_OPTIONS,
+  LENGTH_OPTIONS,
   WRITING_STYLE_OPTIONS,
   validateToneConsistency,
   getRecommendedSettings
@@ -95,22 +105,22 @@ import {
 // Utility function to format plain text into HTML paragraphs
 const formatCoverLetterContent = (content) => {
   if (!content) return '';
-  
+
   // If content already has HTML paragraph tags, return as-is
   if (content.includes('<p>') || content.includes('<div>') || content.includes('<br')) {
     return content;
   }
-  
+
   // Split content into lines, preserving empty lines
   const lines = content.split('\n');
-  
+
   const result = [];
   let currentParagraph = [];
   let inBody = false;
-  
+
   lines.forEach((line, index) => {
     const trimmedLine = line.trim();
-    
+
     // Handle empty lines - just skip them, don't add blank paragraphs
     // The CSS margin will provide the spacing
     if (trimmedLine.length === 0) {
@@ -121,7 +131,7 @@ const formatCoverLetterContent = (content) => {
       }
       return;
     }
-    
+
     // More aggressive header detection
     const isHeaderLine = !inBody && (
       trimmedLine.length < 80 && (
@@ -139,10 +149,10 @@ const formatCoverLetterContent = (content) => {
         index < 15 // First 15 lines are likely header
       )
     );
-    
+
     // Check if this line starts the body (contains multiple sentences or is long)
     const startsBody = trimmedLine.length > 80 || trimmedLine.split(/[.!?]/).length > 2;
-    
+
     if (isHeaderLine && !startsBody) {
       // Save any accumulated paragraph first
       if (currentParagraph.length > 0) {
@@ -154,26 +164,26 @@ const formatCoverLetterContent = (content) => {
     } else {
       // Mark that we've entered the body
       inBody = true;
-      
+
       // This is body text - accumulate sentences
       currentParagraph.push(trimmedLine);
-      
+
       // Check if we should end the paragraph (after ~3 sentences)
       const combinedText = currentParagraph.join(' ');
       const sentenceCount = combinedText.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
-      
+
       if (sentenceCount >= 3) {
         result.push(`<p>${combinedText}</p>`);
         currentParagraph = [];
       }
     }
   });
-  
+
   // Add any remaining content
   if (currentParagraph.length > 0) {
     result.push(`<p>${currentParagraph.join(' ')}</p>`);
   }
-  
+
   return result.join('');
 };
 
@@ -364,6 +374,7 @@ export default function ResumeTemplates() {
     selectedJobForSkills,
     setSelectedJobForSkills,
     selectedSkillsToAdd,
+    setSelectedSkillsToAdd,
     currentResumeSkills,
     setCurrentResumeSkills,
     isApplyingSkills,
@@ -2171,8 +2182,8 @@ export default function ResumeTemplates() {
                             <div className="text-xs font-bold" style={{ color: '#4F5348' }}>
                               {letter.name || "Untitled Cover Letter"}
                             </div>
-                            <span className="inline-block px-2 py-0.5 text-[10px] rounded-full capitalize flex-shrink-0" 
-                                  style={{ backgroundColor: '#E8EBE4', color: '#4F5348' }}>
+                            <span className="inline-block px-2 py-0.5 text-[10px] rounded-full capitalize flex-shrink-0"
+                              style={{ backgroundColor: '#E8EBE4', color: '#4F5348' }}>
                               {letter.style || 'formal'}
                             </span>
                           </div>
@@ -4659,692 +4670,35 @@ export default function ResumeTemplates() {
         }}
       />
 
+
       {/* UC-52: Merge Resume Modal */}
-      {showMergeModal && comparisonData && viewingResume && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-50 p-4"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
-          onClick={() => {
-            setShowMergeModal(false);
-            setSelectedMergeChanges([]);
-          }}
-        >
-          <div
-            className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-gray-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="bg-[#777C6D] border-b px-6 py-4 sticky top-0 z-10">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                  </svg>
-                  <h3 className="text-xl font-heading font-bold text-white">Merge Resume Changes</h3>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowMergeModal(false);
-                    setSelectedMergeChanges([]);
-                  }}
-                  className="text-white hover:text-gray-200 transition"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
+      <MergeResumeModal
+        showMergeModal={showMergeModal}
+        setShowMergeModal={setShowMergeModal}
+        comparisonData={comparisonData}
+        viewingResume={viewingResume}
+        selectedMergeChanges={selectedMergeChanges}
+        setSelectedMergeChanges={setSelectedMergeChanges}
+        isMerging={isMerging}
+        handleMergeResumes={handleMergeResumes}
+      />
 
-            {/* Modal Content */}
-            <div className="p-6 space-y-6">
-              {/* Merge Direction Indicator */}
-              <div className="bg-[#f7f6f2] border border-[#e6e6e1] rounded-lg p-4">
-                <div className="flex items-center justify-center gap-4">
-                  <div className="text-center">
-                    <div className="font-semibold text-purple-900">{comparisonData.resume2.name}</div>
-                    <div className="text-xs text-[#4F5348]">Source</div>
-                  </div>
-                  <svg className="w-8 h-8 text-[#4F5348]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                  </svg>
-                  <div className="text-center">
-                    <div className="font-semibold text-purple-900">{comparisonData.resume1.name}</div>
-                    <div className="text-xs text-[#4F5348]">Target (current)</div>
-                  </div>
-                </div>
-                <p className="text-sm text-purple-700 text-center mt-3">
-                  Select which sections to copy from the source resume to the target resume
-                </p>
-              </div>
-
-              {/* Merge Options */}
-              <div className="space-y-4">
-                <h4 className="font-semibold text-gray-900">Select Changes to Merge:</h4>
-
-                {/* Summary Section */}
-                {comparisonData.fullData.resume2.summary && comparisonData.differences.summary && (
-                  <div className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition">
-                    <label className="flex items-start gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedMergeChanges.includes('summary')}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedMergeChanges([...selectedMergeChanges, 'summary']);
-                          } else {
-                            setSelectedMergeChanges(selectedMergeChanges.filter(c => c !== 'summary'));
-                          }
-                        }}
-                        className="mt-1 w-5 h-5 text-[#4F5348] rounded focus:ring-2 focus:ring-[#777C6D]"
-                      />
-                      <div className="flex-1">
-                        <div className="font-medium text-gray-900 mb-2">Summary</div>
-                        <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded border border-gray-200 line-clamp-3">
-                          {comparisonData.fullData.resume2.summary}
-                        </div>
-                      </div>
-                    </label>
-                  </div>
-                )}
-
-                {/* Experience Section */}
-                {comparisonData.fullData.resume2.experience?.length > 0 && (
-                  <div className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition">
-                    <label className="flex items-start gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedMergeChanges.includes('experience')}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedMergeChanges([...selectedMergeChanges, 'experience']);
-                          } else {
-                            setSelectedMergeChanges(selectedMergeChanges.filter(c => c !== 'experience'));
-                          }
-                        }}
-                        className="mt-1 w-5 h-5 text-[#4F5348] rounded focus:ring-2 focus:ring-[#777C6D]"
-                      />
-                      <div className="flex-1">
-                        <div className="font-medium text-gray-900 mb-2">
-                          All Experience ({comparisonData.fullData.resume2.experience.length} items)
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          Replace all experience with source, or select individual items below to add
-                        </div>
-                      </div>
-                    </label>
-
-                    {/* Individual Experience Items */}
-                    <div className="ml-8 mt-3 space-y-2">
-                      <div className="text-xs text-gray-500 mb-2 italic">Select individual experience items to ADD them to current resume</div>
-                      {comparisonData.fullData.resume2.experience.map((exp, idx) => (
-                        <label key={idx} className="flex items-start gap-2 cursor-pointer p-2 rounded hover:bg-white">
-                          <input
-                            type="checkbox"
-                            checked={selectedMergeChanges.includes(`experience.${idx}`)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedMergeChanges([...selectedMergeChanges, `experience.${idx}`]);
-                              } else {
-                                setSelectedMergeChanges(selectedMergeChanges.filter(c => c !== `experience.${idx}`));
-                              }
-                            }}
-                            className="mt-1 w-4 h-4 text-[#4F5348] rounded focus:ring-2 focus:ring-[#777C6D]"
-                          />
-                          <div className="text-sm">
-                            <div className="font-medium text-gray-900">{exp.title} at {exp.company}</div>
-                            <div className="text-xs text-gray-500">
-                              {exp.startDate} - {exp.current ? 'Present' : exp.endDate}
-                            </div>
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Skills Section */}
-                {comparisonData.fullData.resume2.skills?.length > 0 && (() => {
-                  // Get current resume skills to show which are new/different
-                  const currentSkillNames = new Set(
-                    (comparisonData.fullData.resume1.skills || []).map(s =>
-                      typeof s === 'string' ? s : s.name
-                    )
-                  );
-
-                  return (
-                    <div className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition">
-                      <label className="flex items-start gap-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={selectedMergeChanges.includes('skills')}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedMergeChanges([...selectedMergeChanges, 'skills']);
-                            } else {
-                              setSelectedMergeChanges(selectedMergeChanges.filter(c => c !== 'skills'));
-                            }
-                          }}
-                          className="mt-1 w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
-                        />
-                        <div className="flex-1">
-                          <div className="font-medium text-gray-900 mb-2">
-                            All Skills ({comparisonData.fullData.resume2.skills.length} items)
-                          </div>
-                          <div className="text-sm text-gray-600">
-                            Add all missing skills from source resume
-                          </div>
-                        </div>
-                      </label>
-
-                      {/* Individual Skills */}
-                      <div className="ml-8 mt-3 flex flex-wrap gap-2">
-                        {comparisonData.fullData.resume2.skills.map((skill, idx) => {
-                          const skillName = typeof skill === 'string' ? skill : skill.name;
-                          const isInCurrent = currentSkillNames.has(skillName);
-
-                          return (
-                            <label
-                              key={idx}
-                              className={`flex items-center gap-2 px-3 py-1.5 rounded cursor-pointer transition ${isInCurrent
-                                ? 'bg-gray-100 text-gray-500'
-                                : 'bg-purple-50 hover:bg-purple-100 text-purple-900'
-                                }`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={selectedMergeChanges.includes(`skill.${idx}`)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSelectedMergeChanges([...selectedMergeChanges, `skill.${idx}`]);
-                                  } else {
-                                    setSelectedMergeChanges(selectedMergeChanges.filter(c => c !== `skill.${idx}`));
-                                  }
-                                }}
-                                disabled={isInCurrent}
-                                className="w-4 h-4 text-purple-600 rounded focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
-                              />
-                              <span className="text-sm">
-                                {skillName}
-                                {isInCurrent && <span className="ml-1 text-xs">(already in current)</span>}
-                              </span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* Education Section */}
-                {comparisonData.fullData.resume2.education?.length > 0 && (
-                  <div className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition">
-                    <label className="flex items-start gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedMergeChanges.includes('education')}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedMergeChanges([...selectedMergeChanges, 'education']);
-                          } else {
-                            setSelectedMergeChanges(selectedMergeChanges.filter(c => c !== 'education'));
-                          }
-                        }}
-                        className="mt-1 w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
-                      />
-                      <div className="flex-1">
-                        <div className="font-medium text-gray-900 mb-2">
-                          Education ({comparisonData.fullData.resume2.education.length} items)
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          Replace all education entries with those from source resume
-                        </div>
-                      </div>
-                    </label>
-                  </div>
-                )}
-
-                {/* Projects Section */}
-                {comparisonData.fullData.resume2.projects?.length > 0 && (
-                  <div className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition">
-                    <label className="flex items-start gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedMergeChanges.includes('projects')}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedMergeChanges([...selectedMergeChanges, 'projects']);
-                          } else {
-                            setSelectedMergeChanges(selectedMergeChanges.filter(c => c !== 'projects'));
-                          }
-                        }}
-                        className="mt-1 w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
-                      />
-                      <div className="flex-1">
-                        <div className="font-medium text-gray-900 mb-2">
-                          Projects ({comparisonData.fullData.resume2.projects.length} items)
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          Replace all projects with those from source resume
-                        </div>
-                      </div>
-                    </label>
-                  </div>
-                )}
-
-                {/* Section Visibility/Customization */}
-                {comparisonData.differences.sectionCustomization && (
-                  <div className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition">
-                    <label className="flex items-start gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedMergeChanges.includes('sectionCustomization')}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedMergeChanges([...selectedMergeChanges, 'sectionCustomization']);
-                          } else {
-                            setSelectedMergeChanges(selectedMergeChanges.filter(c => c !== 'sectionCustomization'));
-                          }
-                        }}
-                        className="mt-1 w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
-                      />
-                      <div className="flex-1">
-                        <div className="font-medium text-gray-900 mb-2">Section Visibility & Layout</div>
-                        <div className="text-sm text-gray-600">
-                          Restore section visibility settings, order, and formatting from source resume
-                        </div>
-                      </div>
-                    </label>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="bg-gray-50 px-6 py-4 border-t flex justify-between items-center">
-              <div className="text-sm text-gray-600">
-                {selectedMergeChanges.length > 0 ? (
-                  <span className="font-medium text-purple-700">
-                    {selectedMergeChanges.length} section{selectedMergeChanges.length !== 1 ? 's' : ''} selected for merge
-                  </span>
-                ) : (
-                  <span className="text-gray-500">Select at least one section to merge</span>
-                )}
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setShowMergeModal(false);
-                    setSelectedMergeChanges([]);
-                  }}
-                  disabled={isMerging}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleMergeResumes}
-                  disabled={isMerging || selectedMergeChanges.length === 0}
-                  className="px-6 py-2 bg-[#777C6D] text-white rounded-lg hover:bg-[#656A5C] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {isMerging ? (
-                    <>
-                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      <span>Merging...</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span>Apply Merge</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* UC-49: Skills Optimization Modal */}
-      {showSkillsOptimization && skillsOptimizationData && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-50 p-4"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
-          onClick={() => setShowSkillsOptimization(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="bg-[#777C6D] px-6 py-4 sticky top-0 z-10">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <h3 className="text-xl font-heading font-bold text-white">AI Skills Optimization</h3>
-                </div>
-                <button
-                  onClick={() => setShowSkillsOptimization(false)}
-                  className="text-white hover:text-gray-200 transition"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            {/* Success Banner */}
-            {showSkillsSuccessBanner && (
-              <div className="bg-green-50 border-l-4 border-green-500 px-6 py-4 mx-6 mt-4 rounded-r-lg animate-fade-in">
-                <div className="flex items-center gap-3">
-                  <svg className="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <div>
-                    <p className="font-semibold text-green-900">Skills Updated Successfully!</p>
-                    <p className="text-sm text-green-700">Your resume has been updated with the selected skills. Returning to resume view...</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Modal Content */}
-            <div className="p-6 space-y-6">
-              {/* Match Score */}
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-lg font-semibold text-gray-900 mb-1">Skills Match Score</h4>
-                    <p className="text-sm text-gray-600">{skillsOptimizationData.optimization?.summary || 'Your skills alignment with this job'}</p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-4xl font-bold text-[#4F5348]">
-                      {skillsOptimizationData.optimization?.matchScore || 0}%
-                    </div>
-                    <div className="text-sm text-gray-600 mt-1">Match Rate</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Current Resume Skills */}
-              <div className="bg-white rounded-lg border-2 border-gray-300 p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-md font-semibold text-gray-900 flex items-center gap-2">
-                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    Current Skills in Resume
-                  </h4>
-                  <span className="text-sm text-gray-500">{currentResumeSkills.length} skills</span>
-                </div>
-                {currentResumeSkills.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {currentResumeSkills.map((skill, idx) => (
-                      <div
-                        key={idx}
-                        className="group px-3 py-1.5 bg-gray-100 text-gray-800 rounded-full text-sm border border-gray-300 flex items-center gap-2"
-                      >
-                        <span>{skill}</span>
-                        <button
-                          onClick={() => handleRemoveSkill(skill)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-red-600 hover:text-red-800"
-                          title="Remove skill"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-500 italic">No skills in resume yet. Add skills from recommendations below.</p>
-                )}
-              </div>
-
-              {/* Technical Skills */}
-              {skillsOptimizationData.optimization?.technicalSkills?.length > 0 && (
-                <div className="bg-white rounded-lg border border-gray-200 p-5">
-                  <h4 className="text-md font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">Technical</span>
-                    Recommended Technical Skills
-                  </h4>
-                  <p className="text-xs text-gray-600 mb-3">Click to select skills to add to your resume</p>
-                  <div className="flex flex-wrap gap-2">
-                    {skillsOptimizationData.optimization.technicalSkills.map((skill, idx) => {
-                      const isInResume = currentResumeSkills.includes(skill);
-                      const isSelected = selectedSkillsToAdd.includes(skill);
-
-                      return (
-                        <button
-                          key={idx}
-                          onClick={() => !isInResume && toggleSkillSelection(skill)}
-                          disabled={isInResume}
-                          className={`px-3 py-1.5 rounded-full text-sm border transition-all flex items-center gap-2 ${isInResume
-                            ? 'bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed'
-                            : isSelected
-                              ? 'bg-blue-600 text-white border-blue-600 shadow-md'
-                              : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 cursor-pointer'
-                            }`}
-                        >
-                          {isSelected && (
-                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
-                          )}
-                          <span>{skill}</span>
-                          {isInResume && <span className="text-xs">✓ In Resume</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Soft Skills */}
-              {skillsOptimizationData.optimization?.softSkills?.length > 0 && (
-                <div className="bg-white rounded-lg border border-gray-200 p-5">
-                  <h4 className="text-md font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs">Soft Skills</span>
-                    Recommended Soft Skills
-                  </h4>
-                  <p className="text-xs text-gray-600 mb-3">Click to select skills to add to your resume</p>
-                  <div className="flex flex-wrap gap-2">
-                    {skillsOptimizationData.optimization.softSkills.map((skill, idx) => {
-                      const isInResume = currentResumeSkills.includes(skill);
-                      const isSelected = selectedSkillsToAdd.includes(skill);
-
-                      return (
-                        <button
-                          key={idx}
-                          onClick={() => !isInResume && toggleSkillSelection(skill)}
-                          disabled={isInResume}
-                          className={`px-3 py-1.5 rounded-full text-sm border transition-all flex items-center gap-2 ${isInResume
-                            ? 'bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed'
-                            : isSelected
-                              ? 'bg-purple-600 text-white border-purple-600 shadow-md'
-                              : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 cursor-pointer'
-                            }`}
-                        >
-                          {isSelected && (
-                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
-                          )}
-                          <span>{skill}</span>
-                          {isInResume && <span className="text-xs">✓ In Resume</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Missing Skills */}
-              {skillsOptimizationData.optimization?.missingSkills?.length > 0 && (
-                <div className="bg-yellow-50 rounded-lg border border-yellow-200 p-5">
-                  <h4 className="text-md font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                    <svg className="w-5 h-5 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                    Skill Gaps Detected
-                  </h4>
-                  <p className="text-sm text-gray-700 mb-3">
-                    These skills are mentioned in the job posting but missing from your resume:
-                  </p>
-                  <div className="space-y-2">
-                    {skillsOptimizationData.optimization.missingSkills.map((skill, idx) => {
-                      // Handle both string and object formats
-                      const skillName = typeof skill === 'string' ? skill : skill.name;
-                      const importance = skill.importance || null;
-                      const suggestion = skill.suggestion || null;
-
-                      return (
-                        <div
-                          key={idx}
-                          className="bg-white rounded-lg p-3 border border-yellow-300"
-                        >
-                          <div className="flex items-start gap-2">
-                            <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-medium uppercase">
-                              {importance || 'Important'}
-                            </span>
-                            <div className="flex-1">
-                              <div className="font-semibold text-gray-900">{skillName}</div>
-                              {suggestion && (
-                                <p className="text-sm text-gray-600 mt-1">{suggestion}</p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Skills to Emphasize */}
-              {skillsOptimizationData.optimization?.skillsToEmphasize?.length > 0 && (
-                <div className="bg-green-50 rounded-lg border border-green-200 p-5">
-                  <h4 className="text-md font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                    <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    Skills to Emphasize
-                  </h4>
-                  <p className="text-sm text-gray-700 mb-3">
-                    You already have these skills - make sure they're prominent in your resume:
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {skillsOptimizationData.optimization.skillsToEmphasize.map((skill, idx) => (
-                      <span
-                        key={idx}
-                        className="px-3 py-1.5 bg-white text-green-800 rounded-full text-sm border border-green-300 font-medium"
-                      >
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Industry Recommendations */}
-              {skillsOptimizationData.optimization?.industryRecommendations?.length > 0 && (
-                <div className="bg-gray-50 rounded-lg border border-gray-200 p-5">
-                  <h4 className="text-md font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                    <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z" />
-                    </svg>
-                    Industry-Specific Recommendations
-                  </h4>
-                  <div className="space-y-2">
-                    {skillsOptimizationData.optimization.industryRecommendations.map((rec, idx) => {
-                      // Handle both string and object formats
-                      const skillName = typeof rec === 'string' ? rec : (rec.skill || rec.name);
-                      const reason = rec.reason || null;
-
-                      return (
-                        <div key={idx} className="bg-white rounded-lg p-3 border border-gray-200">
-                          <div className="flex items-start gap-2">
-                            <span className="text-blue-500 mt-1 text-lg">💡</span>
-                            <div className="flex-1">
-                              <div className="font-medium text-gray-900">{skillName}</div>
-                              {reason && (
-                                <p className="text-sm text-gray-600 mt-1">{reason}</p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Modal Actions */}
-            <div className="bg-gray-50 px-6 py-4 border-t sticky bottom-0">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="text-sm">
-                    <span className="font-medium text-gray-900">{selectedSkillsToAdd.length}</span>
-                    <span className="text-gray-600"> skills selected</span>
-                  </div>
-                  {selectedSkillsToAdd.length > 0 && (
-                    <button
-                      onClick={() => setSelectedSkillsToAdd([])}
-                      className="text-xs text-blue-600 hover:text-blue-800 underline"
-                    >
-                      Clear selection
-                    </button>
-                  )}
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setShowSkillsOptimization(false)}
-                    disabled={isApplyingSkills}
-                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition disabled:opacity-50"
-                  >
-                    Close
-                  </button>
-                  <button
-                    onClick={handleApplySkillChanges}
-                    disabled={isApplyingSkills || (selectedSkillsToAdd.length === 0 && currentResumeSkills.length === (viewingResume?.sections?.skills?.length || 0))}
-                    className="px-6 py-2 bg-[#777C6D] text-white rounded-lg hover:bg-[#656A5C] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    {isApplyingSkills ? (
-                      <>
-                        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span>Applying...</span>
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        <span>Apply Changes to Resume</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-              <p className="text-xs text-gray-500">
-                💡 Click skills to select, then click "Apply Changes" to update your resume
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      <SkillsOptimizationModal
+        showSkillsOptimization={showSkillsOptimization}
+        setShowSkillsOptimization={setShowSkillsOptimization}
+        skillsOptimizationData={skillsOptimizationData}
+        showSkillsSuccessBanner={showSkillsSuccessBanner}
+        currentResumeSkills={currentResumeSkills}
+        handleRemoveSkill={handleRemoveSkill}
+        selectedSkillsToAdd={selectedSkillsToAdd}
+        toggleSkillSelection={toggleSkillSelection}
+        setSelectedSkillsToAdd={setSelectedSkillsToAdd}
+        isApplyingSkills={isApplyingSkills}
+        handleApplySkillChanges={handleApplySkillChanges}
+        viewingResume={viewingResume}
+      />
 
       {/* UC-50: Experience Tailoring Modal - Coming in next update */}
       {showExperienceTailoring && experienceTailoringData && (
@@ -5634,189 +4988,28 @@ export default function ResumeTemplates() {
         </div>
       )}
 
+
       {/* Cover Letter Template Browser Modal */}
-      {showCoverLetterBrowser && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-50 p-4"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
-          onClick={() => setShowCoverLetterBrowser(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold" style={{ color: "#4F5348" }}>
-                  Cover Letter Templates
-                </h2>
-                <button
-                  onClick={() => setShowCoverLetterBrowser(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Filters */}
-              <div className="mb-6">
-                <div className="flex gap-4 mb-4">
-                  <select
-                    value={coverLetterFilters.style}
-                    onChange={(e) => {
-                      const newFilters = { ...coverLetterFilters, style: e.target.value };
-                      setCoverLetterFilters(newFilters);
-                      loadCoverLetterTemplates(newFilters);
-                    }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                  >
-                    <option value="">All Styles</option>
-                    <option value="formal">Formal</option>
-                    <option value="modern">Modern</option>
-                    <option value="creative">Creative</option>
-                    <option value="technical">Technical</option>
-                    <option value="executive">Executive</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Template Grid */}
-              {coverLetterLoading ? (
-                <div className="text-center py-12">
-                  <LoadingSpinner />
-                </div>
-              ) : coverLetterTemplates.length === 0 ? (
-                <div className="text-center py-12 text-gray-500">
-                  <p>No templates found</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {(() => {
-                    // Deduplicate default templates - keep only one per name
-                    const defaultTemplateNames = [
-                      'Formal Professional',
-                      'Modern Professional',
-                      'Creative Expression',
-                      'Technical Professional',
-                      'Executive Leadership',
-                      'Technology Professional',
-                      'Business Professional',
-                      'Healthcare Professional'
-                    ];
-                    const seenNames = new Set();
-                    const uniqueTemplates = coverLetterTemplates.filter(template => {
-                      const isDefaultSystemTemplate = defaultTemplateNames.includes(template.name);
-
-                      if (isDefaultSystemTemplate) {
-                        if (seenNames.has(template.name)) {
-                          return false; // Skip duplicate by name
-                        }
-                        seenNames.add(template.name);
-                        return true;
-                      }
-                      return true; // Keep all custom templates
-                    });
-
-                    return uniqueTemplates.map((template) => (
-                      <Card
-                        key={template._id}
-                        variant="outlined"
-                        interactive
-                        className="p-4 hover:border-[#777C6D] transition"
-                      >
-                        <div className="flex justify-between items-start mb-3">
-                          <div>
-                            <h3 className="font-semibold text-lg">{template.name}</h3>
-                            <div className="flex gap-2 mt-1">
-                              <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded capitalize">
-                                {template.style} Style
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                          {template.description}
-                        </p>
-                        <div className="flex flex-col gap-2">
-                          <div className="flex gap-2">
-                            <Button
-                              variant="secondary"
-                              size="small"
-                              onClick={() => {
-                                setSelectedCoverLetterTemplate(template);
-                                setShowCoverLetterPreview(true);
-                              }}
-                            >
-                              Preview
-                            </Button>
-                            <Button
-                              variant="primary"
-                              size="small"
-                              onClick={async () => {
-                                try {
-                                  await authWrap();
-                                  setSelectedCoverLetterTemplate(template);
-                                  setShowCoverLetterBrowser(false);
-
-                                  // Initialize the customization form
-                                  setCustomCoverLetterName(`${template.name} - Customized`);
-                                  setCustomCoverLetterContent(template.content);
-                                  setCustomCoverLetterStyle(template.style || 'formal');
-                                  setIsCreatingCoverLetterTemplate(false); // Using template to create cover letter
-                                  setShowCoverLetterCustomize(true);
-                                } catch (err) {
-                                  console.error("Failed to prepare template:", err);
-                                }
-                              }}
-                            >
-                              Use
-                            </Button>
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={async () => {
-                                try {
-                                  await authWrap();
-                                  const response = await exportCoverLetterTemplate(template._id);
-                                  const dataStr = JSON.stringify(response.data.data.template, null, 2);
-                                  const dataBlob = new Blob([dataStr], { type: 'application/json' });
-                                  const url = URL.createObjectURL(dataBlob);
-                                  const link = document.createElement('a');
-                                  link.href = url;
-                                  link.download = `${template.name.replace(/\s+/g, '_')}_template.json`;
-                                  link.click();
-                                  URL.revokeObjectURL(url);
-                                } catch (err) {
-                                  console.error("Export failed:", err);
-                                  alert("Failed to export template");
-                                }
-                              }}
-                              className="flex-1 text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50 transition"
-                            >
-                              Export
-                            </button>
-                            <button
-                              onClick={() => {
-                                setShareTemplateId(template._id);
-                                setShowCoverLetterShare(true);
-                              }}
-                              className="flex-1 text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50 transition"
-                            >
-                              Share
-                            </button>
-                          </div>
-                        </div>
-                      </Card>
-                    ));
-                  })()}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <CoverLetterTemplateBrowserModal
+        showCoverLetterBrowser={showCoverLetterBrowser}
+        setShowCoverLetterBrowser={setShowCoverLetterBrowser}
+        coverLetterFilters={coverLetterFilters}
+        setCoverLetterFilters={setCoverLetterFilters}
+        loadCoverLetterTemplates={loadCoverLetterTemplates}
+        coverLetterLoading={coverLetterLoading}
+        coverLetterTemplates={coverLetterTemplates}
+        setSelectedCoverLetterTemplate={setSelectedCoverLetterTemplate}
+        setShowCoverLetterPreview={setShowCoverLetterPreview}
+        authWrap={authWrap}
+        setCustomCoverLetterName={setCustomCoverLetterName}
+        setCustomCoverLetterContent={setCustomCoverLetterContent}
+        setCustomCoverLetterStyle={setCustomCoverLetterStyle}
+        setIsCreatingCoverLetterTemplate={setIsCreatingCoverLetterTemplate}
+        setShowCoverLetterCustomize={setShowCoverLetterCustomize}
+        exportCoverLetterTemplate={exportCoverLetterTemplate}
+        setShareTemplateId={setShareTemplateId}
+        setShowCoverLetterShare={setShowCoverLetterShare}
+      />
 
       {/* Cover Letter Preview Modal */}
       {showCoverLetterPreview && selectedCoverLetterTemplate && (
@@ -6060,8 +5253,8 @@ export default function ResumeTemplates() {
                         setIsCreatingCoverLetterTemplate(false);
 
                         await loadSavedCoverLetters();
-                          setCoverLetterSuccessMessage("Cover letter saved successfully!");
-                          setTimeout(() => setCoverLetterSuccessMessage(null), 3000);
+                        setCoverLetterSuccessMessage("Cover letter saved successfully!");
+                        setTimeout(() => setCoverLetterSuccessMessage(null), 3000);
                       }
                     } catch (err) {
                       console.error("Save failed:", err);
@@ -6077,1648 +5270,170 @@ export default function ResumeTemplates() {
         </div>
       )}
 
+
       {/* Cover Letter Import Modal */}
-      {showCoverLetterImport && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-50 p-4"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
-          onClick={() => setShowCoverLetterImport(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-2xl max-w-2xl w-full"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold" style={{ color: "#4F5348" }}>
-                  Import Cover Letter Template
-                </h2>
-                <button
-                  onClick={() => setShowCoverLetterImport(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
+      <CoverLetterImportModal
+        showCoverLetterImport={showCoverLetterImport}
+        setShowCoverLetterImport={setShowCoverLetterImport}
+        importCoverLetterJson={importCoverLetterJson}
+        setImportCoverLetterJson={setImportCoverLetterJson}
+        customCoverLetterName={customCoverLetterName}
+        setCustomCoverLetterName={setCustomCoverLetterName}
+        authWrap={authWrap}
+        createCoverLetterTemplate={createCoverLetterTemplate}
+        loadCoverLetterTemplates={loadCoverLetterTemplates}
+      />
 
-              <div className="mb-6">
-                <p className="text-sm text-gray-600 mb-4">
-                  Paste your cover letter text below. We'll create a template from it.
-                </p>
-                <textarea
-                  className="w-full h-64 p-4 border border-gray-300 rounded-lg text-sm"
-                  value={importCoverLetterJson}
-                  onChange={(e) => setImportCoverLetterJson(e.target.value)}
-                  placeholder="Dear Hiring Manager,&#10;&#10;I am writing to express my interest in...&#10;&#10;Paste your cover letter text here and we'll create a template from it."
-                />
-              </div>
-
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Template Name (Optional)
-                </label>
-                <input
-                  type="text"
-                  className="w-full p-3 border border-gray-300 rounded-lg"
-                  value={customCoverLetterName}
-                  onChange={(e) => setCustomCoverLetterName(e.target.value)}
-                  placeholder="e.g., My Marketing Cover Letter"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3">
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setShowCoverLetterImport(false);
-                    setImportCoverLetterJson('');
-                    setCustomCoverLetterName('');
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={async () => {
-                    try {
-                      if (!importCoverLetterJson.trim()) {
-                        alert("Please paste your cover letter text.");
-                        return;
-                      }
-
-                      await authWrap();
-
-                      // Create template from plain text
-                      const templateName = customCoverLetterName.trim() || 'Imported Cover Letter';
-                      await createCoverLetterTemplate({
-                        name: templateName,
-                        industry: 'general',
-                        style: 'formal',
-                        description: 'Imported from text',
-                        content: importCoverLetterJson.trim(),
-                        isTemplate: true  // Import as a reusable template
-                      });
-
-                      setShowCoverLetterImport(false);
-                      setImportCoverLetterJson('');
-                      setCustomCoverLetterName('');
-                      await loadCoverLetterTemplates();
-                      alert("Cover letter template imported successfully!");
-                    } catch (err) {
-                      console.error("Import failed:", err);
-                      alert("Failed to import cover letter. Please try again.");
-                    }
-                  }}
-                >
-                  Import Template
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Cover Letter Share Modal */}
-      {showCoverLetterShare && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-50 p-4"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
-          onClick={() => setShowCoverLetterShare(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-2xl max-w-md w-full"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold" style={{ color: "#4F5348" }}>
-                  Share Template
-                </h2>
-                <button
-                  onClick={() => setShowCoverLetterShare(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
+      <CoverLetterShareModal
+        showCoverLetterShare={showCoverLetterShare}
+        setShowCoverLetterShare={setShowCoverLetterShare}
+        shareTemplateId={shareTemplateId}
+        authWrap={authWrap}
+        shareCoverLetterTemplate={shareCoverLetterTemplate}
+        loadCoverLetterTemplates={loadCoverLetterTemplates}
+      />
 
-              <div className="mb-6">
-                <p className="text-sm text-gray-600 mb-4">
-                  Choose how you want to share this template:
-                </p>
-                <div className="space-y-3">
-                  <button
-                    onClick={async () => {
-                      try {
-                        await authWrap();
-                        await shareCoverLetterTemplate(shareTemplateId, { isShared: true });
-                        setShowCoverLetterShare(false);
-                        loadCoverLetterTemplates();
-                        alert("Template is now publicly shared!");
-                      } catch (err) {
-                        console.error("Share failed:", err);
-                        alert("Failed to share template");
-                      }
-                    }}
-                    className="w-full p-4 border-2 border-gray-300 rounded-lg hover:border-[#777C6D] transition text-left"
-                  >
-                    <div className="font-semibold mb-1">Make Public</div>
-                    <div className="text-sm text-gray-600">Anyone can view and use this template</div>
-                  </button>
-                  <button
-                    onClick={async () => {
-                      try {
-                        await authWrap();
-                        await shareCoverLetterTemplate(shareTemplateId, { isShared: false });
-                        setShowCoverLetterShare(false);
-                        loadCoverLetterTemplates();
-                        alert("Template is now private");
-                      } catch (err) {
-                        console.error("Unshare failed:", err);
-                        alert("Failed to update sharing settings");
-                      }
-                    }}
-                    className="w-full p-4 border-2 border-gray-300 rounded-lg hover:border-[#777C6D] transition text-left"
-                  >
-                    <div className="font-semibold mb-1">Make Private</div>
-                    <div className="text-sm text-gray-600">Only you can see this template</div>
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <Button
-                  variant="secondary"
-                  onClick={() => setShowCoverLetterShare(false)}
-                >
-                  Close
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Add Cover Letter Modal */}
-      {showAddCoverLetterModal && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-50 p-4"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
-          onClick={() => setShowAddCoverLetterModal(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-2xl max-w-lg w-full"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h2 className="text-2xl font-bold" style={{ color: "#4F5348" }}>
-                    Create Cover Letter
-                  </h2>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Choose how you want to create your cover letter
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowAddCoverLetterModal(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                {/* Option 1: Select Template */}
-                <button
-                  onClick={() => {
-                    setShowAddCoverLetterModal(false);
-                    loadCoverLetterTemplates();
-                    setShowCoverLetterBrowser(true);
-                  }}
-                  className="w-full p-6 border-2 border-gray-300 rounded-lg hover:border-[#777C6D] hover:bg-gray-50 transition text-left"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="p-3 rounded-lg" style={{ backgroundColor: "#E8EAE3" }}>
-                      <svg className="w-6 h-6" style={{ color: "#4F5348" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-                      </svg>
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg mb-2" style={{ color: "#4F5348" }}>
-                        Use a Template
-                      </h3>
-                      <p className="text-sm text-gray-600 mb-2">
-                        Choose from professional templates designed for different industries and styles
-                      </p>
-                      <ul className="text-xs text-gray-500 space-y-1">
-                        <li>• 5 professional writing styles</li>
-                        <li>• Industry-specific guidance</li>
-                        <li>• Customizable placeholders</li>
-                      </ul>
-                    </div>
-                  </div>
-                </button>
-
-                {/* Option 2: AI Generate */}
-                <button
-                  onClick={async () => {
-                    setShowAddCoverLetterModal(false);
-                    // Reset AI state
-                    setAiJobId('');
-                    setAiTone('formal');
-                    setAiIndustry('general');
-                    setAiCompanyCulture('corporate');
-                    setAiLength('standard');
-                    setAiWritingStyle('hybrid');
-                    setAiCustomInstructions('');
-                    setAiVariationCount(1);
-                    setAiGeneratedVariations([]);
-                    setAiGenerationError('');
-                    setAiConsistencyWarnings([]);
-                    setSelectedAIVariation(0);
-                    setShowAdvancedOptions(false);
-                    // Load jobs for the dropdown
-                    await loadJobs();
-                    setShowAICoverLetterModal(true);
-                  }}
-                  className="w-full p-6 border-2 border-gray-300 rounded-lg hover:border-[#777C6D] hover:bg-gray-50 transition text-left"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="p-3 rounded-lg bg-gradient-to-br from-purple-100 to-blue-100">
-                      <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-semibold text-lg" style={{ color: "#4F5348" }}>
-                          AI Generate
-                        </h3>
-                        <span className="px-2 py-0.5 text-xs font-semibold bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-full">
-                          NEW
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-2">
-                        Let AI create a personalized cover letter based on the job posting and your profile
-                      </p>
-                      <ul className="text-xs text-gray-500 space-y-1">
-                        <li>• Personalized content for any job</li>
-                        <li>• Highlights relevant experience</li>
-                        <li>• Multiple variations available</li>
-                        <li>• Company culture analysis</li>
-                      </ul>
-                    </div>
-                  </div>
-                </button>
-
-                {/* Option 3: Create from Scratch */}
-                <button
-                  onClick={() => {
-                    setShowAddCoverLetterModal(false);
-                    setSelectedCoverLetterTemplate({
-                      name: 'New Cover Letter',
-                      industry: 'general',
-                      style: 'formal',
-                      content: '',
-                      description: ''
-                    });
-                    setCustomCoverLetterName('My Cover Letter');
-                    setCustomCoverLetterContent('');
-                    setCustomCoverLetterStyle('formal');
-                    setIsCreatingCoverLetterTemplate(false); // Creating a cover letter, not a template
-                    setShowCoverLetterCustomize(true);
-                  }}
-                  className="w-full p-6 border-2 border-gray-300 rounded-lg hover:border-[#777C6D] hover:bg-gray-50 transition text-left"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="p-3 rounded-lg" style={{ backgroundColor: "#E8EAE3" }}>
-                      <svg className="w-6 h-6" style={{ color: "#4F5348" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg mb-2" style={{ color: "#4F5348" }}>
-                        Create from Scratch
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        Start with a blank canvas and write your own custom cover letter
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              </div>
-
-              <div className="mt-6 flex justify-end">
-                <Button
-                  variant="secondary"
-                  onClick={() => setShowAddCoverLetterModal(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <AddCoverLetterModal
+        showAddCoverLetterModal={showAddCoverLetterModal}
+        setShowAddCoverLetterModal={setShowAddCoverLetterModal}
+        loadCoverLetterTemplates={loadCoverLetterTemplates}
+        setShowCoverLetterBrowser={setShowCoverLetterBrowser}
+        setAiJobId={setAiJobId}
+        setAiTone={setAiTone}
+        setAiIndustry={setAiIndustry}
+        setAiCompanyCulture={setAiCompanyCulture}
+        setAiLength={setAiLength}
+        setAiWritingStyle={setAiWritingStyle}
+        setAiCustomInstructions={setAiCustomInstructions}
+        setAiVariationCount={setAiVariationCount}
+        setAiGeneratedVariations={setAiGeneratedVariations}
+        setAiGenerationError={setAiGenerationError}
+        setAiConsistencyWarnings={setAiConsistencyWarnings}
+        setSelectedAIVariation={setSelectedAIVariation}
+        setShowAdvancedOptions={setShowAdvancedOptions}
+        loadJobs={loadJobs}
+        setShowAICoverLetterModal={setShowAICoverLetterModal}
+        setSelectedCoverLetterTemplate={setSelectedCoverLetterTemplate}
+        setCustomCoverLetterName={setCustomCoverLetterName}
+        setCustomCoverLetterContent={setCustomCoverLetterContent}
+        setCustomCoverLetterStyle={setCustomCoverLetterStyle}
+        setIsCreatingCoverLetterTemplate={setIsCreatingCoverLetterTemplate}
+        setShowCoverLetterCustomize={setShowCoverLetterCustomize}
+      />
 
       {/* AI Cover Letter Generation Modal */}
-      {showAICoverLetterModal && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-50 p-4" 
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
-          onClick={() => !isGeneratingAI && setShowAICoverLetterModal(false)}
-        >
-          <div 
-            className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-gradient-to-br from-purple-100 to-blue-100">
-                    <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold" style={{ color: "#4F5348" }}>
-                      AI Cover Letter Generator
-                    </h2>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Generate personalized cover letters based on job postings
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => !isGeneratingAI && setShowAICoverLetterModal(false)}
-                  disabled={isGeneratingAI}
-                  className="text-gray-500 hover:text-gray-700 disabled:opacity-50"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
+      <AICoverLetterModal
+        showAICoverLetterModal={showAICoverLetterModal}
+        setShowAICoverLetterModal={setShowAICoverLetterModal}
+        isGeneratingAI={isGeneratingAI}
+        setIsGeneratingAI={setIsGeneratingAI}
+        aiJobId={aiJobId}
+        setAiJobId={setAiJobId}
+        aiTone={aiTone}
+        setAiTone={setAiTone}
+        aiIndustry={aiIndustry}
+        setAiIndustry={setAiIndustry}
+        aiCompanyCulture={aiCompanyCulture}
+        setAiCompanyCulture={setAiCompanyCulture}
+        aiLength={aiLength}
+        setAiLength={setAiLength}
+        aiWritingStyle={aiWritingStyle}
+        setAiWritingStyle={setAiWritingStyle}
+        aiCustomInstructions={aiCustomInstructions}
+        setAiCustomInstructions={setAiCustomInstructions}
+        aiVariationCount={aiVariationCount}
+        setAiVariationCount={setAiVariationCount}
+        aiGeneratedVariations={aiGeneratedVariations}
+        setAiGeneratedVariations={setAiGeneratedVariations}
+        selectedAIVariation={selectedAIVariation}
+        setSelectedAIVariation={setSelectedAIVariation}
+        aiGenerationError={aiGenerationError}
+        setAiGenerationError={setAiGenerationError}
+        aiConsistencyWarnings={aiConsistencyWarnings}
+        setAiConsistencyWarnings={setAiConsistencyWarnings}
+        showAdvancedOptions={showAdvancedOptions}
+        setShowAdvancedOptions={setShowAdvancedOptions}
+        jobs={jobs}
+        authWrap={authWrap}
+        generateAICoverLetter={generateAICoverLetter}
+        createCoverLetter={createCoverLetter}
+        loadSavedCoverLetters={loadSavedCoverLetters}
+        setCoverLetterSuccessMessage={setCoverLetterSuccessMessage}
+        setAiCompanyName={() => { }}
+        setAiPosition={() => { }}
+        setAiJobDescription={() => { }}
+        setCultureAnalysis={() => { }}
+      />
 
-              {!aiGeneratedVariations.length ? (
-                /* Input Form */
-                <div>
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Select Job to Tailor For *
-                    </label>
-                    <select
-                      className="w-full p-3 border border-gray-300 rounded-lg"
-                      value={aiJobId}
-                      onChange={(e) => {
-                        setAiJobId(e.target.value);
-                        // Clear any previous errors when job is selected
-                        if (e.target.value) {
-                          setAiGenerationError('');
-                          
-                          // Auto-recommend settings based on job
-                          const selectedJob = jobs.find(j => j._id === e.target.value);
-                          if (selectedJob) {
-                            const recommendations = getRecommendedSettings(
-                              selectedJob.title,
-                              selectedJob.description,
-                              selectedJob.company
-                            );
-                            
-                            // Apply recommendations
-                            setAiTone(recommendations.tone);
-                            setAiIndustry(recommendations.industry);
-                            setAiCompanyCulture(recommendations.companyCulture);
-                            setAiLength(recommendations.length);
-                            setAiWritingStyle(recommendations.writingStyle);
-                            
-                            // Update warnings
-                            const warnings = validateToneConsistency(
-                              recommendations.tone,
-                              recommendations.industry,
-                              recommendations.companyCulture
-                            );
-                            setAiConsistencyWarnings(warnings);
-                          }
-                        }
-                      }}
-                      disabled={isGeneratingAI}
-                    >
-                      <option value="">-- Select a job --</option>
-                      {jobs.map((job) => (
-                        <option key={job._id} value={job._id}>
-                          {job.title} at {job.company}
-                        </option>
-                      ))}
-                    </select>
-                    {!jobs.length && (
-                      <p className="text-sm text-orange-600 mt-2">
-                        ⚠️ You haven't added any jobs yet. Please add a job first to generate a cover letter.
-                      </p>
-                    )}
-                  </div>
-
-                  {aiJobId && (
-                    <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                      <div className="flex items-start gap-2">
-                        <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
-                        <div>
-                          <p className="font-semibold text-blue-900 text-sm mb-1">Selected Job</p>
-                          <p className="text-blue-800 text-sm">
-                            <strong>{jobs.find(j => j._id === aiJobId)?.title}</strong> at{' '}
-                            <strong>{jobs.find(j => j._id === aiJobId)?.company}</strong>
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Tone and Style Configuration */}
-                  <div className="space-y-4 mb-6">
-                    {/* Tone Selection */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Writing Tone *
-                      </label>
-                      <select
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        value={aiTone}
-                        onChange={(e) => {
-                          setAiTone(e.target.value);
-                          // Update warnings when tone changes
-                          const warnings = validateToneConsistency(e.target.value, aiIndustry, aiCompanyCulture);
-                          setAiConsistencyWarnings(warnings);
-                        }}
-                        disabled={isGeneratingAI}
-                      >
-                        {TONE_OPTIONS.map(option => (
-                          <option key={option.value} value={option.value}>
-                            {option.label} - {option.description}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Industry Selection */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Industry
-                      </label>
-                      <select
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        value={aiIndustry}
-                        onChange={(e) => {
-                          setAiIndustry(e.target.value);
-                          const warnings = validateToneConsistency(aiTone, e.target.value, aiCompanyCulture);
-                          setAiConsistencyWarnings(warnings);
-                        }}
-                        disabled={isGeneratingAI}
-                      >
-                        {INDUSTRY_OPTIONS.map(option => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Company Culture Selection */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Company Culture
-                      </label>
-                      <select
-                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        value={aiCompanyCulture}
-                        onChange={(e) => {
-                          setAiCompanyCulture(e.target.value);
-                          const warnings = validateToneConsistency(aiTone, aiIndustry, e.target.value);
-                          setAiConsistencyWarnings(warnings);
-                        }}
-                        disabled={isGeneratingAI}
-                      >
-                        {COMPANY_CULTURE_OPTIONS.map(option => (
-                          <option key={option.value} value={option.value}>
-                            {option.label} - {option.description}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Consistency Warnings */}
-                    {aiConsistencyWarnings.length > 0 && (
-                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                        {aiConsistencyWarnings.map((warning, idx) => (
-                          <p key={idx} className="text-sm text-amber-800 mb-1 last:mb-0">
-                            {warning}
-                          </p>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Advanced Options Toggle */}
-                    <button
-                      type="button"
-                      onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
-                      className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700"
-                      disabled={isGeneratingAI}
-                    >
-                      <svg 
-                        className={`w-4 h-4 transition-transform ${showAdvancedOptions ? 'rotate-90' : ''}`}
-                        fill="none" 
-                        stroke="currentColor" 
-                        viewBox="0 0 24 24"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                      {showAdvancedOptions ? 'Hide' : 'Show'} Advanced Options
-                    </button>
-
-                    {/* Advanced Options Panel */}
-                    {showAdvancedOptions && (
-                      <div className="space-y-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                        {/* Length Selection */}
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Cover Letter Length
-                          </label>
-                          <select
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            value={aiLength}
-                            onChange={(e) => setAiLength(e.target.value)}
-                            disabled={isGeneratingAI}
-                          >
-                            {LENGTH_OPTIONS.map(option => (
-                              <option key={option.value} value={option.value}>
-                                {option.label} - {option.description}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* Writing Style Selection */}
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Writing Style
-                          </label>
-                          <select
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            value={aiWritingStyle}
-                            onChange={(e) => setAiWritingStyle(e.target.value)}
-                            disabled={isGeneratingAI}
-                          >
-                            {WRITING_STYLE_OPTIONS.map(option => (
-                              <option key={option.value} value={option.value}>
-                                {option.label} - {option.description}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* Custom Instructions */}
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Custom Instructions (Optional)
-                          </label>
-                          <textarea
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                            rows="3"
-                            placeholder="Any specific instructions or points to emphasize? (max 500 characters)"
-                            value={aiCustomInstructions}
-                            onChange={(e) => setAiCustomInstructions(e.target.value.slice(0, 500))}
-                            disabled={isGeneratingAI}
-                          />
-                          <p className="text-xs text-gray-500 mt-1">
-                            {aiCustomInstructions.length}/500 characters
-                          </p>
-                        </div>
-
-                        {/* Variation Count */}
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Number of Variations
-                          </label>
-                          <select
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            value={aiVariationCount}
-                            onChange={(e) => setAiVariationCount(Number(e.target.value))}
-                            disabled={isGeneratingAI}
-                          >
-                            <option value={1}>1 Variation</option>
-                            <option value={2}>2 Variations</option>
-                            <option value={3}>3 Variations</option>
-                          </select>
-                          <p className="text-xs text-gray-500 mt-1">
-                            Generate multiple versions to choose from
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {aiGenerationError && (
-                    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                      <p className="text-sm text-red-800">{aiGenerationError}</p>
-                    </div>
-                  )}
-
-                  <div className="flex justify-end gap-3">
-                    <Button
-                      variant="secondary"
-                      onClick={() => setShowAICoverLetterModal(false)}
-                      disabled={isGeneratingAI}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      variant="primary"
-                      onClick={async () => {
-                        if (!aiJobId) {
-                          setAiGenerationError('Please select a job to generate a cover letter for');
-                          return;
-                        }
-
-                        try {
-                          setIsGeneratingAI(true);
-                          setAiGenerationError('');
-                          await authWrap();
-                          
-                          const response = await generateAICoverLetter({
-                            jobId: aiJobId,
-                            tone: aiTone,
-                            variationCount: aiVariationCount,
-                            industry: aiIndustry,
-                            companyCulture: aiCompanyCulture,
-                            length: aiLength,
-                            writingStyle: aiWritingStyle,
-                            customInstructions: aiCustomInstructions
-                          });
-
-                          setAiGeneratedVariations(response.data.data.variations);
-                          setSelectedAIVariation(0);
-                        } catch (err) {
-                          console.error('AI generation failed:', err);
-                          setAiGenerationError(err.response?.data?.message || 'Failed to generate cover letter. Please ensure your profile has work experience and try again.');
-                        } finally {
-                          setIsGeneratingAI(false);
-                        }
-                      }}
-                      disabled={isGeneratingAI || !aiJobId}
-                    >
-                      {isGeneratingAI ? (
-                        <>
-                          <svg className="animate-spin h-5 w-5 mr-2 inline-block" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          Researching company & generating...
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-5 h-5 mr-2 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                          </svg>
-                          Generate Cover Letter
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                /* Results View */
-                <div>
-                  <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      <p className="text-sm text-green-800 font-medium">
-                        Successfully generated {aiGeneratedVariations.length} variation{aiGeneratedVariations.length > 1 ? 's' : ''}!
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Tone Adjustment and Regeneration */}
-                  <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-center gap-4 flex-wrap">
-                      <div className="flex-1 min-w-[200px]">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Adjust Tone
-                        </label>
-                        <select
-                          className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          value={aiTone}
-                          onChange={(e) => {
-                            setAiTone(e.target.value);
-                            const warnings = validateToneConsistency(e.target.value, aiIndustry, aiCompanyCulture);
-                            setAiConsistencyWarnings(warnings);
-                          }}
-                        >
-                          {TONE_OPTIONS.map(option => (
-                            <option key={option.value} value={option.value}>
-                              {option.label} - {option.description}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="flex items-end">
-                        <Button
-                          variant="primary"
-                          onClick={async () => {
-                            if (!aiJobId) {
-                              setAiGenerationError('Please select a job to regenerate for');
-                              return;
-                            }
-
-                            try {
-                              setIsGeneratingAI(true);
-                              setAiGenerationError('');
-                              await authWrap();
-                              
-                              const response = await generateAICoverLetter({
-                                jobId: aiJobId,
-                                tone: aiTone,
-                                variationCount: aiVariationCount,
-                                industry: aiIndustry,
-                                companyCulture: aiCompanyCulture,
-                                length: aiLength,
-                                writingStyle: aiWritingStyle,
-                                customInstructions: aiCustomInstructions
-                              });
-
-                              setAiGeneratedVariations(response.data.data.variations);
-                              setSelectedAIVariation(0);
-                            } catch (err) {
-                              console.error('Regeneration failed:', err);
-                              setAiGenerationError(err.response?.data?.message || 'Failed to regenerate cover letter. Please try again.');
-                            } finally {
-                              setIsGeneratingAI(false);
-                            }
-                          }}
-                          disabled={isGeneratingAI || !aiJobId}
-                        >
-                          {isGeneratingAI ? (
-                            <>
-                              <svg className="animate-spin h-4 w-4 mr-2 inline-block" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                              </svg>
-                              Regenerating...
-                            </>
-                          ) : (
-                            <>
-                              <svg className="w-4 h-4 mr-2 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                              </svg>
-                              Regenerate with New Tone
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-                    {aiConsistencyWarnings.length > 0 && (
-                      <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded">
-                        {aiConsistencyWarnings.map((warning, idx) => (
-                          <p key={idx} className="text-xs text-amber-800 mb-1 last:mb-0">
-                            {warning}
-                          </p>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {aiVariationCount > 1 && (
-                    <div className="mb-6">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Select Variation
-                      </label>
-                      <div className="flex gap-2">
-                        {aiGeneratedVariations.map((_, index) => (
-                          <button
-                            key={index}
-                            onClick={() => setSelectedAIVariation(index)}
-                            className={`flex-1 py-2 px-4 rounded-lg border-2 transition ${
-                              selectedAIVariation === index
-                                ? 'border-purple-500 bg-purple-50 text-purple-700'
-                                : 'border-gray-300 hover:border-gray-400'
-                            }`}
-                          >
-                            Variation {index + 1}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="mb-6">
-                    <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 max-h-96 overflow-y-auto">
-                      <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
-                        {aiGeneratedVariations[selectedAIVariation]?.content}
-                      </pre>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between gap-3">
-                    <Button
-                      variant="secondary"
-                      onClick={() => {
-                        setAiGeneratedVariations([]);
-                        setSelectedAIVariation(0);
-                      }}
-                    >
-                      ← Generate Another
-                    </Button>
-                    <div className="flex gap-3">
-                      <Button
-                        variant="secondary"
-                        onClick={() => {
-                          setShowAICoverLetterModal(false);
-                          setAiGeneratedVariations([]);
-                          setAiCompanyName('');
-                          setAiPosition('');
-                          setAiJobDescription('');
-                          setCultureAnalysis(null);
-                        }}
-                      >
-                        Close
-                      </Button>
-                      <Button
-                        variant="primary"
-                        onClick={async () => {
-                          try {
-                            await authWrap();
-                            const selectedContent = aiGeneratedVariations[selectedAIVariation].content;
-                            
-                            // Validate content is not empty
-                            if (!selectedContent || !selectedContent.trim()) {
-                              alert('Selected cover letter content is empty. Please try generating again.');
-                              return;
-                            }
-                            
-                            // Find the selected job to get company and position
-                            const selectedJob = jobs.find(j => j._id === aiJobId);
-                            const coverLetterName = selectedJob 
-                              ? `${selectedJob.title} at ${selectedJob.company}`
-                              : 'AI Generated Cover Letter';
-                            
-                            const response = await createCoverLetter({
-                              name: coverLetterName,
-                              content: selectedContent,
-                              style: aiTone,
-                              templateId: null
-                            });
-
-                            if (response && response.data && response.data.success) {
-                              setShowAICoverLetterModal(false);
-                              setAiGeneratedVariations([]);
-                              setAiJobId('');
-                              
-                              await loadSavedCoverLetters();
-                              setCoverLetterSuccessMessage('AI-generated cover letter saved successfully!');
-                              setTimeout(() => setCoverLetterSuccessMessage(null), 3000);
-                            } else {
-                              throw new Error('Unexpected response format');
-                            }
-                          } catch (err) {
-                            console.error('Save failed:', err);
-                            const errorMessage = err.response?.data?.message || err.message || 'Unknown error occurred';
-                            alert(`Failed to save cover letter: ${errorMessage}. Please try again.`);
-                          }
-                        }}
-                      >
-                        Save Cover Letter
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Manage Cover Letter Templates Modal */}
-      {showManageCoverLetterTemplates && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-50 p-4"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
-          onClick={() => setShowManageCoverLetterTemplates(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold" style={{ color: "#4F5348" }}>
-                  Manage Templates
-                </h2>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      setShowManageCoverLetterTemplates(false);
-                      setSelectedCoverLetterTemplate({
-                        name: 'New Template',
-                        industry: 'general',
-                        style: 'formal',
-                        content: '',
-                        description: ''
-                      });
-                      setCustomCoverLetterName('My Custom Template');
-                      setCustomCoverLetterContent('');
-                      setIsCreatingCoverLetterTemplate(true); // Creating a template, not a cover letter
-                      setShowCoverLetterCustomize(true);
-                    }}
-                    className="px-4 py-2 text-white rounded-lg transition"
-                    style={{ backgroundColor: '#777C6D' }}
-                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-                  >
-                    Create Template
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowManageCoverLetterTemplates(false);
-                      setShowCoverLetterImport(true);
-                    }}
-                    className="px-4 py-2 text-white rounded-lg transition"
-                    style={{ backgroundColor: '#777C6D' }}
-                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-                  >
-                    Import Template
-                  </button>
-                  <button
-                    onClick={() => setShowManageCoverLetterTemplates(false)}
-                    className="text-gray-500 hover:text-gray-700"
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
+      <ManageCoverLetterTemplatesModal
+        showManageCoverLetterTemplates={showManageCoverLetterTemplates}
+        setShowManageCoverLetterTemplates={setShowManageCoverLetterTemplates}
+        setSelectedCoverLetterTemplate={setSelectedCoverLetterTemplate}
+        setCustomCoverLetterName={setCustomCoverLetterName}
+        setCustomCoverLetterContent={setCustomCoverLetterContent}
+        setIsCreatingCoverLetterTemplate={setIsCreatingCoverLetterTemplate}
+        setShowCoverLetterCustomize={setShowCoverLetterCustomize}
+        setShowCoverLetterImport={setShowCoverLetterImport}
+        coverLetterLoading={coverLetterLoading}
+        coverLetterTemplates={coverLetterTemplates}
+        authWrap={authWrap}
+        deleteCoverLetterTemplate={deleteCoverLetterTemplate}
+        loadCoverLetterTemplates={loadCoverLetterTemplates}
+      />
 
-              {coverLetterLoading ? (
-                <div className="text-center py-12">
-                  <LoadingSpinner />
-                </div>
-              ) : coverLetterTemplates.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-gray-600">No templates available</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {(() => {
-                    // Deduplicate default templates - keep only one per name
-                    const defaultTemplateNames = [
-                      'Formal Professional',
-                      'Modern Professional',
-                      'Creative Expression',
-                      'Technical Professional',
-                      'Executive Leadership',
-                      'Technology Professional',
-                      'Business Professional',
-                      'Healthcare Professional'
-                    ];
-                    const seenNames = new Set();
-                    const uniqueTemplates = coverLetterTemplates.filter(template => {
-                      const isDefaultSystemTemplate = defaultTemplateNames.includes(template.name);
-
-                      if (isDefaultSystemTemplate) {
-                        if (seenNames.has(template.name)) {
-                          return false; // Skip duplicate by name
-                        }
-                        seenNames.add(template.name);
-                        return true;
-                      }
-                      return true; // Keep all custom templates
-                    });
-
-                    return uniqueTemplates.map((template) => {
-                      // Check if this is a default system template
-                      const isDefaultSystemTemplate = defaultTemplateNames.includes(template.name);
-
-                      return (
-                        <div
-                          key={template._id}
-                          className="border-2 border-gray-300 rounded-lg overflow-hidden hover:border-[#777C6D] transition"
-                        >
-                          <div className="bg-white p-4 h-64 overflow-hidden">
-                            <div className="text-xs font-mono whitespace-pre-wrap text-gray-700 line-clamp-[14]">
-                              {template.content}
-                            </div>
-                          </div>
-                          <div className="border-t border-gray-200 p-4 bg-gray-50">
-                            <div className="flex items-start justify-between mb-3">
-                              <div className="flex-1">
-                                <h3 className="font-semibold truncate" style={{ color: "#4F5348" }}>
-                                  {template.name}
-                                </h3>
-                                <p className="text-xs text-gray-600 mt-1">{template.description || template.style}</p>
-                              </div>
-                              {template.isDefault && (
-                                <span className="ml-2 px-2 py-1 text-xs rounded" style={{ backgroundColor: "#E8EAE3", color: "#4F5348" }}>
-                                  Default
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => {
-                                  setSelectedCoverLetterTemplate(template);
-                                  setCustomCoverLetterName(`${template.name} - Copy`);
-                                  setCustomCoverLetterContent(template.content);
-                                  setIsCreatingCoverLetterTemplate(false);
-                                  setShowManageCoverLetterTemplates(false);
-                                  setShowCoverLetterCustomize(true);
-                                }}
-                                className={`${isDefaultSystemTemplate ? 'w-full' : 'flex-1'} px-3 py-2 text-sm text-white rounded transition`}
-                                style={{ backgroundColor: '#777C6D' }}
-                                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-                              >
-                                Use Template
-                              </button>
-                              {!isDefaultSystemTemplate && (
-                                <button
-                                  onClick={async () => {
-                                    if (confirm(`Delete "${template.name}"?`)) {
-                                      try {
-                                        await authWrap();
-                                        await deleteCoverLetterTemplate(template._id);
-                                        await loadCoverLetterTemplates();
-                                        setShowManageCoverLetterTemplates(true);
-                                        alert("Template deleted successfully!");
-                                      } catch (err) {
-                                        console.error("Delete failed:", err);
-                                        alert("Failed to delete template");
-                                      }
-                                    }
-                                  }}
-                                  className="px-3 py-2 text-sm text-red-600 hover:text-red-700 border border-red-300 rounded transition"
-                                  title="Delete Template"
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                  </svg>
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    });
-                  })()}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Cover Letter Template Analytics Modal */}
-      {showCoverLetterAnalytics && coverLetterAnalytics && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-50 p-4"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
-          onClick={() => setShowCoverLetterAnalytics(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-6">
-              {/* Header */}
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold" style={{ color: "#4F5348" }}>
-                  Template Usage Analytics
-                </h2>
-                <button
-                  onClick={() => setShowCoverLetterAnalytics(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
+      <CoverLetterAnalyticsModal
+        showCoverLetterAnalytics={showCoverLetterAnalytics}
+        setShowCoverLetterAnalytics={setShowCoverLetterAnalytics}
+        coverLetterAnalytics={coverLetterAnalytics}
+      />
 
-              {/* Summary Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-blue-600 font-medium">Total Templates</p>
-                      <p className="text-3xl font-bold text-blue-900">{coverLetterAnalytics.summary.totalTemplates}</p>
-                    </div>
-                    <svg className="w-12 h-12 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  </div>
-                </div>
-
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-green-600 font-medium">Total Usage</p>
-                      <p className="text-3xl font-bold text-green-900">{coverLetterAnalytics.summary.totalUsage}</p>
-                    </div>
-                    <svg className="w-12 h-12 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                    </svg>
-                  </div>
-                </div>
-
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-purple-600 font-medium">Average Usage</p>
-                      <p className="text-3xl font-bold text-purple-900">{coverLetterAnalytics.summary.avgUsage}</p>
-                    </div>
-                    <svg className="w-12 h-12 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              {/* Most Used Template */}
-              {coverLetterAnalytics.mostUsedTemplate && (
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold mb-3" style={{ color: "#4F5348" }}>
-                    Most Used Template
-                  </h3>
-                  <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xl font-bold text-yellow-900">{coverLetterAnalytics.mostUsedTemplate.name}</p>
-                        <div className="flex gap-2 mt-2">
-                          <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded capitalize">
-                            {coverLetterAnalytics.mostUsedTemplate.industry}
-                          </span>
-                          <span className="text-xs px-2 py-1 bg-orange-100 text-orange-700 rounded capitalize">
-                            {coverLetterAnalytics.mostUsedTemplate.style}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-3xl font-bold text-yellow-900">{coverLetterAnalytics.mostUsedTemplate.usageCount}</p>
-                        <p className="text-sm text-yellow-700">times used</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Top 5 Templates */}
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold mb-3" style={{ color: "#4F5348" }}>
-                  Top 5 Templates by Usage
-                </h3>
-                <div className="space-y-2">
-                  {coverLetterAnalytics.topTemplates.map((template, index) => (
-                    <div key={template.id} className="flex items-center justify-between bg-gray-50 rounded-lg p-3 border border-gray-200">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 text-gray-700 font-bold">
-                          {index + 1}
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900">{template.name}</p>
-                          <div className="flex gap-2 mt-1">
-                            <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded capitalize">
-                              {template.industry}
-                            </span>
-                            <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded capitalize">
-                              {template.style}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xl font-bold text-gray-900">{template.usageCount}</p>
-                        <p className="text-xs text-gray-600">uses</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Usage by Industry and Style */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                {/* By Industry */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-3" style={{ color: "#4F5348" }}>
-                    Usage by Industry
-                  </h3>
-                  <div className="space-y-2">
-                    {Object.entries(coverLetterAnalytics.usageByIndustry).map(([industry, data]) => (
-                      <div key={industry} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-medium text-gray-900 capitalize">{industry}</span>
-                          <span className="text-sm text-gray-600">{data.usage} uses</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-blue-500 h-2 rounded-full"
-                            style={{ width: `${(data.usage / coverLetterAnalytics.summary.totalUsage) * 100}%` }}
-                          />
-                        </div>
-                        <p className="text-xs text-gray-600 mt-1">{data.count} templates</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* By Style */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-3" style={{ color: "#4F5348" }}>
-                    Usage by Style
-                  </h3>
-                  <div className="space-y-2">
-                    {Object.entries(coverLetterAnalytics.usageByStyle).map(([style, data]) => (
-                      <div key={style} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-medium text-gray-900 capitalize">{style}</span>
-                          <span className="text-sm text-gray-600">{data.usage} uses</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-purple-500 h-2 rounded-full"
-                            style={{ width: `${(data.usage / coverLetterAnalytics.summary.totalUsage) * 100}%` }}
-                          />
-                        </div>
-                        <p className="text-xs text-gray-600 mt-1">{data.count} templates</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Close Button */}
-              <div className="flex justify-end">
-                <button
-                  onClick={() => setShowCoverLetterAnalytics(false)}
-                  className="px-6 py-2 text-white rounded-lg transition"
-                  style={{ backgroundColor: '#777C6D' }}
-                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* View/Edit Cover Letter Modal - UC-060: Enhanced with rich text editor and AI assistance */}
-      {showViewCoverLetterModal && viewingCoverLetter && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-50 p-4"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
-          onClick={() => {
-            setShowViewCoverLetterModal(false);
-            setIsCoverLetterEditMode(false);
-          }}
-        >
-          <div
-            className="bg-white rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold" style={{ color: "#4F5348" }}>
-                  {isCoverLetterEditMode ? 'Edit Cover Letter' : 'View Cover Letter'}
-                </h2>
-                <div className="flex items-center gap-3">
-                  {!isCoverLetterEditMode && (
-                    <button
-                      onClick={async () => {
-                        setEditingCoverLetter(viewingCoverLetter);
-                        setIsCoverLetterEditMode(true);
-                        // Initialize selected job for regeneration
-                        setSelectedJobForRegeneration(viewingCoverLetter?.jobId || '');
-                        // Ensure jobs are loaded
-                        if (jobs.length === 0) {
-                          await loadJobs();
-                        }
-                      }}
-                      className="px-4 py-2 text-white rounded-lg transition flex items-center gap-2"
-                      style={{ backgroundColor: '#777C6D' }}
-                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                      Edit
-                    </button>
-                  )}
-                  <button
-                    onClick={() => {
-                      setShowViewCoverLetterModal(false);
-                      setIsCoverLetterEditMode(false);
-                    }}
-                    className="text-gray-500 hover:text-gray-700"
-                  >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              {!isCoverLetterEditMode ? (
-                /* VIEW MODE */
-                <>
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Cover Letter Name
-                    </label>
-                    <div className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50">
-                      {customCoverLetterName}
-                    </div>
-                  </div>
-
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Cover Letter Style
-                    </label>
-                    <div className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 capitalize">
-                      {customCoverLetterStyle}
-                    </div>
-                  </div>
-
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Cover Letter Content
-                    </label>
-                    <div 
-                      className="cover-letter-content w-full p-4 border border-gray-300 rounded-lg bg-gray-50 min-h-[400px]"
-                      dangerouslySetInnerHTML={{ __html: formatCoverLetterContent(customCoverLetterContent) }}
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-3">
-                    <button
-                      onClick={() => {
-                        setShowViewCoverLetterModal(false);
-                        setIsCoverLetterEditMode(false);
-                      }}
-                      className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-                    >
-                      Close
-                    </button>
-                    <button
-                      onClick={() => {
-                        setExportingCoverLetter(viewingCoverLetter);
-                        setShowCoverLetterExportModal(true);
-                      }}
-                      className="px-6 py-2 text-white rounded-lg transition flex items-center gap-2"
-                      style={{ backgroundColor: '#4F5348' }}
-                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#3a3d34'}
-                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#4F5348'}
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                      </svg>
-                      Export
-                    </button>
-                  </div>
-                </>
-              ) : (
-                /* EDIT MODE */
-                <>
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Cover Letter Name
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full p-3 border border-gray-300 rounded-lg"
-                      value={customCoverLetterName}
-                      onChange={(e) => setCustomCoverLetterName(e.target.value)}
-                      placeholder="e.g., My Software Engineer Cover Letter"
-                    />
-                  </div>
-
-                  {/* Tone Adjustment and Regeneration */}
-                  <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Adjust Tone
-                          </label>
-                          <select
-                            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            value={customCoverLetterStyle}
-                            onChange={(e) => {
-                              setCustomCoverLetterStyle(e.target.value);
-                              // Update warnings when tone changes (if we have industry/culture info)
-                              if (selectedJobForRegeneration || viewingCoverLetter?.jobId) {
-                                const warnings = validateToneConsistency(e.target.value, aiIndustry, aiCompanyCulture);
-                                setAiConsistencyWarnings(warnings);
-                              }
-                            }}
-                          >
-                            {TONE_OPTIONS.map(option => (
-                              <option key={option.value} value={option.value}>
-                                {option.label} - {option.description}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Select Job for Regeneration *
-                          </label>
-                          <select
-                            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            value={selectedJobForRegeneration || viewingCoverLetter?.jobId || ''}
-                            onChange={(e) => {
-                              setSelectedJobForRegeneration(e.target.value);
-                              // Update warnings when job changes
-                              if (e.target.value) {
-                                const selectedJob = jobs.find(j => j._id === e.target.value);
-                                if (selectedJob) {
-                                  const warnings = validateToneConsistency(customCoverLetterStyle, aiIndustry, aiCompanyCulture);
-                                  setAiConsistencyWarnings(warnings);
-                                }
-                              }
-                            }}
-                          >
-                            <option value="">Select a job...</option>
-                            {jobs.filter(job => !job.archived).map(job => (
-                              <option key={job._id} value={job._id}>
-                                {job.title} at {job.company}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                      <div className="flex justify-end">
-                        <Button
-                          variant="primary"
-                          onClick={async () => {
-                            const jobIdToUse = selectedJobForRegeneration || viewingCoverLetter?.jobId;
-                            
-                            if (!jobIdToUse) {
-                              alert('Please select a job to regenerate the cover letter for.');
-                              return;
-                            }
-
-                            try {
-                              setIsGeneratingAI(true);
-                              await authWrap();
-                              
-                              const response = await generateAICoverLetter({
-                                jobId: jobIdToUse,
-                                tone: customCoverLetterStyle,
-                                variationCount: 1,
-                                industry: aiIndustry || 'general',
-                                companyCulture: aiCompanyCulture || 'corporate',
-                                length: aiLength || 'standard',
-                                writingStyle: aiWritingStyle || 'hybrid',
-                                customInstructions: ''
-                              });
-
-                              if (response.data.data.variations && response.data.data.variations.length > 0) {
-                                // Update the content with the regenerated version
-                                const newContent = response.data.data.variations[0].content;
-                                setCustomCoverLetterContent(newContent);
-                                // Force editor to re-render with new content
-                                setEditorContentKey(prev => prev + 1);
-                                alert('Cover letter regenerated with new tone! Review the changes and click Save to update.');
-                              }
-                            } catch (err) {
-                              console.error('Regeneration failed:', err);
-                              alert(err.response?.data?.message || 'Failed to regenerate cover letter. Please ensure your profile has work experience and try again.');
-                            } finally {
-                              setIsGeneratingAI(false);
-                            }
-                          }}
-                          disabled={isGeneratingAI || (!selectedJobForRegeneration && !viewingCoverLetter?.jobId)}
-                        >
-                          {isGeneratingAI ? (
-                            <>
-                              <svg className="animate-spin h-4 w-4 mr-2 inline-block" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                              </svg>
-                              Regenerating...
-                            </>
-                          ) : (
-                            <>
-                              <svg className="w-4 h-4 mr-2 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                              </svg>
-                              Regenerate with New Tone
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-                    {aiConsistencyWarnings.length > 0 && (selectedJobForRegeneration || viewingCoverLetter?.jobId) && (
-                      <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded">
-                        {aiConsistencyWarnings.map((warning, idx) => (
-                          <p key={idx} className="text-xs text-amber-800 mb-1 last:mb-0">
-                            {warning}
-                          </p>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Cover Letter Content
-                    </label>
-                    <CoverLetterEditor
-                      key={editorContentKey}
-                      initialContent={formatCoverLetterContent(customCoverLetterContent)}
-                      onChange={(content) => setCustomCoverLetterContent(content)}
-                      coverLetterId={editingCoverLetter._id}
-                      onSave={async (content) => {
-                        setCustomCoverLetterContent(content);
-                      }}
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-3">
-                    <button
-                      onClick={() => {
-                        // Restore original values
-                        setCustomCoverLetterName(viewingCoverLetter.name);
-                        setCustomCoverLetterContent(viewingCoverLetter.content);
-                        setCustomCoverLetterStyle(viewingCoverLetter.style || 'formal');
-                        setIsCoverLetterEditMode(false);
-                      }}
-                      className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={async () => {
-                        try {
-                          if (!customCoverLetterName.trim()) {
-                            alert("Please enter a name for your cover letter.");
-                            return;
-                          }
-                          if (!customCoverLetterContent.trim()) {
-                            alert("Please enter cover letter content.");
-                            return;
-                          }
-
-                          await authWrap();
-                          await apiUpdateCoverLetter(editingCoverLetter._id, {
-                            name: customCoverLetterName,
-                            content: customCoverLetterContent,
-                            style: customCoverLetterStyle
-                          });
-
-                          // Update the viewing cover letter with new data
-                          setViewingCoverLetter({
-                            ...viewingCoverLetter,
-                            name: customCoverLetterName,
-                            content: customCoverLetterContent,
-                            style: customCoverLetterStyle
-                          });
-
-                          setIsCoverLetterEditMode(false);
-                          setEditingCoverLetter(null);
-
-                          await loadSavedCoverLetters();
-                          alert("Cover letter updated successfully!");
-                        } catch (err) {
-                          console.error("Update failed:", err);
-                          alert("Failed to update cover letter. Please try again.");
-                        }
-                      }}
-                      className="px-6 py-2 text-white rounded-lg transition"
-                      style={{ backgroundColor: '#777C6D' }}
-                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-                    >
-                      Save Changes
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <ViewEditCoverLetterModal
+        showViewCoverLetterModal={showViewCoverLetterModal}
+        setShowViewCoverLetterModal={setShowViewCoverLetterModal}
+        viewingCoverLetter={viewingCoverLetter}
+        setViewingCoverLetter={setViewingCoverLetter}
+        isCoverLetterEditMode={isCoverLetterEditMode}
+        setIsCoverLetterEditMode={setIsCoverLetterEditMode}
+        customCoverLetterName={customCoverLetterName}
+        setCustomCoverLetterName={setCustomCoverLetterName}
+        customCoverLetterStyle={customCoverLetterStyle}
+        setCustomCoverLetterStyle={setCustomCoverLetterStyle}
+        customCoverLetterContent={customCoverLetterContent}
+        setCustomCoverLetterContent={setCustomCoverLetterContent}
+        formatCoverLetterContent={formatCoverLetterContent}
+        setExportingCoverLetter={setExportingCoverLetter}
+        setShowCoverLetterExportModal={setShowCoverLetterExportModal}
+        editingCoverLetter={editingCoverLetter}
+        setEditingCoverLetter={setEditingCoverLetter}
+        selectedJobForRegeneration={selectedJobForRegeneration}
+        setSelectedJobForRegeneration={setSelectedJobForRegeneration}
+        jobs={jobs}
+        loadJobs={loadJobs}
+        aiIndustry={aiIndustry}
+        aiCompanyCulture={aiCompanyCulture}
+        aiConsistencyWarnings={aiConsistencyWarnings}
+        setAiConsistencyWarnings={setAiConsistencyWarnings}
+        isGeneratingAI={isGeneratingAI}
+        setIsGeneratingAI={setIsGeneratingAI}
+        authWrap={authWrap}
+        generateAICoverLetter={generateAICoverLetter}
+        aiLength={aiLength}
+        aiWritingStyle={aiWritingStyle}
+        editorContentKey={editorContentKey}
+        setEditorContentKey={setEditorContentKey}
+        apiUpdateCoverLetter={apiUpdateCoverLetter}
+        loadSavedCoverLetters={loadSavedCoverLetters}
+      />
 
       {/* UC-054: Cover Letter Export Modal */}
       {showCoverLetterExportModal && exportingCoverLetter && (
