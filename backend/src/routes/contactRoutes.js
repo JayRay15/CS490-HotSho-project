@@ -10,7 +10,8 @@ import {
   getUpcomingFollowUps,
   getContactStats,
   linkContactToJob,
-  batchCreateContacts
+  batchCreateContacts,
+  generateReferenceRequest
 } from '../controllers/contactController.js';
 
 const router = express.Router();
@@ -47,5 +48,8 @@ router.post('/:id/link-job/:jobId', linkContactToJob);
 
 // POST /api/contacts/batch - Batch create contacts
 router.post('/batch', batchCreateContacts);
+
+// POST /api/contacts/reference-request - Generate reference request email
+router.post('/reference-request', generateReferenceRequest);
 
 export default router;
