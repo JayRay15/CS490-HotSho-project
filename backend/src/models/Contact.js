@@ -8,12 +8,16 @@ const interactionSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['Email', 'Phone', 'Meeting', 'LinkedIn', 'Coffee Chat', 'Conference', 'Other'],
+    enum: ['Email', 'Phone', 'Meeting', 'LinkedIn', 'Coffee Chat', 'Conference', 'Reference Request', 'Reference Feedback', 'Other'],
     required: true
   },
   notes: {
     type: String,
     trim: true
+  },
+  jobId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Job'
   }
 }, { _id: true });
 

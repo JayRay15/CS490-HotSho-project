@@ -116,6 +116,14 @@ export default function MockInterviewSession() {
             <p className="text-xl font-semibold">{summary.averageDurationSeconds}</p>
           </div>
         </div>
+        {summary.strengths?.length > 0 && (
+          <div className="bg-green-50 border border-green-200 rounded p-4 mb-6">
+            <h2 className="text-lg font-medium text-green-800 mb-2">✅ Strengths Identified</h2>
+            <ul className="list-disc pl-5 space-y-1 text-sm text-green-900">
+              {summary.strengths.map((s,idx)=><li key={idx}>{s}</li>)}
+            </ul>
+          </div>
+        )}
         <div className="bg-white shadow rounded p-4 mb-6">
           <h2 className="text-lg font-medium mb-2">Improvement Areas</h2>
           {summary.improvementAreas?.length ? (
@@ -130,6 +138,39 @@ export default function MockInterviewSession() {
             {(summary.confidenceExercises||[]).map((e,idx)=><li key={idx}>{e}</li>)}
           </ul>
         </div>
+        {summary.analysisMetrics && summary.averageWordCount > 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded p-4 mb-6">
+            <h2 className="text-lg font-medium text-blue-800 mb-3">📊 Performance Metrics</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div>
+                <p className="text-gray-600">Action Verb Density</p>
+                <p className="text-xl font-semibold text-blue-900">{summary.analysisMetrics.averageActionVerbDensity?.toFixed(1) || 0}</p>
+                <p className="text-xs text-gray-500 mt-1">per answer</p>
+              </div>
+              <div>
+                <p className="text-gray-600">Avg Filler Count</p>
+                <p className="text-xl font-semibold text-blue-900">{summary.analysisMetrics.averageFillerCount?.toFixed(1) || 0}</p>
+                <p className="text-xs text-gray-500 mt-1">lower is better</p>
+              </div>
+              <div>
+                <p className="text-gray-600">STAR Completion</p>
+                <p className="text-xl font-semibold text-blue-900">{((summary.analysisMetrics.starCompletionRate || 0) * 100).toFixed(0)}%</p>
+                <p className="text-xs text-gray-500 mt-1">of behavioral Qs</p>
+              </div>
+              <div>
+                <p className="text-gray-600">Metrics Usage</p>
+                <p className="text-xl font-semibold text-blue-900">{((summary.analysisMetrics.metricsUsageRate || 0) * 100).toFixed(0)}%</p>
+                <p className="text-xs text-gray-500 mt-1">included numbers</p>
+              </div>
+            </div>
+          </div>
+        )}
+        {summary.analysisMetrics && summary.averageWordCount === 0 && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded p-4 mb-6">
+            <h2 className="text-lg font-medium text-yellow-800 mb-2">📊 Performance Metrics</h2>
+            <p className="text-sm text-yellow-700">Complete a full session with detailed answers to see your performance metrics (action verbs, STAR structure, metrics usage, etc.)</p>
+          </div>
+        )}
         <button onClick={()=>navigate('/dashboard')} className="bg-blue-600 text-white px-4 py-2 rounded">Return to Dashboard</button>
       </div>
     );

@@ -1803,6 +1803,112 @@ function calculateTimingScore(lastContactDate, nextFollowUpDate) {
 }
 
 /**
+ * Generate personalized reference request email template
+ * @param {Object} reference - The reference contact
+ * @param {Object} job - The job application details
+ * @param {Object} userProfile - The user's profile data
+ * @returns {Promise<Object>} Generated reference request email and guidance
+ */
+export async function generateReferenceRequestEmail(reference, job, userProfile) {
+  const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+
+  const relationshipContext = reference.relationshipType || 'Professional Contact';
+  const lastContact = reference.lastContactDate 
+    ? new Date(reference.lastContactDate).toLocaleDateString() 
+    : 'Unknown';
+
+  const prompt = `You are an expert career advisor specializing in professional reference management. Generate a personalized email to request someone to be a reference for a job application.
+
+**REFERENCE CONTACT:**
+- Name: ${reference.firstName} ${reference.lastName}
+- Relationship: ${relationshipContext}
+- Company: ${reference.company || 'Unknown'}
+- Title: ${reference.jobTitle || 'Unknown'}
+- Last Contact: ${lastContact}
+- Relationship Strength: ${reference.relationshipStrength || 'Medium'}
+- Notes: ${reference.notes || 'No additional context'}
+
+**JOB APPLICATION:**
+- Position: ${job.title || job.jobTitle}
+- Company: ${job.company}
+- Description: ${job.description?.substring(0, 300) || 'Not provided'}
+
+**YOUR PROFILE:**
+${userProfile.employment?.[0] ? `Current/Recent Role: ${userProfile.employment[0].jobTitle} at ${userProfile.employment[0].company}` : ''}
+${userProfile.headline ? `Headline: ${userProfile.headline}` : ''}
+
+**TASK:**
+Generate a professional, personalized email requesting this person to serve as a reference. The email should:
+
+1. **Re-establish Connection** (if needed based on last contact date)
+2. **Express Genuine Appreciation** for the relationship and past working experience
+3. **Clearly State the Request** to serve as a reference
+4. **Provide Context** about the role and why you're excited about it
+5. **Explain Why They're Ideal** as a reference (what they can speak to)
+6. **Make It Easy** by offering to provide materials (resume, key points)
+7. **Be Considerate** of their time and offer an out
+8. **Include Specific Details** they might mention to make it authentic
+
+Additionally, provide:
+- **Talking Points**: 3-5 specific accomplishments or qualities they could mention
+- **Preparation Tips**: Guidance for preparing the reference
+- **Timeline**: When they might be contacted
+
+**OUTPUT FORMAT (JSON):**
+{
+  "subject": "Email subject line",
+  "emailBody": "The complete email text (professional but warm)",
+  "talkingPoints": [
+    {
+      "point": "Specific achievement or quality",
+      "context": "Brief context or example they could reference",
+      "impact": "Why this matters for the target role"
+    }
+  ],
+  "preparationTips": [
+    "Tip 1 for preparing this reference",
+    "Tip 2 for preparing this reference"
+  ],
+  "timeline": "Expected timeline for when they might be contacted",
+  "followUpGuidance": "How to follow up after they agree",
+  "gratitudeSuggestions": [
+    "Way to thank them regardless of outcome",
+    "How to maintain the relationship"
+  ]
+}
+
+**TONE GUIDELINES:**
+- Match the relationship strength and type
+- For "Strong" relationships: Warmer, more personal
+- For "Weak" or "New": More formal, more context-setting
+- Always be grateful and considerate of their time
+- Make it easy for them to say yes or no
+
+Return ONLY valid JSON, no markdown formatting. Keep the email concise (200-300 words).`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    let textResponse = response.text().trim();
+    
+    // Clean markdown formatting
+    if (textResponse.startsWith('```json')) {
+      textResponse = textResponse.slice(7);
+    } else if (textResponse.startsWith('```')) {
+      textResponse = textResponse.slice(3);
+    }
+    if (textResponse.endsWith('```')) {
+      textResponse = textResponse.slice(0, -3);
+    }
+    
+    return JSON.parse(textResponse.trim());
+  } catch (error) {
+    console.error('Reference Request Email Generation Error:', error);
+    throw new Error(`Failed to generate reference request email: ${error.message}`);
+  }
+}
+
+/**
  * Generate sample interview questions by category
  * @param {string} category - Question category
  * @param {Object} context - Optional context (jobTitle, company, industry)

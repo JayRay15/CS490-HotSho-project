@@ -230,7 +230,8 @@ export const addInteraction = async (req, res) => {
     const interaction = {
       date: req.body.date || new Date(),
       type: req.body.type,
-      notes: req.body.notes
+      notes: req.body.notes,
+      jobId: req.body.jobId
     };
 
     contact.interactions.push(interaction);
@@ -324,6 +325,21 @@ export const getContactStats = async (req, res) => {
       // Count recent interactions
       if (contact.lastContactDate && contact.lastContactDate >= thirtyDaysAgo) {
         stats.recentInteractions++;
+      }
+
+      // Reference stats
+      if (contact.isReference) {
+        stats.totalReferences = (stats.totalReferences || 0) + 1;
+
+        // Count reference interactions
+        contact.interactions.forEach(interaction => {
+          if (interaction.type === 'Reference Request') {
+            stats.referenceRequests = (stats.referenceRequests || 0) + 1;
+          }
+          if (interaction.type === 'Reference Feedback') {
+            stats.referenceFeedback = (stats.referenceFeedback || 0) + 1;
+          }
+        });
       }
     });
 
@@ -430,6 +446,90 @@ export const batchCreateContacts = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to import contacts',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Generate reference request email
+// @route   POST /api/contacts/reference-request
+// @access  Private
+export const generateReferenceRequest = async (req, res) => {
+  try {
+    const { referenceId, jobId } = req.body;
+
+    if (!referenceId || !jobId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Reference ID and Job ID are required'
+      });
+    }
+
+    // Fetch the reference contact
+    const reference = await Contact.findOne({
+      _id: referenceId,
+      userId: req.auth.userId
+    });
+
+    if (!reference) {
+      return res.status(404).json({
+        success: false,
+        message: 'Reference contact not found'
+      });
+    }
+
+    // Fetch the job
+    const job = await Job.findOne({
+      _id: jobId,
+      userId: req.auth.userId
+    });
+
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: 'Job application not found'
+      });
+    }
+
+    // Fetch user profile (we'll need to import User model or get data from elsewhere)
+    // For now, we'll create a minimal profile from available data
+    const userProfile = {
+      employment: [],
+      headline: '',
+      // In a real implementation, fetch from User/Profile model
+    };
+
+    // Generate the reference request using Gemini
+    const { generateReferenceRequestEmail } = await import('../utils/geminiService.js');
+    const requestData = await generateReferenceRequestEmail(reference, job, userProfile);
+
+    // Track this usage
+    const interaction = {
+      date: new Date(),
+      type: 'Reference Request',
+      notes: `Generated reference request for ${job.jobTitle} at ${job.company}`,
+      jobId: job._id
+    };
+
+    reference.interactions.push(interaction);
+    reference.lastContactDate = interaction.date;
+
+    // Ensure job is linked
+    if (!reference.linkedJobIds.includes(job._id)) {
+      reference.linkedJobIds.push(job._id);
+    }
+
+    await reference.save();
+
+    res.status(200).json({
+      success: true,
+      data: requestData
+    });
+  } catch (error) {
+    console.error('Error generating reference request:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate reference request',
       error: error.message
     });
   }
