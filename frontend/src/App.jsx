@@ -35,8 +35,12 @@ import InterviewPrepPage from "./pages/InterviewPrepPage.jsx";
 import CompanyResearch from "./pages/interviews/CompanyResearch.jsx";
 import MockInterviewStart from "./pages/interviews/MockInterviewStart.jsx";
 import MockInterviewSession from "./pages/interviews/MockInterviewSession.jsx";
+<<<<<<< HEAD
 import InterviewSuccessPredictions from "./pages/InterviewSuccessPredictions.jsx";
 import InterviewPredictionDetail from "./pages/InterviewPredictionDetail.jsx";
+=======
+import MockInterviewHistory from "./pages/interviews/MockInterviewHistory.jsx";
+>>>>>>> b4167b8be2dd18be6e7fd99778cac7e2170ed2a3
 
 function App() {
   return (
@@ -83,6 +87,7 @@ function App() {
           <Route path="/goals/:id" element={<ProtectedRoute><GoalDetailPage /></ProtectedRoute>} />
           <Route path="/jobs/:jobId/interview-prep" element={<ProtectedRoute><InterviewPrepPage /></ProtectedRoute>} />
           <Route path="/interviews/:interviewId/company-research" element={<ProtectedRoute><CompanyResearch /></ProtectedRoute>} />
+          <Route path="/mock-interviews" element={<ProtectedRoute><MockInterviewHistory /></ProtectedRoute>} />
           <Route path="/mock-interviews/start" element={<ProtectedRoute><MockInterviewStart /></ProtectedRoute>} />
           <Route path="/mock-interviews/:sessionId" element={<ProtectedRoute><MockInterviewSession /></ProtectedRoute>} />
           <Route path="/interview-predictions" element={<ProtectedRoute><InterviewSuccessPredictions /></ProtectedRoute>} />

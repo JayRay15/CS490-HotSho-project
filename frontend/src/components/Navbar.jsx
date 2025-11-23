@@ -137,8 +137,8 @@ export default function Navbar() {
                                         <NavLink to="/interview-coaching" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Interview Coaching" onClick={() => setCareerDropdownOpen(false)}>
                                             Interview Coaching
                                         </NavLink>
-                                        <NavLink to="/mock-interviews/start" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Mock Interview" onClick={() => setCareerDropdownOpen(false)}>
-                                            Mock Interview
+                                        <NavLink to="/mock-interviews" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Mock Interview History" onClick={() => setCareerDropdownOpen(false)}>
+                                            Mock Interviews
                                         </NavLink>
                                         <NavLink to="/interview-predictions" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Interview Success Predictions" onClick={() => setCareerDropdownOpen(false)}>
                                             Success Predictions

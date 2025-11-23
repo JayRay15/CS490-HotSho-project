@@ -168,27 +168,71 @@ function buildSummary(session) {
   const avgWordCount = total ? Math.round(totalWordCount / total) : 0;
   const avgDuration = total ? Math.round(totalDuration / total) : 0;
   const improvementAreas = Array.from(new Set(combinedFeedback)).slice(0, 15);
+  
+  const answeredCount = session.responses.length;
+  const unansweredCount = total - answeredCount;
 
   // Strength detection
   const strengths = [];
-  if (actionVerbSum / (total || 1) >= 3) strengths.push("Strong use of action verbs");
-  if (fillerSum / (total || 1) <= 1) strengths.push("Minimal filler language");
-  if (starFullCount && starFullCount / (byCategory.Behavioral || 1) > 0.6) strengths.push("Consistent STAR structure in behavioral answers");
-  if (metricsUsedCount / (total || 1) > 0.5) strengths.push("Good quantification of impact");
-  if (avgWordCount >= 110 && avgWordCount <= 220) strengths.push("Balanced depth vs brevity");
-  if (!strengths.length) strengths.push("Foundational structure present; refine for more impact");
+  if (answeredCount > 0) {
+    if (actionVerbSum / answeredCount >= 3) strengths.push("Strong use of action verbs");
+    if (fillerSum / answeredCount <= 1) strengths.push("Minimal filler language");
+    if (starFullCount && byCategory.Behavioral && starFullCount / byCategory.Behavioral > 0.6) strengths.push("Consistent STAR structure in behavioral answers");
+    if (metricsUsedCount / answeredCount > 0.5) strengths.push("Good quantification of impact");
+    if (avgWordCount >= 110 && avgWordCount <= 220) strengths.push("Balanced depth vs brevity");
+  }
+  
+  // For incomplete sessions, provide preparatory guidance
+  if (unansweredCount > 0) {
+    improvementAreas.push(`Complete the full interview next time - you skipped ${unansweredCount} question(s). Practice builds confidence!`);
+  }
+  
+  if (!strengths.length && answeredCount === 0) {
+    strengths.push("Session started but not completed - try a full practice run to get personalized feedback");
+  } else if (!strengths.length) {
+    strengths.push("Foundational structure present; refine for more impact");
+  }
 
-  // Exercises generation based on feedback patterns
+  // Exercises generation based on feedback patterns and question types
   const exercises = [];
   const fText = improvementAreas.join(" ").toLowerCase();
-  if (fText.includes("star incomplete")) exercises.push("Pick 4 past examples and outline full STAR components.");
-  if (fText.includes("quantifiable") || fText.includes("metrics")) exercises.push("Audit past projects; list 5 concrete metrics (%, $, counts).");
-  if (fText.includes("too long")) exercises.push("Record an answer >3min then edit down to 2min focusing on impact.");
-  if (fText.includes("words short")) exercises.push("Expand 3 answers by adding challenges + measurable results.");
-  if (fText.includes("reduce filler")) exercises.push("Practice pausing silently instead of using filler words.");
-  if (fText.includes("passive voice")) exercises.push("Rewrite passive sentences into active form (\"I led\" vs \"It was led\").");
-  if (fText.includes("structured sequencing")) exercises.push("Use a framework (Problem → Analysis → Solution → Impact) in mock cases.");
-  if (!exercises.length) exercises.push("Maintain strengths; simulate mixed-format interviews for consistency.");
+  
+  // Role-specific exercises based on question types in session
+  const roleLower = (session.roleTitle || "").toLowerCase();
+  const isServiceRetail = /cashier|retail|sales associate|server|barista|clerk|customer service|receptionist/i.test(session.roleTitle || "");
+  const isTechnical = /engineer|developer|architect|analyst|scientist|programmer/i.test(session.roleTitle || "");
+  
+  if (answeredCount === 0) {
+    // Provide starter exercises for unanswered sessions based on role
+    if (isServiceRetail) {
+      exercises.push("Practice 3 customer service stories using STAR method (Situation, Task, Action, Result).");
+      exercises.push("Prepare examples of: handling difficult customers, working under pressure, and going the extra mile.");
+      exercises.push("Think of specific times you resolved conflicts or made customers happy - include what you said and did.");
+    } else if (isTechnical) {
+      exercises.push("Prepare 3-4 technical stories: a bug you debugged, a feature you built, and a system you improved.");
+      exercises.push("Practice explaining technical decisions: What problem? Why this solution? What were the trade-offs?");
+      exercises.push("Have specific metrics ready: performance gains, user impact, time saved.");
+    } else {
+      exercises.push("Prepare 4-5 STAR stories covering: teamwork, problem-solving, leadership, and handling challenges.");
+      exercises.push("Practice speaking concisely: 2-3 minutes per answer with clear structure.");
+      exercises.push("Include quantifiable outcomes in your examples (%, $, time, users, etc.).");
+    }
+    
+    if (byCategory.Behavioral > 0) exercises.push("For behavioral questions: Focus on YOUR actions and specific results, not team generalities.");
+    if (byCategory.Technical > 0) exercises.push("For technical questions: Explain the 'why' behind decisions, not just the 'what'.");
+    if (byCategory.Case > 0) exercises.push("For case questions: State assumptions first, then walk through your logic step-by-step.");
+  } else {
+    // Feedback-based exercises for answered sessions
+    if (fText.includes("star incomplete")) exercises.push("Pick 4 past examples and outline full STAR components.");
+    if (fText.includes("quantifiable") || fText.includes("metrics")) exercises.push("Audit past work; list 5 concrete metrics (%, $, counts).");
+    if (fText.includes("too long")) exercises.push("Record an answer >3min then edit down to 2min focusing on impact.");
+    if (fText.includes("words short")) exercises.push("Expand 3 answers by adding challenges + measurable results.");
+    if (fText.includes("reduce filler")) exercises.push("Practice pausing silently instead of using filler words.");
+    if (fText.includes("passive voice")) exercises.push("Rewrite passive sentences into active form (\"I led\" vs \"It was led\").");
+    if (fText.includes("structured sequencing")) exercises.push("Use a framework (Problem → Analysis → Solution → Impact) in mock cases.");
+  }
+  
+  if (!exercises.length) exercises.push("Complete a full practice session to get tailored feedback and exercises.");
 
   // Analysis metrics for summary
   const analysisMetrics = {
@@ -223,12 +267,83 @@ export async function startMockInterview(req, res) {
       }
     }
     if (sourceQuestions.length === 0) {
-      // Fallback generic questions
-      sourceQuestions = [
-        { text: `Describe a challenging project in your ${role || "recent"} experience.`, category: "Behavioral", difficulty: "Medium" },
-        { text: `Explain a technical concept you recently mastered.`, category: "Technical", difficulty: "Medium" },
-        { text: `How would you approach a market expansion for ${comp || "a company"}?`, category: "Situational", difficulty: "Medium" },
-      ];
+      // Fallback role-appropriate questions - only generate for selected formats
+      const roleLower = (role || "").toLowerCase();
+      const isServiceRetail = /cashier|retail|sales associate|server|barista|clerk|customer service|receptionist/i.test(role || "");
+      const isTechnical = /engineer|developer|architect|analyst|scientist|programmer/i.test(role || "");
+      
+      sourceQuestions = [];
+      
+      // Behavioral questions tailored to role type - only if Behavioral is selected
+      if (formats.includes("Behavioral")) {
+        if (isServiceRetail) {
+          sourceQuestions.push(
+            { text: `Tell me about a time you dealt with a difficult customer at ${comp || "work"}. How did you handle it?`, category: "Behavioral", difficulty: "Medium" },
+            { text: `Describe a situation where you had to work quickly during a busy shift. What did you do?`, category: "Behavioral", difficulty: "Medium" },
+            { text: `Give an example of when you went above and beyond for a customer.`, category: "Behavioral", difficulty: "Medium" },
+            { text: `Tell me about a time you had to handle multiple customers at once. How did you prioritize?`, category: "Behavioral", difficulty: "Medium" }
+          );
+        } else if (isTechnical) {
+          sourceQuestions.push(
+            { text: `Describe a challenging technical problem you solved in your ${role || "recent"} experience.`, category: "Behavioral", difficulty: "Medium" },
+            { text: `Tell me about a time you had to debug a complex issue. What was your approach?`, category: "Behavioral", difficulty: "Medium" },
+            { text: `Give an example of when you improved system performance or efficiency.`, category: "Behavioral", difficulty: "Medium" },
+            { text: `Describe a time you had to make a difficult technical trade-off. What did you consider?`, category: "Behavioral", difficulty: "Medium" }
+          );
+        } else {
+          sourceQuestions.push(
+            { text: `Describe a challenging situation you faced in your ${role || "recent"} experience. How did you handle it?`, category: "Behavioral", difficulty: "Medium" },
+            { text: `Tell me about a time you had to meet a tight deadline. What did you do?`, category: "Behavioral", difficulty: "Medium" },
+            { text: `Give an example of when you worked effectively with a team.`, category: "Behavioral", difficulty: "Medium" },
+            { text: `Describe a time you received critical feedback. How did you respond?`, category: "Behavioral", difficulty: "Medium" }
+          );
+        }
+      }
+      
+      // Technical questions - only if Technical is selected
+      if (formats.includes("Technical")) {
+        if (isTechnical) {
+          sourceQuestions.push(
+            { text: `Explain a technical concept or technology you recently used and why you chose it.`, category: "Technical", difficulty: "Medium" },
+            { text: `How would you design a scalable system for ${comp || "a company"}?`, category: "Technical", difficulty: "Medium" },
+            { text: `What are the trade-offs between SQL and NoSQL databases? When would you use each?`, category: "Technical", difficulty: "Medium" },
+            { text: `Explain how you would optimize a slow-running query or API endpoint.`, category: "Technical", difficulty: "Medium" }
+          );
+        } else if (isServiceRetail) {
+          sourceQuestions.push(
+            { text: `How would you handle a situation where the register system goes down during peak hours?`, category: "Technical", difficulty: "Easy" },
+            { text: `What steps would you take to ensure accurate cash handling at the end of your shift?`, category: "Technical", difficulty: "Easy" },
+            { text: `Walk me through how you would process a return without the original receipt.`, category: "Technical", difficulty: "Easy" }
+          );
+        } else {
+          sourceQuestions.push(
+            { text: `How would you approach learning a new tool or process required for this ${role || "role"}?`, category: "Technical", difficulty: "Medium" },
+            { text: `What methods do you use to stay organized and manage your workload?`, category: "Technical", difficulty: "Medium" }
+          );
+        }
+      }
+      
+      // Case/Situational questions - only if Case is selected
+      if (formats.includes("Case")) {
+        if (isServiceRetail) {
+          sourceQuestions.push(
+            { text: `If a customer complained about waiting too long, how would you respond?`, category: "Situational", difficulty: "Easy" },
+            { text: `How would you handle a situation where you suspected a customer was being dishonest?`, category: "Situational", difficulty: "Medium" },
+            { text: `A coworker calls in sick during your busiest day. How do you handle the workload?`, category: "Situational", difficulty: "Medium" }
+          );
+        } else if (isTechnical) {
+          sourceQuestions.push(
+            { text: `How would you approach architecting a new feature for ${comp || "a company"} with limited resources?`, category: "Situational", difficulty: "Medium" },
+            { text: `Your team disagrees on a technical approach. How would you resolve it?`, category: "Situational", difficulty: "Medium" },
+            { text: `You discover a critical bug in production. Walk through your response plan.`, category: "Situational", difficulty: "Medium" }
+          );
+        } else {
+          sourceQuestions.push(
+            { text: `How would you prioritize competing demands from multiple stakeholders?`, category: "Situational", difficulty: "Medium" },
+            { text: `If you disagreed with your manager's decision, how would you handle it?`, category: "Situational", difficulty: "Medium" }
+          );
+        }
+      }
     }
     const questions = buildQuestionObjects(sourceQuestions, formats).slice(0, 12); // limit to 12
     const session = await MockInterviewSession.create({
@@ -314,6 +429,18 @@ export async function getSummary(req, res) {
       await session.save();
     }
     return res.json({ success: true, data: session.summary || null });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+}
+
+export async function getUserSessions(req, res) {
+  try {
+    const sessions = await MockInterviewSession.find({ userId: req.user.id })
+      .sort({ startedAt: -1 })
+      .select('_id roleTitle company formats status startedAt finishedAt summary.totalQuestions summary.averageWordCount responses')
+      .limit(50);
+    return res.json({ success: true, data: sessions });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }
