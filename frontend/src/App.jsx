@@ -27,7 +27,6 @@ import CaseStudyPractice from "./components/CaseStudyPractice";
 import InterviewCoaching from "./pages/InterviewCoaching";
 import Network from "./pages/auth/Network";
 import WritingPracticePage from "./pages/WritingPracticePage";
-import { MentorDashboard, ProgressSharing, MentorMessaging } from "./components/mentors";
 import GoalsPage from "./pages/GoalsPage";
 import NewGoalPage from "./pages/NewGoalPage";
 import EditGoalPage from "./pages/EditGoalPage";
@@ -90,9 +89,6 @@ function App() {
           <Route path="/mock-interviews/:sessionId" element={<ProtectedRoute><MockInterviewSession /></ProtectedRoute>} />
           <Route path="/interview-predictions" element={<ProtectedRoute><InterviewSuccessPredictions /></ProtectedRoute>} />
           <Route path="/interview-predictions/:interviewId" element={<ProtectedRoute><InterviewPredictionDetail /></ProtectedRoute>} />
-          <Route path="/mentors" element={<ProtectedRoute><MentorDashboard /></ProtectedRoute>} />
-          <Route path="/mentors/progress" element={<ProtectedRoute><ProgressSharing /></ProtectedRoute>} />
-          <Route path="/mentors/messages" element={<ProtectedRoute><MentorMessaging /></ProtectedRoute>} />
         </Routes>
       </Router>
     </ErrorBoundary>
