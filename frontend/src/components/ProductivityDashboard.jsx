@@ -2,19 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { productivityApi } from '../api/productivity';
 import Card from './Card';
 import Button from './Button';
-import {
-  TrendingUp,
-  Clock,
-  Target,
-  Activity,
-  AlertTriangle,
-  Award,
-  Calendar,
-  BarChart3,
-  Zap,
-  Brain,
-  ChevronRight
-} from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function ProductivityDashboard() {
@@ -62,14 +49,11 @@ export default function ProductivityDashboard() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <TrendingUp className="w-8 h-8 text-primary" />
-          <div>
-            <h2 className="text-2xl font-heading font-bold text-gray-900">
-              Productivity Dashboard
-            </h2>
-            <p className="text-gray-600">Overview of your time investment and productivity</p>
-          </div>
+        <div>
+          <h2 className="text-2xl font-heading font-bold text-gray-900">
+            Productivity Dashboard
+          </h2>
+          <p className="text-gray-600">Overview of your time investment and productivity</p>
         </div>
 
         <div className="flex gap-2">
@@ -98,12 +82,8 @@ export default function ProductivityDashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card variant="elevated">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-blue-100 rounded-lg">
-              <Clock className="w-6 h-6 text-blue-600" />
-            </div>
-            <div>
-              <div className="text-sm text-gray-600">Total Hours</div>
+          <div>
+            <div className="text-sm text-gray-600">Total Hours</div>
               <div className="text-2xl font-bold text-gray-900">
                 {stats.totalHours.toFixed(1)}h
               </div>
@@ -111,16 +91,11 @@ export default function ProductivityDashboard() {
                 {quickStats.todayHours.toFixed(1)}h today
               </div>
             </div>
-          </div>
         </Card>
 
         <Card variant="elevated">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-green-100 rounded-lg">
-              <Zap className="w-6 h-6 text-green-600" />
-            </div>
-            <div>
-              <div className="text-sm text-gray-600">Productive Hours</div>
+          <div>
+            <div className="text-sm text-gray-600">Productive Hours</div>
               <div className="text-2xl font-bold text-gray-900">
                 {stats.productiveHours.toFixed(1)}h
               </div>
@@ -130,16 +105,11 @@ export default function ProductivityDashboard() {
                   : 'N/A'}
               </div>
             </div>
-          </div>
         </Card>
 
         <Card variant="elevated">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-purple-100 rounded-lg">
-              <Brain className="w-6 h-6 text-purple-600" />
-            </div>
-            <div>
-              <div className="text-sm text-gray-600">Avg Productivity</div>
+          <div>
+            <div className="text-sm text-gray-600">Avg Productivity</div>
               <div className="text-2xl font-bold text-gray-900">
                 {stats.averageProductivity.toFixed(1)}/10
               </div>
@@ -147,16 +117,11 @@ export default function ProductivityDashboard() {
                 {selectedPeriod === 'week' ? 'Weekly' : 'Monthly'} average
               </div>
             </div>
-          </div>
         </Card>
 
         <Card variant="elevated">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-amber-100 rounded-lg">
-              <Award className="w-6 h-6 text-amber-600" />
-            </div>
-            <div>
-              <div className="text-sm text-gray-600">Outcomes</div>
+          <div>
+            <div className="text-sm text-gray-600">Outcomes</div>
               <div className="text-2xl font-bold text-gray-900">
                 {stats.totalOutcomes}
               </div>
@@ -166,14 +131,12 @@ export default function ProductivityDashboard() {
                   : 'N/A'}
               </div>
             </div>
-          </div>
         </Card>
       </div>
 
       {dashboard.today.hasActiveEntry && (
         <Card variant="primary" className="border-l-4 border-green-500">
           <div className="flex items-center gap-3">
-            <Activity className="w-6 h-6 text-green-600 animate-pulse" />
             <div>
               <h3 className="font-semibold text-gray-900">Activity in Progress</h3>
               <p className="text-sm text-gray-600">
@@ -191,8 +154,7 @@ export default function ProductivityDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
-          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-primary" />
+          <h3 className="text-lg font-semibold mb-4">
             Activity Breakdown
           </h3>
           
@@ -229,8 +191,7 @@ export default function ProductivityDashboard() {
         </Card>
 
         <Card>
-          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Target className="w-5 h-5 text-primary" />
+          <h3 className="text-lg font-semibold mb-4">
             Active Goals
           </h3>
           
@@ -277,7 +238,6 @@ export default function ProductivityDashboard() {
               <Link to="/goals">
                 <button className="w-full text-primary hover:text-primary-600 text-sm font-medium py-2 flex items-center justify-center gap-1">
                   View All Goals
-                  <ChevronRight className="w-4 h-4" />
                 </button>
               </Link>
             </div>
@@ -288,8 +248,7 @@ export default function ProductivityDashboard() {
       {dashboard.recentAnalyses && dashboard.recentAnalyses.length > 0 && (
         <Card>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-primary" />
+            <h3 className="text-lg font-semibold">
               Recent Analyses
             </h3>
             <Link to="/productivity/analysis">
@@ -328,14 +287,13 @@ export default function ProductivityDashboard() {
                 
                 {analysis.burnoutIndicators?.riskLevel && 
                  analysis.burnoutIndicators.riskLevel !== 'Low' && (
-                  <div className={`mt-2 flex items-center gap-2 text-sm ${
+                  <div className={`mt-2 text-sm font-medium ${
                     analysis.burnoutIndicators.riskLevel === 'Critical' 
                       ? 'text-red-600'
                       : analysis.burnoutIndicators.riskLevel === 'High'
                       ? 'text-orange-600'
                       : 'text-yellow-600'
                   }`}>
-                    <AlertTriangle className="w-4 h-4" />
                     <span>Burnout Risk: {analysis.burnoutIndicators.riskLevel}</span>
                   </div>
                 )}
@@ -348,14 +306,7 @@ export default function ProductivityDashboard() {
       <div className="flex gap-4">
         <Link to="/productivity/tracker" className="flex-1">
           <Button variant="primary" className="w-full">
-            <Clock className="w-5 h-5 mr-2" />
-            Start Time Tracking
-          </Button>
-        </Link>
-        <Link to="/productivity/analysis" className="flex-1">
-          <Button variant="secondary" className="w-full">
-            <BarChart3 className="w-5 h-5 mr-2" />
-            Generate Analysis
+            Time Tracker
           </Button>
         </Link>
       </div>

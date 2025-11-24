@@ -94,6 +94,8 @@ app.use("/api/goals", goalRoutes);
 app.use("/api/interview-question-bank", interviewQuestionBankRoutes);
 app.use("/api/company-research", companyResearchRoutes);
 app.use("/api/mock-interviews", mockInterviewRoutes);
+app.use("/api/productivity", productivityRoutes);
+app.use("/api/interview-prediction", interviewPredictionRoutes);
 app.use("/api/mentors", mentorRoutes);
 // Mount profile routes under /api/profile (existing) and also under /api/users
 // so frontend requests to /api/users/... (used elsewhere in the app) resolve correctly.

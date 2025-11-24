@@ -19,14 +19,14 @@ export default function Button({
         large: "py-3 px-6 text-lg"
     };
 
-    const base = "rounded-lg font-medium transition focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed min-h-11 hover:shadow-md";
+    const base = "rounded-lg font-medium transition focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed min-h-11 hover:shadow-md border-2";
     const styles = {
-        primary: "bg-primary hover:bg-primary-600 active:bg-primary-700 text-text-inverse focus:ring-primary-400 disabled:bg-primary-300",
-        secondary: "bg-accent hover:bg-accent-500 active:bg-accent-600 text-text-primary focus:ring-accent-400 disabled:bg-accent-300",
-        tertiary: "bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-800 focus:ring-gray-400 disabled:bg-gray-100",
-        outline: "bg-transparent border-2 border-primary text-primary hover:bg-primary-50 active:bg-primary-100 focus:ring-primary-400 disabled:border-primary-200 disabled:text-primary-200",
-        ghost: "bg-transparent text-primary hover:text-primary-600 hover:bg-primary-50 active:bg-primary-100 focus:ring-primary-400 disabled:text-primary-200",
-        danger: "bg-error hover:bg-error-600 active:bg-error-700 text-text-inverse focus:ring-error-400 disabled:bg-error-300",
+        primary: "bg-primary hover:bg-primary-600 active:bg-primary-700 text-text-inverse focus:ring-primary-400 disabled:bg-primary-300 border-primary-700 hover:border-primary-800",
+        secondary: "bg-accent hover:bg-accent-500 active:bg-accent-600 text-text-primary focus:ring-accent-400 disabled:bg-accent-300 border-accent-600 hover:border-accent-700",
+        tertiary: "bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-800 focus:ring-gray-400 disabled:bg-gray-100 border-gray-400 hover:border-gray-500",
+        outline: "bg-transparent border-primary text-primary hover:bg-primary-50 active:bg-primary-100 focus:ring-primary-400 disabled:border-primary-200 disabled:text-primary-200 hover:border-primary-700",
+        ghost: "bg-transparent text-primary hover:text-primary-600 hover:bg-primary-50 active:bg-primary-100 focus:ring-primary-400 disabled:text-primary-200 border-transparent hover:border-primary-200",
+        danger: "bg-error hover:bg-error-600 active:bg-error-700 text-text-inverse focus:ring-error-400 disabled:bg-error-300 border-error-700 hover:border-error-800",
     };
 
     return (

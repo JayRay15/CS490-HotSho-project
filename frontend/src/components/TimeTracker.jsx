@@ -45,6 +45,7 @@ export default function TimeTracker() {
   const [loading, setLoading] = useState(false);
   const [showEntryForm, setShowEntryForm] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
+  const [elapsedTime, setElapsedTime] = useState('0h 0m');
   
   const [formData, setFormData] = useState({
     activity: 'Job Search',
@@ -60,6 +61,25 @@ export default function TimeTracker() {
   useEffect(() => {
     loadTimeRecord();
   }, [selectedDate]);
+
+  // Update elapsed time every second when tracking
+  useEffect(() => {
+    if (!isTracking || !activeEntry) return;
+
+    const updateElapsed = () => {
+      const start = new Date(activeEntry.startTime);
+      const now = new Date();
+      const diff = Math.floor((now - start) / 1000 / 60);
+      const hours = Math.floor(diff / 60);
+      const mins = diff % 60;
+      setElapsedTime(`${hours}h ${mins}m`);
+    };
+
+    updateElapsed(); // Initial update
+    const interval = setInterval(updateElapsed, 1000);
+
+    return () => clearInterval(interval);
+  }, [isTracking, activeEntry]);
 
   const loadTimeRecord = async () => {
     try {
@@ -241,7 +261,7 @@ export default function TimeTracker() {
             
             <div className="text-right">
               <div className="text-3xl font-bold text-primary font-mono">
-                {getElapsedTime()}
+                {elapsedTime}
               </div>
               <Button
                 variant="danger"

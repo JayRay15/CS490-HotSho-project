@@ -190,7 +190,7 @@ const productivityAnalysisSchema = new mongoose.Schema({
   recommendations: [{
     category: {
       type: String,
-      enum: ['Time Allocation', 'Schedule Optimization', 'Energy Management', 'Efficiency', 'Burnout Prevention', 'Work-Life Balance', 'Activity Balance']
+      enum: ['Time Allocation', 'Schedule Optimization', 'Energy Management', 'Efficiency', 'Burnout Prevention', 'Work-Life Balance', 'Activity Balance', 'Goal Alignment']
     },
     priority: {
       type: String,

@@ -24,12 +24,11 @@ export const getTimeTrackingByDate = async (req, res) => {
       .populate('entries.linkedEntities.goalId', 'title');
 
     if (!record) {
-      record = new TimeTracking({
-        userId,
-        date: recordDate,
-        entries: []
-      });
-      await record.save();
+      record = await TimeTracking.findOneAndUpdate(
+        { userId, date: recordDate },
+        { userId, date: recordDate, entries: [] },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
     }
 
     res.json({

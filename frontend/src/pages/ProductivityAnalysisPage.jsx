@@ -5,23 +5,9 @@ import ProductivityDashboard from '../components/ProductivityDashboard';
 import TimeTracker from '../components/TimeTracker';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import {
-  TrendingUp,
-  Clock,
-  Target,
-  AlertTriangle,
-  Lightbulb,
-  Calendar,
-  BarChart3,
-  Zap,
-  Brain,
-  Activity,
-  ChevronLeft,
-  Download,
-  RefreshCw,
-  Award,
-  Shield
-} from 'lucide-react';
+import { ChevronLeft, AlertTriangle } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export default function ProductivityAnalysisPage() {
   const { analysisId } = useParams();
@@ -160,6 +146,116 @@ export default function ProductivityAnalysisPage() {
     }
   };
 
+  const handleExportPDF = () => {
+    if (!selectedAnalysis) {
+      alert('No analysis data to export');
+      return;
+    }
+    
+    try {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      // Title
+      doc.setFontSize(18);
+      doc.setFont(undefined, 'bold');
+      doc.text(`${selectedAnalysis.period.type} Productivity Analysis`, 14, 20);
+
+      doc.setFontSize(11);
+      doc.setFont(undefined, 'normal');
+      doc.text(
+        `Period: ${new Date(selectedAnalysis.period.startDate).toLocaleDateString()} - ${new Date(selectedAnalysis.period.endDate).toLocaleDateString()}`,
+        14,
+        28
+      );
+
+      // Summary Metrics
+      autoTable(doc, {
+        startY: 35,
+        head: [['Metric', 'Value']],
+        body: [
+          ['Total Hours', `${selectedAnalysis.timeInvestment?.totalHours?.toFixed(1) || 0}h`],
+          ['Productive Hours', `${selectedAnalysis.timeInvestment?.productiveHours?.toFixed(1) || 0}h`],
+          ['Average Productivity', `${selectedAnalysis.productivityMetrics?.averageProductivity?.toFixed(1) || 'N/A'}/10`],
+          ['Efficiency Rating', selectedAnalysis.productivityMetrics?.efficiencyRating || 'N/A'],
+          ['Efficiency Score', `${selectedAnalysis.efficiencyScore || 0}%`],
+          ['Total Outcomes', `${selectedAnalysis.outcomeAnalysis?.totalOutcomes || 0}`],
+          ['Outcomes per Hour', selectedAnalysis.outcomeAnalysis?.outcomesPerHour?.toFixed(2) || '0'],
+          ['Burnout Risk Level', selectedAnalysis.burnoutIndicators?.riskLevel || 'Unknown'],
+          ['Work-Life Balance', selectedAnalysis.workLifeBalance || 'N/A'],
+        ],
+        theme: 'grid',
+        headStyles: { fillColor: [71, 85, 105] },
+      });
+
+      // Warnings
+      if (selectedAnalysis.burnoutIndicators?.warnings?.length > 0) {
+        doc.setFontSize(14);
+        doc.setFont(undefined, 'bold');
+        doc.text('Health & Wellness Alerts', 14, doc.lastAutoTable.finalY + 10);
+
+        autoTable(doc, {
+          startY: doc.lastAutoTable.finalY + 15,
+          head: [['Severity', 'Message']],
+          body: selectedAnalysis.burnoutIndicators.warnings.map(w => [
+            w.severity,
+            w.message
+          ]),
+          theme: 'grid',
+          headStyles: { fillColor: [71, 85, 105] },
+        });
+      }
+
+      // Recommendations
+      if (selectedAnalysis.recommendations?.length > 0) {
+        doc.setFontSize(14);
+        doc.setFont(undefined, 'bold');
+        doc.text('Recommendations', 14, doc.lastAutoTable.finalY + 10);
+
+        autoTable(doc, {
+          startY: doc.lastAutoTable.finalY + 15,
+          head: [['Priority', 'Title', 'Description']],
+          body: selectedAnalysis.recommendations.map(r => [
+            r.priority,
+            r.title,
+            r.description
+          ]),
+          theme: 'grid',
+          headStyles: { fillColor: [71, 85, 105] },
+          columnStyles: {
+            2: { cellWidth: 'wrap' }
+          }
+        });
+      }
+
+      // Time Investment Breakdown
+      if (selectedAnalysis.timeInvestment?.topActivities?.length > 0) {
+        doc.setFontSize(14);
+        doc.setFont(undefined, 'bold');
+        doc.text('Time Investment Breakdown', 14, doc.lastAutoTable.finalY + 10);
+
+        autoTable(doc, {
+          startY: doc.lastAutoTable.finalY + 15,
+          head: [['Activity', 'Hours', 'Percentage']],
+          body: selectedAnalysis.timeInvestment.topActivities.map(a => [
+            a.activity,
+            `${a.hours}h`,
+            `${a.percentage}%`
+          ]),
+          theme: 'grid',
+          headStyles: { fillColor: [71, 85, 105] },
+        });
+      }
+
+      // Save PDF
+      const fileName = `Productivity_Analysis_${selectedAnalysis.period.type}_${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF report. Please try again.');
+    }
+  };
+
   if (loading && !selectedAnalysis) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -186,7 +282,6 @@ export default function ProductivityAnalysisPage() {
                 navigate('/productivity/tracker');
               }}
             >
-              <Clock className="w-5 h-5 mr-2" />
               Time Tracker
             </Button>
           </div>
@@ -201,7 +296,6 @@ export default function ProductivityAnalysisPage() {
                   variant="primary"
                   onClick={() => setShowAnalysisForm(true)}
                 >
-                  <BarChart3 className="w-5 h-5 mr-2" />
                   Generate New Analysis
                 </Button>
               </div>
@@ -302,7 +396,6 @@ export default function ProductivityAnalysisPage() {
                       isLoading={generatingAnalysis}
                       disabled={!analysisForm.startDate || !analysisForm.endDate}
                     >
-                      <BarChart3 className="w-5 h-5 mr-2" />
                       Generate Analysis
                     </Button>
                     <Button
@@ -320,7 +413,6 @@ export default function ProductivityAnalysisPage() {
 
               {analyses.length === 0 ? (
                 <div className="text-center py-12">
-                  <BarChart3 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                   <h4 className="text-lg font-semibold text-gray-700 mb-2">
                     No Analyses Yet
                   </h4>
@@ -417,8 +509,7 @@ export default function ProductivityAnalysisPage() {
             </button>
             
             <div className="flex gap-2">
-              <Button variant="outline" size="small">
-                <Download className="w-4 h-4 mr-2" />
+              <Button variant="outline" size="small" onClick={handleExportPDF}>
                 Export Report
               </Button>
             </div>
@@ -428,7 +519,7 @@ export default function ProductivityAnalysisPage() {
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-2xl font-heading font-bold text-gray-900">
-                  {selectedAnalysis.period.type} Productivity Analysis
+                  {selectedAnalysis.period.type} Analysis
                 </h2>
                 <p className="text-gray-600">
                   {new Date(selectedAnalysis.period.startDate).toLocaleDateString()} - {' '}
@@ -446,54 +537,42 @@ export default function ProductivityAnalysisPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-4 bg-blue-50 rounded-lg">
-                <div className="flex items-center gap-3 mb-2">
-                  <Clock className="w-5 h-5 text-blue-600" />
-                  <span className="text-sm text-gray-700">Total Hours</span>
-                </div>
+              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="text-sm text-gray-600 mb-2">Total Hours</div>
                 <div className="text-2xl font-bold text-gray-900">
                   {selectedAnalysis.timeInvestment?.totalHours?.toFixed(1) || 0}h
                 </div>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-gray-600 mt-1">
                   {selectedAnalysis.timeInvestment?.productiveHours?.toFixed(1) || 0}h productive
                 </div>
               </div>
 
-              <div className="p-4 bg-green-50 rounded-lg">
-                <div className="flex items-center gap-3 mb-2">
-                  <Zap className="w-5 h-5 text-green-600" />
-                  <span className="text-sm text-gray-700">Efficiency Score</span>
-                </div>
+              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="text-sm text-gray-600 mb-2">Efficiency Score</div>
                 <div className="text-2xl font-bold text-gray-900">
                   {selectedAnalysis.efficiencyScore || 0}%
                 </div>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-gray-600 mt-1">
                   Focus: {selectedAnalysis.productivityMetrics?.focusScore || 0}%
                 </div>
               </div>
 
-              <div className="p-4 bg-purple-50 rounded-lg">
-                <div className="flex items-center gap-3 mb-2">
-                  <Award className="w-5 h-5 text-purple-600" />
-                  <span className="text-sm text-gray-700">Outcomes</span>
-                </div>
+              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="text-sm text-gray-600 mb-2">Outcomes</div>
                 <div className="text-2xl font-bold text-gray-900">
                   {selectedAnalysis.outcomeAnalysis?.totalOutcomes || 0}
                 </div>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-gray-600 mt-1">
                   {selectedAnalysis.outcomeAnalysis?.outcomesPerHour?.toFixed(2) || 0} per hour
                 </div>
               </div>
 
-              <div className="p-4 bg-amber-50 rounded-lg">
-                <div className="flex items-center gap-3 mb-2">
-                  <Shield className="w-5 h-5 text-amber-600" />
-                  <span className="text-sm text-gray-700">Burnout Risk</span>
-                </div>
+              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="text-sm text-gray-600 mb-2">Burnout Risk</div>
                 <div className={`text-2xl font-bold ${getRiskColor(selectedAnalysis.burnoutIndicators?.riskLevel)}`}>
                   {selectedAnalysis.burnoutIndicators?.riskLevel || 'Unknown'}
                 </div>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-gray-600 mt-1">
                   {selectedAnalysis.burnoutIndicators?.workloadBalance || 'N/A'}
                 </div>
               </div>
@@ -543,10 +622,7 @@ export default function ProductivityAnalysisPage() {
 
           {selectedAnalysis.recommendations && selectedAnalysis.recommendations.length > 0 && (
             <Card>
-              <div className="flex items-center gap-3 mb-4">
-                <Lightbulb className="w-6 h-6 text-amber-500" />
-                <h3 className="text-lg font-semibold">Recommendations</h3>
-              </div>
+              <h3 className="text-lg font-semibold mb-4">Recommendations</h3>
               
               <div className="space-y-4">
                 {selectedAnalysis.recommendations
@@ -592,10 +668,7 @@ export default function ProductivityAnalysisPage() {
           {selectedAnalysis.timeInvestment?.topActivities && 
            selectedAnalysis.timeInvestment.topActivities.length > 0 && (
             <Card>
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-primary" />
-                Time Investment Breakdown
-              </h3>
+              <h3 className="text-lg font-semibold mb-4">Time Investment Breakdown</h3>
               
               <div className="space-y-3">
                 {selectedAnalysis.timeInvestment.topActivities.map((activity, index) => (
@@ -621,10 +694,7 @@ export default function ProductivityAnalysisPage() {
           {selectedAnalysis.performancePatterns?.bestPerformingActivities && 
            selectedAnalysis.performancePatterns.bestPerformingActivities.length > 0 && (
             <Card>
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <Target className="w-5 h-5 text-primary" />
-                Best Performing Activities
-              </h3>
+              <h3 className="text-lg font-semibold mb-4">Best Performing Activities</h3>
               
               <div className="space-y-3">
                 {selectedAnalysis.performancePatterns.bestPerformingActivities.map((activity, index) => (
@@ -651,15 +721,12 @@ export default function ProductivityAnalysisPage() {
 
           {selectedAnalysis.productivityMetrics?.peakProductivityTime && (
             <Card>
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <Brain className="w-5 h-5 text-primary" />
-                Performance Patterns
-              </h3>
+              <h3 className="text-lg font-semibold mb-4">Performance Patterns</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 bg-blue-50 rounded-lg">
+                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                   <h4 className="font-semibold text-gray-900 mb-2">Peak Productivity Time</h4>
-                  <p className="text-2xl font-bold text-blue-600">
+                  <p className="text-2xl font-bold text-gray-900">
                     {selectedAnalysis.productivityMetrics.peakProductivityTime.label}
                   </p>
                   <p className="text-sm text-gray-600 mt-2">
@@ -667,9 +734,9 @@ export default function ProductivityAnalysisPage() {
                   </p>
                 </div>
 
-                <div className="p-4 bg-green-50 rounded-lg">
+                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                   <h4 className="font-semibold text-gray-900 mb-2">Optimal Working Hours</h4>
-                  <p className="text-2xl font-bold text-green-600">
+                  <p className="text-2xl font-bold text-gray-900">
                     {selectedAnalysis.productivityMetrics.optimalWorkingHours?.start || 'N/A'}:00 - {' '}
                     {selectedAnalysis.productivityMetrics.optimalWorkingHours?.end || 'N/A'}:00
                   </p>
@@ -678,9 +745,9 @@ export default function ProductivityAnalysisPage() {
                   </p>
                 </div>
 
-                <div className="p-4 bg-purple-50 rounded-lg">
+                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                   <h4 className="font-semibold text-gray-900 mb-2">Consistency Score</h4>
-                  <p className="text-2xl font-bold text-purple-600">
+                  <p className="text-2xl font-bold text-gray-900">
                     {selectedAnalysis.productivityMetrics.consistencyScore || 0}%
                   </p>
                   <p className="text-sm text-gray-600 mt-2">
@@ -688,9 +755,9 @@ export default function ProductivityAnalysisPage() {
                   </p>
                 </div>
 
-                <div className="p-4 bg-amber-50 rounded-lg">
+                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                   <h4 className="font-semibold text-gray-900 mb-2">Work-Life Balance</h4>
-                  <p className="text-2xl font-bold text-amber-600">
+                  <p className="text-2xl font-bold text-gray-900">
                     {selectedAnalysis.workLifeBalance || 'N/A'}
                   </p>
                   <p className="text-sm text-gray-600 mt-2">
