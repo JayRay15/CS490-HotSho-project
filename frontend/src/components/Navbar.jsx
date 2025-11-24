@@ -96,7 +96,7 @@ export default function Navbar() {
                             <NavLink to="/resumes" className={navLinkClass} aria-label="Resumes">
                                 Resumes & Cover Letters
                             </NavLink>
-                            
+
                             <div
                                 className="relative"
                                 onMouseLeave={() => {
@@ -151,6 +151,9 @@ export default function Navbar() {
                                         </NavLink>
                                         <NavLink to="/network" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Professional Network" onClick={() => setCareerDropdownOpen(false)}>
                                             Network
+                                        </NavLink>
+                                        <NavLink to="/mentors" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Mentor Hub" onClick={() => setCareerDropdownOpen(false)}>
+                                            👥 Mentor Hub
                                         </NavLink>
                                     </div>
                                 )}
@@ -395,6 +398,18 @@ export default function Navbar() {
                             aria-label="Professional Network"
                         >
                             Network
+                        </NavLink>
+                        <NavLink
+                            to="/mentors"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                }`
+                            }
+                            aria-label="Mentor Hub"
+                        >
+                            👥 Mentor Hub
                         </NavLink>
                         <div className="pt-3 pb-2 flex items-center space-x-3 px-4">
                             <span className="text-sm text-primary-50">Account</span>
