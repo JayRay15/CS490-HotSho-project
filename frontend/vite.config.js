@@ -8,6 +8,9 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
   },
+  preview: {
+    port: 5173,
+  },
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/setupTests.js'],
