@@ -37,6 +37,8 @@ import MockInterviewStart from "./pages/interviews/MockInterviewStart.jsx";
 import MockInterviewSession from "./pages/interviews/MockInterviewSession.jsx";
 import ProductivityAnalysisPage from "./pages/ProductivityAnalysisPage.jsx";
 import MockInterviewHistory from "./pages/interviews/MockInterviewHistory.jsx";
+import InterviewSuccessPredictions from "./pages/InterviewSuccessPredictions.jsx";
+import InterviewPredictionDetail from "./pages/InterviewPredictionDetail.jsx";
 
 function App() {
   return (
@@ -90,6 +92,8 @@ function App() {
           <Route path="/productivity/tracker" element={<ProtectedRoute><ProductivityAnalysisPage /></ProtectedRoute>} />
           <Route path="/productivity/analysis" element={<ProtectedRoute><ProductivityAnalysisPage /></ProtectedRoute>} />
           <Route path="/productivity/analysis/:analysisId" element={<ProtectedRoute><ProductivityAnalysisPage /></ProtectedRoute>} />
+          <Route path="/interview-predictions" element={<ProtectedRoute><InterviewSuccessPredictions /></ProtectedRoute>} />
+          <Route path="/interview-predictions/:interviewId" element={<ProtectedRoute><InterviewPredictionDetail /></ProtectedRoute>} />
         </Routes>
       </Router>
     </ErrorBoundary>
