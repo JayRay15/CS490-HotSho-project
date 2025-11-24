@@ -2,19 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { productivityApi } from '../api/productivity';
 import Card from './Card';
 import Button from './Button';
-import { 
-  Play, 
-  Pause, 
-  Square, 
-  Clock, 
-  Activity, 
-  TrendingUp, 
-  Target,
-  Calendar,
-  Plus,
-  Edit2,
-  Trash2
-} from 'lucide-react';
 
 const ACTIVITIES = [
   'Job Search',
@@ -55,8 +42,18 @@ export default function TimeTracker() {
     productivity: 5,
     distractions: 0,
     notes: '',
-    tags: []
+    tags: [],
+    outcomes: []
   });
+
+  const OUTCOME_TYPES = [
+    'Application Sent',
+    'Connection Made',
+    'Skill Learned',
+    'Interview Scheduled',
+    'Milestone Completed',
+    'Other'
+  ];
 
   useEffect(() => {
     loadTimeRecord();
@@ -124,7 +121,8 @@ export default function TimeTracker() {
         productivity: 5,
         distractions: 0,
         notes: '',
-        tags: []
+        tags: [],
+        outcomes: []
       });
     } catch (error) {
       console.error('Failed to start tracking:', error);
@@ -208,12 +206,9 @@ export default function TimeTracker() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Clock className="w-8 h-8 text-primary" />
-          <div>
-            <h2 className="text-2xl font-heading font-bold text-gray-900">Time Tracker</h2>
-            <p className="text-gray-600">Track your job search activities</p>
-          </div>
+        <div>
+          <h2 className="text-2xl font-heading font-bold text-gray-900">Time Tracker</h2>
+          <p className="text-gray-600">Track your job search activities</p>
         </div>
         
         <input
@@ -226,10 +221,8 @@ export default function TimeTracker() {
       </div>
 
       <Card className="bg-blue-50 border-blue-200">
-        <div className="flex items-start gap-3">
-          <Activity className="w-5 h-5 text-blue-600 shrink-0 mt-1" />
-          <div>
-            <h3 className="font-semibold text-blue-900 mb-2">How to Track Your Time</h3>
+        <div>
+          <h3 className="font-semibold text-blue-900 mb-2">How to Track Your Time</h3>
             <ul className="text-sm text-blue-800 space-y-1">
               <li>• Click "Start New Activity" and fill in the form</li>
               <li>• Click "Start Tracking" to begin the timer</li>
@@ -237,26 +230,19 @@ export default function TimeTracker() {
               <li>• Only completed activities (with start AND stop times) are included in analysis</li>
               <li>• Track at least 2-3 activities before generating an analysis</li>
             </ul>
-          </div>
         </div>
       </Card>
 
       {isTracking && activeEntry && (
         <Card variant="primary" className="border-l-4 border-primary">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <Activity className="w-8 h-8 text-primary animate-pulse" />
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">
                   {activeEntry.activity === 'Other' && activeEntry.customActivity 
                     ? activeEntry.customActivity 
                     : activeEntry.activity}
                 </h3>
-                <p className="text-gray-600">Tracking in progress...</p>
-              </div>
+              <p className="text-gray-600">Tracking in progress...</p>
             </div>
             
             <div className="text-right">
@@ -269,7 +255,6 @@ export default function TimeTracker() {
                 onClick={stopTracking}
                 className="mt-2"
               >
-                <Square className="w-4 h-4 mr-2" />
                 Stop
               </Button>
             </div>
@@ -283,7 +268,6 @@ export default function TimeTracker() {
           onClick={() => setShowEntryForm(true)}
           className="w-full"
         >
-          <Play className="w-5 h-5 mr-2" />
           Start New Activity
         </Button>
       )}
@@ -390,6 +374,68 @@ export default function TimeTracker() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
+                Outcomes (Optional)
+              </label>
+              <div className="space-y-3">
+                {formData.outcomes.map((outcome, index) => (
+                  <div key={index} className="flex gap-2">
+                    <select
+                      value={outcome.type}
+                      onChange={(e) => {
+                        const newOutcomes = [...formData.outcomes];
+                        newOutcomes[index].type = e.target.value;
+                        setFormData(prev => ({ ...prev, outcomes: newOutcomes }));
+                      }}
+                      className="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                    >
+                      {OUTCOME_TYPES.map(type => (
+                        <option key={type} value={type}>{type}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      value={outcome.description}
+                      onChange={(e) => {
+                        const newOutcomes = [...formData.outcomes];
+                        newOutcomes[index].description = e.target.value;
+                        setFormData(prev => ({ ...prev, outcomes: newOutcomes }));
+                      }}
+                      placeholder="Brief description (optional)"
+                      maxLength="200"
+                      className="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                    />
+                    <button
+                      onClick={() => {
+                        const newOutcomes = formData.outcomes.filter((_, i) => i !== index);
+                        setFormData(prev => ({ ...prev, outcomes: newOutcomes }));
+                      }}
+                      className="text-red-600 hover:text-red-800 px-2"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                <Button
+                  variant="outline"
+                  size="small"
+                  onClick={() => {
+                    setFormData(prev => ({
+                      ...prev,
+                      outcomes: [...prev.outcomes, { type: 'Application Sent', description: '' }]
+                    }));
+                  }}
+                  type="button"
+                >
+                  Add Outcome
+                </Button>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Track what you accomplished during this activity (e.g., applications sent, skills learned)
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Tags (Press Enter to add)
               </label>
               <input
@@ -420,7 +466,6 @@ export default function TimeTracker() {
 
             <div className="flex gap-3">
               <Button variant="primary" onClick={startTracking} className="flex-1">
-                <Play className="w-4 h-4 mr-2" />
                 Start Tracking
               </Button>
               <Button
@@ -435,7 +480,8 @@ export default function TimeTracker() {
                     productivity: 5,
                     distractions: 0,
                     notes: '',
-                    tags: []
+                    tags: [],
+                    outcomes: []
                   });
                 }}
               >
@@ -525,6 +571,21 @@ export default function TimeTracker() {
                         {entry.notes && (
                           <div className="text-gray-700 mt-2">{entry.notes}</div>
                         )}
+                        {entry.outcomes && entry.outcomes.length > 0 && (
+                          <div className="mt-2">
+                            <span className="text-xs font-semibold text-gray-700">Outcomes:</span>
+                            <div className="flex flex-wrap gap-2 mt-1">
+                              {entry.outcomes.map((outcome, idx) => (
+                                <span
+                                  key={idx}
+                                  className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full"
+                                >
+                                  {outcome.type}{outcome.description ? `: ${outcome.description}` : ''}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                         {entry.tags && entry.tags.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-2">
                             {entry.tags.map(tag => (
@@ -543,10 +604,10 @@ export default function TimeTracker() {
                     {entry.endTime && (
                       <button
                         onClick={() => deleteEntry(entry._id)}
-                        className="text-red-600 hover:text-red-800 p-2"
+                        className="text-red-600 hover:text-red-800 p-2 text-xl"
                         title="Delete entry"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        ×
                       </button>
                     )}
                   </div>

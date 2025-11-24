@@ -288,7 +288,7 @@ export default function ProductivityAnalysisPage() {
 
           <ProductivityDashboard />
           
-          <div className="mt-8">
+          <div className="mt-8" id="analysis-history">
             <Card>
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-heading font-semibold">Analysis History</h3>

@@ -251,11 +251,11 @@ export default function ProductivityDashboard() {
             <h3 className="text-lg font-semibold">
               Recent Analyses
             </h3>
-            <Link to="/productivity/analysis">
+            <a href="/productivity#analysis-history">
               <Button variant="ghost" size="small">
                 View All
               </Button>
-            </Link>
+            </a>
           </div>
 
           <div className="space-y-3">
