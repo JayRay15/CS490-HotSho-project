@@ -58,6 +58,22 @@ export default function Breadcrumb() {
         const paths = location.pathname.split('/').filter(Boolean);
         const objectId = paths.find(p => /^[a-f\d]{24}$/i.test(p));
         if (objectId) {
+            // Productivity analysis label override
+            if (paths.includes('productivity') && paths.includes('analysis')) {
+                import('../api/productivity').then(api => {
+                    api.productivityApi.getAnalysis(objectId).then(res => {
+                        const analysis = res.analysis;
+                        if (analysis) {
+                            const startDate = new Date(analysis.period.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                            const endDate = new Date(analysis.period.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                            setJobLabel(`${analysis.period.type} Analysis (${startDate} - ${endDate})`);
+                        } else {
+                            setJobLabel('Analysis');
+                        }
+                    }).catch(() => setJobLabel('Analysis'));
+                });
+                return;
+            }
             // Mock interview session label override
             if (paths.includes('mock-interviews')) {
                 import('../api/mockInterviews').then(api => {
