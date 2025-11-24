@@ -117,10 +117,10 @@ async function calculatePracticeHours(userId, jobId, interview) {
   try {
     let totalMinutes = 0;
     
-    // Get mock interview sessions for this job
+    // Get ALL mock interview sessions for this user (practice is transferable across jobs)
     const mockSessions = await MockInterviewSession.find({
       userId,
-      jobId,
+      status: "finished", // Only count completed sessions
     });
     
     // Each mock interview session counts as practice time
@@ -158,11 +158,11 @@ async function calculatePracticeHours(userId, jobId, interview) {
  */
 async function calculateTechnicalPrepScore(userId, jobId) {
   try {
-    // Get technical mock interviews
+    // Get ALL technical mock interviews for this user (practice is transferable)
     const technicalSessions = await MockInterviewSession.find({
       userId,
-      jobId,
       formats: "Technical",
+      status: "finished",
     });
     
     if (technicalSessions.length === 0) return 0;
@@ -194,11 +194,11 @@ async function calculateTechnicalPrepScore(userId, jobId) {
  */
 async function calculateBehavioralPrepScore(userId, jobId) {
   try {
-    // Get behavioral mock interviews
+    // Get ALL behavioral mock interviews for this user (practice is transferable)
     const behavioralSessions = await MockInterviewSession.find({
       userId,
-      jobId,
       formats: "Behavioral",
+      status: "finished",
     });
     
     if (behavioralSessions.length === 0) return 0;
@@ -372,13 +372,11 @@ function calculateSuccessProbability(preparationFactors, performancePattern, wei
      preparationFactors.behavioralPrepScore * weights.behavioralPrep +
      historicalScore * weights.historicalPerformance) / 100;
   
-  // Add bonuses for extra preparation
+  // Add bonuses for extra preparation (only task completion, not resume/cover letter)
   let bonus = 0;
-  if (preparationFactors.resumeTailored) bonus += 3;
-  if (preparationFactors.coverLetterSubmitted) bonus += 2;
   if (taskCompletionScore === 100) bonus += 5;
   
-  // Add bonus for completed recommendations
+  // Add bonus for completed recommendations (including manual completions)
   if (completedRecommendations && completedRecommendations.length > 0) {
     console.log('🎯 Completed recommendations:', completedRecommendations.length);
     console.log('🎯 Completed recommendations data:', JSON.stringify(completedRecommendations, null, 2));
@@ -391,8 +389,8 @@ function calculateSuccessProbability(preparationFactors, performancePattern, wei
     
     console.log('🎯 Total completed bonus (before cap):', completedBonus);
     
-    // Cap the bonus at 15% to prevent over-inflation
-    const cappedBonus = Math.min(completedBonus, 15);
+    // Cap the bonus at 20% to prevent over-inflation
+    const cappedBonus = Math.min(completedBonus, 20);
     bonus += cappedBonus;
     console.log('🎯 Capped bonus added:', cappedBonus);
   } else {
@@ -408,28 +406,43 @@ function calculateSuccessProbability(preparationFactors, performancePattern, wei
 }
 
 /**
- * Calculate confidence score based on data completeness
+ * Calculate confidence score based on the 7 preparation factors only
+ * Each factor contributes equally (~14.3% each) for a total of 100%
  * @param {Object} preparationFactors - Preparation factors data
  * @param {Object} performancePattern - Historical performance data
  * @returns {Number} Confidence score (0-100)
  */
 function calculateConfidenceScore(preparationFactors, performancePattern) {
+  const weightPerFactor = 100 / 7; // ~14.3% per factor
   let confidence = 0;
-  const maxConfidence = 100;
   
-  // Data availability factors
-  if (preparationFactors.roleMatchScore > 0) confidence += 15;
-  if (preparationFactors.companyResearchCompleted) confidence += 15;
-  if (preparationFactors.practiceHours > 0) confidence += 10;
-  if (preparationFactors.mockInterviewsCompleted > 0) confidence += 15;
-  if (preparationFactors.totalPreparationTasks > 0) confidence += 10;
+  // 1. Role Match Score (0-100)
+  confidence += (preparationFactors.roleMatchScore / 100) * weightPerFactor;
   
-  // Historical data availability
-  if (performancePattern.previousInterviewCount >= 1) confidence += 10;
-  if (performancePattern.previousInterviewCount >= 3) confidence += 10;
-  if (performancePattern.previousInterviewCount >= 5) confidence += 15;
+  // 2. Company Research Completeness (0-100)
+  confidence += (preparationFactors.companyResearchCompleteness / 100) * weightPerFactor;
   
-  return Math.min(confidence, maxConfidence);
+  // 3. Technical Prep Score (0-100)
+  confidence += (preparationFactors.technicalPrepScore / 100) * weightPerFactor;
+  
+  // 4. Behavioral Prep Score (0-100)
+  confidence += (preparationFactors.behavioralPrepScore / 100) * weightPerFactor;
+  
+  // 5. Practice Hours (normalize: 5+ hours = 100%)
+  const practiceScore = Math.min((preparationFactors.practiceHours / 5) * 100, 100);
+  confidence += (practiceScore / 100) * weightPerFactor;
+  
+  // 6. Mock Interviews (normalize: 5+ interviews = 100%)
+  const mockScore = Math.min((preparationFactors.mockInterviewsCompleted / 5) * 100, 100);
+  confidence += (mockScore / 100) * weightPerFactor;
+  
+  // 7. Tasks Completed (percentage of completed tasks)
+  const tasksScore = preparationFactors.totalPreparationTasks > 0
+    ? (preparationFactors.preparationTasksCompleted / preparationFactors.totalPreparationTasks) * 100
+    : 0; // 0% if no tasks
+  confidence += (tasksScore / 100) * weightPerFactor;
+  
+  return Math.min(Math.round(confidence), 100);
 }
 
 /**
@@ -442,19 +455,35 @@ function calculateConfidenceScore(preparationFactors, performancePattern) {
 function generateRecommendations(preparationFactors, performancePattern, interview) {
   const recommendations = [];
   
-  // Company research recommendation - only if not complete
-  if (preparationFactors.companyResearchCompleteness < 80) {
-    recommendations.push({
-      category: "Company Research",
-      priority: preparationFactors.companyResearchCompleteness < 50 ? "High" : "Medium",
-      title: "Complete Company Research",
-      description: `Your company research is ${preparationFactors.companyResearchCompleteness}% complete. Research the company's mission, recent news, products, and culture to show genuine interest.`,
-      estimatedImpact: 15,
-      estimatedTimeMinutes: 45,
-      completed: false,
-      completedAt: null,
-    });
-  }
+  // Company research recommendation - ALWAYS show with completion status
+  const companyResearchComplete = preparationFactors.companyResearchCompleteness >= 80;
+  recommendations.push({
+    category: "Company Research",
+    priority: companyResearchComplete ? "Low" : (preparationFactors.companyResearchCompleteness < 50 ? "High" : "Medium"),
+    title: companyResearchComplete ? "Company Research Complete" : "Complete Company Research",
+    description: companyResearchComplete 
+      ? "Keep up to date with recent company news and developments."
+      : "Research the company's mission, recent news, products, and culture to show genuine interest.",
+    estimatedImpact: 15,
+    estimatedTimeMinutes: 45,
+    completed: companyResearchComplete,
+    completedAt: companyResearchComplete ? new Date() : null,
+    allowManualCompletion: true,
+  });
+  
+  // Resume & Cover Letter combined recommendation - ALWAYS show, manual completion only
+  recommendations.push({
+    category: "Resume",
+    priority: "Medium",
+    title: "Tailor Resume & Cover Letter",
+    description: "Customize your resume to highlight skills and experiences most relevant to this role. Create a compelling cover letter that explains your interest and relevant experience.",
+    estimatedImpact: 15,
+    estimatedTimeMinutes: 60,
+    completed: false, // Only manual completion
+    completedAt: null,
+    allowManualCompletion: true,
+    manualOnly: true, // Flag to indicate this is manual-only
+  });
   
   // Practice hours recommendation - only if not enough
   if (preparationFactors.practiceHours < 3) {
@@ -507,34 +536,6 @@ function generateRecommendations(preparationFactors, performancePattern, intervi
       description: "Prepare structured answers using the STAR method for common behavioral questions. Focus on specific examples from your experience.",
       estimatedImpact: 15,
       estimatedTimeMinutes: 60,
-      completed: false,
-      completedAt: null,
-    });
-  }
-  
-  // Resume tailoring recommendation
-  if (!preparationFactors.resumeTailored) {
-    recommendations.push({
-      category: "Resume",
-      priority: "Medium",
-      title: "Tailor Your Resume",
-      description: "Customize your resume to highlight skills and experiences most relevant to this role. Match keywords from the job description.",
-      estimatedImpact: 10,
-      estimatedTimeMinutes: 30,
-      completed: false,
-      completedAt: null,
-    });
-  }
-  
-  // Cover letter recommendation (only if not already submitted)
-  if (!preparationFactors.coverLetterSubmitted) {
-    recommendations.push({
-      category: "Resume",
-      priority: "Low",
-      title: "Submit Cover Letter",
-      description: "Create a compelling cover letter that explains your interest in the role and highlights your relevant experience.",
-      estimatedImpact: 5,
-      estimatedTimeMinutes: 30,
       completed: false,
       completedAt: null,
     });
@@ -603,9 +604,10 @@ function generateRecommendations(preparationFactors, performancePattern, intervi
  * Main function to calculate interview success prediction
  * @param {String} interviewId - The interview ID
  * @param {String} userId - The user ID
+ * @param {Array} completedRecommendations - Previously completed recommendations
  * @returns {Promise<Object>} Complete prediction data
  */
-export async function calculateInterviewPrediction(interviewId, userId) {
+export async function calculateInterviewPrediction(interviewId, userId, completedRecommendations = []) {
   try {
     // Fetch the interview
     const interview = await Interview.findOne({ _id: interviewId, userId })
@@ -622,7 +624,8 @@ export async function calculateInterviewPrediction(interviewId, userId) {
       roleMatchScore,
       companyResearchData,
       practiceHours,
-      mockInterviewsCompleted,
+      mockInterviewsCompletedForJob,
+      mockInterviewsCompletedTotal,
       technicalPrepScore,
       behavioralPrepScore,
       performancePattern,
@@ -630,11 +633,21 @@ export async function calculateInterviewPrediction(interviewId, userId) {
       calculateRoleMatchScore(job, userId),
       calculateCompanyResearchScore(interviewId, job._id, userId),
       calculatePracticeHours(userId, job._id, interview),
-      MockInterviewSession.countDocuments({ userId, jobId: job._id }),
+      MockInterviewSession.countDocuments({ userId, jobId: job._id, status: "finished" }),
+      MockInterviewSession.countDocuments({ userId, status: "finished" }),
       calculateTechnicalPrepScore(userId, job._id),
       calculateBehavioralPrepScore(userId, job._id),
       analyzeHistoricalPerformance(userId),
     ]);
+    
+    // Use total mock interviews (across all jobs) for scoring since practice is transferable
+    const mockInterviewsCompleted = mockInterviewsCompletedTotal;
+    
+    console.log('🎯 Mock Interview Count:', {
+      jobSpecific: mockInterviewsCompletedForJob,
+      totalFinished: mockInterviewsCompletedTotal,
+      usingForScore: mockInterviewsCompleted
+    });
     
     // Check for resume and cover letter
     const resumeTailored = !!(job.linkedResumeId || job.materials?.resume);
@@ -652,10 +665,26 @@ export async function calculateInterviewPrediction(interviewId, userId) {
     const preparationTasksCompleted = interview.preparationTasks?.filter(t => t.completed).length || 0;
     const totalPreparationTasks = interview.preparationTasks?.length || 0;
     
+    // Check if company research recommendation was manually completed
+    const companyResearchRecommendationCompleted = completedRecommendations.some(
+      rec => rec.category === "Company Research" || rec.title?.includes("Company Research")
+    );
+    
+    // Override company research completeness if manually marked complete
+    const finalCompanyResearchCompleteness = companyResearchRecommendationCompleted 
+      ? 100 
+      : companyResearchData.completeness;
+    
+    console.log('🏢 Company Research Status:', {
+      originalCompleteness: companyResearchData.completeness,
+      manuallyCompleted: companyResearchRecommendationCompleted,
+      finalCompleteness: finalCompanyResearchCompleteness
+    });
+    
     const preparationFactors = {
       roleMatchScore,
-      companyResearchCompleted: companyResearchData.completed,
-      companyResearchCompleteness: companyResearchData.completeness,
+      companyResearchCompleted: companyResearchRecommendationCompleted || companyResearchData.completed,
+      companyResearchCompleteness: finalCompanyResearchCompleteness,
       practiceHours,
       mockInterviewsCompleted,
       technicalPrepScore,
@@ -680,8 +709,9 @@ export async function calculateInterviewPrediction(interviewId, userId) {
     // Generate recommendations (only for uncompleted items)
     const recommendations = generateRecommendations(preparationFactors, performancePattern, interview);
     
-    // Calculate success probability (bonuses are calculated inside based on preparationFactors)
-    const successProbability = calculateSuccessProbability(preparationFactors, performancePattern, weights, []);
+    // Calculate success probability with completed recommendations bonus
+    console.log('📊 Calculating success probability with completed recommendations:', completedRecommendations.length);
+    const successProbability = calculateSuccessProbability(preparationFactors, performancePattern, weights, completedRecommendations);
     const confidenceScore = calculateConfidenceScore(preparationFactors, performancePattern);
     
     return {

@@ -35,12 +35,9 @@ import InterviewPrepPage from "./pages/InterviewPrepPage.jsx";
 import CompanyResearch from "./pages/interviews/CompanyResearch.jsx";
 import MockInterviewStart from "./pages/interviews/MockInterviewStart.jsx";
 import MockInterviewSession from "./pages/interviews/MockInterviewSession.jsx";
-<<<<<<< HEAD
+import MockInterviewHistory from "./pages/interviews/MockInterviewHistory.jsx";
 import InterviewSuccessPredictions from "./pages/InterviewSuccessPredictions.jsx";
 import InterviewPredictionDetail from "./pages/InterviewPredictionDetail.jsx";
-=======
-import MockInterviewHistory from "./pages/interviews/MockInterviewHistory.jsx";
->>>>>>> b4167b8be2dd18be6e7fd99778cac7e2170ed2a3
 
 function App() {
   return (

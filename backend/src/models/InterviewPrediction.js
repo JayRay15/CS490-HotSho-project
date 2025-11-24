@@ -129,6 +129,14 @@ const recommendationSchema = new mongoose.Schema({
   completedAt: {
     type: Date,
   },
+  allowManualCompletion: {
+    type: Boolean,
+    default: false,
+  },
+  manuallyCompleted: {
+    type: Boolean,
+    default: false,
+  },
 }, { timestamps: true });
 
 // Schema for tracking prediction accuracy

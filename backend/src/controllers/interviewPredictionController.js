@@ -25,9 +25,9 @@ export const getPrediction = asyncHandler(async (req, res) => {
     .populate('interviewId', 'title company scheduledDate interviewType status')
     .populate('jobId', 'title company status');
   
-  // If prediction doesn't exist or is older than 24 hours, recalculate
+  // If prediction doesn't exist or is older than 1 hour, recalculate
   const shouldRecalculate = !prediction || 
-    (Date.now() - new Date(prediction.lastUpdated).getTime()) > 24 * 60 * 60 * 1000;
+    (Date.now() - new Date(prediction.lastUpdated).getTime()) > 60 * 60 * 1000;
   
   if (shouldRecalculate) {
     try {

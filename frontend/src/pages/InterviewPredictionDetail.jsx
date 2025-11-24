@@ -3,6 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import {
   getPrediction,
   recalculatePrediction,
+  completeRecommendation,
+  uncompleteRecommendation,
 } from "../api/interviewPredictions";
 import {
   ArrowLeft,
@@ -31,6 +33,7 @@ export default function InterviewPredictionDetail() {
   const [error, setError] = useState(null);
   const [recalculating, setRecalculating] = useState(false);
   const [expandedSection, setExpandedSection] = useState("recommendations");
+  const [completingRecommendation, setCompletingRecommendation] = useState(null);
 
   useEffect(() => {
     fetchPrediction();
@@ -60,6 +63,32 @@ export default function InterviewPredictionDetail() {
       alert("Failed to recalculate prediction");
     } finally {
       setRecalculating(false);
+    }
+  };
+
+  const handleCompleteRecommendation = async (recommendationId) => {
+    setCompletingRecommendation(recommendationId);
+    try {
+      await completeRecommendation(interviewId, recommendationId);
+      await fetchPrediction();
+    } catch (err) {
+      console.error("Error completing recommendation:", err);
+      alert("Failed to complete recommendation");
+    } finally {
+      setCompletingRecommendation(null);
+    }
+  };
+
+  const handleUncompleteRecommendation = async (recommendationId) => {
+    setCompletingRecommendation(recommendationId);
+    try {
+      await uncompleteRecommendation(interviewId, recommendationId);
+      await fetchPrediction();
+    } catch (err) {
+      console.error("Error uncompleting recommendation:", err);
+      alert("Failed to uncomplete recommendation");
+    } finally {
+      setCompletingRecommendation(null);
     }
   };
 
@@ -179,58 +208,40 @@ export default function InterviewPredictionDetail() {
           </div>
         </div>
 
-        {/* Success Probability Card */}
-        <div className={`rounded-lg border-2 p-8 mb-6 ${getSuccessBgColor(prediction.successProbability)}`}>
-          <div className="text-center mb-6">
-            <p className="text-lg text-gray-700 mb-2">Interview Success Probability</p>
-            <p className={`text-6xl font-bold ${getSuccessColor(prediction.successProbability)}`}>
-              {prediction.successProbability}%
-            </p>
-            <div className="mt-4 max-w-md mx-auto">
-              <div className="w-full bg-white rounded-full h-4 shadow-inner">
-                <div
-                  className={`h-4 rounded-full ${
-                    prediction.successProbability >= 75
-                      ? "bg-green-600"
-                      : prediction.successProbability >= 50
-                      ? "bg-yellow-600"
-                      : "bg-red-600"
-                  }`}
-                  style={{ width: `${prediction.successProbability}%` }}
-                ></div>
+        {/* Success Probability and Confidence Score Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          {/* Success Probability Box */}
+          <div className={`rounded-lg border-2 p-8 ${getSuccessBgColor(prediction.successProbability)}`}>
+            <div className="text-center">
+              <p className="text-lg text-gray-700 mb-2">Interview Success Probability</p>
+              <p className={`text-6xl font-bold ${getSuccessColor(prediction.successProbability)}`}>
+                {prediction.successProbability}%
+              </p>
+              <div className="mt-4 max-w-md mx-auto">
+                <div className="w-full bg-white rounded-full h-4 shadow-inner">
+                  <div
+                    className={`h-4 rounded-full ${
+                      prediction.successProbability >= 75
+                        ? "bg-green-600"
+                        : prediction.successProbability >= 50
+                        ? "bg-yellow-600"
+                        : "bg-red-600"
+                    }`}
+                    style={{ width: `${prediction.successProbability}%` }}
+                  ></div>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white rounded-lg p-4 text-center">
-              <Award className="h-6 w-6 text-blue-600 mx-auto mb-2" />
-              <p className="text-sm text-gray-600">Confidence Score</p>
-              <p className="text-2xl font-bold text-gray-900">{prediction.confidenceScore}%</p>
+          {/* Confidence Score Box */}
+          <div className="bg-white rounded-lg border-2 border-blue-200 p-8">
+            <div className="text-center">
+              <Award className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+              <p className="text-lg text-gray-700 mb-2">Confidence Score</p>
+              <p className="text-6xl font-bold text-blue-600">{prediction.confidenceScore}%</p>
+              <p className="text-sm text-gray-600 mt-4">Based on 7 preparation factors</p>
             </div>
-            
-            {prediction.comparisonData && (
-              <>
-                <div className="bg-white rounded-lg p-4 text-center">
-                  <TrendingUp className="h-6 w-6 text-purple-600 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">Ranking</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    #{prediction.comparisonData.rankAmongUpcoming}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    of {prediction.comparisonData.totalUpcomingInterviews}
-                  </p>
-                </div>
-
-                <div className="bg-white rounded-lg p-4 text-center">
-                  <BarChart3 className="h-6 w-6 text-green-600 mx-auto mb-2" />
-                  <p className="text-sm text-gray-600">Percentile</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {prediction.comparisonData.percentile}th
-                  </p>
-                </div>
-              </>
-            )}
           </div>
         </div>
 
@@ -316,12 +327,35 @@ export default function InterviewPredictionDetail() {
                           </div>
                         </div>
                       </div>
-                      {rec.completed && (
-                        <div className="ml-4 flex items-center text-green-600">
-                          <CheckCircle className="h-5 w-5 mr-1" />
-                          <span className="text-sm font-semibold">Completed</span>
-                        </div>
-                      )}
+                      <div className="ml-4 flex items-center space-x-2">
+                        {rec.completed ? (
+                          <>
+                            <div className="flex items-center text-green-600">
+                              <CheckCircle className="h-5 w-5 mr-1" />
+                              <span className="text-sm font-semibold">Completed</span>
+                            </div>
+                            {rec.allowManualCompletion && (
+                              <button
+                                onClick={() => handleUncompleteRecommendation(rec._id)}
+                                disabled={completingRecommendation === rec._id}
+                                className="px-3 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
+                              >
+                                {completingRecommendation === rec._id ? "..." : "Unmark"}
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          rec.allowManualCompletion && (
+                            <button
+                              onClick={() => handleCompleteRecommendation(rec._id)}
+                              disabled={completingRecommendation === rec._id}
+                              className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                            >
+                              {completingRecommendation === rec._id ? "..." : "Mark Complete"}
+                            </button>
+                          )
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))
@@ -433,23 +467,6 @@ export default function InterviewPredictionDetail() {
                     </span>
                   </div>
                 </div>
-
-                <div className="border rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">Resume & Cover Letter</span>
-                    <div className="flex space-x-2">
-                      {factors.resumeTailored && (
-                        <CheckCircle className="h-5 w-5 text-green-600" />
-                      )}
-                      {factors.coverLetterSubmitted && (
-                        <CheckCircle className="h-5 w-5 text-green-600" />
-                      )}
-                      {!factors.resumeTailored && !factors.coverLetterSubmitted && (
-                        <span className="text-sm text-gray-500">None</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
           )}
@@ -471,58 +488,46 @@ export default function InterviewPredictionDetail() {
 
           {expandedSection === "performance" && (
             <div className="p-6 pt-0">
-              {performance.previousInterviewCount === 0 ? (
-                <p className="text-center text-gray-500 py-8">
-                  No historical interview data available yet.
-                </p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="border rounded-lg p-4 text-center">
-                    <p className="text-sm text-gray-600 mb-1">Past Interviews</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {performance.previousInterviewCount}
-                    </p>
-                  </div>
-
-                  <div className="border rounded-lg p-4 text-center">
-                    <p className="text-sm text-gray-600 mb-1">Success Rate</p>
-                    <p className="text-2xl font-bold text-green-600">
-                      {performance.successRate}%
-                    </p>
-                  </div>
-
-                  <div className="border rounded-lg p-4 text-center">
-                    <p className="text-sm text-gray-600 mb-1">Avg Rating</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {performance.averageRating > 0 ? performance.averageRating : "N/A"}
-                    </p>
-                  </div>
-
-                  <div className="border rounded-lg p-4 text-center">
-                    <p className="text-sm text-gray-600 mb-1">Trend</p>
-                    <p
-                      className={`text-lg font-bold ${
-                        performance.improvementTrend === "Improving"
-                          ? "text-green-600"
-                          : performance.improvementTrend === "Declining"
-                          ? "text-red-600"
-                          : "text-gray-900"
-                      }`}
-                    >
-                      {performance.improvementTrend}
-                    </p>
-                  </div>
-
-                  {performance.strongestInterviewType !== "None" && (
-                    <div className="border rounded-lg p-4 col-span-full">
-                      <p className="text-sm text-gray-600 mb-1">Strongest Interview Type</p>
-                      <p className="text-lg font-bold text-blue-600">
-                        {performance.strongestInterviewType}
-                      </p>
-                    </div>
-                  )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="border rounded-lg p-4">
+                  <span className="text-sm font-medium text-gray-700 block mb-2">Previous Interviews</span>
+                  <span className="text-2xl font-bold text-gray-900">
+                    {performance.previousInterviewCount}
+                  </span>
                 </div>
-              )}
+
+                <div className="border rounded-lg p-4">
+                  <span className="text-sm font-medium text-gray-700 block mb-2">Success Rate</span>
+                  <span className="text-2xl font-bold text-green-600">
+                    {performance.successRate}%
+                  </span>
+                </div>
+
+                <div className="border rounded-lg p-4">
+                  <span className="text-sm font-medium text-gray-700 block mb-2">Average Rating</span>
+                  <span className="text-2xl font-bold text-yellow-600">
+                    {performance.averageRating > 0 ? performance.averageRating.toFixed(1) : "0.0"}/5.0
+                  </span>
+                </div>
+
+                <div className="border rounded-lg p-4">
+                  <span className="text-sm font-medium text-gray-700 block mb-2">Strongest Type</span>
+                  <span className="text-lg font-bold text-gray-900">
+                    {performance.strongestInterviewType}
+                  </span>
+                </div>
+
+                <div className="border rounded-lg p-4 md:col-span-2">
+                  <span className="text-sm font-medium text-gray-700 block mb-2">Improvement Trend</span>
+                  <span className={`text-lg font-bold ${
+                    performance.improvementTrend === "Improving" ? "text-green-600" :
+                    performance.improvementTrend === "Declining" ? "text-red-600" :
+                    "text-gray-600"
+                  }`}>
+                    {performance.improvementTrend}
+                  </span>
+                </div>
+              </div>
             </div>
           )}
         </div>

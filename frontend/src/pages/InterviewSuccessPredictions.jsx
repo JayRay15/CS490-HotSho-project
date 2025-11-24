@@ -119,30 +119,6 @@ export default function InterviewSuccessPredictions() {
           </div>
         </div>
 
-        {/* View Toggle */}
-        <div className="mb-6 flex space-x-2 bg-white rounded-lg p-1 shadow-sm w-fit">
-          <button
-            onClick={() => setSelectedView("predictions")}
-            className={`px-4 py-2 rounded-md transition-colors ${
-              selectedView === "predictions"
-                ? "bg-blue-600 text-white"
-                : "text-gray-600 hover:bg-gray-100"
-            }`}
-          >
-            Predictions
-          </button>
-          <button
-            onClick={() => setSelectedView("analytics")}
-            className={`px-4 py-2 rounded-md transition-colors ${
-              selectedView === "analytics"
-                ? "bg-blue-600 text-white"
-                : "text-gray-600 hover:bg-gray-100"
-            }`}
-          >
-            Analytics
-          </button>
-        </div>
-
         {error && (
           <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-center">
             <AlertCircle className="h-5 w-5 text-red-600 mr-3" />
@@ -151,8 +127,7 @@ export default function InterviewSuccessPredictions() {
         )}
 
         {/* Predictions View */}
-        {selectedView === "predictions" && (
-          <div>
+        <div>
             {predictions.length === 0 ? (
               <div className="bg-white rounded-lg shadow-sm p-12 text-center">
                 <Target className="h-16 w-16 text-gray-400 mx-auto mb-4" />
@@ -343,161 +318,6 @@ export default function InterviewSuccessPredictions() {
               </div>
             )}
           </div>
-        )}
-
-        {/* Analytics View */}
-        {selectedView === "analytics" && (
-          <div>
-            {!analytics || analytics.totalPredictions === 0 ? (
-              <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-                <BarChart3 className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  No Analytics Available Yet
-                </h3>
-                <p className="text-gray-600">
-                  Complete interviews and record outcomes to see prediction accuracy analytics.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {/* Analytics Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                  <div className="bg-white rounded-lg shadow-sm p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-gray-600">Avg Accuracy</p>
-                        <p className="text-2xl font-bold text-blue-600 mt-1">
-                          {analytics.averageAccuracy}%
-                        </p>
-                      </div>
-                      <Award className="h-8 w-8 text-blue-600" />
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-lg shadow-sm p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-gray-600">Total Predictions</p>
-                        <p className="text-2xl font-bold text-gray-900 mt-1">
-                          {analytics.totalPredictions}
-                        </p>
-                      </div>
-                      <Target className="h-8 w-8 text-gray-600" />
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-lg shadow-sm p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-gray-600">Actual Success</p>
-                        <p className="text-2xl font-bold text-green-600 mt-1">
-                          {analytics.actualSuccessRate}%
-                        </p>
-                      </div>
-                      <CheckCircle className="h-8 w-8 text-green-600" />
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-lg shadow-sm p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-gray-600">Calibration</p>
-                        <p className="text-2xl font-bold text-purple-600 mt-1">
-                          ±{analytics.calibrationDifference}%
-                        </p>
-                      </div>
-                      <TrendingUp className="h-8 w-8 text-purple-600" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Accuracy by Interview Type */}
-                {analytics.accuracyByType && Object.keys(analytics.accuracyByType).length > 0 && (
-                  <div className="bg-white rounded-lg shadow-sm p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                      Accuracy by Interview Type
-                    </h3>
-                    <div className="space-y-3">
-                      {Object.entries(analytics.accuracyByType).map(([type, accuracy]) => (
-                        <div key={type}>
-                          <div className="flex justify-between mb-1">
-                            <span className="text-sm font-medium text-gray-700">{type}</span>
-                            <span className="text-sm font-semibold text-gray-900">{accuracy}%</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-blue-600 h-2 rounded-full"
-                              style={{ width: `${accuracy}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Recent Predictions */}
-                {analytics.recentPredictions && analytics.recentPredictions.length > 0 && (
-                  <div className="bg-white rounded-lg shadow-sm p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                      Recent Predictions
-                    </h3>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead>
-                          <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                              Interview
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                              Company
-                            </th>
-                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                              Predicted
-                            </th>
-                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                              Actual
-                            </th>
-                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
-                              Accuracy
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200">
-                          {analytics.recentPredictions.map((pred, idx) => (
-                            <tr key={idx}>
-                              <td className="px-4 py-3 text-sm text-gray-900">{pred.interview}</td>
-                              <td className="px-4 py-3 text-sm text-gray-600">{pred.company}</td>
-                              <td className="px-4 py-3 text-center text-sm font-semibold text-blue-600">
-                                {pred.predicted}%
-                              </td>
-                              <td className="px-4 py-3 text-center">
-                                <span
-                                  className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                    ["Passed", "Moved to Next Round", "Offer Extended"].includes(
-                                      pred.actual
-                                    )
-                                      ? "bg-green-100 text-green-800"
-                                      : "bg-red-100 text-red-800"
-                                  }`}
-                                >
-                                  {pred.actual}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 text-center text-sm font-semibold text-gray-900">
-                                {pred.accuracy}%
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );
