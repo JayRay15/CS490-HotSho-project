@@ -152,6 +152,9 @@ export default function Navbar() {
                                         <NavLink to="/network" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Professional Network" onClick={() => setCareerDropdownOpen(false)}>
                                             Network
                                         </NavLink>
+                                        <NavLink to="/relationship-maintenance" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Relationship Maintenance" onClick={() => setCareerDropdownOpen(false)}>
+                                            Relationship Maintenance
+                                        </NavLink>
                                         <NavLink to="/productivity" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Productivity Analysis" onClick={() => setCareerDropdownOpen(false)}>
                                             Productivity Analysis
                                         </NavLink>
@@ -401,6 +404,18 @@ export default function Navbar() {
                             aria-label="Professional Network"
                         >
                             Network
+                        </NavLink>
+                        <NavLink
+                            to="/relationship-maintenance"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                }`
+                            }
+                            aria-label="Relationship Maintenance"
+                        >
+                            Relationship Maintenance
                         </NavLink>
                         <div className="pt-3 pb-2 flex items-center space-x-3 px-4">
                             <span className="text-sm text-primary-50">Account</span>
