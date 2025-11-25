@@ -429,6 +429,104 @@ export default function NetworkAnalytics() {
                     </li>
                 </ul>
             </Card>
+
+            {/* Industry Benchmarks & Strategic Insights (NEW) */}
+            {analytics.benchmarks && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Card className="p-6">
+                        <h3 className="text-lg font-semibold mb-4" style={{ color: '#4F5348' }}>
+                            Industry Benchmarks
+                        </h3>
+                        <div className="space-y-6">
+                            <div>
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-sm font-medium" style={{ color: '#656A5C' }}>Weekly Activity</span>
+                                    <span className={`text-xs font-bold px-2 py-1 rounded ${analytics.benchmarks.activityVolume.status === 'Above Average' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                        {analytics.benchmarks.activityVolume.status}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between text-sm mb-2">
+                                    <span style={{ color: '#4F5348' }}>You: {analytics.benchmarks.activityVolume.user}</span>
+                                    <span style={{ color: '#656A5C' }}>Industry Avg: {analytics.benchmarks.activityVolume.industry}</span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                    <div
+                                        className={`h-2 rounded-full transition-all duration-300 ${analytics.benchmarks.activityVolume.status === 'Above Average' ? 'bg-green-500' : 'bg-yellow-500'}`}
+                                        style={{ width: `${Math.min((analytics.benchmarks.activityVolume.user / analytics.benchmarks.activityVolume.industry) * 50, 100)}%` }}
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-sm font-medium" style={{ color: '#656A5C' }}>Response Rate</span>
+                                    <span className={`text-xs font-bold px-2 py-1 rounded ${analytics.benchmarks.responseRate.status === 'Above Average' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                        {analytics.benchmarks.responseRate.status}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between text-sm mb-2">
+                                    <span style={{ color: '#4F5348' }}>You: {analytics.benchmarks.responseRate.user}%</span>
+                                    <span style={{ color: '#656A5C' }}>Industry Avg: {analytics.benchmarks.responseRate.industry}%</span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                    <div
+                                        className={`h-2 rounded-full transition-all duration-300 ${analytics.benchmarks.responseRate.status === 'Above Average' ? 'bg-green-500' : 'bg-yellow-500'}`}
+                                        style={{ width: `${Math.min((analytics.benchmarks.responseRate.user / analytics.benchmarks.responseRate.industry) * 50, 100)}%` }}
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-sm font-medium" style={{ color: '#656A5C' }}>Reciprocity</span>
+                                    <span className={`text-xs font-bold px-2 py-1 rounded ${analytics.benchmarks.reciprocity.status === 'Balanced' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                        {analytics.benchmarks.reciprocity.status}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between text-sm mb-2">
+                                    <span style={{ color: '#4F5348' }}>You: {analytics.benchmarks.reciprocity.user}%</span>
+                                    <span style={{ color: '#656A5C' }}>Target: {analytics.benchmarks.reciprocity.industry}%</span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                    <div
+                                        className={`h-2 rounded-full transition-all duration-300 ${analytics.benchmarks.reciprocity.status === 'Balanced' ? 'bg-green-500' : 'bg-yellow-500'}`}
+                                        style={{ width: `${Math.min((analytics.benchmarks.reciprocity.user / analytics.benchmarks.reciprocity.industry) * 50, 100)}%` }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+
+                    <Card className="p-6">
+                        <h3 className="text-lg font-semibold mb-4" style={{ color: '#4F5348' }}>
+                            Strategic Insights
+                        </h3>
+                        {analytics.strategyInsights && analytics.strategyInsights.length > 0 ? (
+                            <div className="space-y-4">
+                                {analytics.strategyInsights.map((insight, idx) => (
+                                    <div key={idx} className="p-4 rounded-lg border border-gray-100 shadow-sm bg-white">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${insight.type === 'Success Driver' || insight.type === 'Strength' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
+                                                {insight.type}
+                                            </span>
+                                            <span className="font-medium text-sm" style={{ color: '#4F5348' }}>{insight.title}</span>
+                                        </div>
+                                        <p className="text-sm text-gray-600 mb-2">{insight.description}</p>
+                                        <div className="flex items-start gap-2 text-sm">
+                                            <span className="text-primary-600 font-semibold">Action:</span>
+                                            <span style={{ color: '#4F5348' }}>{insight.action}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 text-gray-500">
+                                <p>Log more activities to generate personalized strategic insights.</p>
+                            </div>
+                        )}
+                    </Card>
+                </div>
+            )}
         </div>
     );
 }

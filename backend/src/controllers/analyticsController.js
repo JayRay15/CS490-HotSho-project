@@ -6,6 +6,17 @@ import Referral from '../models/Referral.js';
 // @desc    Get network analytics for authenticated user
 // @route   GET /api/analytics/network
 // @access  Private
+// Industry benchmarks for networking metrics
+const INDUSTRY_BENCHMARKS = {
+    weeklyActivity: 3,        // 3 activities per week
+    responseRate: 40,         // 40% response rate
+    reciprocityScore: 80,     // 80% reciprocity (balanced)
+    conversionRate: 15        // 15% of opportunities convert
+};
+
+// @desc    Get network analytics for authenticated user
+// @route   GET /api/analytics/network
+// @access  Private
 export const getNetworkAnalytics = async (req, res) => {
     try {
         const userId = req.auth.userId;
@@ -25,10 +36,12 @@ export const getNetworkAnalytics = async (req, res) => {
         const recentActivities30 = activities.filter(a => a.activityDate >= thirtyDaysAgo);
         const recentActivities90 = activities.filter(a => a.activityDate >= ninetyDaysAgo);
 
+        const avgPerWeek = (recentActivities30.length / 4.3).toFixed(1);
+
         const activityVolume = {
             last30Days: recentActivities30.length,
             last90Days: recentActivities90.length,
-            averagePerWeek: (recentActivities30.length / 4.3).toFixed(1), // 30 days ≈ 4.3 weeks
+            averagePerWeek: avgPerWeek, // 30 days ≈ 4.3 weeks
             byType: {}
         };
 
@@ -100,12 +113,14 @@ export const getNetworkAnalytics = async (req, res) => {
             a.valueExchange === 'Received' || a.valueExchange === 'Mutual'
         ).length;
 
+        const reciprocityScore = valueGiven > 0
+            ? ((valueReceived / valueGiven) * 100).toFixed(1)
+            : 0;
+
         const valueExchange = {
             totalValueGiven: valueGiven,
             totalValueReceived: valueReceived,
-            reciprocityScore: valueGiven > 0
-                ? ((valueReceived / valueGiven) * 100).toFixed(1)
-                : 0,
+            reciprocityScore: reciprocityScore,
             byType: {}
         };
 
@@ -131,11 +146,13 @@ export const getNetworkAnalytics = async (req, res) => {
 
         // 6. Opportunity Conversion - Track job opportunity sourcing
         const opportunityActivities = activities.filter(a => a.opportunityGenerated);
+        const opportunityConversionRate = activities.length > 0
+            ? ((opportunityActivities.length / activities.length) * 100).toFixed(1)
+            : 0;
+
         const opportunityConversion = {
             totalOpportunities: opportunityActivities.length,
-            conversionRate: activities.length > 0
-                ? ((opportunityActivities.length / activities.length) * 100).toFixed(1)
-                : 0,
+            conversionRate: opportunityConversionRate,
             byType: {}
         };
 
@@ -147,14 +164,16 @@ export const getNetworkAnalytics = async (req, res) => {
 
         // 7. Engagement Quality - Analyze engagement quality
         const positiveActivities = activities.filter(a => a.sentiment === 'Positive').length;
+        const outboundActivities = activities.filter(a => a.direction === 'Outbound');
+        const responseRate = outboundActivities.length > 0
+            ? ((activities.filter(a => a.responseReceived).length / outboundActivities.length) * 100).toFixed(1)
+            : 0;
+
         const engagementQuality = {
             positiveSentimentRate: activities.length > 0
                 ? ((positiveActivities / activities.length) * 100).toFixed(1)
                 : 0,
-            responseRate: activities.filter(a => a.direction === 'Outbound').length > 0
-                ? ((activities.filter(a => a.responseReceived).length /
-                    activities.filter(a => a.direction === 'Outbound').length) * 100).toFixed(1)
-                : 0,
+            responseRate: responseRate,
             averageResponseTime: (() => {
                 const responseTimes = activities
                     .filter(a => a.responseTime)
@@ -165,6 +184,89 @@ export const getNetworkAnalytics = async (req, res) => {
             })()
         };
 
+        // 8. Benchmarks & Insights (NEW)
+        const benchmarks = {
+            activityVolume: {
+                user: parseFloat(avgPerWeek),
+                industry: INDUSTRY_BENCHMARKS.weeklyActivity,
+                status: parseFloat(avgPerWeek) >= INDUSTRY_BENCHMARKS.weeklyActivity ? 'Above Average' : 'Below Average'
+            },
+            responseRate: {
+                user: parseFloat(responseRate),
+                industry: INDUSTRY_BENCHMARKS.responseRate,
+                status: parseFloat(responseRate) >= INDUSTRY_BENCHMARKS.responseRate ? 'Above Average' : 'Below Average'
+            },
+            reciprocity: {
+                user: parseFloat(reciprocityScore),
+                industry: INDUSTRY_BENCHMARKS.reciprocityScore,
+                status: parseFloat(reciprocityScore) >= INDUSTRY_BENCHMARKS.reciprocityScore ? 'Balanced' : 'Needs Improvement'
+            }
+        };
+
+        // Generate Strategic Insights
+        const strategyInsights = [];
+
+        // Insight 1: Most effective activity type for opportunities
+        const activitiesByType = {};
+        activities.forEach(a => {
+            if (!activitiesByType[a.activityType]) {
+                activitiesByType[a.activityType] = { total: 0, opportunities: 0 };
+            }
+            activitiesByType[a.activityType].total++;
+            if (a.opportunityGenerated) {
+                activitiesByType[a.activityType].opportunities++;
+            }
+        });
+
+        let bestActivityType = null;
+        let bestConversionRate = 0;
+
+        Object.entries(activitiesByType).forEach(([type, stats]) => {
+            if (stats.total >= 3) { // Minimum sample size
+                const rate = (stats.opportunities / stats.total) * 100;
+                if (rate > bestConversionRate) {
+                    bestConversionRate = rate;
+                    bestActivityType = type;
+                }
+            }
+        });
+
+        if (bestActivityType) {
+            strategyInsights.push({
+                type: 'Success Driver',
+                title: 'High Impact Activity',
+                description: `${bestActivityType}s are your most effective networking activity, converting to opportunities ${bestConversionRate.toFixed(0)}% of the time.`,
+                action: `Prioritize scheduling more ${bestActivityType}s.`
+            });
+        }
+
+        // Insight 2: Response Rate Analysis
+        if (parseFloat(responseRate) < INDUSTRY_BENCHMARKS.responseRate) {
+            strategyInsights.push({
+                type: 'Improvement Area',
+                title: 'Low Response Rate',
+                description: `Your response rate (${responseRate}%) is below the industry average (${INDUSTRY_BENCHMARKS.responseRate}%).`,
+                action: 'Try personalizing your outreach messages or following up within 3 days.'
+            });
+        }
+
+        // Insight 3: Event ROI
+        if (eventROI.averageROIRating > 4) {
+            strategyInsights.push({
+                type: 'Strength',
+                title: 'High Event ROI',
+                description: 'You are selecting high-value networking events.',
+                action: 'Continue focusing on quality over quantity for events.'
+            });
+        } else if (eventROI.totalEventsAttended > 3 && eventROI.averageROIRating < 3) {
+            strategyInsights.push({
+                type: 'Optimization',
+                title: 'Event Strategy',
+                description: 'Recent events haven\'t yielded high ROI.',
+                action: 'Consider researching attendee lists before registering for future events.'
+            });
+        }
+
         // Compile final analytics
         const analytics = {
             activityVolume,
@@ -174,6 +276,8 @@ export const getNetworkAnalytics = async (req, res) => {
             referralStats,
             opportunityConversion,
             engagementQuality,
+            benchmarks,
+            strategyInsights,
             generatedAt: now
         };
 
