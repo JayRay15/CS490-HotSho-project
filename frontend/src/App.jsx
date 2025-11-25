@@ -40,7 +40,7 @@ import ProductivityAnalysisPage from "./pages/ProductivityAnalysisPage.jsx";
 import MockInterviewHistory from "./pages/interviews/MockInterviewHistory.jsx";
 import InterviewSuccessPredictions from "./pages/InterviewSuccessPredictions.jsx";
 import InterviewPredictionDetail from "./pages/InterviewPredictionDetail.jsx";
-import RelationshipMaintenance from "./pages/auth/RelationshipMaintenance.jsx";
+
 import InterviewsPage from "./pages/auth/InterviewsPage.jsx";
 import CalendarSettings from "./pages/auth/CalendarSettings.jsx";
 
@@ -103,7 +103,7 @@ function App() {
           <Route path="/mentors" element={<ProtectedRoute><MentorDashboard /></ProtectedRoute>} />
           <Route path="/mentors/progress" element={<ProtectedRoute><ProgressSharing /></ProtectedRoute>} />
           <Route path="/mentors/messages" element={<ProtectedRoute><MentorMessaging /></ProtectedRoute>} />
-          <Route path="/relationship-maintenance" element={<ProtectedRoute><RelationshipMaintenance /></ProtectedRoute>} />
+
         </Routes>
       </Router>
     </ErrorBoundary>

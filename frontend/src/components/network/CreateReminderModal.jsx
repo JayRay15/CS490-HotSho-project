@@ -94,9 +94,18 @@ export default function CreateReminderModal({ onClose, onSuccess, contactId = nu
     }
   };
 
+  // Close when clicking backdrop (but not when clicking inside modal)
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) onClose();
+  };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div
+      className="fixed inset-0 flex items-center justify-center z-50 p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.48)' }}
+      onClick={handleBackdropClick}
+    >
+      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-gray-900">Create Reminder</h2>
@@ -288,12 +297,12 @@ export default function CreateReminderModal({ onClose, onSuccess, contactId = nu
             )}
 
             {/* Action Buttons */}
-            <div className="flex gap-3 pt-4">
-              <Button type="submit" disabled={loading} className="flex-1">
-                {loading ? 'Creating...' : 'Create Reminder'}
-              </Button>
-              <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+            <div className="flex justify-end space-x-3 pt-4 border-t">
+              <Button type="button" variant="secondary" onClick={onClose} disabled={loading}>
                 Cancel
+              </Button>
+              <Button type="submit" disabled={loading} className="bg-[#777C6D] hover:bg-[#656A5C] text-white">
+                {loading ? 'Creating...' : 'Create Reminder'}
               </Button>
             </div>
           </form>

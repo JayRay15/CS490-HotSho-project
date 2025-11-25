@@ -39,7 +39,7 @@ export default function ContactCard({ contact, onEdit, onDelete, onRequestReferr
 
   // Use outlined variant for black border, remove shadow
   return (
-    <Card variant="outlined" className="border-black !shadow-none p-3 md:p-4">
+    <Card variant="outlined" className="border-black !shadow-none p-3 md:p-4 h-full min-h-[320px]">
       <div className="flex flex-col h-full text-sm">
         {/* Header */}
         <div className="flex justify-between items-start mb-2">
@@ -111,9 +111,8 @@ export default function ContactCard({ contact, onEdit, onDelete, onRequestReferr
         {/* Badges */}
         <div className="flex flex-wrap gap-2 mb-2">
           <span
-            className={`px-2 py-1 rounded-full text-xs font-medium ${
-              relationshipTypeColors[contact.relationshipType] || 'bg-gray-100 text-gray-800'
-            }`}
+            className={`px-2 py-1 rounded-full text-xs font-medium ${relationshipTypeColors[contact.relationshipType] || 'bg-gray-100 text-gray-800'
+              }`}
           >
             {contact.relationshipType}
           </span>
@@ -198,9 +197,8 @@ export default function ContactCard({ contact, onEdit, onDelete, onRequestReferr
             <div className="flex justify-between">
               <span>Next Follow-up:</span>
               <span
-                className={`font-medium ${
-                  isFollowUpOverdue() ? 'text-red-600' : 'text-gray-900'
-                }`}
+                className={`font-medium ${isFollowUpOverdue() ? 'text-red-600' : 'text-gray-900'
+                  }`}
               >
                 {formatDate(contact.nextFollowUpDate)}
                 {isFollowUpOverdue() && ' (Overdue)'}
@@ -215,42 +213,44 @@ export default function ContactCard({ contact, onEdit, onDelete, onRequestReferr
           )}
         </div>
 
-        {/* Toggle Details Button */}
-        {(contact.notes || contact.tags?.length > 0) && (
-          <button
-            onClick={() => setShowDetails(!showDetails)}
-            className="mt-3 text-sm text-primary-600 hover:text-primary-800 font-medium transition-shadow rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary-400"
-            style={{ boxShadow: 'none' }}
-            onMouseOver={e => {
-              e.currentTarget.style.boxShadow = '0 2px 8px 0 rgba(0,0,0,0.10)';
-            }}
-            onMouseOut={e => {
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          >
-            {showDetails ? 'Hide Details' : 'Show Details'}
-          </button>
-        )}
+        <div className="mt-auto">
+          {/* Toggle Details Button */}
+          {(contact.notes || contact.tags?.length > 0) && (
+            <button
+              onClick={() => setShowDetails(!showDetails)}
+              className="mt-3 text-sm text-primary-600 hover:text-primary-800 font-medium transition-shadow rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary-400"
+              style={{ boxShadow: 'none' }}
+              onMouseOver={e => {
+                e.currentTarget.style.boxShadow = '0 2px 8px 0 rgba(0,0,0,0.10)';
+              }}
+              onMouseOut={e => {
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              {showDetails ? 'Hide Details' : 'Show Details'}
+            </button>
+          )}
 
-        {/* Request Referral Button */}
-        {onRequestReferral && contact.canProvideReferral && (
-          <button
-            onClick={() => onRequestReferral(contact)}
-            className="mt-3 w-full bg-purple-600 text-white text-sm font-medium py-2 px-4 rounded-lg hover:bg-purple-700 transition flex items-center justify-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-            Request Referral
-          </button>
-        )}
+          {/* Request Referral Button */}
+          {onRequestReferral && contact.canProvideReferral && (
+            <button
+              onClick={() => onRequestReferral(contact)}
+              className="mt-3 w-full bg-purple-600 text-white text-sm font-medium py-2 px-4 rounded-lg hover:bg-purple-700 transition flex items-center justify-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              Request Referral
+            </button>
+          )}
 
-        {/* Custom Actions (for References tab, etc.) */}
-        {customActions && (
-          <div className="mt-3">
-            {customActions}
-          </div>
-        )}
+          {/* Custom Actions (for References tab, etc.) */}
+          {customActions && (
+            <div className="mt-3">
+              {customActions}
+            </div>
+          )}
+        </div>
 
         {/* Expandable Details */}
         {showDetails && (
