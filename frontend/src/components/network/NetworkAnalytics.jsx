@@ -8,6 +8,7 @@ import ErrorMessage from '../ErrorMessage';
 export default function NetworkAnalytics() {
     const { getToken } = useAuth();
     const [analytics, setAnalytics] = useState(null);
+    const [relationshipAnalytics, setRelationshipAnalytics] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -21,8 +22,13 @@ export default function NetworkAnalytics() {
             const token = await getToken();
             setAuthToken(token);
 
-            const response = await api.get('/api/analytics/network');
-            setAnalytics(response.data.data);
+            const [networkRes, relationshipRes] = await Promise.all([
+                api.get('/api/analytics/network'),
+                api.get('/api/relationship-maintenance/activities/analytics')
+            ]);
+
+            setAnalytics(networkRes.data.data);
+            setRelationshipAnalytics(relationshipRes.data);
             setError(null);
         } catch (err) {
             console.error('Error fetching analytics:', err);
@@ -44,7 +50,7 @@ export default function NetworkAnalytics() {
         return <ErrorMessage message={error} />;
     }
 
-    if (!analytics) {
+    if (!analytics || !relationshipAnalytics) {
         return null;
     }
 
@@ -374,6 +380,55 @@ export default function NetworkAnalytics() {
                     </div>
                 </Card>
             </div>
+
+            {/* Recommendations (Merged from Relationship Maintenance) */}
+            <Card className="p-6">
+                <h3 className="text-lg font-semibold mb-4" style={{ color: '#4F5348' }}>Recommendations</h3>
+                <ul className="space-y-3">
+                    {relationshipAnalytics.inactiveContacts > relationshipAnalytics.activeContacts && (
+                        <li className="flex items-start gap-3">
+                            <span className="text-orange-600 mt-1">⚠️</span>
+                            <div>
+                                <div className="font-medium" style={{ color: '#4F5348' }}>Re-activate dormant relationships</div>
+                                <div className="text-sm text-gray-600">
+                                    You have {relationshipAnalytics.inactiveContacts} inactive contacts. Consider reaching out with a check-in message.
+                                </div>
+                            </div>
+                        </li>
+                    )}
+                    {relationshipAnalytics.reciprocityRate < 30 && (
+                        <li className="flex items-start gap-3">
+                            <span className="text-blue-600 mt-1">💡</span>
+                            <div>
+                                <div className="font-medium" style={{ color: '#4F5348' }}>Improve relationship balance</div>
+                                <div className="text-sm text-gray-600">
+                                    Your reciprocity rate is low. Try to receive more value by asking for advice or introductions.
+                                </div>
+                            </div>
+                        </li>
+                    )}
+                    {relationshipAnalytics.totalActivities < relationshipAnalytics.totalContacts && (
+                        <li className="flex items-start gap-3">
+                            <span className="text-green-600 mt-1">✅</span>
+                            <div>
+                                <div className="font-medium" style={{ color: '#4F5348' }}>Increase engagement</div>
+                                <div className="text-sm text-gray-600">
+                                    Try to log at least one activity per contact to track relationship health effectively.
+                                </div>
+                            </div>
+                        </li>
+                    )}
+                    <li className="flex items-start gap-3">
+                        <span className="text-purple-600 mt-1">🎯</span>
+                        <div>
+                            <div className="font-medium" style={{ color: '#4F5348' }}>Set up automated reminders</div>
+                            <div className="text-sm text-gray-600">
+                                Use the "Generate Auto Reminders" feature to stay on top of important check-ins and birthdays.
+                            </div>
+                        </div>
+                    </li>
+                </ul>
+            </Card>
         </div>
     );
 }

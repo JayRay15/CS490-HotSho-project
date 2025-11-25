@@ -16,6 +16,10 @@ import ReferencesTab from '../../components/network/ReferencesTab';
 import NetworkAnalytics from '../../components/network/NetworkAnalytics';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ErrorMessage from '../../components/ErrorMessage';
+import RelationshipReminderCard from '../../components/network/RelationshipReminderCard';
+import RelationshipActivityCard from '../../components/network/RelationshipActivityCard';
+import CreateReminderModal from '../../components/network/CreateReminderModal';
+import LogActivityModal from '../../components/network/LogActivityModal';
 
 export default function Network() {
   const { getToken } = useAuth();
@@ -38,8 +42,16 @@ export default function Network() {
   // Show all contacts or just 3
   const [showAllContacts, setShowAllContacts] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  // Active tab: 'contacts', 'references', 'events'
+  // Active tab: 'contacts', 'references', 'events', 'reminders', 'activities', 'analytics'
   const [activeTab, setActiveTab] = useState('contacts');
+
+  // Relationship Maintenance State
+  const [reminders, setReminders] = useState([]);
+  const [activities, setActivities] = useState([]);
+  const [showCreateReminderModal, setShowCreateReminderModal] = useState(false);
+  const [showLogActivityModal, setShowLogActivityModal] = useState(false);
+  const [reminderFilterStatus, setReminderFilterStatus] = useState('Pending');
+  const [reminderFilterType, setReminderFilterType] = useState('all');
 
   // Fetch contacts and stats
   const fetchData = async () => {
@@ -61,6 +73,12 @@ export default function Network() {
       setContacts(contactsRes.data.data);
       setFilteredContacts(contactsRes.data.data);
       setStats(statsRes.data.data);
+      
+      // Fetch Relationship Maintenance Data if needed
+      if (activeTab === 'reminders' || activeTab === 'activities') {
+        await fetchRelationshipData();
+      }
+
       setError(null);
     } catch (err) {
       console.error('Error fetching contacts:', err);
@@ -70,9 +88,32 @@ export default function Network() {
     }
   };
 
+  const fetchRelationshipData = async () => {
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+
+      if (activeTab === 'reminders') {
+        const params = {};
+        if (reminderFilterStatus !== 'all') params.status = reminderFilterStatus;
+        if (reminderFilterType !== 'all') params.reminderType = reminderFilterType;
+        
+        const response = await api.get('/api/relationship-maintenance/reminders', { params });
+        setReminders(response.data);
+      } else if (activeTab === 'activities') {
+        const response = await api.get('/api/relationship-maintenance/activities', { 
+          params: { limit: 50 } 
+        });
+        setActivities(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading relationship data:', error);
+    }
+  };
+
   useEffect(() => {
     fetchData();
-  }, [getToken, relationshipFilter, sortBy]);
+  }, [getToken, relationshipFilter, sortBy, activeTab, reminderFilterStatus, reminderFilterType]);
 
   // Filter contacts by search term
   useEffect(() => {
@@ -156,6 +197,59 @@ export default function Network() {
     setSelectedContactForReferral(null);
   };
 
+  // Relationship Maintenance Handlers
+  const handleGenerateReminders = async () => {
+    try {
+      await api.post('/api/relationship-maintenance/reminders/generate');
+      fetchRelationshipData();
+    } catch (error) {
+      console.error('Error generating reminders:', error);
+    }
+  };
+
+  const handleCompleteReminder = async (reminderId, notes, logActivity) => {
+    try {
+      await api.post(`/api/relationship-maintenance/reminders/${reminderId}/complete`, { notes, logActivity });
+      fetchRelationshipData();
+    } catch (error) {
+      console.error('Error completing reminder:', error);
+    }
+  };
+
+  const handleSnoozeReminder = async (reminderId, days) => {
+    try {
+      await api.post(`/api/relationship-maintenance/reminders/${reminderId}/snooze`, { days });
+      fetchRelationshipData();
+    } catch (error) {
+      console.error('Error snoozing reminder:', error);
+    }
+  };
+
+  const handleDismissReminder = async (reminderId) => {
+    try {
+      await api.post(`/api/relationship-maintenance/reminders/${reminderId}/dismiss`);
+      fetchRelationshipData();
+    } catch (error) {
+      console.error('Error dismissing reminder:', error);
+    }
+  };
+
+  const upcomingReminders = reminders.filter(r => {
+    const reminderDate = new Date(r.reminderDate);
+    const now = new Date();
+    const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    return r.status === 'Pending' && reminderDate >= now && reminderDate <= sevenDaysFromNow;
+  });
+
+  const overdueReminders = reminders.filter(r => {
+    if (r.status !== 'Pending') return false;
+    const reminderDate = new Date(r.reminderDate);
+    const today = new Date();
+    const reminderUTC = Date.UTC(reminderDate.getUTCFullYear(), reminderDate.getUTCMonth(), reminderDate.getUTCDate());
+    const todayUTC = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+    return reminderUTC < todayUTC;
+  });
+
   if (loading) {
     return (
       <Container>
@@ -234,6 +328,24 @@ export default function Network() {
                     } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
                 >
                   Events
+                </button>
+                <button
+                  onClick={() => setActiveTab('reminders')}
+                  className={`${activeTab === 'reminders'
+                      ? 'border-[#777C6D] text-[#777C6D]'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+                >
+                  Reminders
+                </button>
+                <button
+                  onClick={() => setActiveTab('activities')}
+                  className={`${activeTab === 'activities'
+                      ? 'border-[#777C6D] text-[#777C6D]'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+                >
+                  Activities
                 </button>
                 <button
                   onClick={() => setActiveTab('analytics')}
@@ -376,6 +488,122 @@ export default function Network() {
             </div>
           )}
 
+          {activeTab === 'reminders' && (
+            <div className="mt-6 space-y-6">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card variant="outlined" className="p-4">
+                  <div className="text-sm text-gray-600 mb-1">Upcoming Reminders</div>
+                  <div className="text-3xl font-bold text-blue-600">{upcomingReminders.length}</div>
+                  <div className="text-xs text-gray-500 mt-1">Next 7 days</div>
+                </Card>
+                <Card variant="outlined" className="p-4">
+                  <div className="text-sm text-gray-600 mb-1">Overdue</div>
+                  <div className="text-3xl font-bold text-red-600">{overdueReminders.length}</div>
+                  <div className="text-xs text-gray-500 mt-1">Needs attention</div>
+                </Card>
+              </div>
+
+              {/* Actions and Filters */}
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div className="flex gap-2">
+                  <Button onClick={() => setShowCreateReminderModal(true)}>
+                    Create Reminder
+                  </Button>
+                  <Button onClick={handleGenerateReminders} variant="outline">
+                    Generate Auto Reminders
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <select
+                    value={reminderFilterStatus}
+                    onChange={(e) => setReminderFilterStatus(e.target.value)}
+                    className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black"
+                  >
+                    <option value="all">All Statuses</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Snoozed">Snoozed</option>
+                    <option value="Dismissed">Dismissed</option>
+                  </select>
+                  <select
+                    value={reminderFilterType}
+                    onChange={(e) => setReminderFilterType(e.target.value)}
+                    className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black"
+                  >
+                    <option value="all">All Types</option>
+                    <option value="General Check-in">General Check-in</option>
+                    <option value="Birthday">Birthday</option>
+                    <option value="Industry News Share">Industry News Share</option>
+                    <option value="Congratulations">Congratulations</option>
+                    <option value="Thank You">Thank You</option>
+                    <option value="Coffee Chat">Coffee Chat</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Reminders List */}
+              <div className="space-y-4">
+                {reminders.length === 0 ? (
+                  <Card variant="outlined" className="p-8 text-center">
+                    <p className="text-gray-600 mb-4">No reminders found</p>
+                    <Button onClick={handleGenerateReminders}>
+                      Generate Reminders
+                    </Button>
+                  </Card>
+                ) : (
+                  reminders.map(reminder => (
+                    <RelationshipReminderCard
+                      key={reminder._id}
+                      reminder={reminder}
+                      onComplete={handleCompleteReminder}
+                      onSnooze={handleSnoozeReminder}
+                      onDismiss={handleDismissReminder}
+                      onRefresh={fetchRelationshipData}
+                    />
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'activities' && (
+            <div className="mt-6 space-y-6">
+              {/* Summary Card */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                 <Card variant="outlined" className="p-4">
+                  <div className="text-sm text-gray-600 mb-1">Total Activities</div>
+                  <div className="text-3xl font-bold text-green-600">{activities.length}</div>
+                  <div className="text-xs text-gray-500 mt-1">Logged interactions</div>
+                </Card>
+              </div>
+
+              <div className="flex justify-end">
+                <Button onClick={() => setShowLogActivityModal(true)}>
+                  Log Activity
+                </Button>
+              </div>
+
+              <div className="space-y-4">
+                {activities.length === 0 ? (
+                  <Card variant="outlined" className="p-8 text-center">
+                    <p className="text-gray-600 mb-4">No activities logged yet</p>
+                    <Button onClick={() => setShowLogActivityModal(true)}>
+                      Log Your First Activity
+                    </Button>
+                  </Card>
+                ) : (
+                  activities.map(activity => (
+                    <RelationshipActivityCard
+                      key={activity._id}
+                      activity={activity}
+                    />
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
           {activeTab === 'analytics' && (
             <div className="mt-6">
               <NetworkAnalytics />
@@ -421,6 +649,28 @@ export default function Network() {
             onSuccess={() => {
               setIsImportModalOpen(false);
               fetchData();
+            }}
+          />
+        )}
+
+        {/* Create Reminder Modal */}
+        {showCreateReminderModal && (
+          <CreateReminderModal
+            onClose={() => setShowCreateReminderModal(false)}
+            onSuccess={() => {
+              setShowCreateReminderModal(false);
+              fetchRelationshipData();
+            }}
+          />
+        )}
+
+        {/* Log Activity Modal */}
+        {showLogActivityModal && (
+          <LogActivityModal
+            onClose={() => setShowLogActivityModal(false)}
+            onSuccess={() => {
+              setShowLogActivityModal(false);
+              fetchRelationshipData();
             }}
           />
         )}
