@@ -578,12 +578,12 @@ export const createActivity = async (req, res) => {
       sentiment: sentiment || 'Neutral',
       responseReceived: responseReceived || false,
       valueExchange: valueExchange || 'None',
-      valueType,
+      valueType: valueType || undefined, // Convert empty string to undefined
       opportunityGenerated: opportunityGenerated || false,
-      opportunityType,
+      opportunityType: opportunityType || undefined, // Convert empty string to undefined
       linkedJobId,
       followUpRequired: followUpRequired || false,
-      followUpDate,
+      followUpDate: followUpDate || undefined, // Convert empty string to undefined
       tags
     });
     
