@@ -330,15 +330,6 @@ export default function Network() {
                   Events
                 </button>
                 <button
-                  onClick={() => setActiveTab('reminders')}
-                  className={`${activeTab === 'reminders'
-                      ? 'border-[#777C6D] text-[#777C6D]'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
-                >
-                  Reminders
-                </button>
-                <button
                   onClick={() => setActiveTab('activities')}
                   className={`${activeTab === 'activities'
                       ? 'border-[#777C6D] text-[#777C6D]'
@@ -346,6 +337,15 @@ export default function Network() {
                     } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
                 >
                   Activities
+                </button>
+                <button
+                  onClick={() => setActiveTab('reminders')}
+                  className={`${activeTab === 'reminders'
+                      ? 'border-[#777C6D] text-[#777C6D]'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+                >
+                  Maintenance Reminders
                 </button>
                 <button
                   onClick={() => setActiveTab('analytics')}
