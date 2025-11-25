@@ -514,6 +514,16 @@ export default function InterviewScheduler({ job, interview, onClose, onSuccess 
             </div>
           )}
 
+          {/* Calendar Sync Info */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-sm text-blue-800">
+              <span className="font-medium">📅 Calendar Sync:</span> Interviews automatically sync to your connected calendars (Google/Outlook).{" "}
+              <a href="/settings/calendar" className="underline hover:text-blue-900">
+                Manage calendar settings
+              </a>
+            </p>
+          </div>
+
           {/* Action Buttons */}
           <div className="flex justify-end space-x-3 pt-4 border-t">
             <Button

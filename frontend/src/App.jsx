@@ -41,6 +41,8 @@ import MockInterviewHistory from "./pages/interviews/MockInterviewHistory.jsx";
 import InterviewSuccessPredictions from "./pages/InterviewSuccessPredictions.jsx";
 import InterviewPredictionDetail from "./pages/InterviewPredictionDetail.jsx";
 import RelationshipMaintenance from "./pages/auth/RelationshipMaintenance.jsx";
+import InterviewsPage from "./pages/auth/InterviewsPage.jsx";
+import CalendarSettings from "./pages/auth/CalendarSettings.jsx";
 
 function App() {
   return (
@@ -86,7 +88,9 @@ function App() {
           <Route path="/goals/:id/edit" element={<ProtectedRoute><EditGoalPage /></ProtectedRoute>} />
           <Route path="/goals/:id" element={<ProtectedRoute><GoalDetailPage /></ProtectedRoute>} />
           <Route path="/jobs/:jobId/interview-prep" element={<ProtectedRoute><InterviewPrepPage /></ProtectedRoute>} />
+          <Route path="/interviews" element={<ProtectedRoute><InterviewsPage /></ProtectedRoute>} />
           <Route path="/interviews/:interviewId/company-research" element={<ProtectedRoute><CompanyResearch /></ProtectedRoute>} />
+          <Route path="/settings/calendar" element={<ProtectedRoute><CalendarSettings /></ProtectedRoute>} />
           <Route path="/mock-interviews" element={<ProtectedRoute><MockInterviewHistory /></ProtectedRoute>} />
           <Route path="/mock-interviews/start" element={<ProtectedRoute><MockInterviewStart /></ProtectedRoute>} />
           <Route path="/mock-interviews/:sessionId" element={<ProtectedRoute><MockInterviewSession /></ProtectedRoute>} />

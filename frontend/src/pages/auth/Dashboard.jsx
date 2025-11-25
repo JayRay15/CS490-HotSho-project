@@ -8,8 +8,94 @@ import { calculateProfileCompleteness } from "../../utils/profileCompleteness";
 import { Link, useNavigate } from 'react-router-dom';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
+import { getUpcomingInterviews } from '../../api/interviews';
 
 // Small local helper components used only on this dashboard page
+function InterviewsWidget() {
+  const [upcomingInterviews, setUpcomingInterviews] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    loadUpcomingInterviews();
+  }, []);
+
+  const loadUpcomingInterviews = async () => {
+    try {
+      setLoading(true);
+      const response = await getUpcomingInterviews(7);
+      setUpcomingInterviews(response.data?.interviews || []);
+    } catch (error) {
+      console.error('Error loading upcoming interviews:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="text-sm text-gray-600">Loading...</div>;
+  }
+
+  if (upcomingInterviews.length === 0) {
+    return (
+      <div className="text-center py-4">
+        <p className="text-sm text-gray-600 mb-3">No upcoming interviews</p>
+        <button
+          onClick={() => navigate('/interviews')}
+          className="text-sm text-primary hover:underline"
+        >
+          View all interviews →
+        </button>
+      </div>
+    );
+  }
+
+  const nextInterview = upcomingInterviews[0];
+  const interviewDate = new Date(nextInterview.scheduledDate);
+  const now = new Date();
+  const hoursUntil = Math.floor((interviewDate - now) / (1000 * 60 * 60));
+  const daysUntil = Math.floor(hoursUntil / 24);
+  
+  const timeText = daysUntil > 0 ? `${daysUntil} day${daysUntil !== 1 ? 's' : ''}` : `${hoursUntil} hour${hoursUntil !== 1 ? 's' : ''}`;
+  const incompleteTasks = nextInterview.preparationTasks?.filter(t => !t.completed).length || 0;
+
+  return (
+    <div>
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-3">
+        <div className="flex items-start justify-between mb-2">
+          <div>
+            <h4 className="font-semibold text-gray-900">{nextInterview.title}</h4>
+            <p className="text-sm text-gray-600">{nextInterview.company}</p>
+          </div>
+          <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">
+            {nextInterview.status}
+          </span>
+        </div>
+        <div className="text-sm text-gray-700 space-y-1">
+          <p>📅 {interviewDate.toLocaleDateString()} at {interviewDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+          <p className="font-medium text-blue-700">⏰ In {timeText}</p>
+          {incompleteTasks > 0 && (
+            <p className="text-yellow-700">⚠️ {incompleteTasks} task{incompleteTasks !== 1 ? 's' : ''} remaining</p>
+          )}
+        </div>
+      </div>
+      
+      {upcomingInterviews.length > 1 && (
+        <p className="text-sm text-gray-600 mb-2">
+          + {upcomingInterviews.length - 1} more upcoming interview{upcomingInterviews.length !== 2 ? 's' : ''}
+        </p>
+      )}
+      
+      <button
+        onClick={() => navigate('/interviews')}
+        className="text-sm text-primary hover:underline"
+      >
+        View all interviews →
+      </button>
+    </div>
+  );
+}
+
 function SummaryCard({ title, count, summary }) {
   // Render a short descriptive summary for the category; numbers are intentionally hidden
   return (
@@ -646,6 +732,11 @@ export default function Dashboard() {
                     })}
                   </ul>
                 )}
+              </Card>
+
+              {/* Upcoming Interviews Widget */}
+              <Card title="Upcoming Interviews" className="mt-6">
+                <InterviewsWidget />
               </Card>
             </div>
 
