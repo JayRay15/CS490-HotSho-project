@@ -18,6 +18,7 @@ const mockGeneratePreparationTasks = jest.fn((req, res) => res.json({ success: t
 const mockGetUpcomingInterviews = jest.fn((req, res) => res.json({ success: true }));
 const mockCheckConflicts = jest.fn((req, res) => res.json({ success: true }));
 const mockDeleteInterview = jest.fn((req, res) => res.json({ success: true }));
+const mockDownloadInterviewICS = jest.fn((req, res) => res.json({ success: true }));
 
 jest.unstable_mockModule('../../controllers/interviewController.js', () => ({
   getInterviews: mockGetInterviews,
@@ -35,6 +36,7 @@ jest.unstable_mockModule('../../controllers/interviewController.js', () => ({
   getUpcomingInterviews: mockGetUpcomingInterviews,
   checkConflicts: mockCheckConflicts,
   deleteInterview: mockDeleteInterview,
+  downloadInterviewICS: mockDownloadInterviewICS,
 }));
 
 // Mock the middleware
@@ -55,7 +57,7 @@ describe('interviewRoutes', () => {
     jest.clearAllMocks();
     app = express();
     app.use(express.json());
-    
+
     const routesModule = await import('../../routes/interviewRoutes.js');
     interviewRoutes = routesModule.default;
     app.use('/api/interviews', interviewRoutes);
