@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "@azure/identity": "^4.13.0",
+    "@microsoft/microsoft-graph-client": "^3.0.7",
+    "googleapis": "^166.0.0",
+    "ical-generator": "^10.0.0"
+  }
+}

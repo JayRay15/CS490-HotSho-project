@@ -365,6 +365,31 @@ userSchema.add({
   ]
 });
 
+// UC-079: Calendar integration settings
+userSchema.add({
+  calendarSettings: {
+    google: {
+      connected: { type: Boolean, default: false },
+      refreshToken: { type: String },
+      accessToken: { type: String },
+      tokenExpiry: { type: Date },
+      email: { type: String } // The Google account email
+    },
+    outlook: {
+      connected: { type: Boolean, default: false },
+      refreshToken: { type: String },
+      accessToken: { type: String },
+      tokenExpiry: { type: Date },
+      email: { type: String } // The Microsoft account email
+    },
+    preferences: {
+      autoSync: { type: Boolean, default: true }, // Auto-sync interviews to calendar
+      defaultCalendar: { type: String, enum: ['google', 'outlook', 'none'], default: 'none' },
+      reminderMinutes: { type: [Number], default: [1440, 120] } // 24h and 2h in minutes
+    }
+  }
+});
+
 // Hash password before saving (only if password exists)
 userSchema.pre('save', async function (next) {
   // Only hash the password if it has been modified (or is new) AND exists

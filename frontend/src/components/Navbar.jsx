@@ -134,6 +134,9 @@ export default function Navbar() {
                                         <NavLink to="/goals" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Career Goals" onClick={() => setCareerDropdownOpen(false)}>
                                             Career Goals
                                         </NavLink>
+                                        <NavLink to="/interviews" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="My Interviews" onClick={() => setCareerDropdownOpen(false)}>
+                                            My Interviews
+                                        </NavLink>
                                         <NavLink to="/interview-coaching" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Interview Coaching" onClick={() => setCareerDropdownOpen(false)}>
                                             Interview Coaching
                                         </NavLink>
@@ -160,6 +163,10 @@ export default function Navbar() {
                                         </NavLink>
                                         <NavLink to="/mentors" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Mentor Hub" onClick={() => setCareerDropdownOpen(false)}>
                                             Mentor Hub
+                                        </NavLink>
+                                        <div className="border-t border-gray-200 my-1"></div>
+                                        <NavLink to="/settings/calendar" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Calendar Settings" onClick={() => setCareerDropdownOpen(false)}>
+                                            📅 Calendar Settings
                                         </NavLink>
                                     </div>
                                 )}
@@ -346,6 +353,18 @@ export default function Navbar() {
                             Career Goals
                         </NavLink>
                         <NavLink
+                            to="/interviews"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                }`
+                            }
+                            aria-label="My Interviews"
+                        >
+                            My Interviews
+                        </NavLink>
+                        <NavLink
                             to="/interview-coaching"
                             className={({ isActive }) =>
                                 `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
@@ -416,6 +435,18 @@ export default function Navbar() {
                             aria-label="Relationship Maintenance"
                         >
                             Relationship Maintenance
+                        </NavLink>
+                        <NavLink
+                            to="/settings/calendar"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                }`
+                            }
+                            aria-label="Calendar Settings"
+                        >
+                            📅 Calendar Settings
                         </NavLink>
                         <div className="pt-3 pb-2 flex items-center space-x-3 px-4">
                             <span className="text-sm text-primary-50">Account</span>

@@ -58,3 +58,19 @@ export const deletePreparationTask = (interviewId, taskId) =>
 
 export const generatePreparationTasks = (interviewId) =>
   retryRequest(() => api.post(`/api/interviews/${interviewId}/generate-tasks`));
+
+// Download ICS file for an interview
+export const downloadInterviewICS = async (interviewId) => {
+  // Use raw axios instance to get text content
+  const res = await api.get(`/api/interviews/${interviewId}/ics`, { responseType: 'text' });
+  const blob = new Blob([res.data], { type: 'text/calendar' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `interview-${interviewId}.ics`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
+  return true;
+};

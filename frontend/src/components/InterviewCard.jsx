@@ -8,7 +8,9 @@ import {
   cancelInterview, 
   confirmInterview,
   recordOutcome,
-  updatePreparationTask 
+  updatePreparationTask,
+  updateInterview,
+  downloadInterviewICS,
 } from "../api/interviews";
 
 const STATUS_COLORS = {
@@ -135,6 +137,16 @@ export default function InterviewCard({ interview, onUpdate, onEdit, onDelete, c
 
   const incompleteTasks = interview.preparationTasks?.filter(t => !t.completed).length || 0;
   const totalTasks = interview.preparationTasks?.length || 0;
+  const completionPct = totalTasks === 0 ? 0 : Math.round(((totalTasks - incompleteTasks) / totalTasks) * 100);
+
+  const handleDownloadICS = async () => {
+    try {
+      await downloadInterviewICS(interview._id);
+    } catch (err) {
+      console.error('ICS download failed', err);
+      alert('Failed to download calendar file.');
+    }
+  };
 
   if (compact && !showDetails) {
     return (
@@ -262,6 +274,13 @@ export default function InterviewCard({ interview, onUpdate, onEdit, onDelete, c
               <p className="text-sm font-medium text-gray-700">
                 Preparation Tasks ({totalTasks - incompleteTasks}/{totalTasks} complete)
               </p>
+              <span className="text-xs text-gray-500">{completionPct}%</span>
+            </div>
+            <div className="h-2 w-full bg-gray-200 rounded overflow-hidden mb-3">
+              <div
+                className={`h-full transition-all duration-300 ${completionPct === 100 ? 'bg-green-500' : 'bg-primary'}`}
+                style={{ width: `${completionPct}%` }}
+              />
             </div>
             <div className="space-y-2">
               {interview.preparationTasks.slice(0, showDetails ? undefined : 3).map((task) => (
@@ -372,6 +391,19 @@ export default function InterviewCard({ interview, onUpdate, onEdit, onDelete, c
 
         {/* Actions */}
         <div className="flex flex-wrap gap-2 pt-4 border-t">
+          {/* Calendar sync status */}
+          {interview.calendarSyncStatus && (
+            <span className={`text-xs px-2 py-1 rounded border ${
+              interview.calendarSyncStatus === 'synced' ? 'bg-green-50 border-green-300 text-green-700' :
+              interview.calendarSyncStatus === 'failed' ? 'bg-red-50 border-red-300 text-red-700' :
+              interview.calendarSyncStatus === 'pending' ? 'bg-yellow-50 border-yellow-300 text-yellow-700' : 'bg-gray-50 border-gray-300 text-gray-600'
+            }`}>Cal: {interview.calendarSyncStatus}</span>
+          )}
+          {(interview.googleCalendarEventId || interview.outlookCalendarEventId) && (
+            <Button onClick={handleDownloadICS} variant="secondary" size="sm" title="Download .ics calendar file">
+              📥 ICS
+            </Button>
+          )}
           {/* Interview Prep Button: Only show if interview has a jobId */}
           {interview.jobId && (
             <Button
@@ -422,6 +454,29 @@ export default function InterviewCard({ interview, onUpdate, onEdit, onDelete, c
           {interview.status === "Completed" && !interview.outcome?.result && (
             <Button onClick={() => setShowOutcomeForm(true)} size="sm">
               Record Outcome
+            </Button>
+          )}
+
+          {interview.status === "Completed" && !interview.thankYouNote?.sent && (
+            <Button
+              onClick={async () => {
+                try {
+                  const response = await updateInterview(interview._id, {
+                    thankYouNote: { sent: true, sentAt: new Date() }
+                  });
+                  if (response.data?.success) {
+                    onUpdate(response.data.data.interview);
+                  }
+                } catch (err) {
+                  console.error("Error marking thank-you as sent:", err);
+                  alert("Failed to update thank-you status");
+                }
+              }}
+              variant="secondary"
+              size="sm"
+              title="Mark thank-you note as sent"
+            >
+              ✉️ Sent Thank-You
             </Button>
           )}
           

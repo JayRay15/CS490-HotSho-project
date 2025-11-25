@@ -157,6 +157,40 @@ const interviewSchema = new mongoose.Schema(
       },
       conflictDetails: String,
     },
+    
+    // UC-079: Calendar sync integration
+    googleCalendarEventId: {
+      type: String,
+      index: true
+    },
+    outlookCalendarEventId: {
+      type: String,
+      index: true
+    },
+    calendarSyncStatus: {
+      type: String,
+      enum: ['synced', 'pending', 'failed', 'not_synced'],
+      default: 'not_synced'
+    },
+    calendarSyncError: {
+      type: String
+    },
+    lastSyncedAt: {
+      type: Date
+    },
+    
+    // UC-079: Thank-you note tracking
+    thankYouNoteSent: {
+      type: Boolean,
+      default: false
+    },
+    thankYouNoteSentDate: {
+      type: Date
+    },
+    thankYouNoteReminder: {
+      sent: { type: Boolean, default: false },
+      sentAt: { type: Date }
+    }
   },
   {
     timestamps: true,

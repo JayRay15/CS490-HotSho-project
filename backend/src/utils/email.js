@@ -825,6 +825,91 @@ export const sendInterviewRescheduledEmail = async (toEmail, fullName, interview
   }
 };
 
+/**
+ * sendThankYouReminderEmail - Sends a reminder to send a thank-you note after interview completion
+ * @param {string} toEmail - Recipient email
+ * @param {string} fullName - Recipient name
+ * @param {Object} interview - Interview details
+ */
+export const sendThankYouReminderEmail = async (toEmail, fullName, interview) => {
+  const subject = `🙏 Don't Forget Your Thank-You Note: ${interview.title} at ${interview.company}`;
+
+  const interviewDate = new Date(interview.scheduledDate).toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #10B981; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background-color: #f9f9f9; padding: 30px; border: 1px solid #ddd; border-radius: 0 0 8px 8px; }
+          .info-box { background-color: #ecfdf5; border-left: 4px solid #10B981; padding: 15px; margin: 20px 0; }
+          .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #777; }
+          .button { display:inline-block; padding:12px 20px; background:#10B981; color:#fff; text-decoration:none; border-radius:4px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🙏 Thank-You Follow-Up</h1>
+          </div>
+          <div class="content">
+            <p>Hello <strong>${fullName || 'there'}</strong>,</p>
+            <p>Your interview for <strong>${interview.title}</strong> at <strong>${interview.company}</strong> (${interviewDate}) has been marked completed.</p>
+            <div class="info-box">
+              <p>Sending a concise, sincere thank-you note within 24 hours reinforces your interest and professionalism.</p>
+              <p><strong>Tip:</strong> Reference a specific topic from the conversation and restate your enthusiasm.</p>
+            </div>
+            <div style="text-align:center; margin:28px 0;">
+              <a class="button" href="${process.env.FRONTEND_ORIGIN || 'http://localhost:5173'}/follow-ups">Write Thank-You Note</a>
+            </div>
+            <p>If you've already sent a note, you can mark it as sent in the interview record to dismiss future reminders.</p>
+            <p>Best regards,<br><strong>The Nirvana Team</strong></p>
+          </div>
+          <div class="footer">
+            <p>This is an automated message from Nirvana.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const textContent = `Hello ${fullName || 'there'},\n\n` +
+    `Your interview for ${interview.title} at ${interview.company} (${interviewDate}) has been marked completed.\n\n` +
+    `Send a concise thank-you within 24 hours referencing something specific you discussed.\n\n` +
+    `Write Thank-You: ${(process.env.FRONTEND_ORIGIN || 'http://localhost:5173') + '/follow-ups'}\n\n` +
+    `Best regards,\nThe Nirvana Team`;
+
+  const transporter = createTransporter();
+  if (!transporter) {
+    console.log('📧 [MOCK EMAIL] Thank-You Reminder:');
+    console.log(`   To: ${toEmail}`);
+    console.log(`   Subject: ${subject}`);
+    console.log(`   Text Content:\n${textContent}\n`);
+    return;
+  }
+
+  try {
+    const info = await transporter.sendMail({
+      from: process.env.SMTP_FROM || 'Nirvana <no-reply@nirvanaprofile.com>',
+      to: toEmail,
+      subject,
+      text: textContent,
+      html: htmlContent
+    });
+    console.log('✅ Thank-you reminder email sent to:', toEmail, 'Message ID:', info.messageId);
+  } catch (error) {
+    console.error('❌ Failed to send thank-you reminder email:', error.message);
+  }
+};
+
 export default { 
   sendDeletionEmail, 
   sendFinalDeletionEmail, 
@@ -833,4 +918,5 @@ export default {
   sendInterviewReminderEmail,
   sendInterviewCancellationEmail,
   sendInterviewRescheduledEmail,
+  sendThankYouReminderEmail,
 };

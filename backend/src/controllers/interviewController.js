@@ -1,8 +1,12 @@
 import { Interview } from "../models/Interview.js";
 import { Job } from "../models/Job.js";
+import { User } from "../models/User.js";
+import { createGoogleCalendarEvent, updateGoogleCalendarEvent, deleteGoogleCalendarEvent } from "../utils/googleCalendar.js";
+import { createOutlookCalendarEvent, updateOutlookCalendarEvent, deleteOutlookCalendarEvent } from "../utils/outlookCalendar.js";
 import { successResponse, errorResponse, sendResponse, ERROR_CODES, validationErrorResponse } from "../utils/responseFormat.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
-import { sendInterviewConfirmationEmail, sendInterviewReminderEmail, sendInterviewCancellationEmail, sendInterviewRescheduledEmail } from "../utils/email.js";
+import { sendInterviewConfirmationEmail, sendInterviewReminderEmail, sendInterviewCancellationEmail, sendInterviewRescheduledEmail, sendThankYouReminderEmail } from "../utils/email.js";
+import { generateICSFile, getICSFilename } from "../utils/icalendar.js";
 
 // GET /api/interviews - Get all interviews for the current user
 export const getInterviews = asyncHandler(async (req, res) => {
@@ -184,6 +188,31 @@ export const scheduleInterview = asyncHandler(async (req, res) => {
 
   await interview.save();
 
+  // Calendar sync (auto-sync if user preference enabled)
+  try {
+    const user = await User.findOne({ auth0Id: userId }).select('calendarSettings');
+    const prefs = user?.calendarSettings?.preferences;
+    if (user && prefs?.autoSync && prefs.defaultCalendar && prefs.defaultCalendar !== 'none') {
+      interview.calendarSyncStatus = 'pending';
+      await interview.save();
+      let eventId;
+      if (prefs.defaultCalendar === 'google' && user.calendarSettings.google?.connected) {
+        eventId = await createGoogleCalendarEvent(interview, user);
+        interview.googleCalendarEventId = eventId;
+      } else if (prefs.defaultCalendar === 'outlook' && user.calendarSettings.outlook?.connected) {
+        eventId = await createOutlookCalendarEvent(interview, user);
+        interview.outlookCalendarEventId = eventId;
+      }
+      interview.calendarSyncStatus = eventId ? 'synced' : 'not_synced';
+      interview.lastSyncedAt = new Date();
+      await interview.save();
+    }
+  } catch (calendarErr) {
+    interview.calendarSyncStatus = 'failed';
+    interview.calendarSyncError = calendarErr.message;
+    await interview.save();
+  }
+
   // TODO: Send confirmation email
   // await sendInterviewConfirmationEmail(userId, interview);
 
@@ -247,6 +276,29 @@ export const updateInterview = asyncHandler(async (req, res) => {
   });
 
   await interview.save();
+
+  // Calendar sync (update event details if exists and autoSync enabled)
+  try {
+    const user = await User.findOne({ auth0Id: userId }).select('calendarSettings');
+    const prefs = user?.calendarSettings?.preferences;
+    if (user && prefs?.autoSync) {
+      let updatedId;
+      if (interview.googleCalendarEventId && user.calendarSettings.google?.connected) {
+        updatedId = await updateGoogleCalendarEvent(interview.googleCalendarEventId, interview, user);
+      } else if (interview.outlookCalendarEventId && user.calendarSettings.outlook?.connected) {
+        updatedId = await updateOutlookCalendarEvent(interview.outlookCalendarEventId, interview, user);
+      }
+      if (updatedId) {
+        interview.calendarSyncStatus = 'synced';
+        interview.lastSyncedAt = new Date();
+        await interview.save();
+      }
+    }
+  } catch (calendarErr) {
+    interview.calendarSyncStatus = 'failed';
+    interview.calendarSyncError = calendarErr.message;
+    await interview.save();
+  }
 
   const { response, statusCode } = successResponse("Interview updated successfully", { interview });
   return sendResponse(res, response, statusCode);
@@ -315,6 +367,29 @@ export const rescheduleInterview = asyncHandler(async (req, res) => {
 
   await interview.save();
 
+  // Calendar sync (reschedule event)
+  try {
+    const user = await User.findOne({ auth0Id: userId }).select('calendarSettings');
+    const prefs = user?.calendarSettings?.preferences;
+    if (user && prefs?.autoSync) {
+      let updatedId;
+      if (interview.googleCalendarEventId && user.calendarSettings.google?.connected) {
+        updatedId = await updateGoogleCalendarEvent(interview.googleCalendarEventId, interview, user);
+      } else if (interview.outlookCalendarEventId && user.calendarSettings.outlook?.connected) {
+        updatedId = await updateOutlookCalendarEvent(interview.outlookCalendarEventId, interview, user);
+      }
+      if (updatedId) {
+        interview.calendarSyncStatus = 'synced';
+        interview.lastSyncedAt = new Date();
+        await interview.save();
+      }
+    }
+  } catch (calendarErr) {
+    interview.calendarSyncStatus = 'failed';
+    interview.calendarSyncError = calendarErr.message;
+    await interview.save();
+  }
+
   // TODO: Send rescheduled email notification
   // await sendInterviewRescheduledEmail(userId, interview, previousDate);
 
@@ -379,6 +454,27 @@ export const cancelInterview = asyncHandler(async (req, res) => {
 
   await interview.save();
 
+  // Calendar sync (delete event on cancellation)
+  try {
+    const user = await User.findOne({ auth0Id: userId }).select('calendarSettings');
+    const prefs = user?.calendarSettings?.preferences;
+    if (user && prefs?.autoSync) {
+      if (interview.googleCalendarEventId && user.calendarSettings.google?.connected) {
+        await deleteGoogleCalendarEvent(interview.googleCalendarEventId, user);
+      }
+      if (interview.outlookCalendarEventId && user.calendarSettings.outlook?.connected) {
+        await deleteOutlookCalendarEvent(interview.outlookCalendarEventId, user);
+      }
+      interview.calendarSyncStatus = 'synced';
+      interview.lastSyncedAt = new Date();
+      await interview.save();
+    }
+  } catch (calendarErr) {
+    interview.calendarSyncStatus = 'failed';
+    interview.calendarSyncError = calendarErr.message;
+    await interview.save();
+  }
+
   // TODO: Send cancellation email notification
   // await sendInterviewCancellationEmail(userId, interview);
 
@@ -440,6 +536,29 @@ export const recordOutcome = asyncHandler(async (req, res) => {
   });
 
   await interview.save();
+
+  // Trigger thank-you reminder email logic (only once)
+  try {
+    if (!interview.thankYouNote?.sent) {
+      // Mark reminder generated
+      interview.thankYouNote = {
+        sent: false,
+        sentAt: null,
+        reminderGeneratedAt: new Date(),
+      };
+      await interview.save();
+
+      // Fetch user email details (assuming User model stores primaryEmail)
+      const user = await User.findOne({ auth0Id: userId }).select('profile email');
+      const toEmail = user?.email || user?.profile?.primaryEmail;
+      const fullName = user?.profile?.fullName || 'Candidate';
+      if (toEmail) {
+        await sendThankYouReminderEmail(toEmail, fullName, interview);
+      }
+    }
+  } catch (thankErr) {
+    console.error('Thank-you reminder logic failed:', thankErr.message);
+  }
 
   // Update job status if needed
   if (result === "Moved to Next Round" || result === "Offer Extended") {
@@ -788,7 +907,35 @@ export const deleteInterview = asyncHandler(async (req, res) => {
     return sendResponse(res, response, statusCode);
   }
 
-  const interview = await Interview.findOneAndDelete({ _id: interviewId, userId });
+  const interview = await Interview.findOne({ _id: interviewId, userId });
+
+  if (!interview) {
+    const { response, statusCode } = errorResponse(
+      "Interview not found or you don't have permission to delete it",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Calendar sync (delete event before removing interview)
+  try {
+    const user = await User.findOne({ auth0Id: userId }).select('calendarSettings');
+    const prefs = user?.calendarSettings?.preferences;
+    if (user && prefs?.autoSync) {
+      if (interview.googleCalendarEventId && user.calendarSettings.google?.connected) {
+        await deleteGoogleCalendarEvent(interview.googleCalendarEventId, user);
+      }
+      if (interview.outlookCalendarEventId && user.calendarSettings.outlook?.connected) {
+        await deleteOutlookCalendarEvent(interview.outlookCalendarEventId, user);
+      }
+    }
+  } catch (calendarErr) {
+    // Log but proceed with deletion
+    console.error('Calendar event deletion failed during interview delete:', calendarErr.message);
+  }
+
+  await Interview.deleteOne({ _id: interviewId, userId });
 
   if (!interview) {
     const { response, statusCode } = errorResponse(
@@ -801,4 +948,44 @@ export const deleteInterview = asyncHandler(async (req, res) => {
 
   const { response, statusCode } = successResponse("Interview deleted successfully");
   return sendResponse(res, response, statusCode);
+});
+
+// GET /api/interviews/:interviewId/ics - Download ICS file for interview
+export const downloadInterviewICS = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { interviewId } = req.params;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const interview = await Interview.findOne({ _id: interviewId, userId }).populate('jobId', 'title company');
+  if (!interview) {
+    const { response, statusCode } = errorResponse(
+      "Interview not found or you don't have permission to access it",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  try {
+    const ics = generateICSFile(interview);
+    const filename = getICSFilename(interview);
+    res.setHeader('Content-Type', 'text/calendar');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return res.status(200).send(ics);
+  } catch (icsErr) {
+    const { response, statusCode } = errorResponse(
+      `Failed to generate ICS: ${icsErr.message}`,
+      500,
+      ERROR_CODES.INTERNAL_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
 });

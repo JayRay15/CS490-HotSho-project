@@ -16,6 +16,7 @@ import {
   getUpcomingInterviews,
   checkConflicts,
   deleteInterview,
+  downloadInterviewICS,
 } from "../controllers/interviewController.js";
 
 const router = express.Router();
@@ -31,6 +32,9 @@ router.get("/", checkJwt, getInterviews);
 
 // GET /api/interviews/:interviewId - Get a specific interview
 router.get("/:interviewId", checkJwt, getInterview);
+
+// GET /api/interviews/:interviewId/ics - Download ICS file for interview
+router.get("/:interviewId/ics", checkJwt, downloadInterviewICS);
 
 // POST /api/interviews - Schedule a new interview
 router.post("/", checkJwt, scheduleInterview);
