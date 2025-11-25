@@ -7,12 +7,17 @@ const mockInterview = {
   find: jest.fn(),
   findOne: jest.fn(),
   findOneAndDelete: jest.fn(),
+  deleteOne: jest.fn(),
   create: jest.fn(),
 };
 
 const mockJob = {
   findOne: jest.fn(),
   findById: jest.fn(),
+};
+
+const mockUser = {
+  findOne: jest.fn(),
 };
 
 const mockAsyncHandler = (fn) => fn;
@@ -27,6 +32,36 @@ jest.unstable_mockModule('../../models/Job.js', () => ({
 
 jest.unstable_mockModule('../../middleware/errorHandler.js', () => ({
   asyncHandler: mockAsyncHandler,
+}));
+
+jest.unstable_mockModule('../../models/User.js', () => ({
+  User: mockUser,
+}));
+
+// Mock calendar utilities
+jest.unstable_mockModule('../../utils/googleCalendar.js', () => ({
+  createGoogleCalendarEvent: jest.fn(),
+  updateGoogleCalendarEvent: jest.fn(),
+  deleteGoogleCalendarEvent: jest.fn(),
+}));
+
+jest.unstable_mockModule('../../utils/outlookCalendar.js', () => ({
+  createOutlookCalendarEvent: jest.fn(),
+  updateOutlookCalendarEvent: jest.fn(),
+  deleteOutlookCalendarEvent: jest.fn(),
+}));
+
+jest.unstable_mockModule('../../utils/icalendar.js', () => ({
+  generateICSFile: jest.fn().mockReturnValue('BEGIN:VCALENDAR\\nEND:VCALENDAR'),
+  getICSFilename: jest.fn().mockReturnValue('interview.ics'),
+}));
+
+jest.unstable_mockModule('../../utils/email.js', () => ({
+  sendInterviewConfirmationEmail: jest.fn(),
+  sendInterviewReminderEmail: jest.fn(),
+  sendInterviewCancellationEmail: jest.fn(),
+  sendInterviewRescheduledEmail: jest.fn(),
+  sendThankYouReminderEmail: jest.fn(),
 }));
 
 // Import controller
@@ -46,6 +81,7 @@ const {
   addPreparationTask,
   deletePreparationTask,
   generatePreparationTasks,
+  downloadInterviewICS,
 } = await import('../interviewController.js');
 
 describe('InterviewController', () => {
@@ -639,11 +675,16 @@ describe('InterviewController', () => {
         _id: 'interview-123',
         title: 'Phone Screen',
       };
-      mockInterview.findOneAndDelete.mockResolvedValue(mockDeletedInterview);
+      mockInterview.findOne.mockResolvedValue(mockDeletedInterview);
+      mockInterview.deleteOne.mockResolvedValue({ deletedCount: 1 });
 
       await deleteInterview(mockReq, mockRes);
 
-      expect(mockInterview.findOneAndDelete).toHaveBeenCalledWith({
+      expect(mockInterview.findOne).toHaveBeenCalledWith({
+        _id: 'interview-123',
+        userId: 'test-user-123',
+      });
+      expect(mockInterview.deleteOne).toHaveBeenCalledWith({
         _id: 'interview-123',
         userId: 'test-user-123',
       });
@@ -652,7 +693,7 @@ describe('InterviewController', () => {
 
     it('should return 404 if interview not found', async () => {
       mockReq.params.interviewId = 'non-existent';
-      mockInterview.findOneAndDelete.mockResolvedValue(null);
+      mockInterview.findOne.mockResolvedValue(null);
 
       await deleteInterview(mockReq, mockRes);
 
