@@ -146,15 +146,27 @@ export default function InviteMentorModal({ isOpen, onClose, onInviteSent }) {
 
     if (!isOpen) return null;
 
+    const handleBackdropClick = (e) => {
+        // Only close if clicking directly on the backdrop, not the modal content
+        if (e.target === e.currentTarget) {
+            onClose();
+        }
+    };
+
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div
+            className="fixed inset-0 flex items-center justify-center z-50"
+            style={{ backgroundColor: 'rgba(0,0,0,0.48)' }}
+            onClick={handleBackdropClick}
+        >
+            <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                 {/* Header */}
-                <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 text-white flex justify-between items-center">
-                    <h2 className="text-xl font-bold">Invite a Mentor</h2>
+                <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+                    <h2 className="text-2xl font-bold text-gray-900">Invite a Mentor</h2>
                     <button
                         onClick={onClose}
-                        className="text-white hover:bg-blue-800 p-2 rounded-lg transition"
+                        className="text-gray-400 hover:text-gray-600"
+                        aria-label="Close modal"
                     >
                         ✕
                     </button>
@@ -184,7 +196,7 @@ export default function InviteMentorModal({ isOpen, onClose, onInviteSent }) {
                             value={formData.mentorEmail}
                             onChange={handleEmailChange}
                             placeholder="mentor@example.com"
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                             required
                         />
                     </div>
@@ -197,7 +209,7 @@ export default function InviteMentorModal({ isOpen, onClose, onInviteSent }) {
                         <select
                             value={formData.relationshipType}
                             onChange={handleRelationshipTypeChange}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                         >
                             <option value="mentor">Mentor</option>
                             <option value="career_coach">Career Coach</option>
@@ -216,7 +228,7 @@ export default function InviteMentorModal({ isOpen, onClose, onInviteSent }) {
                             placeholder="Tell them why you'd like their guidance..."
                             maxLength={500}
                             rows="3"
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
                         <p className="text-sm text-gray-500 mt-1">
                             {formData.invitationMessage.length}/500
@@ -238,7 +250,8 @@ export default function InviteMentorModal({ isOpen, onClose, onInviteSent }) {
                                         type="checkbox"
                                         checked={formData.focusAreas.includes(area.id)}
                                         onChange={() => toggleFocusArea(area.id)}
-                                        className="w-4 h-4 text-blue-600 rounded"
+                                        className="w-4 h-4 rounded"
+                                        style={{ accentColor: '#777C6D' }}
                                     />
                                     <span className="ml-2 text-gray-700">{area.label}</span>
                                 </label>
@@ -261,7 +274,8 @@ export default function InviteMentorModal({ isOpen, onClose, onInviteSent }) {
                                         type="checkbox"
                                         checked={formData.sharedData[option.key]}
                                         onChange={() => toggleSharedData(option.key)}
-                                        className="w-4 h-4 text-blue-600 rounded"
+                                        className="w-4 h-4 rounded"
+                                        style={{ accentColor: '#777C6D' }}
                                     />
                                     <span className="ml-2 text-gray-700">{option.label}</span>
                                 </label>
@@ -281,7 +295,10 @@ export default function InviteMentorModal({ isOpen, onClose, onInviteSent }) {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-white rounded-lg transition font-medium disabled:opacity-50"
+                            style={{ backgroundColor: '#777C6D' }}
+                            onMouseOver={e => !loading && (e.currentTarget.style.backgroundColor = '#656A5C')}
+                            onMouseOut={e => !loading && (e.currentTarget.style.backgroundColor = '#777C6D')}
                         >
                             {loading ? "Sending..." : "Send Invitation"}
                         </button>
