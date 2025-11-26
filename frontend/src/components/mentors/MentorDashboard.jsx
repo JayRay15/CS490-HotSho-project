@@ -147,7 +147,7 @@ export default function MentorDashboard() {
         return (
             <div className="flex items-center justify-center h-64">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 mx-auto mb-4" style={{ borderTopColor: '#777C6D', borderBottomColor: '#777C6D' }}></div>
                     <p className="text-gray-600">Loading mentor dashboard...</p>
                 </div>
             </div>
@@ -155,168 +155,180 @@ export default function MentorDashboard() {
     }
 
     return (
-        <div className="bg-white rounded-lg shadow-lg p-6">
-            {/* Header */}
-            <div className="mb-6 flex justify-between items-center">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-800">Mentor Hub</h1>
-                    <p className="text-gray-600 mt-1">
-                        Collaborate with mentors and coaches to guide your job search
-                    </p>
-                </div>
-                <button
-                    onClick={() => setIsInviteModalOpen(true)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
-                >
-                    + Invite Mentor
-                </button>
-            </div>
-
-            {error && (
-                <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
-                    {error}
-                </div>
-            )}
-
-            {/* Tab Navigation */}
-            <div className="mb-6 border-b border-gray-200 flex space-x-8">
-                <button
-                    onClick={() => setActiveTab("mentors")}
-                    className={`pb-4 font-medium ${activeTab === "mentors"
-                            ? "border-b-2 border-blue-600 text-blue-600"
-                            : "text-gray-600 hover:text-gray-800"
-                        }`}
-                >
-                    My Mentors ({mentors.length})
-                </button>
-                {userRole === "mentor" || userRole === "both" ? (
-                    <button
-                        onClick={() => setActiveTab("mentees")}
-                        className={`pb-4 font-medium ${activeTab === "mentees"
-                                ? "border-b-2 border-blue-600 text-blue-600"
-                                : "text-gray-600 hover:text-gray-800"
-                            }`}
-                    >
-                        My Mentees ({mentees.length})
-                    </button>
-                ) : null}
-                {feedback.length > 0 && (
-                    <button
-                        onClick={() => setActiveTab("feedback")}
-                        className={`pb-4 font-medium ${activeTab === "feedback"
-                                ? "border-b-2 border-blue-600 text-blue-600"
-                                : "text-gray-600 hover:text-gray-800"
-                            }`}
-                    >
-                        Feedback ({feedback.length})
-                    </button>
-                )}
-                {recommendations.length > 0 && (
-                    <button
-                        onClick={() => setActiveTab("recommendations")}
-                        className={`pb-4 font-medium ${activeTab === "recommendations"
-                                ? "border-b-2 border-blue-600 text-blue-600"
-                                : "text-gray-600 hover:text-gray-800"
-                            }`}
-                    >
-                        Recommendations ({recommendations.length})
-                    </button>
-                )}
-            </div>
-
-            {/* Tab Content */}
-            <div className="mt-6">
-                {/* My Mentors Tab */}
-                {activeTab === "mentors" && (
+        <div className="min-h-screen" style={{ backgroundColor: "#E4E6E0" }}>
+            <div className="max-w-7xl mx-auto pt-12 pb-12 px-4">
+                {/* Header */}
+                <div className="mb-6 flex justify-between items-center">
                     <div>
-                        {mentors.length === 0 ? (
-                            <div className="text-center py-12">
-                                <p className="text-gray-600 mb-4">
-                                    You haven't invited any mentors yet
-                                </p>
+                        <h1 className="text-3xl font-bold mb-2" style={{ color: "#4F5348" }}>Mentor Hub</h1>
+                        <p style={{ color: "#656A5C" }}>
+                            Collaborate with mentors and coaches to guide your job search
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => setIsInviteModalOpen(true)}
+                        className="px-4 py-2 text-white rounded-lg transition font-medium"
+                        style={{ backgroundColor: '#777C6D' }}
+                        onMouseOver={e => e.currentTarget.style.backgroundColor = '#656A5C'}
+                        onMouseOut={e => e.currentTarget.style.backgroundColor = '#777C6D'}
+                    >
+                        + Invite Mentor
+                    </button>
+                </div>
+
+                {error && (
+                    <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+                        {error}
+                    </div>
+                )}
+
+                {/* Tab Navigation */}
+                <div className="mb-6">
+                    <div className="border-b border-gray-200">
+                        <nav className="-mb-px flex space-x-8">
+                            <button
+                                onClick={() => setActiveTab("mentors")}
+                                className={`${activeTab === "mentors"
+                                        ? "border-[#777C6D] text-[#777C6D]"
+                                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+                            >
+                                My Mentors ({mentors.length})
+                            </button>
+                            {userRole === "mentor" || userRole === "both" ? (
                                 <button
-                                    onClick={() => setIsInviteModalOpen(true)}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                    onClick={() => setActiveTab("mentees")}
+                                    className={`${activeTab === "mentees"
+                                            ? "border-[#777C6D] text-[#777C6D]"
+                                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                        } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
                                 >
-                                    Invite Your First Mentor
+                                    My Mentees ({mentees.length})
                                 </button>
-                            </div>
-                        ) : (
-                            <div className="grid gap-4">
-                                {mentors.map((mentor) => (
-                                    <MentorCard key={mentor._id} mentor={mentor} />
-                                ))}
-                            </div>
-                        )}
+                            ) : null}
+                            {feedback.length > 0 && (
+                                <button
+                                    onClick={() => setActiveTab("feedback")}
+                                    className={`${activeTab === "feedback"
+                                            ? "border-[#777C6D] text-[#777C6D]"
+                                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                        } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+                                >
+                                    Feedback ({feedback.length})
+                                </button>
+                            )}
+                            {recommendations.length > 0 && (
+                                <button
+                                    onClick={() => setActiveTab("recommendations")}
+                                    className={`${activeTab === "recommendations"
+                                            ? "border-[#777C6D] text-[#777C6D]"
+                                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                        } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+                                >
+                                    Recommendations ({recommendations.length})
+                                </button>
+                            )}
+                        </nav>
                     </div>
-                )}
+                </div>
 
-                {/* My Mentees Tab */}
-                {activeTab === "mentees" && (
-                    <div>
-                        {mentees.length === 0 ? (
-                            <div className="text-center py-12">
-                                <p className="text-gray-600">No mentees yet</p>
-                            </div>
-                        ) : (
-                            <div className="grid gap-4">
-                                {mentees.map((mentee) => (
-                                    <MenteeCard key={mentee._id} mentee={mentee} />
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
+                {/* Tab Content */}
+                <div className="mt-6">
+                    {/* My Mentors Tab */}
+                    {activeTab === "mentors" && (
+                        <div>
+                            {mentors.length === 0 ? (
+                                <div className="bg-white rounded-lg shadow p-12 text-center">
+                                    <p className="text-gray-600 mb-4">
+                                        You haven't invited any mentors yet
+                                    </p>
+                                    <button
+                                        onClick={() => setIsInviteModalOpen(true)}
+                                        className="px-4 py-2 text-white rounded-lg transition"
+                                        style={{ backgroundColor: '#777C6D' }}
+                                        onMouseOver={e => e.currentTarget.style.backgroundColor = '#656A5C'}
+                                        onMouseOut={e => e.currentTarget.style.backgroundColor = '#777C6D'}
+                                    >
+                                        Invite Your First Mentor
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="grid gap-4">
+                                    {mentors.map((mentor) => (
+                                        <MentorCard key={mentor._id} mentor={mentor} />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
 
-                {/* Feedback Tab */}
-                {activeTab === "feedback" && (
-                    <div>
-                        {feedback.length === 0 ? (
-                            <div className="text-center py-12">
-                                <p className="text-gray-600">No feedback yet</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                                {feedback.map((item) => (
-                                    <FeedbackCard
-                                        key={item._id}
-                                        feedback={item}
-                                        onAcknowledge={handleAcknowledgeFeedback}
-                                    />
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
+                    {/* My Mentees Tab */}
+                    {activeTab === "mentees" && (
+                        <div>
+                            {mentees.length === 0 ? (
+                                <div className="bg-white rounded-lg shadow p-12 text-center">
+                                    <p className="text-gray-600">No mentees yet</p>
+                                </div>
+                            ) : (
+                                <div className="grid gap-4">
+                                    {mentees.map((mentee) => (
+                                        <MenteeCard key={mentee._id} mentee={mentee} />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
 
-                {/* Recommendations Tab */}
-                {activeTab === "recommendations" && (
-                    <div>
-                        {recommendations.length === 0 ? (
-                            <div className="text-center py-12">
-                                <p className="text-gray-600">No recommendations yet</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                                {recommendations.map((rec) => (
-                                    <RecommendationCard
-                                        key={rec._id}
-                                        recommendation={rec}
-                                        onUpdate={handleUpdateRecommendation}
-                                    />
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
+                    {/* Feedback Tab */}
+                    {activeTab === "feedback" && (
+                        <div>
+                            {feedback.length === 0 ? (
+                                <div className="bg-white rounded-lg shadow p-12 text-center">
+                                    <p className="text-gray-600">No feedback yet</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {feedback.map((item) => (
+                                        <FeedbackCard
+                                            key={item._id}
+                                            feedback={item}
+                                            onAcknowledge={handleAcknowledgeFeedback}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Recommendations Tab */}
+                    {activeTab === "recommendations" && (
+                        <div>
+                            {recommendations.length === 0 ? (
+                                <div className="bg-white rounded-lg shadow p-12 text-center">
+                                    <p className="text-gray-600">No recommendations yet</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {recommendations.map((rec) => (
+                                        <RecommendationCard
+                                            key={rec._id}
+                                            recommendation={rec}
+                                            onUpdate={handleUpdateRecommendation}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* Invite Modal */}
+                <InviteMentorModal
+                    isOpen={isInviteModalOpen}
+                    onClose={() => setIsInviteModalOpen(false)}
+                    onInviteSent={handleInviteSent}
+                />
             </div>
-
-            {/* Invite Modal */}
-            <InviteMentorModal
-                isOpen={isInviteModalOpen}
-                onClose={() => setIsInviteModalOpen(false)}
-                onInviteSent={handleInviteSent}
-            />
         </div>
     );
 }
@@ -324,7 +336,7 @@ export default function MentorDashboard() {
 // Mentor Card Component
 function MentorCard({ mentor }) {
     return (
-        <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
+        <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
             <div className="flex items-start justify-between">
                 <div className="flex items-start gap-4">
                     {mentor.mentorId?.profilePicture ? (
@@ -334,8 +346,8 @@ function MentorCard({ mentor }) {
                             className="w-12 h-12 rounded-full"
                         />
                     ) : (
-                        <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                            <span className="text-blue-600 font-bold">
+                        <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: '#E8EAE5' }}>
+                            <span className="font-bold" style={{ color: '#777C6D' }}>
                                 {mentor.mentorId?.firstName?.charAt(0) || "M"}
                             </span>
                         </div>
@@ -349,7 +361,8 @@ function MentorCard({ mentor }) {
                             {mentor.focusAreas?.map((area) => (
                                 <span
                                     key={area}
-                                    className="inline-block px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded"
+                                    className="inline-block px-2 py-1 text-xs rounded"
+                                    style={{ backgroundColor: '#E8EAE5', color: '#4F5348' }}
                                 >
                                     {area.replace(/_/g, " ")}
                                 </span>
@@ -368,7 +381,7 @@ function MentorCard({ mentor }) {
 // Mentee Card Component
 function MenteeCard({ mentee }) {
     return (
-        <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
+        <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
             <div className="flex items-start justify-between">
                 <div className="flex items-start gap-4">
                     {mentee.menteeId?.profilePicture ? (
@@ -378,8 +391,8 @@ function MenteeCard({ mentee }) {
                             className="w-12 h-12 rounded-full"
                         />
                     ) : (
-                        <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center">
-                            <span className="text-purple-600 font-bold">
+                        <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: '#E8EAE5' }}>
+                            <span className="font-bold" style={{ color: '#777C6D' }}>
                                 {mentee.menteeId?.firstName?.charAt(0) || "M"}
                             </span>
                         </div>
@@ -394,7 +407,12 @@ function MenteeCard({ mentee }) {
                         </p>
                     </div>
                 </div>
-                <button className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">
+                <button
+                    className="px-3 py-1 text-white text-sm rounded transition"
+                    style={{ backgroundColor: '#777C6D' }}
+                    onMouseOver={e => e.currentTarget.style.backgroundColor = '#656A5C'}
+                    onMouseOut={e => e.currentTarget.style.backgroundColor = '#777C6D'}
+                >
                     Send Message
                 </button>
             </div>
@@ -405,7 +423,7 @@ function MenteeCard({ mentee }) {
 // Feedback Card Component
 function FeedbackCard({ feedback, onAcknowledge }) {
     return (
-        <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
+        <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
             <div className="flex items-start justify-between mb-2">
                 <h3 className="font-semibold text-gray-800">
                     Feedback on {feedback.type?.replace(/_/g, " ")}
@@ -428,7 +446,7 @@ function FeedbackCard({ feedback, onAcknowledge }) {
             <p className="text-gray-700 mb-3">{feedback.content}</p>
 
             {feedback.suggestions?.length > 0 && (
-                <div className="mb-4 p-3 bg-blue-50 rounded">
+                <div className="mb-4 p-3 rounded" style={{ backgroundColor: '#E8EAE5' }}>
                     <h4 className="font-medium text-gray-800 mb-2">Suggestions:</h4>
                     <ul className="space-y-1">
                         {feedback.suggestions.map((suggestion, idx) => (
@@ -443,7 +461,10 @@ function FeedbackCard({ feedback, onAcknowledge }) {
             {!feedback.acknowledged && (
                 <button
                     onClick={() => onAcknowledge(feedback._id)}
-                    className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                    className="px-3 py-1 text-white text-sm rounded transition"
+                    style={{ backgroundColor: '#777C6D' }}
+                    onMouseOver={e => e.currentTarget.style.backgroundColor = '#656A5C'}
+                    onMouseOut={e => e.currentTarget.style.backgroundColor = '#777C6D'}
                 >
                     Acknowledge
                 </button>
@@ -475,7 +496,7 @@ function RecommendationCard({ recommendation, onUpdate }) {
     };
 
     return (
-        <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
+        <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
             <div className="flex items-start justify-between mb-2">
                 <h3 className="font-semibold text-gray-800">{recommendation.title}</h3>
                 <span
@@ -497,19 +518,22 @@ function RecommendationCard({ recommendation, onUpdate }) {
             <div className="mb-3">
                 <p className="text-sm font-medium text-gray-700 mb-1">Status:</p>
                 <div className="flex gap-2">
-                    {["pending", "in_progress", "completed"].map((status) => (
-                        <button
-                            key={status}
-                            onClick={() => handleStatusChange(status)}
-                            disabled={isUpdating}
-                            className={`px-3 py-1 text-sm rounded ${recommendation.status === status
-                                    ? "bg-blue-600 text-white"
-                                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                                }`}
-                        >
-                            {status.replace(/_/g, " ")}
-                        </button>
-                    ))}
+                    {["pending", "in_progress", "completed"].map((status) => {
+                        const isActive = recommendation.status === status;
+                        return (
+                            <button
+                                key={status}
+                                onClick={() => handleStatusChange(status)}
+                                disabled={isUpdating}
+                                className={`px-3 py-1 text-sm rounded transition ${isActive ? "text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}`}
+                                style={isActive ? { backgroundColor: '#777C6D' } : {}}
+                                onMouseOver={e => isActive && (e.currentTarget.style.backgroundColor = '#656A5C')}
+                                onMouseOut={e => isActive && (e.currentTarget.style.backgroundColor = '#777C6D')}
+                            >
+                                {status.replace(/_/g, " ")}
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 
@@ -517,7 +541,8 @@ function RecommendationCard({ recommendation, onUpdate }) {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Add progress notes..."
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2"
+                style={{ focusRingColor: '#777C6D' }}
                 rows="2"
             />
         </div>

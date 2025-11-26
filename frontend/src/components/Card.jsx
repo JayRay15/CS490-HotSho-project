@@ -13,10 +13,10 @@ import PropTypes from "prop-types";
  * @param {function} onClick - Click handler (makes card interactive)
  * @param {string} as - HTML element to render as (default: 'div')
  */
-export default function Card({ 
-  variant = "default", 
-  title, 
-  children, 
+export default function Card({
+  variant = "default",
+  title,
+  children,
   className = "",
   interactive = false,
   onClick,
@@ -25,7 +25,7 @@ export default function Card({
 }) {
   // Determine if card should be interactive
   const isInteractive = interactive || onClick || variant === "interactive";
-  
+
   // Build variant classes
   const variantClasses = {
     default: "bg-white shadow-md",
@@ -40,11 +40,11 @@ export default function Card({
   const baseClasses = "rounded-2xl p-6";
   const selectedVariant = variantClasses[variant] || variantClasses.default;
   const interactiveClass = isInteractive && variant !== "interactive" ? "card--interactive" : "";
-  
+
   const finalClassName = `${baseClasses} ${selectedVariant} ${interactiveClass} ${className}`.trim();
 
   return (
-    <Component 
+    <Component
       className={finalClassName}
       onClick={onClick}
       role={onClick ? "button" : undefined}
@@ -62,7 +62,7 @@ export default function Card({
           {title}
         </h3>
       )}
-      <div>{children}</div>
+      {children}
     </Component>
   );
 }
@@ -70,7 +70,7 @@ export default function Card({
 Card.propTypes = {
   variant: PropTypes.oneOf([
     "default",
-    "primary", 
+    "primary",
     "info",
     "muted",
     "elevated",

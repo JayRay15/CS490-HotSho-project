@@ -11,6 +11,7 @@ import jobRoutes from "./routes/jobRoutes.js";
 import resumeRoutes from "./routes/resumeRoutes.js";
 import pdfAnalysisRoutes from "./routes/pdfAnalysisRoutes.js";
 import interviewRoutes from "./routes/interviewRoutes.js";
+import calendarRoutes from "./routes/calendarRoutes.js";
 import salaryRoutes from "./routes/salaryRoutes.js";
 import coverLetterTemplateRoutes from "./routes/coverLetterTemplateRoutes.js";
 import coverLetterRoutes from "./routes/coverLetterRoutes.js";
@@ -30,9 +31,15 @@ import goalRoutes from "./routes/goalRoutes.js";
 import interviewQuestionBankRoutes from "./routes/interviewQuestionBankRoutes.js";
 import companyResearchRoutes from "./routes/companyResearchRoutes.js";
 import mockInterviewRoutes from "./routes/mockInterviewRoutes.js";
+import productivityRoutes from "./routes/productivityRoutes.js";
 import interviewPredictionRoutes from "./routes/interviewPredictionRoutes.js";
 import mentorRoutes from "./routes/mentorRoutes.js";
+<<<<<<< HEAD
 import reportRoutes from "./routes/reportRoutes.js";
+=======
+import relationshipMaintenanceRoutes from "./routes/relationshipMaintenanceRoutes.js";
+import analyticsRoutes from "./routes/analyticsRoutes.js";
+>>>>>>> 216482d3f846b7f8d9a3c364071793bdccc50160
 import { getPublicProject } from "./controllers/profileController.js";
 import { viewSharedReport } from "./controllers/reportController.js";
 import { startDeadlineReminderSchedule } from "./utils/deadlineReminders.js";
@@ -74,6 +81,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/interviews", interviewRoutes);
+app.use("/api/calendar", calendarRoutes);
 app.use("/api/resume", resumeRoutes);
 app.use("/api/pdf-analysis", pdfAnalysisRoutes);
 app.use("/api/salary", salaryRoutes);
@@ -95,10 +103,16 @@ app.use("/api/goals", goalRoutes);
 app.use("/api/interview-question-bank", interviewQuestionBankRoutes);
 app.use("/api/company-research", companyResearchRoutes);
 app.use("/api/mock-interviews", mockInterviewRoutes);
-app.use("/api/interview-predictions", interviewPredictionRoutes);
+app.use("/api/productivity", productivityRoutes);
+app.use("/api/interview-prediction", interviewPredictionRoutes);
 app.use("/api/mentors", mentorRoutes);
+<<<<<<< HEAD
 app.use("/api/reports", reportRoutes);
 console.log('✅ Reports routes registered at /api/reports');
+=======
+app.use("/api/relationship-maintenance", relationshipMaintenanceRoutes);
+app.use("/api/analytics", analyticsRoutes);
+>>>>>>> 216482d3f846b7f8d9a3c364071793bdccc50160
 // Mount profile routes under /api/profile (existing) and also under /api/users
 // so frontend requests to /api/users/... (used elsewhere in the app) resolve correctly.
 app.use("/api/profile", profileRoutes);

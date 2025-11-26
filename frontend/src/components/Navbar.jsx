@@ -134,6 +134,9 @@ export default function Navbar() {
                                         <NavLink to="/goals" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Career Goals" onClick={() => setCareerDropdownOpen(false)}>
                                             Career Goals
                                         </NavLink>
+                                        <NavLink to="/interviews" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="My Interviews" onClick={() => setCareerDropdownOpen(false)}>
+                                            My Interviews
+                                        </NavLink>
                                         <NavLink to="/interview-coaching" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Interview Coaching" onClick={() => setCareerDropdownOpen(false)}>
                                             Interview Coaching
                                         </NavLink>
@@ -152,11 +155,21 @@ export default function Navbar() {
                                         <NavLink to="/network" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Professional Network" onClick={() => setCareerDropdownOpen(false)}>
                                             Network
                                         </NavLink>
+<<<<<<< HEAD
                                         <NavLink to="/reports" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Custom Reports" onClick={() => setCareerDropdownOpen(false)}>
                                             Custom Reports
+=======
+
+                                        <NavLink to="/productivity" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Productivity Analysis" onClick={() => setCareerDropdownOpen(false)}>
+                                            Productivity Analysis
+>>>>>>> 216482d3f846b7f8d9a3c364071793bdccc50160
                                         </NavLink>
                                         <NavLink to="/mentors" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Mentor Hub" onClick={() => setCareerDropdownOpen(false)}>
-                                            👥 Mentor Hub
+                                            Mentor Hub
+                                        </NavLink>
+                                        <div className="border-t border-gray-200 my-1"></div>
+                                        <NavLink to="/settings/calendar" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Calendar Settings" onClick={() => setCareerDropdownOpen(false)}>
+                                            📅 Calendar Settings
                                         </NavLink>
                                     </div>
                                 )}
@@ -343,6 +356,18 @@ export default function Navbar() {
                             Career Goals
                         </NavLink>
                         <NavLink
+                            to="/interviews"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                }`
+                            }
+                            aria-label="My Interviews"
+                        >
+                            My Interviews
+                        </NavLink>
+                        <NavLink
                             to="/interview-coaching"
                             className={({ isActive }) =>
                                 `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
@@ -402,7 +427,9 @@ export default function Navbar() {
                         >
                             Network
                         </NavLink>
+
                         <NavLink
+<<<<<<< HEAD
                             to="/reports"
                             className={({ isActive }) =>
                                 `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
@@ -416,15 +443,18 @@ export default function Navbar() {
                         </NavLink>
                         <NavLink
                             to="/mentors"
+=======
+                            to="/settings/calendar"
+>>>>>>> 216482d3f846b7f8d9a3c364071793bdccc50160
                             className={({ isActive }) =>
                                 `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
                                     ? 'bg-primary-900 text-white shadow-md'
                                     : 'text-white hover:bg-primary-700 active:bg-primary-900'
                                 }`
                             }
-                            aria-label="Mentor Hub"
+                            aria-label="Calendar Settings"
                         >
-                            👥 Mentor Hub
+                            📅 Calendar Settings
                         </NavLink>
                         <div className="pt-3 pb-2 flex items-center space-x-3 px-4">
                             <span className="text-sm text-primary-50">Account</span>
