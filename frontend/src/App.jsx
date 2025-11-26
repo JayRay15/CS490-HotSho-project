@@ -39,6 +39,8 @@ import MockInterviewSession from "./pages/interviews/MockInterviewSession.jsx";
 import MockInterviewHistory from "./pages/interviews/MockInterviewHistory.jsx";
 import InterviewSuccessPredictions from "./pages/InterviewSuccessPredictions.jsx";
 import InterviewPredictionDetail from "./pages/InterviewPredictionDetail.jsx";
+import ReportsPage from "./pages/ReportsPage.jsx";
+import SharedReportView from "./pages/SharedReportView.jsx";
 
 function App() {
   return (
@@ -90,6 +92,8 @@ function App() {
           <Route path="/mock-interviews/:sessionId" element={<ProtectedRoute><MockInterviewSession /></ProtectedRoute>} />
           <Route path="/interview-predictions" element={<ProtectedRoute><InterviewSuccessPredictions /></ProtectedRoute>} />
           <Route path="/interview-predictions/:interviewId" element={<ProtectedRoute><InterviewPredictionDetail /></ProtectedRoute>} />
+          <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
+          <Route path="/reports/shared/:token" element={<SharedReportView />} />
           <Route path="/mentors" element={<ProtectedRoute><MentorDashboard /></ProtectedRoute>} />
           <Route path="/mentors/progress" element={<ProtectedRoute><ProgressSharing /></ProtectedRoute>} />
           <Route path="/mentors/messages" element={<ProtectedRoute><MentorMessaging /></ProtectedRoute>} />

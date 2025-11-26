@@ -32,7 +32,9 @@ import companyResearchRoutes from "./routes/companyResearchRoutes.js";
 import mockInterviewRoutes from "./routes/mockInterviewRoutes.js";
 import interviewPredictionRoutes from "./routes/interviewPredictionRoutes.js";
 import mentorRoutes from "./routes/mentorRoutes.js";
+import reportRoutes from "./routes/reportRoutes.js";
 import { getPublicProject } from "./controllers/profileController.js";
+import { viewSharedReport } from "./controllers/reportController.js";
 import { startDeadlineReminderSchedule } from "./utils/deadlineReminders.js";
 import { startInterviewReminderSchedule } from "./utils/interviewReminders.js";
 import { startApplicationScheduler, startFollowUpScheduler } from "./utils/applicationScheduler.js";
@@ -95,6 +97,8 @@ app.use("/api/company-research", companyResearchRoutes);
 app.use("/api/mock-interviews", mockInterviewRoutes);
 app.use("/api/interview-predictions", interviewPredictionRoutes);
 app.use("/api/mentors", mentorRoutes);
+app.use("/api/reports", reportRoutes);
+console.log('✅ Reports routes registered at /api/reports');
 // Mount profile routes under /api/profile (existing) and also under /api/users
 // so frontend requests to /api/users/... (used elsewhere in the app) resolve correctly.
 app.use("/api/profile", profileRoutes);
@@ -111,6 +115,9 @@ app.get("/api/health", (req, res) => {
 
 // Public project page (shareable link)
 app.get('/api/projects/:projectId', getPublicProject);
+
+// Public shared report endpoint (no auth required)
+app.get('/api/public/reports/:token', viewSharedReport);
 
 // 404 handler - must come after all routes
 app.use(notFoundHandler);

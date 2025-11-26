@@ -11,6 +11,24 @@ import dotenv from 'dotenv';
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 /**
+ * Generate text using Gemini AI
+ * @param {string} prompt - The prompt to send to Gemini
+ * @param {Object} options - Generation options (temperature, maxTokens)
+ * @returns {Promise<string>} Generated text
+ */
+export async function generateText(prompt, options = {}) {
+  try {
+    const model = genAI.getGenerativeModel({ model: "models/gemini-flash-latest" });
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    return response.text();
+  } catch (error) {
+    console.error('Error generating text with Gemini:', error);
+    throw new Error(`Failed to generate text: ${error.message}`);
+  }
+}
+
+/**
  * Generate multiple variations of tailored resume content
  * @param {Object} jobPosting - The job posting to tailor for
  * @param {Object} userProfile - The user's profile data
