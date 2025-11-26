@@ -34,12 +34,9 @@ import mockInterviewRoutes from "./routes/mockInterviewRoutes.js";
 import productivityRoutes from "./routes/productivityRoutes.js";
 import interviewPredictionRoutes from "./routes/interviewPredictionRoutes.js";
 import mentorRoutes from "./routes/mentorRoutes.js";
-<<<<<<< HEAD
 import reportRoutes from "./routes/reportRoutes.js";
-=======
 import relationshipMaintenanceRoutes from "./routes/relationshipMaintenanceRoutes.js";
 import analyticsRoutes from "./routes/analyticsRoutes.js";
->>>>>>> 216482d3f846b7f8d9a3c364071793bdccc50160
 import { getPublicProject } from "./controllers/profileController.js";
 import { viewSharedReport } from "./controllers/reportController.js";
 import { startDeadlineReminderSchedule } from "./utils/deadlineReminders.js";
@@ -106,13 +103,10 @@ app.use("/api/mock-interviews", mockInterviewRoutes);
 app.use("/api/productivity", productivityRoutes);
 app.use("/api/interview-prediction", interviewPredictionRoutes);
 app.use("/api/mentors", mentorRoutes);
-<<<<<<< HEAD
 app.use("/api/reports", reportRoutes);
 console.log('✅ Reports routes registered at /api/reports');
-=======
 app.use("/api/relationship-maintenance", relationshipMaintenanceRoutes);
 app.use("/api/analytics", analyticsRoutes);
->>>>>>> 216482d3f846b7f8d9a3c364071793bdccc50160
 // Mount profile routes under /api/profile (existing) and also under /api/users
 // so frontend requests to /api/users/... (used elsewhere in the app) resolve correctly.
 app.use("/api/profile", profileRoutes);

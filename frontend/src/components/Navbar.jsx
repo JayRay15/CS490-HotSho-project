@@ -155,14 +155,11 @@ export default function Navbar() {
                                         <NavLink to="/network" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Professional Network" onClick={() => setCareerDropdownOpen(false)}>
                                             Network
                                         </NavLink>
-<<<<<<< HEAD
                                         <NavLink to="/reports" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Custom Reports" onClick={() => setCareerDropdownOpen(false)}>
                                             Custom Reports
-=======
-
+                                        </NavLink>
                                         <NavLink to="/productivity" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Productivity Analysis" onClick={() => setCareerDropdownOpen(false)}>
                                             Productivity Analysis
->>>>>>> 216482d3f846b7f8d9a3c364071793bdccc50160
                                         </NavLink>
                                         <NavLink to="/mentors" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Mentor Hub" onClick={() => setCareerDropdownOpen(false)}>
                                             Mentor Hub
@@ -429,7 +426,6 @@ export default function Navbar() {
                         </NavLink>
 
                         <NavLink
-<<<<<<< HEAD
                             to="/reports"
                             className={({ isActive }) =>
                                 `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
@@ -442,10 +438,31 @@ export default function Navbar() {
                             Custom Reports
                         </NavLink>
                         <NavLink
+                            to="/productivity"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                }`
+                            }
+                            aria-label="Productivity Analysis"
+                        >
+                            Productivity Analysis
+                        </NavLink>
+                        <NavLink
                             to="/mentors"
-=======
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                }`
+                            }
+                            aria-label="Mentor Hub"
+                        >
+                            Mentor Hub
+                        </NavLink>
+                        <NavLink
                             to="/settings/calendar"
->>>>>>> 216482d3f846b7f8d9a3c364071793bdccc50160
                             className={({ isActive }) =>
                                 `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
                                     ? 'bg-primary-900 text-white shadow-md'
