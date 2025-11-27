@@ -551,7 +551,8 @@ export const discoverContactsController = async (req, res) => {
       university,
       q,
       page = 1,
-      limit = 12
+      limit = 12,
+      source = 'all' // 'all', 'mock', 'external'
     } = req.query;
 
     const results = await discoverContacts({
@@ -566,12 +567,114 @@ export const discoverContactsController = async (req, res) => {
       limit: parseInt(limit)
     });
 
+    // If requesting external sources, also fetch from APIs
+    if (source === 'all' || source === 'external') {
+      try {
+        const { discoverExternalContacts } = await import('../utils/externalContactDiscoveryService.js');
+        const externalResults = await discoverExternalContacts({
+          query: q,
+          industry,
+          company,
+          role,
+          limit: Math.ceil(parseInt(limit) / 2)
+        });
+
+        // Merge external contacts with mock data
+        if (externalResults.contacts && externalResults.contacts.length > 0) {
+          // Add source badge to external contacts
+          const externalContacts = externalResults.contacts.map(c => ({
+            ...c,
+            isExternal: true,
+            sourceApi: c.source
+          }));
+
+          // Combine and sort by match score
+          results.data = [...results.data, ...externalContacts]
+            .sort((a, b) => b.matchScore - a.matchScore)
+            .slice(0, parseInt(limit));
+
+          // Add source info to response
+          results.externalSources = externalResults.sources;
+          results.externalErrors = externalResults.errors;
+        }
+      } catch (externalError) {
+        console.error('External discovery error (non-fatal):', externalError.message);
+        // Continue with mock data if external APIs fail
+      }
+    }
+
     res.status(200).json(results);
   } catch (error) {
     console.error('Error discovering contacts:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to discover contacts',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Discover contacts from external APIs only (OpenAlex, Wikidata, Wikipedia)
+// @route   GET /api/contacts/discover/external
+// @access  Private
+export const discoverExternalContactsController = async (req, res) => {
+  try {
+    const { discoverExternalContacts, searchOpenAlexAuthors, searchWikidataPersons } = 
+      await import('../utils/externalContactDiscoveryService.js');
+    
+    const {
+      query,
+      industry,
+      company,
+      role,
+      source, // 'openalex', 'wikidata', 'wikipedia', or undefined for all
+      limit = 20
+    } = req.query;
+
+    let results;
+
+    if (source === 'openalex') {
+      const contacts = await searchOpenAlexAuthors({
+        query,
+        topic: industry,
+        institution: company,
+        limit: parseInt(limit)
+      });
+      results = { contacts, sources: ['OpenAlex'], errors: [] };
+    } else if (source === 'wikidata') {
+      const contacts = await searchWikidataPersons({
+        occupation: role,
+        company,
+        industry,
+        limit: parseInt(limit)
+      });
+      results = { contacts, sources: ['Wikidata'], errors: [] };
+    } else {
+      // Search all sources
+      results = await discoverExternalContacts({
+        query,
+        industry,
+        company,
+        role,
+        limit: parseInt(limit)
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: results.contacts,
+      sources: results.sources,
+      errors: results.errors,
+      pagination: {
+        total: results.contacts.length,
+        limit: parseInt(limit)
+      }
+    });
+  } catch (error) {
+    console.error('Error discovering external contacts:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to discover external contacts',
       error: error.message
     });
   }

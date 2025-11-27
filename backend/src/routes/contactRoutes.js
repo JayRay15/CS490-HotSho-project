@@ -13,6 +13,7 @@ import {
   batchCreateContacts,
   generateReferenceRequest,
   discoverContactsController,
+  discoverExternalContactsController,
   getDiscoveryFiltersController,
   getSuggestedContactsController,
   trackDiscoverySuccess
@@ -30,8 +31,11 @@ router.get('/stats', getContactStats);
 router.get('/follow-ups/upcoming', getUpcomingFollowUps);
 
 // Discovery routes (must be before /:id routes)
-// GET /api/contacts/discover - Discover new contacts
+// GET /api/contacts/discover - Discover new contacts (mock + external)
 router.get('/discover', discoverContactsController);
+
+// GET /api/contacts/discover/external - Discover from external APIs only (OpenAlex, Wikidata, Wikipedia)
+router.get('/discover/external', discoverExternalContactsController);
 
 // GET /api/contacts/discover/filters - Get discovery filter options
 router.get('/discover/filters', getDiscoveryFiltersController);

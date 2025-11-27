@@ -37,6 +37,11 @@ export const discoverContacts = (params) => {
     return api.get('/api/contacts/discover', { params });
 };
 
+// Discover contacts from external APIs only (OpenAlex, Wikidata, Wikipedia)
+export const discoverExternalContacts = (params) => {
+    return api.get('/api/contacts/discover/external', { params });
+};
+
 export const getDiscoveryFilters = () => {
     return api.get('/api/contacts/discover/filters');
 };

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Search, Filter, Users, Building2, MapPin, GraduationCap, Sparkles, 
          ExternalLink, UserPlus, ChevronDown, ChevronUp, Star, Briefcase,
-         Globe, Award, TrendingUp, RefreshCw } from 'lucide-react';
+         Globe, Award, TrendingUp, RefreshCw, CheckCircle, X, BookOpen, Database } from 'lucide-react';
 import { discoverContacts, getDiscoveryFilters, getSuggestedContacts, createContact, trackDiscoveryAction } from '../../api/contactApi';
 import { toast } from 'react-hot-toast';
 import Button from '../Button';
@@ -24,20 +24,41 @@ const ConnectionTypeBadge = ({ type }) => {
   );
 };
 
+const SourceBadge = ({ source }) => {
+  const sourceConfig = {
+    'OpenAlex': { color: 'bg-orange-100 text-orange-700', icon: BookOpen, label: 'OpenAlex' },
+    'Wikidata': { color: 'bg-blue-100 text-blue-700', icon: Database, label: 'Wikidata' },
+    'Wikipedia': { color: 'bg-gray-100 text-gray-700', icon: Globe, label: 'Wikipedia' }
+  };
+
+  const config = sourceConfig[source] || { color: 'bg-gray-100 text-gray-600', icon: Globe, label: source };
+  const Icon = config.icon;
+
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
+      <Icon size={10} />
+      {config.label}
+    </span>
+  );
+};
+
 const DiscoveredContactCard = ({ contact, onAddToNetwork, isAdding }) => {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow">
+    <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow flex flex-col h-full min-h-[320px]">
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white font-semibold text-lg">
-            {contact.firstName[0]}{contact.lastName[0]}
+            {contact.firstName?.[0] || '?'}{contact.lastName?.[0] || ''}
           </div>
           <div>
             <h3 className="font-semibold text-gray-900">{contact.fullName}</h3>
             <p className="text-sm text-gray-600">{contact.jobTitle}</p>
+            {contact.isExternal && contact.sourceApi && (
+              <SourceBadge source={contact.sourceApi} />
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -96,7 +117,7 @@ const DiscoveredContactCard = ({ contact, onAddToNetwork, isAdding }) => {
       )}
 
       {/* Outreach Suggestion */}
-      <div className="bg-blue-50 rounded-lg p-2 mb-3">
+      <div className="bg-blue-50 rounded-lg p-2 mb-3 flex-grow">
         <div className="flex items-start gap-2">
           <Sparkles size={14} className="text-blue-600 mt-0.5 flex-shrink-0" />
           <p className="text-xs text-blue-700">{contact.suggestedOutreach}</p>
@@ -166,7 +187,7 @@ const DiscoveredContactCard = ({ contact, onAddToNetwork, isAdding }) => {
       )}
 
       {/* Actions */}
-      <div className="flex items-center justify-between mt-3 pt-3 border-t">
+      <div className="flex items-center justify-between mt-auto pt-3 border-t">
         <button
           onClick={() => setExpanded(!expanded)}
           className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
@@ -208,6 +229,7 @@ export default function ContactDiscoveryTab({ onContactAdded }) {
   const [loading, setLoading] = useState(true);
   const [searchLoading, setSearchLoading] = useState(false);
   const [addingContact, setAddingContact] = useState(null);
+  const [successBanner, setSuccessBanner] = useState(null);
   
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -215,7 +237,9 @@ export default function ContactDiscoveryTab({ onContactAdded }) {
   const [selectedConnectionType, setSelectedConnectionType] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
   const [selectedUniversity, setSelectedUniversity] = useState('');
+  const [selectedSource, setSelectedSource] = useState('all'); // 'all', 'mock', 'external'
   const [showFilters, setShowFilters] = useState(false);
+  const [externalSources, setExternalSources] = useState([]); // Track which external APIs returned data
   
   // Pagination
   const [page, setPage] = useState(1);
@@ -256,7 +280,8 @@ export default function ContactDiscoveryTab({ onContactAdded }) {
     try {
       const params = {
         page: currentPage,
-        limit: 12
+        limit: 12,
+        source: selectedSource // Include source filter for API selection
       };
       
       if (searchQuery) params.q = searchQuery;
@@ -268,6 +293,11 @@ export default function ContactDiscoveryTab({ onContactAdded }) {
       const response = await discoverContacts(params);
       setContacts(response.data?.data || []);
       setPagination(response.data?.pagination || null);
+      
+      // Track which external sources returned data
+      if (response.data?.externalSources) {
+        setExternalSources(response.data.externalSources);
+      }
     } catch (error) {
       console.error('Error searching contacts:', error);
       toast.error('Failed to search contacts');
@@ -310,6 +340,10 @@ export default function ContactDiscoveryTab({ onContactAdded }) {
 
       toast.success(`${contact.fullName} added to your network!`);
       
+      // Show success banner
+      setSuccessBanner(contact.fullName);
+      setTimeout(() => setSuccessBanner(null), 5000);
+      
       // Notify parent component
       if (onContactAdded) {
         onContactAdded();
@@ -337,6 +371,8 @@ export default function ContactDiscoveryTab({ onContactAdded }) {
     setSelectedConnectionType('');
     setSelectedLocation('');
     setSelectedUniversity('');
+    setSelectedSource('all');
+    setExternalSources([]);
     setViewMode('suggestions');
     setContacts([]);
     setPagination(null);
@@ -354,6 +390,26 @@ export default function ContactDiscoveryTab({ onContactAdded }) {
 
   return (
     <div className="space-y-6">
+      {/* Success Banner */}
+      {successBanner && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center justify-between animate-fade-in">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+              <CheckCircle size={20} className="text-green-600" />
+            </div>
+            <p className="text-green-800 font-medium">
+              {successBanner} has been added to your contacts!
+            </p>
+          </div>
+          <button
+            onClick={() => setSuccessBanner(null)}
+            className="text-green-600 hover:text-green-800 p-1 hover:bg-green-100 rounded transition"
+          >
+            <X size={18} />
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -465,10 +521,34 @@ export default function ContactDiscoveryTab({ onContactAdded }) {
               </select>
             </div>
 
-            <div className="md:col-span-2 lg:col-span-4 flex justify-end">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Data Source</label>
+              <select
+                value={selectedSource}
+                onChange={(e) => setSelectedSource(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="all">All Sources</option>
+                <option value="mock">Internal Network</option>
+                <option value="external">External APIs (OpenAlex, Wikipedia)</option>
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                External sources include real academics & industry leaders
+              </p>
+            </div>
+
+            <div className="md:col-span-2 lg:col-span-4 flex justify-between items-center">
+              {externalSources.length > 0 && (
+                <div className="flex items-center gap-2 text-xs text-gray-600">
+                  <span>Data from:</span>
+                  {externalSources.map(src => (
+                    <SourceBadge key={src} source={src} />
+                  ))}
+                </div>
+              )}
               <button
                 onClick={clearFilters}
-                className="text-sm text-gray-600 hover:text-gray-900"
+                className="text-sm text-gray-600 hover:text-gray-900 ml-auto"
               >
                 Clear all filters
               </button>
