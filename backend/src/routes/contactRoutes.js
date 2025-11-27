@@ -11,7 +11,11 @@ import {
   getContactStats,
   linkContactToJob,
   batchCreateContacts,
-  generateReferenceRequest
+  generateReferenceRequest,
+  discoverContactsController,
+  getDiscoveryFiltersController,
+  getSuggestedContactsController,
+  trackDiscoverySuccess
 } from '../controllers/contactController.js';
 
 const router = express.Router();
@@ -25,11 +29,25 @@ router.get('/stats', getContactStats);
 // GET /api/contacts/follow-ups/upcoming - Get upcoming follow-ups
 router.get('/follow-ups/upcoming', getUpcomingFollowUps);
 
+// Discovery routes (must be before /:id routes)
+// GET /api/contacts/discover - Discover new contacts
+router.get('/discover', discoverContactsController);
+
+// GET /api/contacts/discover/filters - Get discovery filter options
+router.get('/discover/filters', getDiscoveryFiltersController);
+
+// GET /api/contacts/discover/suggestions - Get personalized suggestions
+router.get('/discover/suggestions', getSuggestedContactsController);
+
+// POST /api/contacts/discover/track - Track discovery actions
+router.post('/discover/track', trackDiscoverySuccess);
+
 // GET /api/contacts - Get all contacts
 router.get('/', getContacts);
 
 // GET /api/contacts/:id - Get single contact
 router.get('/:id', getContactById);
+
 
 // POST /api/contacts - Create new contact
 router.post('/', createContact);
