@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
-import { fetchSharedResume, listFeedbackForShare, postFeedbackForShare } from '../../api/resumeShare';
+import { fetchSharedCoverLetter, listFeedbackForCoverLetterShare, postFeedbackForCoverLetterShare } from '../../api/coverLetterShare';
 
 /**
  * UC-110: Collaborative Resume and Cover Letter Review
- * SharedResumeView - Public page for reviewers to view shared resumes and leave feedback
+ * SharedCoverLetterView - Public page for reviewers to view shared cover letters and leave feedback
  */
-export default function SharedResumeView() {
+export default function SharedCoverLetterView() {
   const { token } = useParams();
   const navigate = useNavigate();
   const { user, isLoaded: isUserLoaded } = useUser();
-  const [resume, setResume] = useState(null);
+  const [coverLetter, setCoverLetter] = useState(null);
   const [share, setShare] = useState(null);
   const [feedback, setFeedback] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,8 +20,11 @@ export default function SharedResumeView() {
   const [reviewerName, setReviewerName] = useState('');
   const [showEmailPrompt, setShowEmailPrompt] = useState(false);
   const [newComment, setNewComment] = useState('');
+  const [suggestionType, setSuggestionType] = useState('general');
+  const [feedbackTheme, setFeedbackTheme] = useState('other');
+  const [selectedText, setSelectedText] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
-  const [activeSection, setActiveSection] = useState('resume'); // 'resume' or 'feedback'
+  const [activeTab, setActiveTab] = useState('content'); // 'content' or 'feedback'
 
   useEffect(() => {
     // Wait for Clerk to load user info
@@ -39,16 +42,16 @@ export default function SharedResumeView() {
     if (emailToUse) setReviewerEmail(emailToUse);
     if (nameToUse) setReviewerName(nameToUse);
     
-    loadResume(emailToUse);
+    loadCoverLetter(emailToUse);
   }, [token, isUserLoaded, user]);
 
-  const loadResume = async (email = null) => {
+  const loadCoverLetter = async (email = null) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetchSharedResume(token, email);
+      const response = await fetchSharedCoverLetter(token, email);
       if (response.data?.data) {
-        setResume(response.data.data.resume);
+        setCoverLetter(response.data.data.coverLetter);
         setShare(response.data.data.share);
         
         // Load feedback
@@ -57,8 +60,8 @@ export default function SharedResumeView() {
         }
       }
     } catch (err) {
-      console.error('Failed to load shared resume:', err);
-      const message = err.response?.data?.error?.message || err.message || 'Failed to load resume';
+      console.error('Failed to load shared cover letter:', err);
+      const message = err.response?.data?.error?.message || err.message || 'Failed to load cover letter';
       const status = err.response?.status;
       
       // Show email prompt for 403 errors (access denied) unless already providing email
@@ -73,7 +76,7 @@ export default function SharedResumeView() {
 
   const loadFeedback = async (email = null) => {
     try {
-      const response = await listFeedbackForShare(token, email || reviewerEmail);
+      const response = await listFeedbackForCoverLetterShare(token, email || reviewerEmail);
       if (response.data?.data?.feedback) {
         setFeedback(response.data.data.feedback);
       }
@@ -87,7 +90,14 @@ export default function SharedResumeView() {
     localStorage.setItem('reviewerEmail', reviewerEmail);
     localStorage.setItem('reviewerName', reviewerName);
     setShowEmailPrompt(false);
-    loadResume(reviewerEmail);
+    loadCoverLetter(reviewerEmail);
+  };
+
+  const handleTextSelection = () => {
+    const selection = window.getSelection();
+    if (selection && selection.toString().trim()) {
+      setSelectedText(selection.toString().trim());
+    }
   };
 
   const handleSubmitComment = async (e) => {
@@ -96,12 +106,18 @@ export default function SharedResumeView() {
 
     try {
       setSubmittingComment(true);
-      await postFeedbackForShare(token, {
+      await postFeedbackForCoverLetterShare(token, {
         comment: newComment,
         authorEmail: reviewerEmail,
-        authorName: reviewerName
+        authorName: reviewerName,
+        selectedText: selectedText || null,
+        suggestionType,
+        feedbackTheme
       }, reviewerEmail);
       setNewComment('');
+      setSelectedText('');
+      setSuggestionType('general');
+      setFeedbackTheme('other');
       await loadFeedback();
     } catch (err) {
       console.error('Failed to post comment:', err);
@@ -111,38 +127,34 @@ export default function SharedResumeView() {
     }
   };
 
-  const renderSection = (title, content) => {
-    if (!content) return null;
+  const formatDeadline = (deadline) => {
+    if (!deadline) return null;
+    const date = new Date(deadline);
+    const now = new Date();
+    const isPast = date < now;
+    const diffDays = Math.ceil((date - now) / (1000 * 60 * 60 * 24));
     
-    if (typeof content === 'string') {
-      return (
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-2 border-b border-gray-200 pb-1">
-            {title}
-          </h3>
-          <p className="text-gray-700 whitespace-pre-wrap">{content}</p>
-        </div>
-      );
-    }
+    return {
+      text: date.toLocaleDateString(),
+      isPast,
+      daysLeft: isPast ? 0 : diffDays
+    };
+  };
 
-    if (Array.isArray(content)) {
-      return (
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-2 border-b border-gray-200 pb-1">
-            {title}
-          </h3>
-          <ul className="list-disc list-inside space-y-1">
-            {content.map((item, idx) => (
-              <li key={idx} className="text-gray-700">
-                {typeof item === 'object' ? JSON.stringify(item) : item}
-              </li>
-            ))}
-          </ul>
-        </div>
-      );
-    }
-
-    return null;
+  const getApprovalBadge = (status) => {
+    const styles = {
+      draft: 'bg-gray-100 text-gray-600',
+      pending_review: 'bg-yellow-100 text-yellow-800',
+      changes_requested: 'bg-orange-100 text-orange-800',
+      approved: 'bg-green-100 text-green-800'
+    };
+    const labels = {
+      draft: 'Draft',
+      pending_review: 'Pending Review',
+      changes_requested: 'Changes Requested',
+      approved: 'Approved'
+    };
+    return { style: styles[status] || styles.draft, label: labels[status] || 'Draft' };
   };
 
   if (loading) {
@@ -150,7 +162,7 @@ export default function SharedResumeView() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin w-12 h-12 border-4 border-[#777C6D] border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading shared resume...</p>
+          <p className="text-gray-600">Loading shared cover letter...</p>
         </div>
       </div>
     );
@@ -168,7 +180,7 @@ export default function SharedResumeView() {
             </div>
             <h2 className="text-2xl font-bold text-gray-800">Access Required</h2>
             <p className="text-gray-600 mt-2">
-              This resume is shared with specific reviewers. Please enter your email to verify access.
+              This cover letter is shared with specific reviewers. Please enter your email to verify access.
             </p>
           </div>
 
@@ -222,57 +234,91 @@ export default function SharedResumeView() {
     );
   }
 
-  if (!resume) {
+  if (!coverLetter) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="text-center text-gray-600">Resume not found</div>
+        <div className="text-center text-gray-600">Cover letter not found</div>
       </div>
     );
   }
+
+  const deadlineInfo = formatDeadline(share?.deadline);
+  const approvalBadge = getApprovalBadge(coverLetter.approvalStatus);
 
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
       <header className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            {/* Back Button */}
-            <button
-              onClick={() => navigate('/resumes')}
-              className="flex items-center gap-1 text-gray-500 hover:text-gray-700 transition-colors"
-              title="Back to My Documents"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-            </button>
-            <div>
-              <h1 className="text-xl font-bold text-gray-800">{resume.name}</h1>
-              <p className="text-sm text-gray-500">Shared for review</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            {/* Tab Switcher */}
-            <div className="flex bg-gray-100 rounded-lg p-1">
+        <div className="max-w-6xl mx-auto px-4 py-4">
+          <div className="flex justify-between items-start">
+            <div className="flex items-start gap-4">
+              {/* Back Button */}
               <button
-                onClick={() => setActiveSection('resume')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  activeSection === 'resume' ? 'bg-white shadow text-gray-800' : 'text-gray-600 hover:text-gray-800'
-                }`}
+                onClick={() => navigate('/resumes')}
+                className="mt-1 flex items-center gap-1 text-gray-500 hover:text-gray-700 transition-colors"
+                title="Back to My Documents"
               >
-                Resume
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
               </button>
-              {share?.allowComments && (
+              <div>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-xl font-bold text-gray-800">{coverLetter.name}</h1>
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${approvalBadge.style}`}>
+                    {approvalBadge.label}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-500 mt-1">
+                  Shared for review
+                  {coverLetter.style && (
+                    <span className="ml-2 px-2 py-0.5 bg-gray-100 rounded text-xs">
+                      Style: {coverLetter.style}
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              {/* Deadline Warning */}
+              {deadlineInfo && (
+                <div className={`px-3 py-2 rounded-lg text-sm ${
+                  deadlineInfo.isPast 
+                    ? 'bg-red-100 text-red-800' 
+                    : deadlineInfo.daysLeft <= 2 
+                      ? 'bg-orange-100 text-orange-800'
+                      : 'bg-blue-100 text-blue-800'
+                }`}>
+                  {deadlineInfo.isPast ? (
+                    <>Review deadline passed: {deadlineInfo.text}</>
+                  ) : (
+                    <>Review due: {deadlineInfo.text} ({deadlineInfo.daysLeft} days left)</>
+                  )}
+                </div>
+              )}
+
+              {/* Tab Switcher */}
+              <div className="flex bg-gray-100 rounded-lg p-1">
                 <button
-                  onClick={() => setActiveSection('feedback')}
+                  onClick={() => setActiveTab('content')}
                   className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    activeSection === 'feedback' ? 'bg-white shadow text-gray-800' : 'text-gray-600 hover:text-gray-800'
+                    activeTab === 'content' ? 'bg-white shadow text-gray-800' : 'text-gray-600 hover:text-gray-800'
                   }`}
                 >
-                  Feedback ({feedback.length})
+                  Cover Letter
                 </button>
-              )}
+                {share?.allowComments && (
+                  <button
+                    onClick={() => setActiveTab('feedback')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      activeTab === 'feedback' ? 'bg-white shadow text-gray-800' : 'text-gray-600 hover:text-gray-800'
+                    }`}
+                  >
+                    Feedback ({feedback.length})
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -281,107 +327,47 @@ export default function SharedResumeView() {
       {/* Main Content */}
       <main className="max-w-6xl mx-auto p-4">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Resume Content */}
-          <div className={`${activeSection === 'resume' ? 'block' : 'hidden lg:block'} lg:col-span-2`}>
+          {/* Cover Letter Content */}
+          <div className={`${activeTab === 'content' ? 'block' : 'hidden lg:block'} lg:col-span-2`}>
             <div className="bg-white rounded-lg shadow-sm p-8">
-              {/* Contact Info */}
-              {resume.sections?.contactInfo && (
-                <div className="mb-8 text-center border-b pb-6">
-                  <h2 className="text-2xl font-bold text-gray-800">
-                    {resume.sections.contactInfo.name}
-                  </h2>
-                  <p className="text-gray-600 mt-1">
-                    {resume.sections.contactInfo.location}
-                  </p>
-                  {share?.canViewContact && (
-                    <div className="mt-2 text-sm text-gray-500">
-                      {resume.sections.contactInfo.email && (
-                        <span className="mr-4">{resume.sections.contactInfo.email}</span>
-                      )}
-                      {resume.sections.contactInfo.phone && (
-                        <span>{resume.sections.contactInfo.phone}</span>
-                      )}
+              <div 
+                className="prose max-w-none"
+                onMouseUp={handleTextSelection}
+              >
+                <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
+                  {coverLetter.content}
+                </div>
+              </div>
+
+              {/* Selection indicator */}
+              {selectedText && (
+                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="text-xs font-medium text-yellow-800 mb-1">Selected text for feedback:</div>
+                      <div className="text-sm text-gray-700 italic">"{selectedText}"</div>
                     </div>
-                  )}
-                </div>
-              )}
-
-              {/* Summary */}
-              {renderSection('Summary', resume.sections?.summary)}
-
-              {/* Experience */}
-              {resume.sections?.experience && resume.sections.experience.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b border-gray-200 pb-1">
-                    Experience
-                  </h3>
-                  <div className="space-y-4">
-                    {resume.sections.experience.map((exp, idx) => (
-                      <div key={idx} className="pl-4 border-l-2 border-gray-200">
-                        <div className="font-medium text-gray-800">{exp.title || exp.position}</div>
-                        <div className="text-gray-600">{exp.company}</div>
-                        <div className="text-sm text-gray-500">{exp.duration || `${exp.startDate} - ${exp.endDate || 'Present'}`}</div>
-                        {exp.description && (
-                          <p className="text-gray-700 mt-2 text-sm whitespace-pre-wrap">{exp.description}</p>
-                        )}
-                        {exp.achievements && exp.achievements.length > 0 && (
-                          <ul className="list-disc list-inside mt-2 text-sm text-gray-700">
-                            {exp.achievements.map((ach, i) => <li key={i}>{ach}</li>)}
-                          </ul>
-                        )}
-                      </div>
-                    ))}
+                    <button
+                      onClick={() => setSelectedText('')}
+                      className="text-yellow-600 hover:text-yellow-800"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
                   </div>
                 </div>
               )}
 
-              {/* Education */}
-              {resume.sections?.education && resume.sections.education.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b border-gray-200 pb-1">
-                    Education
-                  </h3>
-                  <div className="space-y-3">
-                    {resume.sections.education.map((edu, idx) => (
-                      <div key={idx}>
-                        <div className="font-medium text-gray-800">{edu.degree}</div>
-                        <div className="text-gray-600">{edu.school || edu.institution}</div>
-                        <div className="text-sm text-gray-500">{edu.year || edu.graduationDate}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Skills */}
-              {renderSection('Skills', resume.sections?.skills)}
-
-              {/* Projects */}
-              {resume.sections?.projects && resume.sections.projects.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b border-gray-200 pb-1">
-                    Projects
-                  </h3>
-                  <div className="space-y-4">
-                    {resume.sections.projects.map((proj, idx) => (
-                      <div key={idx}>
-                        <div className="font-medium text-gray-800">{proj.name}</div>
-                        <p className="text-gray-700 text-sm">{proj.description}</p>
-                        {proj.technologies && (
-                          <div className="text-xs text-gray-500 mt-1">
-                            Technologies: {Array.isArray(proj.technologies) ? proj.technologies.join(', ') : proj.technologies}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* Tip */}
+              <div className="mt-6 p-4 bg-gray-50 rounded-lg text-sm text-gray-600">
+                <strong>Tip:</strong> Select any text in the cover letter above to provide inline feedback on specific sections.
+              </div>
             </div>
           </div>
 
           {/* Feedback Panel */}
-          <div className={`${activeSection === 'feedback' ? 'block' : 'hidden lg:block'}`}>
+          <div className={`${activeTab === 'feedback' ? 'block' : 'hidden lg:block'}`}>
             <div className="bg-white rounded-lg shadow-sm p-6 sticky top-24">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">
                 Leave Feedback
@@ -413,6 +399,49 @@ export default function SharedResumeView() {
                         />
                       </div>
                     )}
+
+                    {/* Feedback Type */}
+                    <div className="mb-3">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Feedback Type</label>
+                      <select
+                        value={suggestionType}
+                        onChange={(e) => setSuggestionType(e.target.value)}
+                        className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#777C6D] focus:border-transparent"
+                      >
+                        <option value="general">General</option>
+                        <option value="grammar">Grammar</option>
+                        <option value="content">Content</option>
+                        <option value="tone">Tone</option>
+                        <option value="structure">Structure</option>
+                        <option value="formatting">Formatting</option>
+                      </select>
+                    </div>
+
+                    {/* Feedback Theme */}
+                    <div className="mb-3">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Theme</label>
+                      <select
+                        value={feedbackTheme}
+                        onChange={(e) => setFeedbackTheme(e.target.value)}
+                        className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#777C6D] focus:border-transparent"
+                      >
+                        <option value="other">Other</option>
+                        <option value="clarity">Clarity</option>
+                        <option value="impact">Impact</option>
+                        <option value="relevance">Relevance</option>
+                        <option value="professionalism">Professionalism</option>
+                        <option value="customization">Customization</option>
+                      </select>
+                    </div>
+
+                    {/* Selected text indicator */}
+                    {selectedText && (
+                      <div className="mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
+                        <span className="font-medium">Commenting on: </span>
+                        <span className="italic">"{selectedText.substring(0, 50)}..."</span>
+                      </div>
+                    )}
+
                     <textarea
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
@@ -457,6 +486,28 @@ export default function SharedResumeView() {
                                 {item.status}
                               </span>
                             </div>
+                            
+                            {/* Type and Theme badges */}
+                            <div className="flex gap-1 mb-2">
+                              {item.suggestionType && item.suggestionType !== 'general' && (
+                                <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
+                                  {item.suggestionType}
+                                </span>
+                              )}
+                              {item.feedbackTheme && item.feedbackTheme !== 'other' && (
+                                <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded">
+                                  {item.feedbackTheme}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Selected text */}
+                            {item.selectedText && (
+                              <div className="mb-2 p-2 bg-yellow-50 border-l-2 border-yellow-400 text-xs text-gray-600 italic">
+                                "{item.selectedText}"
+                              </div>
+                            )}
+                            
                             <p className="text-sm text-gray-700">{item.comment}</p>
                             <div className="text-xs text-gray-400 mt-1">
                               {new Date(item.createdAt).toLocaleDateString()}
@@ -469,7 +520,7 @@ export default function SharedResumeView() {
                 </>
               ) : (
                 <p className="text-gray-500 text-sm">
-                  Comments are disabled for this shared resume.
+                  Comments are disabled for this shared cover letter.
                 </p>
               )}
             </div>

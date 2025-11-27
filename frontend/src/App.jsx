@@ -14,6 +14,7 @@ import ProjectPublic from "./pages/auth/ProjectPublic";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ResumeTemplates from "./pages/auth/ResumeTemplates";
 import SharedResumeView from "./pages/public/SharedResumeView";
+import SharedCoverLetterView from "./pages/public/SharedCoverLetterView";
 import SalaryResearch from "./components/SalaryResearch";
 import SalaryBenchmarksExplorer from "./components/SalaryBenchmarksExplorer";
 import SkillGapAnalysis from "./pages/auth/SkillGapAnalysis";
@@ -67,6 +68,7 @@ function App() {
           <Route path="/projects/:id" element={<ProjectPublic />} />
           <Route path="/resumes" element={<ProtectedRoute><ResumeTemplates /></ProtectedRoute>} />
           <Route path="/share/:token" element={<SharedResumeView />} />
+          <Route path="/share/cover-letter/:token" element={<SharedCoverLetterView />} />
           <Route path="/salary-research/:jobId" element={<ProtectedRoute><SalaryResearch /></ProtectedRoute>} />
           <Route path="/salary-benchmarks" element={<ProtectedRoute><SalaryBenchmarksExplorer /></ProtectedRoute>} />
           <Route path="/skill-gap-analysis/:jobId" element={<ProtectedRoute><SkillGapAnalysis /></ProtectedRoute>} />

@@ -13,9 +13,9 @@ export function useExperienceTailoring(authWrap) {
 
   const handleTailorExperience = async (viewingResume, selectedJobForSkills) => {
     if (!viewingResume) return;
-    
+
     const jobSelector = selectedJobForExperience || selectedJobForSkills;
-    
+
     if (!jobSelector) {
       alert('Please select a job posting to tailor experience for.');
       return;
@@ -27,7 +27,7 @@ export function useExperienceTailoring(authWrap) {
       console.error('Invalid job selector:', jobSelector);
       return;
     }
-    
+
     setIsTailoringExperience(true);
     try {
       await authWrap();
@@ -59,47 +59,47 @@ export function useExperienceTailoring(authWrap) {
 
   const handleApplyExperienceChanges = async (viewingResume, onUpdate) => {
     if (!viewingResume || !experienceTailoringData) return;
-    
+
     setIsApplyingExperience(true);
     try {
       await authWrap();
-      
+
       const updatedExperience = viewingResume.sections?.experience?.map((job, expIdx) => {
         const aiExperience = experienceTailoringData.tailoring?.experiences?.find(
           exp => exp.experienceIndex === expIdx
         );
-        
+
         if (!aiExperience || !aiExperience.bullets) {
           return job;
         }
-        
+
         const updatedBullets = job.bullets?.map((originalBullet, bulletIdx) => {
           const key = `${expIdx}-${bulletIdx}`;
           const selectedVariation = selectedExperienceVariations[key];
-          
+
           if (!selectedVariation || selectedVariation === 'original') {
             return originalBullet;
           }
-          
+
           const aiBullet = aiExperience.bullets?.find(b => {
             const cleanOriginal = (b.originalBullet || '').trim().toLowerCase();
             const cleanCurrent = originalBullet.trim().toLowerCase();
             return cleanOriginal.includes(cleanCurrent) || cleanCurrent.includes(cleanOriginal);
           });
-          
+
           if (aiBullet && aiBullet.variations && aiBullet.variations[selectedVariation]) {
             return aiBullet.variations[selectedVariation];
           }
-          
+
           return originalBullet;
         });
-        
+
         return {
           ...job,
           bullets: updatedBullets || job.bullets
         };
       });
-      
+
       const updatedResume = {
         ...viewingResume,
         sections: {
@@ -107,11 +107,11 @@ export function useExperienceTailoring(authWrap) {
           experience: updatedExperience
         }
       };
-      
+
       onUpdate(updatedResume);
-      
+
       setShowExperienceSuccessBanner(true);
-      
+
       setTimeout(() => {
         setShowExperienceTailoring(false);
         setShowExperienceSuccessBanner(false);
@@ -137,6 +137,7 @@ export function useExperienceTailoring(authWrap) {
     showExperienceSuccessBanner,
     handleTailorExperience,
     toggleExperienceVariation,
-    handleApplyExperienceChanges
+    handleApplyExperienceChanges,
+    setSelectedExperienceVariations
   };
 }

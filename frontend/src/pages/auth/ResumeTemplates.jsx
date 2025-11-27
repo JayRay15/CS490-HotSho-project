@@ -48,6 +48,9 @@ import EditableEducation from "../../components/resume/EditableEducation";
 import EditableSkills from "../../components/resume/EditableSkills";
 import FinishEditDropdown from "../../components/resume/FinishEditDropdown";
 import InlineValidationIssuesPanel from "../../components/resume/InlineValidationIssuesPanel";
+import ExperienceTailoringModal from "../../components/resume/ExperienceTailoringModal";
+import ImportTemplateModal from "../../components/resume/ImportTemplateModal";
+import CustomizeImportModal from "../../components/resume/CustomizeImportModal";
 import ResumeSectionHeader from "../../components/resume/ResumeSectionHeader";
 import SectionToggleItem from "../../components/resume/SectionToggleItem";
 import CustomizationPanel from "../../components/resume/CustomizationPanel";
@@ -56,12 +59,14 @@ import SectionFormattingModal from "../../components/resume/SectionFormattingMod
 import CustomizeTemplateModal from "../../components/resume/CustomizeTemplateModal";
 import RenameResumeModal from "../../components/resume/RenameResumeModal";
 import DeleteConfirmationModal from "../../components/resume/DeleteConfirmationModal";
+import AIResumeCreationModal from "../../components/resume/AIResumeCreationModal";
 import AICoverLetterModal from "../../components/coverLetters/AICoverLetterModal";
 import CoverLetterTemplateBrowserModal from "../../components/coverLetters/CoverLetterTemplateBrowserModal";
 import ViewEditCoverLetterModal from "../../components/coverLetters/ViewEditCoverLetterModal";
 import ManageCoverLetterTemplatesModal from "../../components/coverLetters/ManageCoverLetterTemplatesModal";
 import CoverLetterAnalyticsModal from "../../components/coverLetters/CoverLetterAnalyticsModal";
 import CoverLetterImportModal from "../../components/coverLetters/CoverLetterImportModal";
+import CoverLetterCustomizeModal from "../../components/coverLetters/CoverLetterCustomizeModal";
 import CoverLetterShareModal from "../../components/coverLetters/CoverLetterShareModal";
 import AddCoverLetterModal from "../../components/coverLetters/AddCoverLetterModal";
 import SkillsOptimizationModal from "../../components/resume/SkillsOptimizationModal";
@@ -99,8 +104,19 @@ import {
   revokeShare as apiRevokeShare,
   listFeedbackOwner as apiListFeedbackOwner,
   resolveFeedback as apiResolveFeedback,
-  exportFeedbackSummary as apiExportFeedbackSummary
+  exportFeedbackSummary as apiExportFeedbackSummary,
+  getReviewInvitations as apiGetReviewInvitations
 } from "../../api/resumeShare";
+import {
+  createCoverLetterShare as apiCreateCoverLetterShare,
+  listCoverLetterShares as apiListCoverLetterShares,
+  revokeCoverLetterShare as apiRevokeCoverLetterShare,
+  listCoverLetterFeedbackOwner as apiListCoverLetterFeedbackOwner,
+  resolveCoverLetterFeedback as apiResolveCoverLetterFeedback,
+  exportCoverLetterFeedbackSummary as apiExportCoverLetterFeedbackSummary,
+  updateCoverLetterApproval as apiUpdateCoverLetterApproval,
+  getCoverLetterReviewInvitations as apiGetCoverLetterReviewInvitations
+} from "../../api/coverLetterShare";
 
 // Utility function to format plain text into HTML paragraphs
 const formatCoverLetterContent = (content) => {
@@ -197,14 +213,10 @@ export default function ResumeTemplates() {
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [customizeTemplate, setCustomizeTemplate] = useState(null);
   const [showImport, setShowImport] = useState(false);
-  const [importJson, setImportJson] = useState("");
-  const [importFile, setImportFile] = useState(null);
-  const [importMethod, setImportMethod] = useState("file"); // "file" or "json"
-  const [pendingImport, setPendingImport] = useState(null); // Template pending customization
   const [showCustomizeImport, setShowCustomizeImport] = useState(false);
+  const [pendingImport, setPendingImport] = useState(null);
   const [previewTemplate, setPreviewTemplate] = useState(null);
 
-  // Delete confirmation modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingResume, setDeletingResume] = useState(null);
   const [showDeleteTemplateModal, setShowDeleteTemplateModal] = useState(false);
@@ -255,12 +267,6 @@ export default function ResumeTemplates() {
   const [formattingSection, setFormattingSection] = useState(null);
   const [showCustomizationPanel, setShowCustomizationPanel] = useState(false);
 
-  // Removed PDF experimental feature states
-  // const [viewingAsPdf, setViewingAsPdf] = useState(false);
-  // const [pdfUrl, setPdfUrl] = useState(null);
-  // const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  // const [experimentalFeaturesEnabled, setExperimentalFeaturesEnabled] = useState(false);
-
   // Success message state
   const [successMessage, setSuccessMessage] = useState(null);
 
@@ -281,6 +287,29 @@ export default function ResumeTemplates() {
   });
   const [ownerFeedback, setOwnerFeedback] = useState([]);
   const [isLoadingOwnerFeedback, setIsLoadingOwnerFeedback] = useState(false);
+
+  // UC-110: Cover Letter Share & Collaborative Review State
+  const [showCoverLetterSharePanel, setShowCoverLetterSharePanel] = useState(false);
+  const [shareForCoverLetter, setShareForCoverLetter] = useState(null);
+  const [coverLetterShareLinks, setCoverLetterShareLinks] = useState([]);
+  const [isLoadingCoverLetterShares, setIsLoadingCoverLetterShares] = useState(false);
+  const [coverLetterShareActionLoading, setCoverLetterShareActionLoading] = useState(false);
+  const [createdCoverLetterShareUrl, setCreatedCoverLetterShareUrl] = useState("");
+  const [coverLetterShareForm, setCoverLetterShareForm] = useState({
+    privacy: 'unlisted',
+    allowComments: true,
+    allowedReviewersText: '',
+    note: '',
+    expiresInDays: '',
+    deadline: ''
+  });
+  const [coverLetterOwnerFeedback, setCoverLetterOwnerFeedback] = useState([]);
+  const [isLoadingCoverLetterOwnerFeedback, setIsLoadingCoverLetterOwnerFeedback] = useState(false);
+
+  // UC-110: Pending Review Invitations (documents shared with current user)
+  const [reviewInvitations, setReviewInvitations] = useState([]);
+  const [isLoadingReviewInvitations, setIsLoadingReviewInvitations] = useState(false);
+  const [showSharedWithMeSection, setShowSharedWithMeSection] = useState(true);
 
   // UC-053: Validation State (using custom hook)
   const {
@@ -400,7 +429,8 @@ export default function ResumeTemplates() {
     showExperienceSuccessBanner,
     handleTailorExperience: handleTailorExperienceHook,
     toggleExperienceVariation,
-    handleApplyExperienceChanges: handleApplyExperienceChangesHook
+    handleApplyExperienceChanges: handleApplyExperienceChangesHook,
+    setSelectedExperienceVariations
   } = experienceHook;
 
   // UC-52: Version Management State - Using custom hook (initialized after authWrap)
@@ -592,6 +622,152 @@ export default function ResumeTemplates() {
       }
     } catch (e) {
       console.error('Export feedback failed', e);
+    }
+  };
+
+  // UC-110: Cover Letter Share & Collaborative Review Handlers
+  const handleOpenCoverLetterShare = async (coverLetter) => {
+    setShareForCoverLetter(coverLetter);
+    setCreatedCoverLetterShareUrl("");
+    setShowCoverLetterSharePanel(true);
+    await Promise.all([loadCoverLetterShares(coverLetter._id), loadCoverLetterOwnerFeedback(coverLetter._id)]);
+  };
+
+  const loadCoverLetterShares = async (coverLetterId) => {
+    try {
+      setIsLoadingCoverLetterShares(true);
+      await authWrap();
+      const resp = await apiListCoverLetterShares(coverLetterId);
+      const payload = getPayload(resp);
+      setCoverLetterShareLinks(payload.shares || []);
+    } catch (e) {
+      console.error('Failed to load cover letter shares', e);
+    } finally {
+      setIsLoadingCoverLetterShares(false);
+    }
+  };
+
+  const loadCoverLetterOwnerFeedback = async (coverLetterId) => {
+    try {
+      setIsLoadingCoverLetterOwnerFeedback(true);
+      await authWrap();
+      const resp = await apiListCoverLetterFeedbackOwner(coverLetterId);
+      const payload = getPayload(resp);
+      setCoverLetterOwnerFeedback(payload.feedback || []);
+    } catch (e) {
+      console.error('Failed to load cover letter feedback', e);
+    } finally {
+      setIsLoadingCoverLetterOwnerFeedback(false);
+    }
+  };
+
+  const handleGenerateCoverLetterShare = async () => {
+    if (!shareForCoverLetter) return;
+    try {
+      setCoverLetterShareActionLoading(true);
+      await authWrap();
+      const allowedReviewers = (coverLetterShareForm.allowedReviewersText || '')
+        .split(',')
+        .map(e => e.trim())
+        .filter(Boolean)
+        .map(email => ({ email }));
+      let expiresAt = null;
+      if (coverLetterShareForm.expiresInDays) {
+        const days = parseInt(coverLetterShareForm.expiresInDays, 10);
+        if (!isNaN(days) && days > 0) {
+          const d = new Date();
+          d.setDate(d.getDate() + days);
+          expiresAt = d.toISOString();
+        }
+      }
+      const resp = await apiCreateCoverLetterShare(shareForCoverLetter._id, {
+        privacy: coverLetterShareForm.privacy,
+        allowComments: !!coverLetterShareForm.allowComments,
+        allowedReviewers,
+        note: coverLetterShareForm.note || null,
+        expiresAt,
+        deadline: coverLetterShareForm.deadline || null
+      });
+      const payload = getPayload(resp);
+      if (payload.share) setCoverLetterShareLinks(prev => [payload.share, ...(prev || [])]);
+      setCreatedCoverLetterShareUrl(payload.url || '');
+      setCoverLetterSuccessMessage('Share link created');
+      setTimeout(() => setCoverLetterSuccessMessage(null), 2500);
+    } catch (e) {
+      console.error('Create cover letter share failed', e);
+    } finally {
+      setCoverLetterShareActionLoading(false);
+    }
+  };
+
+  const handleRevokeCoverLetterShare = async (token) => {
+    if (!shareForCoverLetter) return;
+    try {
+      setCoverLetterShareActionLoading(true);
+      await authWrap();
+      await apiRevokeCoverLetterShare(shareForCoverLetter._id, token);
+      setCoverLetterShareLinks(prev => (prev || []).map(s => s.token === token ? { ...s, status: 'revoked' } : s));
+    } catch (e) {
+      console.error('Revoke cover letter share failed', e);
+    } finally {
+      setCoverLetterShareActionLoading(false);
+    }
+  };
+
+  const handleResolveCoverLetterFeedback = async (fb) => {
+    try {
+      await authWrap();
+      const note = window.prompt('Add a resolution note (optional):', '');
+      const resp = await apiResolveCoverLetterFeedback(fb._id, { resolutionNote: note || '' });
+      const payload = getPayload(resp);
+      const updated = payload.feedback || payload;
+      setCoverLetterOwnerFeedback(prev => prev.map(it => it._id === updated._id ? updated : it));
+    } catch (e) {
+      console.error('Resolve cover letter feedback failed', e);
+    }
+  };
+
+  const handleExportCoverLetterFeedback = async (format = 'csv') => {
+    if (!shareForCoverLetter) return;
+    try {
+      await authWrap();
+      const resp = await apiExportCoverLetterFeedbackSummary(shareForCoverLetter._id, format);
+      if (format === 'csv') {
+        const blob = new Blob([resp.data], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${(shareForCoverLetter.name || 'cover_letter')}_feedback.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      } else {
+        const payload = getPayload(resp);
+        const jsonBlob = new Blob([JSON.stringify(payload.feedback || [], null, 2)], { type: 'application/json' });
+        const url = window.URL.createObjectURL(jsonBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${(shareForCoverLetter.name || 'cover_letter')}_feedback.json`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      }
+    } catch (e) {
+      console.error('Export cover letter feedback failed', e);
+    }
+  };
+
+  const handleUpdateCoverLetterApproval = async (status) => {
+    if (!shareForCoverLetter) return;
+    try {
+      await authWrap();
+      await apiUpdateCoverLetterApproval(shareForCoverLetter._id, status);
+      // Update local state
+      setShareForCoverLetter(prev => ({ ...prev, approvalStatus: status }));
+      // Refresh cover letters list
+      await loadSavedCoverLetters();
+      setCoverLetterSuccessMessage(`Cover letter marked as ${status}`);
+      setTimeout(() => setCoverLetterSuccessMessage(null), 2500);
+    } catch (e) {
+      console.error('Update cover letter approval failed', e);
     }
   };
 
@@ -811,11 +987,35 @@ export default function ResumeTemplates() {
     }
   };
 
+  // UC-110: Load pending review invitations (documents shared with current user)
+  const loadReviewInvitations = async () => {
+    try {
+      setIsLoadingReviewInvitations(true);
+      await authWrap();
+      const [resumeInvites, coverLetterInvites] = await Promise.all([
+        apiGetReviewInvitations(),
+        apiGetCoverLetterReviewInvitations()
+      ]);
+      const resumeItems = resumeInvites.data?.data?.invitations || [];
+      const coverLetterItems = coverLetterInvites.data?.data?.invitations || [];
+      // Combine and sort by createdAt descending
+      const allInvitations = [...resumeItems, ...coverLetterItems].sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      );
+      setReviewInvitations(allInvitations);
+    } catch (err) {
+      console.error("Failed to load review invitations:", err);
+      setReviewInvitations([]);
+    } finally {
+      setIsLoadingReviewInvitations(false);
+    }
+  };
+
   useEffect(() => {
     (async () => {
       try {
         setLoading(true);
-        await Promise.all([loadAll(), loadSavedCoverLetters(), loadJobs()]);
+        await Promise.all([loadAll(), loadSavedCoverLetters(), loadJobs(), loadReviewInvitations()]);
       } catch (e) {
         console.error(e);
         alert("Failed to load resume data");
@@ -1879,25 +2079,23 @@ export default function ResumeTemplates() {
     }
   };
 
-  const handleImport = async (e) => {
-    e.preventDefault();
+  const handleImport = async ({ method, file, json }) => {
     try {
       let templateData;
 
-      if (importMethod === "file" && importFile) {
+      if (method === "file" && file) {
         // Handle file upload
-        templateData = await handleFileUpload(importFile);
+        templateData = await handleFileUpload(file);
         // For file uploads, show customization modal first
         setPendingImport(templateData);
         setShowImport(false);
         setShowCustomizeImport(true);
-      } else if (importMethod === "json" && importJson) {
+      } else if (method === "json" && json) {
         // Handle JSON import - import directly
-        templateData = JSON.parse(importJson);
+        templateData = JSON.parse(json);
         await authWrap();
         await apiImportTemplate(templateData);
         setShowImport(false);
-        setImportJson("");
         await loadAll();
         setSuccessMessage("Template imported successfully!");
         setTimeout(() => setSuccessMessage(null), 5000);
@@ -1907,7 +2105,7 @@ export default function ResumeTemplates() {
       }
     } catch (err) {
       console.error(err);
-      alert(importMethod === "file" ? "Failed to import resume file" : "Invalid JSON for import");
+      alert(method === "file" ? "Failed to import resume file" : "Invalid JSON for import");
     }
   };
 
@@ -1920,8 +2118,6 @@ export default function ResumeTemplates() {
       console.log("Template import response:", response);
       setShowCustomizeImport(false);
       setPendingImport(null);
-      setImportFile(null);
-      setImportMethod("file");
       await loadAll();
       setSuccessMessage("Template imported successfully!");
       setTimeout(() => setSuccessMessage(null), 5000);
@@ -2298,6 +2494,29 @@ export default function ResumeTemplates() {
                                 </svg>
                               </button>
 
+                              {/* UC-110: Share Button for Collaborative Review */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenCoverLetterShare(letter);
+                                }}
+                                className="p-1 rounded-lg transition flex-shrink-0 flex items-center justify-center"
+                                style={{ color: '#6B7280' }}
+                                onMouseOver={(e) => {
+                                  e.currentTarget.style.color = '#2563EB';
+                                  e.currentTarget.style.backgroundColor = '#EFF6FF';
+                                }}
+                                onMouseOut={(e) => {
+                                  e.currentTarget.style.color = '#6B7280';
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
+                                title="Share for Review"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                                </svg>
+                              </button>
+
                               {/* Delete Button */}
                               <button
                                 onClick={(e) => {
@@ -2344,6 +2563,142 @@ export default function ResumeTemplates() {
               </>
             )}
           </div>
+
+          {/* UC-110: Shared with Me Section - Documents shared for review */}
+          {reviewInvitations.length > 0 && (
+            <div className="mb-12">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-4">
+                  <h2 className="text-2xl font-heading font-bold" style={{ color: "#4F5348" }}>
+                    Shared with Me
+                  </h2>
+                  <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                    {reviewInvitations.length} pending review{reviewInvitations.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                <button
+                  onClick={loadReviewInvitations}
+                  disabled={isLoadingReviewInvitations}
+                  className="px-3 py-1.5 text-sm border rounded-lg transition hover:bg-gray-50"
+                  style={{ borderColor: '#D1D5DB' }}
+                >
+                  {isLoadingReviewInvitations ? 'Refreshing...' : 'Refresh'}
+                </button>
+              </div>
+
+              <p className="text-sm text-gray-600 mb-4">
+                Documents that others have shared with you for review and feedback.
+              </p>
+
+              {isLoadingReviewInvitations ? (
+                <div className="text-center py-8 text-gray-500">Loading invitations...</div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {reviewInvitations.map((invitation) => {
+                    const isResume = invitation.type === 'resume';
+                    const deadlineDate = invitation.deadline ? new Date(invitation.deadline) : null;
+                    const isOverdue = deadlineDate && deadlineDate < new Date();
+                    const daysLeft = deadlineDate ? Math.ceil((deadlineDate - new Date()) / (1000 * 60 * 60 * 24)) : null;
+
+                    return (
+                      <Card
+                        key={`${invitation.type}-${invitation.token}`}
+                        variant="outlined"
+                        className="overflow-hidden hover:shadow-md transition-shadow"
+                      >
+                        <div className="p-4">
+                          {/* Header */}
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isResume ? 'bg-blue-100' : 'bg-purple-100'
+                                }`}>
+                                {isResume ? (
+                                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                  </svg>
+                                ) : (
+                                  <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                  </svg>
+                                )}
+                              </div>
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${isResume ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
+                                }`}>
+                                {isResume ? 'Resume' : 'Cover Letter'}
+                              </span>
+                            </div>
+                            {invitation.approvalStatus && (
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${invitation.approvalStatus === 'approved' ? 'bg-green-100 text-green-700' :
+                                invitation.approvalStatus === 'changes_requested' ? 'bg-orange-100 text-orange-700' :
+                                  invitation.approvalStatus === 'pending_review' ? 'bg-yellow-100 text-yellow-700' :
+                                    'bg-gray-100 text-gray-600'
+                                }`}>
+                                {invitation.approvalStatus.replace('_', ' ')}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Document Name */}
+                          <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1">
+                            {invitation.documentName}
+                          </h3>
+
+                          {/* Owner */}
+                          <p className="text-sm text-gray-600 mb-2">
+                            From: <span className="font-medium">{invitation.ownerName}</span>
+                          </p>
+
+                          {/* Note */}
+                          {invitation.note && (
+                            <p className="text-sm text-gray-500 mb-2 line-clamp-2 italic">
+                              "{invitation.note}"
+                            </p>
+                          )}
+
+                          {/* Deadline */}
+                          {deadlineDate && (
+                            <div className={`text-xs px-2 py-1 rounded mb-3 inline-block ${isOverdue
+                              ? 'bg-red-100 text-red-700'
+                              : daysLeft <= 2
+                                ? 'bg-orange-100 text-orange-700'
+                                : 'bg-blue-50 text-blue-700'
+                              }`}>
+                              {isOverdue ? (
+                                <>⚠️ Overdue: {deadlineDate.toLocaleDateString()}</>
+                              ) : (
+                                <>📅 Due: {deadlineDate.toLocaleDateString()} ({daysLeft} day{daysLeft !== 1 ? 's' : ''} left)</>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Actions */}
+                          <div className="flex gap-2 mt-3">
+                            <a
+                              href={isResume
+                                ? `/share/${invitation.token}`
+                                : `/share/cover-letter/${invitation.token}`
+                              }
+                              className="flex-1 px-3 py-2 text-sm text-center text-white rounded-lg transition"
+                              style={{ backgroundColor: '#777C6D' }}
+                              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                            >
+                              Review & Comment
+                            </a>
+                          </div>
+
+                          {/* Shared date */}
+                          <p className="text-xs text-gray-400 mt-2 text-center">
+                            Shared {new Date(invitation.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </Container>
 
@@ -2424,604 +2779,24 @@ export default function ResumeTemplates() {
       />
 
       {/* Import Template Modal */}
-      {showImport && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-[60] p-4"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
-          onClick={() => setShowImport(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-2xl max-w-2xl w-full border border-gray-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center z-10">
-              <h3 className="text-2xl font-heading font-semibold">Import Template (JSON)</h3>
-              <button
-                onClick={() => setShowImport(false)}
-                className="text-gray-400 hover:text-gray-600 transition"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="p-6">
-              <form onSubmit={handleImport} className="space-y-6">
-                {/* Import Method Selection */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Import Method
-                  </label>
-                  <div className="flex space-x-4">
-                    <label className="flex items-center cursor-pointer">
-                      <input
-                        type="radio"
-                        name="importMethod"
-                        value="file"
-                        checked={importMethod === "file"}
-                        onChange={(e) => setImportMethod(e.target.value)}
-                        className="mr-2"
-                      />
-                      <span className="text-sm text-gray-700">Upload Resume File</span>
-                    </label>
-                    <label className="flex items-center cursor-pointer">
-                      <input
-                        type="radio"
-                        name="importMethod"
-                        value="json"
-                        checked={importMethod === "json"}
-                        onChange={(e) => setImportMethod(e.target.value)}
-                        className="mr-2"
-                      />
-                      <span className="text-sm text-gray-700">Paste JSON</span>
-                    </label>
-                  </div>
-                </div>
-
-                {/* File Upload Section */}
-                {importMethod === "file" && (
-                  <div>
-                    <label htmlFor="importFile" className="block text-sm font-medium text-gray-700 mb-2">
-                      Upload Resume File <span className="text-red-500">*</span>
-                    </label>
-                    <div className="mt-2">
-                      <input
-                        type="file"
-                        id="importFile"
-                        accept=".pdf,.doc,.docx,.txt"
-                        onChange={(e) => setImportFile(e.target.files[0])}
-                        className="block w-full text-sm text-gray-500
-                          file:mr-4 file:py-2 file:px-4
-                          file:rounded-lg file:border-0
-                          file:text-sm file:font-medium
-                          file:bg-gray-100 file:text-gray-700
-                          hover:file:bg-gray-200 file:cursor-pointer
-                          cursor-pointer"
-                        required
-                      />
-                      <p className="mt-2 text-xs text-gray-500">
-                        Supported formats: PDF, DOC, DOCX, TXT (Max 5MB)
-                      </p>
-                      {importFile && (
-                        <p className="mt-2 text-sm text-green-600">
-                          Selected: {importFile.name}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* JSON Input Section */}
-                {importMethod === "json" && (
-                  <div>
-                    <label htmlFor="importJson" className="block text-sm font-medium text-gray-700 mb-2">
-                      Paste Template JSON <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                      id="importJson"
-                      className="w-full border border-gray-300 rounded-lg p-4 h-64 font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder='{"name":"My Template","type":"hybrid","layout":{"sectionsOrder":["summary","skills","experience"]},"theme":{"colors":{"primary":"#2a7"}}}'
-                      value={importJson}
-                      onChange={(e) => setImportJson(e.target.value)}
-                      required
-                    />
-                  </div>
-                )}
-
-                <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 -mx-6 -mb-6 border-t">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowImport(false);
-                      setImportFile(null);
-                      setImportJson("");
-                      setImportMethod("file");
-                    }}
-                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 text-white rounded-lg transition"
-                    style={{ backgroundColor: '#777C6D' }}
-                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-                  >
-                    Import Template
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
+      <ImportTemplateModal
+        isOpen={showImport}
+        onClose={() => setShowImport(false)}
+        onImport={handleImport}
+      />
 
       {/* Customize Import Modal */}
-      {showCustomizeImport && pendingImport && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-50 p-4"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
-          onClick={() => {
-            setShowCustomizeImport(false);
-            setPendingImport(null);
-            setImportFile(null);
-          }}
-        >
-          <div
-            className="bg-white rounded-lg shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-gray-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
-              <div>
-                <h3 className="text-2xl font-heading font-semibold">Customize Template Appearance</h3>
-                <p className="text-sm text-gray-600 mt-1">Set fonts and colors to match your original resume</p>
-              </div>
-              <button
-                onClick={() => {
-                  setShowCustomizeImport(false);
-                  setPendingImport(null);
-                  setImportFile(null);
-                }}
-                className="text-gray-400 hover:text-gray-600 transition"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="p-6 space-y-6">
-              {/* Analysis Banner or Help Banner */}
-              {pendingImport?.analysis?.used ? (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex items-start">
-                    <svg className="w-5 h-5 text-green-700 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <div>
-                      <h5 className="font-semibold text-green-900 mb-1">Applied styling detected from your PDF</h5>
-                      <p className="text-sm text-green-800">
-                        We detected styling hints from your uploaded PDF and prefilled the colors and font sizes below. You can still fine-tune anything before saving.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-start">
-                    <svg className="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div>
-                      <h5 className="font-semibold text-blue-900 mb-1">Match Your Original Resume</h5>
-                      <p className="text-sm text-blue-800">
-                        PDFs can be hard to parse for exact styling. Adjust the colors, fonts, and sizes below to match your original resume. The live preview updates instantly.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Template Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Template Name
-                </label>
-                <input
-                  type="text"
-                  value={pendingImport.name}
-                  onChange={(e) => setPendingImport({ ...pendingImport, name: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              {/* Colors Section */}
-              <div>
-                <h4 className="text-lg font-semibold mb-3">Colors</h4>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Primary Color (Headers)
-                    </label>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="color"
-                        value={pendingImport.theme?.colors?.primary || "#4F5348"}
-                        onChange={(e) => setPendingImport({
-                          ...pendingImport,
-                          theme: {
-                            ...pendingImport.theme,
-                            colors: { ...pendingImport.theme?.colors, primary: e.target.value }
-                          }
-                        })}
-                        className="w-12 h-12 rounded border border-gray-300 cursor-pointer"
-                      />
-                      <input
-                        type="text"
-                        value={pendingImport.theme?.colors?.primary || "#4F5348"}
-                        onChange={(e) => setPendingImport({
-                          ...pendingImport,
-                          theme: {
-                            ...pendingImport.theme,
-                            colors: { ...pendingImport.theme?.colors, primary: e.target.value }
-                          }
-                        })}
-                        className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm font-mono"
-                        placeholder="#4F5348"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Text Color
-                    </label>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="color"
-                        value={pendingImport.theme?.colors?.text || "#222"}
-                        onChange={(e) => setPendingImport({
-                          ...pendingImport,
-                          theme: {
-                            ...pendingImport.theme,
-                            colors: { ...pendingImport.theme?.colors, text: e.target.value }
-                          }
-                        })}
-                        className="w-12 h-12 rounded border border-gray-300 cursor-pointer"
-                      />
-                      <input
-                        type="text"
-                        value={pendingImport.theme?.colors?.text || "#222"}
-                        onChange={(e) => setPendingImport({
-                          ...pendingImport,
-                          theme: {
-                            ...pendingImport.theme,
-                            colors: { ...pendingImport.theme?.colors, text: e.target.value }
-                          }
-                        })}
-                        className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm font-mono"
-                        placeholder="#222"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Muted Color (Dates)
-                    </label>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="color"
-                        value={pendingImport.theme?.colors?.muted || "#666"}
-                        onChange={(e) => setPendingImport({
-                          ...pendingImport,
-                          theme: {
-                            ...pendingImport.theme,
-                            colors: { ...pendingImport.theme?.colors, muted: e.target.value }
-                          }
-                        })}
-                        className="w-12 h-12 rounded border border-gray-300 cursor-pointer"
-                      />
-                      <input
-                        type="text"
-                        value={pendingImport.theme?.colors?.muted || "#666"}
-                        onChange={(e) => setPendingImport({
-                          ...pendingImport,
-                          theme: {
-                            ...pendingImport.theme,
-                            colors: { ...pendingImport.theme?.colors, muted: e.target.value }
-                          }
-                        })}
-                        className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm font-mono"
-                        placeholder="#666"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Fonts Section */}
-              <div>
-                <h4 className="text-lg font-semibold mb-3">Fonts</h4>
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Heading Font
-                    </label>
-                    <select
-                      value={pendingImport.theme?.fonts?.heading || "Inter, sans-serif"}
-                      onChange={(e) => setPendingImport({
-                        ...pendingImport,
-                        theme: {
-                          ...pendingImport.theme,
-                          fonts: { ...pendingImport.theme?.fonts, heading: e.target.value }
-                        }
-                      })}
-                      className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="Inter, sans-serif">Inter (Modern)</option>
-                      <option value="Georgia, serif">Georgia (Classic)</option>
-                      <option value="Times New Roman, serif">Times New Roman (Traditional)</option>
-                      <option value="Arial, sans-serif">Arial (Clean)</option>
-                      <option value="Helvetica, sans-serif">Helvetica (Professional)</option>
-                      <option value="Calibri, sans-serif">Calibri (Modern)</option>
-                      <option value="Garamond, serif">Garamond (Elegant)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Body Font
-                    </label>
-                    <select
-                      value={pendingImport.theme?.fonts?.body || "Inter, sans-serif"}
-                      onChange={(e) => setPendingImport({
-                        ...pendingImport,
-                        theme: {
-                          ...pendingImport.theme,
-                          fonts: { ...pendingImport.theme?.fonts, body: e.target.value }
-                        }
-                      })}
-                      className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="Inter, sans-serif">Inter (Modern)</option>
-                      <option value="Georgia, serif">Georgia (Classic)</option>
-                      <option value="Times New Roman, serif">Times New Roman (Traditional)</option>
-                      <option value="Arial, sans-serif">Arial (Clean)</option>
-                      <option value="Helvetica, sans-serif">Helvetica (Professional)</option>
-                      <option value="Calibri, sans-serif">Calibri (Modern)</option>
-                      <option value="Garamond, serif">Garamond (Elegant)</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Font Sizes */}
-                <div>
-                  <h5 className="text-sm font-semibold text-gray-700 mb-3">Font Sizes</h5>
-                  <div className="grid grid-cols-5 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
-                        Name
-                      </label>
-                      <input
-                        type="number"
-                        min="20"
-                        max="60"
-                        value={parseInt(pendingImport.theme?.fonts?.sizes?.name) || 36}
-                        onChange={(e) => setPendingImport({
-                          ...pendingImport,
-                          theme: {
-                            ...pendingImport.theme,
-                            fonts: {
-                              ...pendingImport.theme?.fonts,
-                              sizes: {
-                                ...pendingImport.theme?.fonts?.sizes,
-                                name: `${e.target.value}px`
-                              }
-                            }
-                          }
-                        })}
-                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-                      />
-                      <span className="text-xs text-gray-500">px</span>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
-                        Headers
-                      </label>
-                      <input
-                        type="number"
-                        min="12"
-                        max="32"
-                        value={parseInt(pendingImport.theme?.fonts?.sizes?.sectionHeader) || 18}
-                        onChange={(e) => setPendingImport({
-                          ...pendingImport,
-                          theme: {
-                            ...pendingImport.theme,
-                            fonts: {
-                              ...pendingImport.theme?.fonts,
-                              sizes: {
-                                ...pendingImport.theme?.fonts?.sizes,
-                                sectionHeader: `${e.target.value}px`
-                              }
-                            }
-                          }
-                        })}
-                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-                      />
-                      <span className="text-xs text-gray-500">px</span>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
-                        Job Title
-                      </label>
-                      <input
-                        type="number"
-                        min="10"
-                        max="24"
-                        value={parseInt(pendingImport.theme?.fonts?.sizes?.jobTitle) || 16}
-                        onChange={(e) => setPendingImport({
-                          ...pendingImport,
-                          theme: {
-                            ...pendingImport.theme,
-                            fonts: {
-                              ...pendingImport.theme?.fonts,
-                              sizes: {
-                                ...pendingImport.theme?.fonts?.sizes,
-                                jobTitle: `${e.target.value}px`
-                              }
-                            }
-                          }
-                        })}
-                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-                      />
-                      <span className="text-xs text-gray-500">px</span>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
-                        Body
-                      </label>
-                      <input
-                        type="number"
-                        min="10"
-                        max="20"
-                        value={parseInt(pendingImport.theme?.fonts?.sizes?.body) || 14}
-                        onChange={(e) => setPendingImport({
-                          ...pendingImport,
-                          theme: {
-                            ...pendingImport.theme,
-                            fonts: {
-                              ...pendingImport.theme?.fonts,
-                              sizes: {
-                                ...pendingImport.theme?.fonts?.sizes,
-                                body: `${e.target.value}px`
-                              }
-                            }
-                          }
-                        })}
-                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-                      />
-                      <span className="text-xs text-gray-500">px</span>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
-                        Small
-                      </label>
-                      <input
-                        type="number"
-                        min="8"
-                        max="16"
-                        value={parseInt(pendingImport.theme?.fonts?.sizes?.small) || 12}
-                        onChange={(e) => setPendingImport({
-                          ...pendingImport,
-                          theme: {
-                            ...pendingImport.theme,
-                            fonts: {
-                              ...pendingImport.theme?.fonts,
-                              sizes: {
-                                ...pendingImport.theme?.fonts?.sizes,
-                                small: `${e.target.value}px`
-                              }
-                            }
-                          }
-                        })}
-                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-                      />
-                      <span className="text-xs text-gray-500">px</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Preview Section */}
-              <div>
-                <h4 className="text-lg font-semibold mb-3">Preview</h4>
-                <div className="border border-gray-300 rounded-lg p-6 bg-white">
-                  <h2
-                    className="font-bold mb-2"
-                    style={{
-                      color: pendingImport.theme?.colors?.primary || "#4F5348",
-                      fontFamily: pendingImport.theme?.fonts?.heading || "Inter, sans-serif",
-                      fontSize: pendingImport.theme?.fonts?.sizes?.name || "36px"
-                    }}
-                  >
-                    Your Name
-                  </h2>
-                  <p
-                    className="mb-4"
-                    style={{
-                      color: pendingImport.theme?.colors?.muted || "#666",
-                      fontFamily: pendingImport.theme?.fonts?.body || "Inter, sans-serif",
-                      fontSize: pendingImport.theme?.fonts?.sizes?.small || "12px"
-                    }}
-                  >
-                    email@example.com • (555) 123-4567
-                  </p>
-                  <h3
-                    className="font-semibold mb-2 uppercase"
-                    style={{
-                      color: pendingImport.theme?.colors?.primary || "#4F5348",
-                      fontFamily: pendingImport.theme?.fonts?.heading || "Inter, sans-serif",
-                      fontSize: pendingImport.theme?.fonts?.sizes?.sectionHeader || "18px"
-                    }}
-                  >
-                    Experience
-                  </h3>
-                  <h4
-                    className="font-bold mb-1"
-                    style={{
-                      color: pendingImport.theme?.colors?.text || "#222",
-                      fontFamily: pendingImport.theme?.fonts?.heading || "Inter, sans-serif",
-                      fontSize: pendingImport.theme?.fonts?.sizes?.jobTitle || "16px"
-                    }}
-                  >
-                    Senior Developer
-                  </h4>
-                  <p
-                    style={{
-                      color: pendingImport.theme?.colors?.text || "#222",
-                      fontFamily: pendingImport.theme?.fonts?.body || "Inter, sans-serif",
-                      fontSize: pendingImport.theme?.fonts?.sizes?.body || "14px"
-                    }}
-                  >
-                    This is how your body text will appear in the resume.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 border-t">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowCustomizeImport(false);
-                  setPendingImport(null);
-                  setImportFile(null);
-                }}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleFinalizeImport}
-                className="px-4 py-2 text-white rounded-lg transition"
-                style={{ backgroundColor: '#777C6D' }}
-                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-              >
-                Save Template
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <CustomizeImportModal
+        isOpen={showCustomizeImport}
+        pendingImport={pendingImport}
+        onClose={() => {
+          setShowCustomizeImport(false);
+          setPendingImport(null);
+          setImportFile(null);
+        }}
+        onPendingImportChange={setPendingImport}
+        onFinalizeImport={handleFinalizeImport}
+      />
 
       {/* Template Preview Modal */}
       {previewTemplate && (
@@ -3032,234 +2807,23 @@ export default function ResumeTemplates() {
       )}
 
       {/* AI Resume Creation Modal */}
-      {showAIResumeModal && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-50 p-4"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
-          onClick={() => !isGenerating && setShowAIResumeModal(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-2xl max-w-2xl w-full border border-gray-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center z-10">
-              <div>
-                <h3 className="text-2xl font-heading font-semibold">Create Resume with AI</h3>
-                <p className="text-sm text-gray-600 mt-1">Generate tailored resume content based on a job posting</p>
-              </div>
-              <button
-                onClick={() => setShowAIResumeModal(false)}
-                disabled={isGenerating}
-                className="text-gray-400 hover:text-gray-600 transition disabled:opacity-50"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="p-6">
-              <form onSubmit={handleGenerateAIResume} className="space-y-6">
-                {/* Resume Name */}
-                <div>
-                  <label htmlFor="resumeName" className="block text-sm font-medium text-gray-700 mb-2">
-                    Resume Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="resumeName"
-                    value={aiFormData.name}
-                    onChange={(e) => setAIFormData({ ...aiFormData, name: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="e.g., Software Engineer at Google"
-                    required
-                    disabled={isGenerating}
-                  />
-                </div>
-
-                {/* Job Selection */}
-                <div>
-                  <label htmlFor="jobSelect" className="block text-sm font-medium text-gray-700 mb-2">
-                    Select Job to Tailor For <span className="text-red-500">*</span>
-                  </label>
-                  {jobs.length === 0 ? (
-                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <p className="text-sm text-yellow-800">
-                        No saved or applied jobs found. Please save or apply to jobs first.
-                      </p>
-                    </div>
-                  ) : (
-                    <select
-                      id="jobSelect"
-                      value={aiFormData.jobId}
-                      onChange={(e) => setAIFormData({ ...aiFormData, jobId: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      required
-                      disabled={isGenerating}
-                    >
-                      <option value="">-- Select a job --</option>
-                      {jobs.map((job) => (
-                        <option key={job._id} value={job._id}>
-                          {job.title} at {job.company} ({job.status})
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-
-                {/* Template Selection */}
-                <div>
-                  <label htmlFor="templateSelect" className="block text-sm font-medium text-gray-700 mb-2">
-                    Select Template <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    id="templateSelect"
-                    value={aiFormData.templateId}
-                    onChange={(e) => setAIFormData({ ...aiFormData, templateId: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                    disabled={isGenerating}
-                  >
-                    <option value="">-- Select a template --</option>
-                    {templates.map((template) => (
-                      <option key={template._id} value={template._id}>
-                        {template.name} ({template.type})
-                        {template.isDefault ? " - Default" : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-
-                {/* Variations Display */}
-                {showVariations && variations.length > 0 && (
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <h4 className="text-lg font-semibold text-gray-900">Choose a Variation:</h4>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowVariations(false);
-                          setSelectedVariation(null);
-                          setVariations([]);
-                        }}
-                        className="text-sm text-gray-600 hover:text-gray-800"
-                      >
-                        Generate new variations
-                      </button>
-                    </div>
-                    <div className="space-y-3">
-                      {variations.map((variation, idx) => (
-                        <div
-                          key={idx}
-                          onClick={() => setSelectedVariation(variation)}
-                          className={`border-2 rounded-lg p-4 cursor-pointer transition ${selectedVariation?.variationNumber === variation.variationNumber
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300'
-                            }`}
-                        >
-                          <div className="flex items-start justify-between mb-2">
-                            <div>
-                              <h5 className="font-semibold text-gray-900">
-                                Variation {variation.variationNumber}: {variation.emphasis}
-                              </h5>
-                              {variation.tailoringNotes && (
-                                <p className="text-sm text-gray-600 mt-1">{variation.tailoringNotes}</p>
-                              )}
-                            </div>
-                            {selectedVariation?.variationNumber === variation.variationNumber && (
-                              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                            )}
-                          </div>
-                          <div className="text-sm text-gray-700">
-                            <p className="line-clamp-2 mb-2">{variation.summary}</p>
-                            <div className="flex flex-wrap gap-2">
-                              {variation.relevantSkills?.slice(0, 5).map((skill, skillIdx) => (
-                                <span key={skillIdx} className="px-2 py-1 bg-gray-100 rounded text-xs">
-                                  {skill}
-                                </span>
-                              ))}
-                              {variation.relevantSkills?.length > 5 && (
-                                <span className="px-2 py-1 bg-gray-100 rounded text-xs">
-                                  +{variation.relevantSkills.length - 5} more
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* AI Features Info */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-start space-x-3">
-                    <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                    <div>
-                      <h4 className="text-sm font-semibold text-blue-900 mb-1">AI will generate:</h4>
-                      <ul className="text-sm text-blue-800 space-y-1">
-                        <li>• Tailored professional summary</li>
-                        <li>• Achievement-focused experience bullets</li>
-                        <li>• Relevant skills from your profile</li>
-                        <li>• ATS-optimized keywords</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Error Message */}
-                {generationError && (
-                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-sm text-red-800">{generationError}</p>
-                  </div>
-                )}
-
-                {/* Footer */}
-                <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 -mx-6 -mb-6 border-t">
-                  <button
-                    type="button"
-                    onClick={() => setShowAIResumeModal(false)}
-                    disabled={isGenerating}
-                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isGenerating || jobs.length === 0}
-                    className="px-4 py-2 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-                    style={{ backgroundColor: isGenerating ? '#9CA3AF' : '#777C6D' }}
-                    onMouseOver={(e) => !isGenerating && (e.currentTarget.style.backgroundColor = '#656A5C')}
-                    onMouseOut={(e) => !isGenerating && (e.currentTarget.style.backgroundColor = '#777C6D')}
-                  >
-                    {isGenerating ? (
-                      <>
-                        <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span>Generating with AI...</span>
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                        <span>Generate Resume</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
+      <AIResumeCreationModal
+        isOpen={showAIResumeModal}
+        onClose={() => setShowAIResumeModal(false)}
+        isGenerating={isGenerating}
+        aiFormData={aiFormData}
+        setAIFormData={setAIFormData}
+        jobs={jobs}
+        templates={templates}
+        showVariations={showVariations}
+        variations={variations}
+        selectedVariation={selectedVariation}
+        setSelectedVariation={setSelectedVariation}
+        setShowVariations={setShowVariations}
+        setVariations={setVariations}
+        generationError={generationError}
+        onSubmit={handleGenerateAIResume}
+      />
 
       {/* Delete Confirmation Modal */}
       <DeleteConfirmationModal
@@ -3519,6 +3083,293 @@ export default function ResumeTemplates() {
                           <div className="flex-shrink-0">
                             {fb.status !== 'resolved' && (
                               <button onClick={() => handleResolveFeedback(fb)} className="px-3 py-1 border rounded text-sm">Mark Resolved</button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500">No feedback yet.</p>
+                  ))}
+                </div>
+              </Card>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* UC-110: Cover Letter Share & Feedback Panel (Owner) */}
+      {showCoverLetterSharePanel && shareForCoverLetter && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50 p-4"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={() => setShowCoverLetterSharePanel(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto border border-gray-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
+              <div>
+                <h3 className="text-2xl font-heading font-semibold">Share & Feedback — {shareForCoverLetter.name}</h3>
+                {shareForCoverLetter.approvalStatus && (
+                  <span className={`text-sm px-2 py-1 rounded mt-1 inline-block ${shareForCoverLetter.approvalStatus === 'approved' ? 'bg-green-100 text-green-700' :
+                    shareForCoverLetter.approvalStatus === 'needs_revision' ? 'bg-yellow-100 text-yellow-700' :
+                      'bg-gray-100 text-gray-700'
+                    }`}>
+                    Status: {shareForCoverLetter.approvalStatus.replace('_', ' ')}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                {/* Approval buttons */}
+                <button
+                  onClick={() => handleUpdateCoverLetterApproval('approved')}
+                  className="px-3 py-1 text-sm rounded bg-green-100 text-green-700 hover:bg-green-200 transition"
+                >
+                  Mark Approved
+                </button>
+                <button
+                  onClick={() => handleUpdateCoverLetterApproval('needs_revision')}
+                  className="px-3 py-1 text-sm rounded bg-yellow-100 text-yellow-700 hover:bg-yellow-200 transition"
+                >
+                  Needs Revision
+                </button>
+                <button
+                  onClick={() => setShowCoverLetterSharePanel(false)}
+                  className="text-gray-400 hover:text-gray-600 transition"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {coverLetterSuccessMessage && (
+              <div className="mx-6 mt-6 p-4 border rounded-lg" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }}>
+                <p className="font-medium" style={{ color: '#166534' }}>{coverLetterSuccessMessage}</p>
+              </div>
+            )}
+
+            <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Create New Share */}
+              <Card variant="outlined">
+                <div className="p-4">
+                  <h4 className="text-lg font-heading font-semibold mb-3">Create new share link</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm text-gray-700 block mb-1">Privacy</label>
+                      <select
+                        className="w-full border rounded px-3 py-2"
+                        value={coverLetterShareForm.privacy}
+                        onChange={(e) => setCoverLetterShareForm(prev => ({ ...prev, privacy: e.target.value }))}
+                      >
+                        <option value="unlisted">Unlisted (anyone with link)</option>
+                        <option value="private">Private (allow-listed reviewers only)</option>
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input id="clAllowComments" type="checkbox" className="h-4 w-4" checked={coverLetterShareForm.allowComments} onChange={(e) => setCoverLetterShareForm(prev => ({ ...prev, allowComments: e.target.checked }))} />
+                      <label htmlFor="clAllowComments" className="text-sm">Allow comments</label>
+                    </div>
+                    {coverLetterShareForm.privacy === 'private' && (
+                      <div>
+                        <label className="text-sm text-gray-700 block mb-1">Allowed reviewer emails (comma-separated)</label>
+                        <input
+                          type="text"
+                          className="w-full border rounded px-3 py-2"
+                          placeholder="name@example.com, other@example.com"
+                          value={coverLetterShareForm.allowedReviewersText}
+                          onChange={(e) => setCoverLetterShareForm(prev => ({ ...prev, allowedReviewersText: e.target.value }))}
+                        />
+                      </div>
+                    )}
+                    <div>
+                      <label className="text-sm text-gray-700 block mb-1">Note (optional)</label>
+                      <input
+                        type="text"
+                        className="w-full border rounded px-3 py-2"
+                        placeholder="e.g., For career advisor review"
+                        value={coverLetterShareForm.note}
+                        onChange={(e) => setCoverLetterShareForm(prev => ({ ...prev, note: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-700 block mb-1">Feedback deadline (optional)</label>
+                      <input
+                        type="date"
+                        className="w-full border rounded px-3 py-2"
+                        value={coverLetterShareForm.deadline}
+                        onChange={(e) => setCoverLetterShareForm(prev => ({ ...prev, deadline: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-700 block mb-1">Link expiry (days, optional)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        className="w-full border rounded px-3 py-2"
+                        placeholder="e.g., 7"
+                        value={coverLetterShareForm.expiresInDays}
+                        onChange={(e) => setCoverLetterShareForm(prev => ({ ...prev, expiresInDays: e.target.value }))}
+                      />
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={handleGenerateCoverLetterShare}
+                        disabled={coverLetterShareActionLoading}
+                        className="px-4 py-2 text-white rounded-lg transition focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50"
+                        style={{ backgroundColor: '#2563EB' }}
+                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#1D4ED8'}
+                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#2563EB'}
+                      >
+                        {coverLetterShareActionLoading ? 'Creating…' : 'Create link'}
+                      </button>
+                      {createdCoverLetterShareUrl && (
+                        <button
+                          onClick={() => navigator.clipboard.writeText(createdCoverLetterShareUrl)}
+                          className="px-3 py-2 border rounded text-sm"
+                          title={createdCoverLetterShareUrl}
+                        >Copy URL</button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Existing Share Links */}
+              <Card variant="outlined">
+                <div className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-lg font-heading font-semibold">Existing links</h4>
+                    <button
+                      onClick={() => loadCoverLetterShares(shareForCoverLetter._id)}
+                      className="text-sm px-3 py-1 border rounded"
+                    >Refresh</button>
+                  </div>
+                  {isLoadingCoverLetterShares ? (
+                    <div className="text-sm text-gray-500">Loading…</div>
+                  ) : (coverLetterShareLinks && coverLetterShareLinks.length > 0 ? (
+                    <div className="space-y-2">
+                      {coverLetterShareLinks.map((s) => (
+                        <div key={s.token} className={`p-3 border rounded flex items-center justify-between ${s.status === 'revoked' ? 'opacity-60' : ''}`}>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium">{s.privacy === 'private' ? 'Private' : 'Unlisted'} • {s.allowComments ? 'Comments on' : 'Comments off'}</p>
+                            <p className="text-xs text-gray-600 truncate">Token: {s.token}</p>
+                            {s.expiresAt && (
+                              <p className="text-xs text-gray-500">Expires: {new Date(s.expiresAt).toLocaleString()}</p>
+                            )}
+                            {s.deadline && (
+                              <p className="text-xs text-gray-500">Feedback deadline: {new Date(s.deadline).toLocaleDateString()}</p>
+                            )}
+                            <p className="text-xs text-gray-500">Status: {s.status}</p>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {s.status !== 'revoked' && (
+                              <>
+                                <button
+                                  onClick={() => navigator.clipboard.writeText(`${window.location.origin}/share/cover-letter/${s.token}`)}
+                                  className="px-2 py-1 border rounded text-xs"
+                                >Copy URL</button>
+                                <button
+                                  onClick={() => handleRevokeCoverLetterShare(s.token)}
+                                  className="px-2 py-1 border rounded text-xs text-red-600 border-red-300"
+                                >Revoke</button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500">No share links yet.</p>
+                  ))}
+                </div>
+              </Card>
+
+              {/* Feedback Management */}
+              <Card variant="outlined" className="lg:col-span-2">
+                <div className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-lg font-heading font-semibold">Feedback</h4>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => loadCoverLetterOwnerFeedback(shareForCoverLetter._id)} className="text-sm px-3 py-1 border rounded">Refresh</button>
+                      <button onClick={() => handleExportCoverLetterFeedback('csv')} className="text-sm px-3 py-1 border rounded">Export CSV</button>
+                      <button onClick={() => handleExportCoverLetterFeedback('json')} className="text-sm px-3 py-1 border rounded">Export JSON</button>
+                    </div>
+                  </div>
+
+                  {/* Feedback Stats */}
+                  {coverLetterOwnerFeedback && coverLetterOwnerFeedback.length > 0 && (
+                    <div className="mb-4 flex gap-4 flex-wrap">
+                      <div className="px-3 py-2 bg-gray-100 rounded">
+                        <span className="text-sm font-medium">Total: </span>
+                        <span className="text-sm">{coverLetterOwnerFeedback.length}</span>
+                      </div>
+                      <div className="px-3 py-2 bg-blue-50 rounded">
+                        <span className="text-sm font-medium text-blue-700">Open: </span>
+                        <span className="text-sm text-blue-700">{coverLetterOwnerFeedback.filter(f => f.status === 'open').length}</span>
+                      </div>
+                      <div className="px-3 py-2 bg-green-50 rounded">
+                        <span className="text-sm font-medium text-green-700">Resolved: </span>
+                        <span className="text-sm text-green-700">{coverLetterOwnerFeedback.filter(f => f.status === 'resolved').length}</span>
+                      </div>
+                      <div className="px-3 py-2 bg-yellow-50 rounded">
+                        <span className="text-sm font-medium text-yellow-700">Dismissed: </span>
+                        <span className="text-sm text-yellow-700">{coverLetterOwnerFeedback.filter(f => f.status === 'dismissed').length}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {isLoadingCoverLetterOwnerFeedback ? (
+                    <div className="text-sm text-gray-500">Loading…</div>
+                  ) : (coverLetterOwnerFeedback && coverLetterOwnerFeedback.length > 0 ? (
+                    <div className="divide-y">
+                      {coverLetterOwnerFeedback.map(fb => (
+                        <div key={fb._id} className="py-3 flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-sm font-medium">{fb.authorName || fb.authorEmail || 'Anonymous'}</p>
+                              <span className="text-xs text-gray-500">{new Date(fb.createdAt).toLocaleString()}</span>
+                              {fb.feedbackTheme && (
+                                <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded">{fb.feedbackTheme}</span>
+                              )}
+                              {fb.suggestionType && (
+                                <span className={`text-xs px-2 py-0.5 rounded ${fb.suggestionType === 'critical' ? 'bg-red-100 text-red-700' :
+                                  fb.suggestionType === 'suggestion' ? 'bg-blue-100 text-blue-700' :
+                                    'bg-gray-100 text-gray-700'
+                                  }`}>{fb.suggestionType}</span>
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-800 whitespace-pre-wrap mt-1">{fb.comment}</p>
+                            {fb.selectionStart !== undefined && fb.selectionEnd !== undefined && (
+                              <p className="text-xs text-gray-500 mt-1 italic">Inline comment (chars {fb.selectionStart}-{fb.selectionEnd})</p>
+                            )}
+                            {fb.status === 'resolved' && (
+                              <p className="text-xs text-green-700 mt-1">✓ Resolved {fb.resolvedAt ? new Date(fb.resolvedAt).toLocaleString() : ''}{fb.resolutionNote ? ` • ${fb.resolutionNote}` : ''}</p>
+                            )}
+                            {fb.status === 'dismissed' && (
+                              <p className="text-xs text-yellow-700 mt-1">✗ Dismissed{fb.resolutionNote ? ` • ${fb.resolutionNote}` : ''}</p>
+                            )}
+                          </div>
+                          <div className="flex-shrink-0 flex gap-1">
+                            {fb.status === 'open' && (
+                              <>
+                                <button onClick={() => handleResolveCoverLetterFeedback(fb)} className="px-2 py-1 border rounded text-xs text-green-600 border-green-300 hover:bg-green-50">Resolve</button>
+                                <button onClick={async () => {
+                                  try {
+                                    await authWrap();
+                                    const note = window.prompt('Add a dismissal note (optional):', '');
+                                    const resp = await apiResolveCoverLetterFeedback(fb._id, { resolutionNote: note || '', status: 'dismissed' });
+                                    const payload = getPayload(resp);
+                                    const updated = payload.feedback || payload;
+                                    setCoverLetterOwnerFeedback(prev => prev.map(it => it._id === updated._id ? updated : it));
+                                  } catch (e) {
+                                    console.error('Dismiss cover letter feedback failed', e);
+                                  }
+                                }} className="px-2 py-1 border rounded text-xs text-yellow-600 border-yellow-300 hover:bg-yellow-50">Dismiss</button>
+                              </>
                             )}
                           </div>
                         </div>
@@ -4572,15 +4423,6 @@ export default function ResumeTemplates() {
                       />
                     </div>
 
-                    {/* <button
-                  onClick={() => window.print()}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition flex items-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                  </svg>
-                  Print
-                </button> */}
                     <button
                       onClick={() => setShowViewResumeModal(false)}
                       className="px-4 py-2 text-white rounded-lg transition"
@@ -4701,292 +4543,17 @@ export default function ResumeTemplates() {
       />
 
       {/* UC-50: Experience Tailoring Modal - Coming in next update */}
-      {showExperienceTailoring && experienceTailoringData && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-50 p-4"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
-          onClick={() => setShowExperienceTailoring(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="bg-[#777C6D] px-6 py-4 sticky top-0 z-10">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                  <h3 className="text-xl font-heading font-bold text-white">AI Experience Tailoring</h3>
-                </div>
-                <button
-                  onClick={() => setShowExperienceTailoring(false)}
-                  className="text-white hover:text-gray-200 transition"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            {/* Success Banner */}
-            {showExperienceSuccessBanner && (
-              <div className="bg-green-50 border-l-4 border-green-500 px-6 py-4 mx-6 mt-4 rounded-r-lg animate-fade-in">
-                <div className="flex items-center gap-3">
-                  <svg className="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <div>
-                    <p className="font-semibold text-green-900">Experience Updated Successfully!</p>
-                    <p className="text-sm text-green-700">Your resume has been updated with the selected variations. Returning to resume view...</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Modal Content */}
-            <div className="p-6 space-y-6">
-              {/* Summary */}
-              {experienceTailoringData.tailoring?.summary && (
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-5 border border-purple-200">
-                  <p className="text-gray-800">{experienceTailoringData.tailoring.summary}</p>
-                </div>
-              )}
-
-              {/* Experience Suggestions */}
-              {experienceTailoringData.tailoring?.experiences?.map((exp, expIdx) => (
-                <div key={expIdx} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                  <div className="bg-gray-50 px-5 py-3 border-b border-gray-200">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-md font-semibold text-gray-900">
-                        Experience #{exp.experienceIndex + 1}
-                      </h4>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${exp.relevanceScore >= 80 ? 'bg-green-100 text-green-800' :
-                        exp.relevanceScore >= 60 ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                        {exp.relevanceScore}% Relevant
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="p-5 space-y-4">
-                    {exp.bullets?.map((bullet, bulletIdx) => (
-                      <div key={bulletIdx} className="border-l-4 border-purple-300 pl-4 space-y-3">
-                        {/* Original */}
-                        <div>
-                          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Original</div>
-                          <p className="text-sm text-gray-700">{bullet.originalBullet}</p>
-                        </div>
-
-                        {/* Variations */}
-                        {bullet.variations && (
-                          <div className="space-y-2">
-                            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                              AI-Generated Variations (Click to Select)
-                            </div>
-
-                            {/* Original Option */}
-                            <button
-                              onClick={() => {
-                                const key = `${expIdx}-${bulletIdx}`;
-                                if (selectedExperienceVariations[key]) {
-                                  const newSelections = { ...selectedExperienceVariations };
-                                  delete newSelections[key];
-                                  setSelectedExperienceVariations(newSelections);
-                                } else {
-                                  setSelectedExperienceVariations(prev => ({ ...prev, [key]: 'original' }));
-                                }
-                              }}
-                              className={`w-full text-left bg-gray-50 rounded p-3 border-2 transition cursor-pointer ${!selectedExperienceVariations[`${expIdx}-${bulletIdx}`] || selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'original'
-                                ? 'border-gray-400 bg-gray-100'
-                                : 'border-gray-200 hover:border-gray-300'
-                                }`}
-                            >
-                              <div className="flex items-start gap-2">
-                                <input
-                                  type="radio"
-                                  name={`variation-${expIdx}-${bulletIdx}`}
-                                  checked={!selectedExperienceVariations[`${expIdx}-${bulletIdx}`] || selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'original'}
-                                  onChange={() => { }}
-                                  className="mt-1"
-                                />
-                                <div className="flex-1">
-                                  <div className="text-xs font-medium text-gray-700 mb-1">✨ Keep Original</div>
-                                  <p className="text-sm text-gray-700">{bullet.originalBullet}</p>
-                                </div>
-                              </div>
-                            </button>
-
-                            {bullet.variations.achievement && (
-                              <button
-                                onClick={() => toggleExperienceVariation(expIdx, bulletIdx, 'achievement')}
-                                className={`w-full text-left bg-blue-50 rounded p-3 border-2 transition cursor-pointer ${selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'achievement'
-                                  ? 'border-blue-600 bg-blue-100 shadow-md'
-                                  : 'border-blue-200 hover:border-blue-400'
-                                  }`}
-                              >
-                                <div className="flex items-start gap-2">
-                                  <input
-                                    type="radio"
-                                    name={`variation-${expIdx}-${bulletIdx}`}
-                                    checked={selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'achievement'}
-                                    onChange={() => { }}
-                                    className="mt-1"
-                                  />
-                                  <div className="flex-1">
-                                    <div className="text-xs font-medium text-blue-800 mb-1">🏆 Achievement-Focused</div>
-                                    <p className="text-sm text-gray-800">{bullet.variations.achievement}</p>
-                                  </div>
-                                </div>
-                              </button>
-                            )}
-
-                            {bullet.variations.technical && (
-                              <button
-                                onClick={() => toggleExperienceVariation(expIdx, bulletIdx, 'technical')}
-                                className={`w-full text-left bg-green-50 rounded p-3 border-2 transition cursor-pointer ${selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'technical'
-                                  ? 'border-green-600 bg-green-100 shadow-md'
-                                  : 'border-green-200 hover:border-green-400'
-                                  }`}
-                              >
-                                <div className="flex items-start gap-2">
-                                  <input
-                                    type="radio"
-                                    name={`variation-${expIdx}-${bulletIdx}`}
-                                    checked={selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'technical'}
-                                    onChange={() => { }}
-                                    className="mt-1"
-                                  />
-                                  <div className="flex-1">
-                                    <div className="text-xs font-medium text-green-800 mb-1">⚙️ Technical-Focused</div>
-                                    <p className="text-sm text-gray-800">{bullet.variations.technical}</p>
-                                  </div>
-                                </div>
-                              </button>
-                            )}
-
-                            {bullet.variations.impact && (
-                              <button
-                                onClick={() => toggleExperienceVariation(expIdx, bulletIdx, 'impact')}
-                                className={`w-full text-left bg-purple-50 rounded p-3 border-2 transition cursor-pointer ${selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'impact'
-                                  ? 'border-purple-600 bg-purple-100 shadow-md'
-                                  : 'border-purple-200 hover:border-purple-400'
-                                  }`}
-                              >
-                                <div className="flex items-start gap-2">
-                                  <input
-                                    type="radio"
-                                    name={`variation-${expIdx}-${bulletIdx}`}
-                                    checked={selectedExperienceVariations[`${expIdx}-${bulletIdx}`] === 'impact'}
-                                    onChange={() => { }}
-                                    className="mt-1"
-                                  />
-                                  <div className="flex-1">
-                                    <div className="text-xs font-medium text-purple-800 mb-1">📈 Impact-Focused</div>
-                                    <p className="text-sm text-gray-800">{bullet.variations.impact}</p>
-                                  </div>
-                                </div>
-                              </button>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Suggestions */}
-                        {(bullet.suggestedActionVerbs?.length > 0 || bullet.keywordsToAdd?.length > 0) && (
-                          <div className="flex gap-4 pt-2">
-                            {bullet.suggestedActionVerbs?.length > 0 && (
-                              <div>
-                                <div className="text-xs font-medium text-gray-600 mb-1">Suggested Verbs:</div>
-                                <div className="flex flex-wrap gap-1">
-                                  {bullet.suggestedActionVerbs.map((verb, vIdx) => (
-                                    <span key={vIdx} className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded text-xs">
-                                      {verb}
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {bullet.keywordsToAdd?.length > 0 && (
-                              <div>
-                                <div className="text-xs font-medium text-gray-600 mb-1">Keywords to Add:</div>
-                                <div className="flex flex-wrap gap-1">
-                                  {bullet.keywordsToAdd.map((keyword, kIdx) => (
-                                    <span key={kIdx} className="px-2 py-0.5 bg-pink-100 text-pink-700 rounded text-xs">
-                                      {keyword}
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Modal Actions */}
-            <div className="bg-gray-50 px-6 py-4 border-t sticky bottom-0">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="text-sm">
-                    <span className="font-medium text-gray-900">{Object.keys(selectedExperienceVariations).length}</span>
-                    <span className="text-gray-600"> bullets selected for update</span>
-                  </div>
-                  {Object.keys(selectedExperienceVariations).length > 0 && (
-                    <button
-                      onClick={() => setSelectedExperienceVariations({})}
-                      className="text-xs text-purple-600 hover:text-purple-800 underline"
-                    >
-                      Clear selections
-                    </button>
-                  )}
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setShowExperienceTailoring(false)}
-                    disabled={isApplyingExperience}
-                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition disabled:opacity-50"
-                  >
-                    Close
-                  </button>
-                  <button
-                    onClick={handleApplyExperienceChanges}
-                    disabled={isApplyingExperience || Object.keys(selectedExperienceVariations).length === 0}
-                    className="px-6 py-2 bg-[#777C6D] text-white rounded-lg hover:bg-[#656A5C] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    {isApplyingExperience ? (
-                      <>
-                        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span>Applying...</span>
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        <span>Apply Changes to Resume</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-              <p className="text-xs text-gray-500">
-                💡 Select your preferred variation for each bullet, then click "Apply Changes" to update your resume
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      <ExperienceTailoringModal
+        showExperienceTailoring={showExperienceTailoring}
+        setShowExperienceTailoring={setShowExperienceTailoring}
+        experienceTailoringData={experienceTailoringData}
+        showExperienceSuccessBanner={showExperienceSuccessBanner}
+        selectedExperienceVariations={selectedExperienceVariations}
+        setSelectedExperienceVariations={setSelectedExperienceVariations}
+        toggleExperienceVariation={toggleExperienceVariation}
+        isApplyingExperience={isApplyingExperience}
+        handleApplyExperienceChanges={handleApplyExperienceChanges}
+      />
 
 
       {/* Cover Letter Template Browser Modal */}
@@ -5091,184 +4658,74 @@ export default function ResumeTemplates() {
       )}
 
       {/* Cover Letter Customize Modal */}
-      {showCoverLetterCustomize && selectedCoverLetterTemplate && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-50 p-4"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
-          onClick={() => setShowCoverLetterCustomize(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold" style={{ color: "#4F5348" }}>
-                  Customize Cover Letter
-                </h2>
-                <button
-                  onClick={() => setShowCoverLetterCustomize(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
+      <CoverLetterCustomizeModal
+        isOpen={showCoverLetterCustomize}
+        selectedTemplate={selectedCoverLetterTemplate}
+        onClose={() => setShowCoverLetterCustomize(false)}
+        customName={customCoverLetterName}
+        setCustomName={setCustomCoverLetterName}
+        customContent={customCoverLetterContent}
+        setCustomContent={setCustomCoverLetterContent}
+        customStyle={customCoverLetterStyle}
+        setCustomStyle={setCustomCoverLetterStyle}
+        isCreatingTemplate={isCreatingCoverLetterTemplate}
+        onTemplateChange={setSelectedCoverLetterTemplate}
+        onSave={async () => {
+          try {
+            if (!customCoverLetterName.trim()) {
+              alert("Please enter a name for your cover letter.");
+              return;
+            }
+            if (!customCoverLetterContent.trim()) {
+              alert("Please enter cover letter content.");
+              return;
+            }
 
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Template Name
-                </label>
-                <input
-                  type="text"
-                  className="w-full p-3 border border-gray-300 rounded-lg"
-                  value={customCoverLetterName}
-                  onChange={(e) => setCustomCoverLetterName(e.target.value)}
-                  placeholder="e.g., My Software Engineer Cover Letter"
-                />
-              </div>
+            await authWrap();
 
-              {isCreatingCoverLetterTemplate && (
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Template Style
-                  </label>
-                  <select
-                    className="w-full p-3 border border-gray-300 rounded-lg"
-                    value={selectedCoverLetterTemplate.style || 'formal'}
-                    onChange={(e) => setSelectedCoverLetterTemplate({
-                      ...selectedCoverLetterTemplate,
-                      style: e.target.value
-                    })}
-                  >
-                    <option value="formal">Formal</option>
-                    <option value="modern">Modern</option>
-                    <option value="creative">Creative</option>
-                    <option value="technical">Technical</option>
-                    <option value="executive">Executive</option>
-                  </select>
-                  <p className="text-sm text-gray-500 mt-2">
-                    Choose a style that best represents this template
-                  </p>
-                </div>
-              )}
+            if (isCreatingCoverLetterTemplate) {
+              // Creating a reusable template
+              await createCoverLetterTemplate({
+                name: customCoverLetterName,
+                industry: selectedCoverLetterTemplate.industry || 'general',
+                style: selectedCoverLetterTemplate.style || 'formal',
+                description: `Custom ${selectedCoverLetterTemplate.style || 'formal'} cover letter template`,
+                content: customCoverLetterContent
+              });
 
-              {!isCreatingCoverLetterTemplate && (
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Cover Letter Style
-                  </label>
-                  <select
-                    className="w-full p-3 border border-gray-300 rounded-lg"
-                    value={customCoverLetterStyle}
-                    onChange={(e) => setCustomCoverLetterStyle(e.target.value)}
-                  >
-                    <option value="formal">Formal</option>
-                    <option value="modern">Modern</option>
-                    <option value="creative">Creative</option>
-                    <option value="technical">Technical</option>
-                    <option value="executive">Executive</option>
-                  </select>
-                  <p className="text-sm text-gray-500 mt-2">
-                    Choose a style for your cover letter
-                  </p>
-                </div>
-              )}
+              setShowCoverLetterCustomize(false);
+              setCustomCoverLetterName('');
+              setCustomCoverLetterContent('');
+              setIsCreatingCoverLetterTemplate(false);
 
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Cover Letter Content
-                </label>
-                <p className="text-sm text-gray-600 mb-4">
-                  Replace the placeholders in brackets (e.g., [POSITION], [COMPANY]) with your specific information.
-                </p>
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-                  <p className="text-sm text-yellow-800">
-                    <strong>Tip:</strong> Common placeholders include [YOUR_NAME], [POSITION], [COMPANY], [HIRING_MANAGER_NAME],
-                    [FIELD], [SKILLS], [ACHIEVEMENT], etc.
-                  </p>
-                </div>
-                <textarea
-                  className="w-full h-96 p-4 border border-gray-300 rounded-lg font-sans text-sm"
-                  value={customCoverLetterContent}
-                  onChange={(e) => setCustomCoverLetterContent(e.target.value)}
-                  placeholder="Customize your cover letter here..."
-                />
-              </div>
+              await loadCoverLetterTemplates();
+              setShowManageCoverLetterTemplates(true); // Reopen Manage Templates modal
+              alert("Cover letter template created successfully!");
+            } else {
+              // Creating a saved cover letter (one-time use)
+              await createCoverLetter({
+                name: customCoverLetterName,
+                content: customCoverLetterContent,
+                style: customCoverLetterStyle,
+                templateId: selectedCoverLetterTemplate._id || null
+              });
 
-              <div className="flex justify-end gap-3">
-                <Button
-                  variant="secondary"
-                  onClick={() => setShowCoverLetterCustomize(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={async () => {
-                    try {
-                      if (!customCoverLetterName.trim()) {
-                        alert("Please enter a name for your cover letter.");
-                        return;
-                      }
-                      if (!customCoverLetterContent.trim()) {
-                        alert("Please enter cover letter content.");
-                        return;
-                      }
+              setShowCoverLetterCustomize(false);
+              setCustomCoverLetterName('');
+              setCustomCoverLetterContent('');
+              setCustomCoverLetterStyle('formal');
+              setIsCreatingCoverLetterTemplate(false);
 
-                      await authWrap();
-
-                      if (isCreatingCoverLetterTemplate) {
-                        // Creating a reusable template
-                        await createCoverLetterTemplate({
-                          name: customCoverLetterName,
-                          industry: selectedCoverLetterTemplate.industry || 'general',
-                          style: selectedCoverLetterTemplate.style || 'formal',
-                          description: `Custom ${selectedCoverLetterTemplate.style || 'formal'} cover letter template`,
-                          content: customCoverLetterContent
-                        });
-
-                        setShowCoverLetterCustomize(false);
-                        setCustomCoverLetterName('');
-                        setCustomCoverLetterContent('');
-                        setIsCreatingCoverLetterTemplate(false);
-
-                        await loadCoverLetterTemplates();
-                        setShowManageCoverLetterTemplates(true); // Reopen Manage Templates modal
-                        alert("Cover letter template created successfully!");
-                      } else {
-                        // Creating a saved cover letter (one-time use)
-                        await createCoverLetter({
-                          name: customCoverLetterName,
-                          content: customCoverLetterContent,
-                          style: customCoverLetterStyle,
-                          templateId: selectedCoverLetterTemplate._id || null
-                        });
-
-                        setShowCoverLetterCustomize(false);
-                        setCustomCoverLetterName('');
-                        setCustomCoverLetterContent('');
-                        setCustomCoverLetterStyle('formal');
-                        setIsCreatingCoverLetterTemplate(false);
-
-                        await loadSavedCoverLetters();
-                        setCoverLetterSuccessMessage("Cover letter saved successfully!");
-                        setTimeout(() => setCoverLetterSuccessMessage(null), 3000);
-                      }
-                    } catch (err) {
-                      console.error("Save failed:", err);
-                      alert("Failed to save. Please try again.");
-                    }
-                  }}
-                >
-                  {isCreatingCoverLetterTemplate ? 'Create Template' : 'Save Cover Letter'}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+              await loadSavedCoverLetters();
+              setCoverLetterSuccessMessage("Cover letter saved successfully!");
+              setTimeout(() => setCoverLetterSuccessMessage(null), 3000);
+            }
+          } catch (err) {
+            console.error("Save failed:", err);
+            alert("Failed to save. Please try again.");
+          }
+        }}
+      />
 
 
       {/* Cover Letter Import Modal */}
