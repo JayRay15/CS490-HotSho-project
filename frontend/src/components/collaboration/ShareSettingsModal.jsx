@@ -38,10 +38,25 @@ export default function ShareSettingsModal({
     const updated = [...reviewers];
     updated[index][field] = value;
     setReviewers(updated);
+    // Clear validation error when user starts typing an email
+    if (field === 'email' && value.trim()) {
+      setValidationError(null);
+    }
   };
+
+  const [validationError, setValidationError] = useState(null);
 
   const handleCreateShare = async () => {
     const validReviewers = reviewers.filter(r => r.email.trim());
+    
+    // UC-110: Validate that private shares require at least one reviewer email
+    if (privacy === 'private' && validReviewers.length === 0) {
+      setValidationError('At least one reviewer email is required for private shares.');
+      return;
+    }
+    
+    setValidationError(null);
+    
     const payload = {
       privacy,
       allowComments,
@@ -84,6 +99,7 @@ export default function ShareSettingsModal({
     setDeadline('');
     setReviewers([{ email: '', name: '', role: 'Reviewer' }]);
     setCreatedShareUrl(null);
+    setValidationError(null);
   };
 
   if (!isOpen) return null;
@@ -185,7 +201,7 @@ export default function ShareSettingsModal({
                           name="privacy"
                           value="unlisted"
                           checked={privacy === 'unlisted'}
-                          onChange={(e) => setPrivacy(e.target.value)}
+                          onChange={(e) => { setPrivacy(e.target.value); setValidationError(null); }}
                           className="mt-1"
                         />
                         <div>
@@ -199,7 +215,7 @@ export default function ShareSettingsModal({
                           name="privacy"
                           value="private"
                           checked={privacy === 'private'}
-                          onChange={(e) => setPrivacy(e.target.value)}
+                          onChange={(e) => { setPrivacy(e.target.value); setValidationError(null); }}
                           className="mt-1"
                         />
                         <div>
@@ -214,8 +230,16 @@ export default function ShareSettingsModal({
                   {privacy === 'private' && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Designated Reviewers
+                        Designated Reviewers <span className="text-red-500">*</span>
                       </label>
+                      <p className="text-xs text-gray-500 mb-2">
+                        At least one email is required for private shares. Only these users will be able to access and review the document.
+                      </p>
+                      {validationError && (
+                        <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                          {validationError}
+                        </div>
+                      )}
                       <div className="space-y-2">
                         {reviewers.map((reviewer, index) => (
                           <div key={index} className="flex gap-2">

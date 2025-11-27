@@ -37,6 +37,7 @@ import {
   listFeedbackForShare,
   resolveFeedback,
   exportFeedbackSummary,
+  getPendingReviewInvitations,
 } from "../controllers/resumeShareController.js";
 import { ensureShareAccess } from "../middleware/shareAccess.js";
 import {
@@ -97,6 +98,9 @@ router.patch("/resumes/:id/shares/:token/revoke", checkJwt, revokeShare);
 router.get("/resumes/:id/feedback", checkJwt, listFeedbackForResume);
 router.patch("/feedback/:feedbackId/resolve", checkJwt, resolveFeedback);
 router.get("/resumes/:id/feedback/export", checkJwt, exportFeedbackSummary);
+
+// UC-110: Get pending review invitations for current user
+router.get("/review-invitations", checkJwt, getPendingReviewInvitations);
 
 // Public share endpoints
 router.get("/share/:token", ensureShareAccess, getSharedResume);

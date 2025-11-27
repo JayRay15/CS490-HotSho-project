@@ -34,6 +34,7 @@ import {
   resolveFeedback,
   approveCoverLetter,
   exportFeedbackSummary,
+  getPendingCoverLetterReviewInvitations,
 } from "../controllers/coverLetterShareController.js";
 import { ensureCoverLetterShareAccess } from "../middleware/shareAccess.js";
 
@@ -79,6 +80,9 @@ router.patch("/cover-letters/:id/shares/:token/revoke", checkJwt, revokeShare);
 router.get("/cover-letters/:id/feedback", checkJwt, listFeedbackForCoverLetter);
 router.patch("/cover-letter-feedback/:feedbackId/resolve", checkJwt, resolveFeedback);
 router.get("/cover-letters/:id/feedback/export", checkJwt, exportFeedbackSummary);
+
+// UC-110: Get pending cover letter review invitations for current user
+router.get("/cover-letter-review-invitations", checkJwt, getPendingCoverLetterReviewInvitations);
 
 // UC-110: Approval workflow
 router.patch("/cover-letters/:id/approval", checkJwt, approveCoverLetter);

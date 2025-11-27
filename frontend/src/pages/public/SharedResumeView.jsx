@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import { fetchSharedResume, listFeedbackForShare, postFeedbackForShare } from '../../api/resumeShare';
 
@@ -9,6 +9,7 @@ import { fetchSharedResume, listFeedbackForShare, postFeedbackForShare } from '.
  */
 export default function SharedResumeView() {
   const { token } = useParams();
+  const navigate = useNavigate();
   const { user, isLoaded: isUserLoaded } = useUser();
   const [resume, setResume] = useState(null);
   const [share, setShare] = useState(null);
@@ -234,9 +235,21 @@ export default function SharedResumeView() {
       {/* Header */}
       <header className="bg-white shadow-sm sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div>
-            <h1 className="text-xl font-bold text-gray-800">{resume.name}</h1>
-            <p className="text-sm text-gray-500">Shared for review</p>
+          <div className="flex items-center gap-4">
+            {/* Back Button */}
+            <button
+              onClick={() => navigate('/resumes')}
+              className="flex items-center gap-1 text-gray-500 hover:text-gray-700 transition-colors"
+              title="Back to My Documents"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+            </button>
+            <div>
+              <h1 className="text-xl font-bold text-gray-800">{resume.name}</h1>
+              <p className="text-sm text-gray-500">Shared for review</p>
+            </div>
           </div>
           
           <div className="flex items-center gap-4">

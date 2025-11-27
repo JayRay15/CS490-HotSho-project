@@ -19,6 +19,10 @@ export const resolveFeedback = (feedbackId, payload) =>
 export const exportFeedbackSummary = (resumeId, format = 'json') =>
   retryRequest(() => api.get(`/api/resume/resumes/${resumeId}/feedback/export`, { params: { format }, responseType: format === 'csv' ? 'blob' : 'json' }));
 
+// UC-110: Get pending review invitations for current user
+export const getReviewInvitations = () =>
+  retryRequest(() => api.get('/api/resume/review-invitations'));
+
 // Public endpoints (no auth token needed unless global auth header preset)
 export const fetchSharedResume = (token, reviewerEmail = null) =>
   retryRequest(() => api.get(`/api/resume/share/${token}`, { headers: reviewerEmail ? { 'X-Reviewer-Email': reviewerEmail } : {} }));

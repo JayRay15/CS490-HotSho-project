@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import { fetchSharedCoverLetter, listFeedbackForCoverLetterShare, postFeedbackForCoverLetterShare } from '../../api/coverLetterShare';
 
@@ -9,6 +9,7 @@ import { fetchSharedCoverLetter, listFeedbackForCoverLetterShare, postFeedbackFo
  */
 export default function SharedCoverLetterView() {
   const { token } = useParams();
+  const navigate = useNavigate();
   const { user, isLoaded: isUserLoaded } = useUser();
   const [coverLetter, setCoverLetter] = useState(null);
   const [share, setShare] = useState(null);
@@ -250,21 +251,33 @@ export default function SharedCoverLetterView() {
       <header className="bg-white shadow-sm sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex justify-between items-start">
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-xl font-bold text-gray-800">{coverLetter.name}</h1>
-                <span className={`px-2 py-1 rounded text-xs font-medium ${approvalBadge.style}`}>
-                  {approvalBadge.label}
-                </span>
-              </div>
-              <p className="text-sm text-gray-500 mt-1">
-                Shared for review
-                {coverLetter.style && (
-                  <span className="ml-2 px-2 py-0.5 bg-gray-100 rounded text-xs">
-                    Style: {coverLetter.style}
+            <div className="flex items-start gap-4">
+              {/* Back Button */}
+              <button
+                onClick={() => navigate('/resumes')}
+                className="mt-1 flex items-center gap-1 text-gray-500 hover:text-gray-700 transition-colors"
+                title="Back to My Documents"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+              </button>
+              <div>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-xl font-bold text-gray-800">{coverLetter.name}</h1>
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${approvalBadge.style}`}>
+                    {approvalBadge.label}
                   </span>
-                )}
-              </p>
+                </div>
+                <p className="text-sm text-gray-500 mt-1">
+                  Shared for review
+                  {coverLetter.style && (
+                    <span className="ml-2 px-2 py-0.5 bg-gray-100 rounded text-xs">
+                      Style: {coverLetter.style}
+                    </span>
+                  )}
+                </p>
+              </div>
             </div>
             
             <div className="flex items-center gap-4">

@@ -311,3 +311,77 @@ export const exportFeedbackSummary = async (req, res) => {
     return sendResponse(res, response, statusCode);
   }
 };
+
+/**
+ * UC-110: Get pending review invitations for the current user
+ * Finds all resumes where the user's email is in the allowedReviewers list
+ */
+export const getPendingReviewInvitations = async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    
+    // Get user's email from database
+    const user = await User.findOne({ auth0Id: userId }).lean();
+    if (!user || !user.email) {
+      const { response, statusCode } = errorResponse('User email not found', 400, ERROR_CODES.MISSING_REQUIRED_FIELD);
+      return sendResponse(res, response, statusCode);
+    }
+    
+    const userEmail = user.email.toLowerCase();
+    
+    // Find resumes where user is in allowedReviewers of an active share
+    const resumes = await Resume.find({
+      'shares.status': 'active',
+      'shares.privacy': 'private',
+      'shares.allowedReviewers.email': userEmail
+    }).lean();
+    
+    // Extract relevant share info for each resume
+    const invitations = [];
+    for (const resume of resumes) {
+      // Find the specific share(s) where user is invited
+      const relevantShares = (resume.shares || []).filter(share => 
+        share.status === 'active' &&
+        share.privacy === 'private' &&
+        (share.allowedReviewers || []).some(r => r.email?.toLowerCase() === userEmail)
+      );
+      
+      for (const share of relevantShares) {
+        // Check if expired
+        if (share.expiresAt && new Date(share.expiresAt) < new Date()) continue;
+        
+        // Get owner info
+        let ownerName = 'Unknown';
+        try {
+          const owner = await User.findOne({ auth0Id: resume.userId }).lean();
+          if (owner) {
+            ownerName = owner.name || owner.email || 'Unknown';
+          }
+        } catch (e) { /* ignore */ }
+        
+        invitations.push({
+          type: 'resume',
+          documentId: resume._id,
+          documentName: resume.name,
+          token: share.token,
+          ownerName,
+          note: share.note,
+          deadline: share.deadline || null,
+          expiresAt: share.expiresAt || null,
+          allowComments: share.allowComments,
+          createdAt: share.createdAt
+        });
+      }
+    }
+    
+    // Sort by most recent first
+    invitations.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    const { response, statusCode } = successResponse('Pending review invitations', { invitations });
+    return sendResponse(res, response, statusCode);
+  } catch (err) {
+    console.error('Get pending review invitations error:', err);
+    const { response, statusCode } = errorResponse('Failed to fetch invitations', 500, ERROR_CODES.DATABASE_ERROR);
+    return sendResponse(res, response, statusCode);
+  }
+};

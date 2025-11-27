@@ -31,6 +31,10 @@ export const exportCoverLetterFeedbackSummary = (coverLetterId, format = 'json')
 export const updateCoverLetterApproval = (coverLetterId, action) =>
   retryRequest(() => api.patch(`/api/cover-letters/${coverLetterId}/approval`, { action }));
 
+// UC-110: Get pending cover letter review invitations for current user
+export const getCoverLetterReviewInvitations = () =>
+  retryRequest(() => api.get('/api/cover-letter-review-invitations'));
+
 // Public endpoints (no auth token needed unless global auth header preset)
 export const fetchSharedCoverLetter = (token, reviewerEmail = null) =>
   retryRequest(() => api.get(`/api/share/cover-letter/${token}`, { 
