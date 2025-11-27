@@ -67,6 +67,7 @@ const mockListFeedbackForResume = jest.fn((req, res) => res.json({ success: true
 const mockListFeedbackForShare = jest.fn((req, res) => res.json({ success: true }));
 const mockResolveFeedback = jest.fn((req, res) => res.json({ success: true }));
 const mockExportFeedbackSummary = jest.fn((req, res) => res.json({ success: true }));
+const mockGetPendingReviewInvitations = jest.fn((req, res) => res.json({ success: true }));
 
 jest.unstable_mockModule('../../controllers/resumeShareController.js', () => ({
   createShareLink: mockCreateShareLink,
@@ -78,6 +79,7 @@ jest.unstable_mockModule('../../controllers/resumeShareController.js', () => ({
   listFeedbackForShare: mockListFeedbackForShare,
   resolveFeedback: mockResolveFeedback,
   exportFeedbackSummary: mockExportFeedbackSummary,
+  getPendingReviewInvitations: mockGetPendingReviewInvitations,
 }));
 
 // Mock validation controllers
