@@ -17,6 +17,7 @@ import SharedResumeView from "./pages/public/SharedResumeView";
 import SharedCoverLetterView from "./pages/public/SharedCoverLetterView";
 import SalaryResearch from "./components/SalaryResearch";
 import SalaryBenchmarksExplorer from "./components/SalaryBenchmarksExplorer";
+import SalaryNegotiationPrep from "./components/SalaryNegotiationPrep";
 import SkillGapAnalysis from "./pages/auth/SkillGapAnalysis";
 import SkillTrends from "./pages/auth/SkillTrends";
 import InterviewChecklist from "./components/InterviewChecklist";
@@ -70,6 +71,7 @@ function App() {
           <Route path="/share/:token" element={<SharedResumeView />} />
           <Route path="/share/cover-letter/:token" element={<SharedCoverLetterView />} />
           <Route path="/salary-research/:jobId" element={<ProtectedRoute><SalaryResearch /></ProtectedRoute>} />
+          <Route path="/salary-negotiation/:jobId" element={<ProtectedRoute><SalaryNegotiationPrep /></ProtectedRoute>} />
           <Route path="/salary-benchmarks" element={<ProtectedRoute><SalaryBenchmarksExplorer /></ProtectedRoute>} />
           <Route path="/skill-gap-analysis/:jobId" element={<ProtectedRoute><SkillGapAnalysis /></ProtectedRoute>} />
           <Route path="/skill-trends" element={<ProtectedRoute><SkillTrends /></ProtectedRoute>} />

@@ -179,6 +179,12 @@ const SalaryResearch = () => {
           </div>
           <div className="flex gap-2">
             <Button
+              onClick={() => navigate(`/salary-negotiation/${jobId}`)}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              Prepare Negotiation
+            </Button>
+            <Button
               onClick={() => handleExport('json')}
               variant="outline"
               disabled={exportLoading}
@@ -614,6 +620,52 @@ const SalaryResearch = () => {
             </div>
           </div>
         )}
+      </Card>
+
+      {/* Negotiation Preparation CTA */}
+      <Card className="p-6 mb-8 bg-linear-to-r from-green-50 to-emerald-50 border-2 border-green-200">
+        <div className="flex items-start gap-6">
+          <div className="shrink-0">
+            <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center">
+              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+          <div className="flex-1">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              Ready to Negotiate Your Offer?
+            </h2>
+            <p className="text-gray-700 mb-4">
+              Use our comprehensive negotiation preparation tools to confidently negotiate your salary. 
+              Get personalized talking points, negotiation scripts for different scenarios, counteroffer 
+              evaluation, and confidence-building exercises based on your research and experience.
+            </p>
+            <div className="flex flex-wrap gap-3 mb-4">
+              <span className="px-3 py-1 bg-white rounded-full text-sm font-medium text-gray-700 shadow-sm">
+                ✓ Talking Points Generator
+              </span>
+              <span className="px-3 py-1 bg-white rounded-full text-sm font-medium text-gray-700 shadow-sm">
+                ✓ Negotiation Scripts
+              </span>
+              <span className="px-3 py-1 bg-white rounded-full text-sm font-medium text-gray-700 shadow-sm">
+                ✓ Counteroffer Evaluation
+              </span>
+              <span className="px-3 py-1 bg-white rounded-full text-sm font-medium text-gray-700 shadow-sm">
+                ✓ Timing Strategy
+              </span>
+              <span className="px-3 py-1 bg-white rounded-full text-sm font-medium text-gray-700 shadow-sm">
+                ✓ Confidence Exercises
+              </span>
+            </div>
+            <Button
+              onClick={() => navigate(`/salary-negotiation/${jobId}`)}
+              className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 text-lg"
+            >
+              Start Negotiation Preparation →
+            </Button>
+          </div>
+        </div>
       </Card>
 
       {/* Negotiation Recommendations */}

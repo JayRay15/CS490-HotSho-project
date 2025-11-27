@@ -17,6 +17,7 @@ import {
   bulkArchiveJobs,
   bulkRestoreJobs,
   autoArchiveJobs,
+  getJobById
 } from "../controllers/jobController.js";
 import { scrapeJobFromURL } from "../controllers/jobScraperController.js";
 import { getInterviewInsights } from "../controllers/interviewInsightsController.js";
@@ -58,6 +59,9 @@ router.post("/auto-archive", checkJwt, autoArchiveJobs);
 
 // POST /api/jobs/:jobId/archive - Archive a single job
 router.post("/:jobId/archive", checkJwt, archiveJob);
+
+// GET /api/jobs/:jobId - Get single job
+router.get("/:jobId", checkJwt, getJobById);
 
 // POST /api/jobs/:jobId/restore - Restore an archived job
 router.post("/:jobId/restore", checkJwt, restoreJob);
