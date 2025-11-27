@@ -23,6 +23,19 @@ import {
   getCoverLetterHistory,
   analyzeExperienceForCoverLetter
 } from "../controllers/coverLetterController.js";
+import {
+  createShareLink,
+  listShares,
+  revokeShare,
+  getSharedCoverLetter,
+  createFeedback,
+  listFeedbackForCoverLetter,
+  listFeedbackForShare,
+  resolveFeedback,
+  approveCoverLetter,
+  exportFeedbackSummary,
+} from "../controllers/coverLetterShareController.js";
+import { ensureCoverLetterShareAccess } from "../middleware/shareAccess.js";
 
 const router = express.Router();
 
@@ -57,5 +70,22 @@ router.post("/cover-letters/editing/readability", checkJwt, analyzeCoverLetterRe
 router.post("/cover-letters/editing/restructure", checkJwt, getSentenceRestructuring);
 router.post("/cover-letters/:id/versions", checkJwt, saveCoverLetterVersion);
 router.get("/cover-letters/:id/history", checkJwt, getCoverLetterHistory);
+
+// UC-110: Cover letter sharing & collaborative feedback
+// Owner actions (authenticated)
+router.post("/cover-letters/:id/share", checkJwt, createShareLink);
+router.get("/cover-letters/:id/shares", checkJwt, listShares);
+router.patch("/cover-letters/:id/shares/:token/revoke", checkJwt, revokeShare);
+router.get("/cover-letters/:id/feedback", checkJwt, listFeedbackForCoverLetter);
+router.patch("/cover-letter-feedback/:feedbackId/resolve", checkJwt, resolveFeedback);
+router.get("/cover-letters/:id/feedback/export", checkJwt, exportFeedbackSummary);
+
+// UC-110: Approval workflow
+router.patch("/cover-letters/:id/approval", checkJwt, approveCoverLetter);
+
+// Public share endpoints (no auth required)
+router.get("/share/cover-letter/:token", ensureCoverLetterShareAccess, getSharedCoverLetter);
+router.get("/share/cover-letter/:token/feedback", ensureCoverLetterShareAccess, listFeedbackForShare);
+router.post("/share/cover-letter/:token/feedback", ensureCoverLetterShareAccess, createFeedback);
 
 export default router;

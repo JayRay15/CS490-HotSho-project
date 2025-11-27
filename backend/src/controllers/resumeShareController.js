@@ -28,7 +28,7 @@ export const createShareLink = async (req, res) => {
       privacy,
       allowComments: !!allowComments,
       canViewContact: !!canViewContact,
-      allowedReviewers: (allowedReviewers || []).map(r => ({ email: (r.email||'').toLowerCase(), name: r.name || '', role: r.role || 'Reviewer' })),
+      allowedReviewers: (allowedReviewers || []).map(r => ({ email: (r.email || '').toLowerCase(), name: r.name || '', role: r.role || 'Reviewer' })),
       note,
       status: 'active',
       expiresAt: expiresAt ? new Date(expiresAt) : null,
@@ -284,17 +284,17 @@ export const exportFeedbackSummary = async (req, res) => {
 
     if (format === 'csv') {
       const rows = [
-        ['FeedbackID','Status','AuthorName','AuthorEmail','CreatedAt','ResolvedAt','ResolutionNote'].join(',')
+        ['FeedbackID', 'Status', 'AuthorName', 'AuthorEmail', 'CreatedAt', 'ResolvedAt', 'ResolutionNote'].join(',')
       ];
       for (const f of items) {
         const cells = [
           f._id,
           f.status,
-          (f.authorName || '').replace(/[,\n]/g,' '),
+          (f.authorName || '').replace(/[,\n]/g, ' '),
           (f.authorEmail || ''),
           new Date(f.createdAt).toISOString(),
           f.resolvedAt ? new Date(f.resolvedAt).toISOString() : '',
-          (f.resolutionNote || '').replace(/[,\n]/g,' ')
+          (f.resolutionNote || '').replace(/[,\n]/g, ' ')
         ];
         rows.push(cells.join(','));
       }
