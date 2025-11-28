@@ -58,6 +58,8 @@ import SavePresetModal from "../../components/resume/SavePresetModal";
 import SectionFormattingModal from "../../components/resume/SectionFormattingModal";
 import CustomizeTemplateModal from "../../components/resume/CustomizeTemplateModal";
 import RenameResumeModal from "../../components/resume/RenameResumeModal";
+import ResumeShareFeedbackPanel from "../../components/resume/ResumeShareFeedbackPanel";
+import SharedWithMeSection from "../../components/resume/SharedWithMeSection";
 import DeleteConfirmationModal from "../../components/resume/DeleteConfirmationModal";
 import AIResumeCreationModal from "../../components/resume/AIResumeCreationModal";
 import AICoverLetterModal from "../../components/coverLetters/AICoverLetterModal";
@@ -69,6 +71,7 @@ import CoverLetterImportModal from "../../components/coverLetters/CoverLetterImp
 import CoverLetterCustomizeModal from "../../components/coverLetters/CoverLetterCustomizeModal";
 import CoverLetterShareModal from "../../components/coverLetters/CoverLetterShareModal";
 import AddCoverLetterModal from "../../components/coverLetters/AddCoverLetterModal";
+import CoverLetterShareFeedbackPanel from "../../components/coverLetters/CoverLetterShareFeedbackPanel";
 import SkillsOptimizationModal from "../../components/resume/SkillsOptimizationModal";
 import MergeResumeModal from "../../components/resume/MergeResumeModal";
 import {
@@ -2565,140 +2568,11 @@ export default function ResumeTemplates() {
           </div>
 
           {/* UC-110: Shared with Me Section - Documents shared for review */}
-          {reviewInvitations.length > 0 && (
-            <div className="mb-12">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-4">
-                  <h2 className="text-2xl font-heading font-bold" style={{ color: "#4F5348" }}>
-                    Shared with Me
-                  </h2>
-                  <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-                    {reviewInvitations.length} pending review{reviewInvitations.length !== 1 ? 's' : ''}
-                  </span>
-                </div>
-                <button
-                  onClick={loadReviewInvitations}
-                  disabled={isLoadingReviewInvitations}
-                  className="px-3 py-1.5 text-sm border rounded-lg transition hover:bg-gray-50"
-                  style={{ borderColor: '#D1D5DB' }}
-                >
-                  {isLoadingReviewInvitations ? 'Refreshing...' : 'Refresh'}
-                </button>
-              </div>
-
-              <p className="text-sm text-gray-600 mb-4">
-                Documents that others have shared with you for review and feedback.
-              </p>
-
-              {isLoadingReviewInvitations ? (
-                <div className="text-center py-8 text-gray-500">Loading invitations...</div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {reviewInvitations.map((invitation) => {
-                    const isResume = invitation.type === 'resume';
-                    const deadlineDate = invitation.deadline ? new Date(invitation.deadline) : null;
-                    const isOverdue = deadlineDate && deadlineDate < new Date();
-                    const daysLeft = deadlineDate ? Math.ceil((deadlineDate - new Date()) / (1000 * 60 * 60 * 24)) : null;
-
-                    return (
-                      <Card
-                        key={`${invitation.type}-${invitation.token}`}
-                        variant="outlined"
-                        className="overflow-hidden hover:shadow-md transition-shadow"
-                      >
-                        <div className="p-4">
-                          {/* Header */}
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isResume ? 'bg-blue-100' : 'bg-purple-100'
-                                }`}>
-                                {isResume ? (
-                                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                  </svg>
-                                ) : (
-                                  <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                  </svg>
-                                )}
-                              </div>
-                              <span className={`text-xs px-2 py-0.5 rounded-full ${isResume ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
-                                }`}>
-                                {isResume ? 'Resume' : 'Cover Letter'}
-                              </span>
-                            </div>
-                            {invitation.approvalStatus && (
-                              <span className={`text-xs px-2 py-0.5 rounded-full ${invitation.approvalStatus === 'approved' ? 'bg-green-100 text-green-700' :
-                                invitation.approvalStatus === 'changes_requested' ? 'bg-orange-100 text-orange-700' :
-                                  invitation.approvalStatus === 'pending_review' ? 'bg-yellow-100 text-yellow-700' :
-                                    'bg-gray-100 text-gray-600'
-                                }`}>
-                                {invitation.approvalStatus.replace('_', ' ')}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Document Name */}
-                          <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1">
-                            {invitation.documentName}
-                          </h3>
-
-                          {/* Owner */}
-                          <p className="text-sm text-gray-600 mb-2">
-                            From: <span className="font-medium">{invitation.ownerName}</span>
-                          </p>
-
-                          {/* Note */}
-                          {invitation.note && (
-                            <p className="text-sm text-gray-500 mb-2 line-clamp-2 italic">
-                              "{invitation.note}"
-                            </p>
-                          )}
-
-                          {/* Deadline */}
-                          {deadlineDate && (
-                            <div className={`text-xs px-2 py-1 rounded mb-3 inline-block ${isOverdue
-                              ? 'bg-red-100 text-red-700'
-                              : daysLeft <= 2
-                                ? 'bg-orange-100 text-orange-700'
-                                : 'bg-blue-50 text-blue-700'
-                              }`}>
-                              {isOverdue ? (
-                                <>⚠️ Overdue: {deadlineDate.toLocaleDateString()}</>
-                              ) : (
-                                <>📅 Due: {deadlineDate.toLocaleDateString()} ({daysLeft} day{daysLeft !== 1 ? 's' : ''} left)</>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Actions */}
-                          <div className="flex gap-2 mt-3">
-                            <a
-                              href={isResume
-                                ? `/share/${invitation.token}`
-                                : `/share/cover-letter/${invitation.token}`
-                              }
-                              className="flex-1 px-3 py-2 text-sm text-center text-white rounded-lg transition"
-                              style={{ backgroundColor: '#777C6D' }}
-                              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-                            >
-                              Review & Comment
-                            </a>
-                          </div>
-
-                          {/* Shared date */}
-                          <p className="text-xs text-gray-400 mt-2 text-center">
-                            Shared {new Date(invitation.createdAt).toLocaleDateString()}
-                          </p>
-                        </div>
-                      </Card>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
+          <SharedWithMeSection
+            reviewInvitations={reviewInvitations}
+            isLoadingReviewInvitations={isLoadingReviewInvitations}
+            loadReviewInvitations={loadReviewInvitations}
+          />
         </div>
       </Container>
 
@@ -2898,492 +2772,53 @@ export default function ResumeTemplates() {
       />
 
       {/* Share & Feedback Panel (Owner) */}
-      {showSharePanel && shareForResume && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-50 p-4"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
-          onClick={() => setShowSharePanel(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto border border-gray-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
-              <h3 className="text-2xl font-heading font-semibold">Share & Feedback — {shareForResume.name}</h3>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setShowSharePanel(false)}
-                  className="text-gray-400 hover:text-gray-600 transition"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            {successMessage && (
-              <div className="mx-6 mt-6 p-4 border rounded-lg" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }}>
-                <p className="font-medium" style={{ color: '#166534' }}>{successMessage}</p>
-              </div>
-            )}
-
-            <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Create New Share */}
-              <Card variant="outlined">
-                <div className="p-4">
-                  <h4 className="text-lg font-heading font-semibold mb-3">Create new share link</h4>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-sm text-gray-700 block mb-1">Privacy</label>
-                      <select
-                        className="w-full border rounded px-3 py-2"
-                        value={shareForm.privacy}
-                        onChange={(e) => setShareForm(prev => ({ ...prev, privacy: e.target.value }))}
-                      >
-                        <option value="unlisted">Unlisted (anyone with link)</option>
-                        <option value="private">Private (allow-listed reviewers only)</option>
-                      </select>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input id="allowComments" type="checkbox" className="h-4 w-4" checked={shareForm.allowComments} onChange={(e) => setShareForm(prev => ({ ...prev, allowComments: e.target.checked }))} />
-                      <label htmlFor="allowComments" className="text-sm">Allow comments</label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input id="canViewContact" type="checkbox" className="h-4 w-4" checked={shareForm.canViewContact} onChange={(e) => setShareForm(prev => ({ ...prev, canViewContact: e.target.checked }))} />
-                      <label htmlFor="canViewContact" className="text-sm">Show contact info</label>
-                    </div>
-                    {shareForm.privacy === 'private' && (
-                      <div>
-                        <label className="text-sm text-gray-700 block mb-1">Allowed reviewer emails (comma-separated)</label>
-                        <input
-                          type="text"
-                          className="w-full border rounded px-3 py-2"
-                          placeholder="name@example.com, other@example.com"
-                          value={shareForm.allowedReviewersText}
-                          onChange={(e) => setShareForm(prev => ({ ...prev, allowedReviewersText: e.target.value }))}
-                        />
-                      </div>
-                    )}
-                    <div>
-                      <label className="text-sm text-gray-700 block mb-1">Note (optional)</label>
-                      <input
-                        type="text"
-                        className="w-full border rounded px-3 py-2"
-                        placeholder="e.g., For Design team review"
-                        value={shareForm.note}
-                        onChange={(e) => setShareForm(prev => ({ ...prev, note: e.target.value }))}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-700 block mb-1">Expiry (days, optional)</label>
-                      <input
-                        type="number"
-                        min="1"
-                        className="w-full border rounded px-3 py-2"
-                        placeholder="e.g., 7"
-                        value={shareForm.expiresInDays}
-                        onChange={(e) => setShareForm(prev => ({ ...prev, expiresInDays: e.target.value }))}
-                      />
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={handleGenerateShare}
-                        disabled={shareActionLoading}
-                        className="px-4 py-2 text-white rounded-lg transition focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50"
-                        style={{ backgroundColor: '#2563EB' }}
-                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#1D4ED8'}
-                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#2563EB'}
-                      >
-                        {shareActionLoading ? 'Creating…' : 'Create link'}
-                      </button>
-                      {createdShareUrl && (
-                        <button
-                          onClick={() => navigator.clipboard.writeText(createdShareUrl)}
-                          className="px-3 py-2 border rounded text-sm"
-                          title={createdShareUrl}
-                        >Copy URL</button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </Card>
-
-              {/* Existing Share Links */}
-              <Card variant="outlined">
-                <div className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-lg font-heading font-semibold">Existing links</h4>
-                    <button
-                      onClick={() => loadShares(shareForResume._id)}
-                      className="text-sm px-3 py-1 border rounded"
-                    >Refresh</button>
-                  </div>
-                  {isLoadingShares ? (
-                    <div className="text-sm text-gray-500">Loading…</div>
-                  ) : (shareLinks && shareLinks.length > 0 ? (
-                    <div className="space-y-2">
-                      {shareLinks.map((s) => (
-                        <div key={s.token} className={`p-3 border rounded flex items-center justify-between ${s.status === 'revoked' ? 'opacity-60' : ''}`}>
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium">{s.privacy === 'private' ? 'Private' : 'Unlisted'} • {s.allowComments ? 'Comments on' : 'Comments off'} {s.canViewContact ? '• Contact visible' : ''}</p>
-                            <p className="text-xs text-gray-600 truncate">Token: {s.token}</p>
-                            {s.expiresAt && (
-                              <p className="text-xs text-gray-500">Expires: {new Date(s.expiresAt).toLocaleString()}</p>
-                            )}
-                            <p className="text-xs text-gray-500">Status: {s.status}</p>
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            {s.status !== 'revoked' && (
-                              <>
-                                <button
-                                  onClick={() => navigator.clipboard.writeText(`${window.location.origin}/share/${s.token}`)}
-                                  className="px-2 py-1 border rounded text-xs"
-                                >Copy URL</button>
-                                <button
-                                  onClick={() => handleRevokeShare(s.token)}
-                                  className="px-2 py-1 border rounded text-xs text-red-600 border-red-300"
-                                >Revoke</button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-500">No share links yet.</p>
-                  ))}
-                </div>
-              </Card>
-
-              {/* Feedback Management */}
-              <Card variant="outlined" className="lg:col-span-2">
-                <div className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-lg font-heading font-semibold">Feedback</h4>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => loadOwnerFeedback(shareForResume._id)} className="text-sm px-3 py-1 border rounded">Refresh</button>
-                      <button onClick={() => handleExportFeedback('csv')} className="text-sm px-3 py-1 border rounded">Export CSV</button>
-                      <button onClick={() => handleExportFeedback('json')} className="text-sm px-3 py-1 border rounded">Export JSON</button>
-                    </div>
-                  </div>
-                  {isLoadingOwnerFeedback ? (
-                    <div className="text-sm text-gray-500">Loading…</div>
-                  ) : (ownerFeedback && ownerFeedback.length > 0 ? (
-                    <div className="divide-y">
-                      {ownerFeedback.map(fb => (
-                        <div key={fb._id} className="py-3 flex items-start justify-between gap-4">
-                          <div className="min-w-0">
-                            <p className="text-sm"><span className="font-medium">{fb.authorName || fb.authorEmail || 'Anonymous'}</span> — <span className="text-gray-600 text-xs">{new Date(fb.createdAt).toLocaleString()}</span></p>
-                            <p className="text-sm text-gray-800 whitespace-pre-wrap">{fb.comment}</p>
-                            {fb.status === 'resolved' && (
-                              <p className="text-xs text-green-700 mt-1">Resolved {fb.resolvedAt ? new Date(fb.resolvedAt).toLocaleString() : ''}{fb.resolutionNote ? ` • ${fb.resolutionNote}` : ''}</p>
-                            )}
-                          </div>
-                          <div className="flex-shrink-0">
-                            {fb.status !== 'resolved' && (
-                              <button onClick={() => handleResolveFeedback(fb)} className="px-3 py-1 border rounded text-sm">Mark Resolved</button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-500">No feedback yet.</p>
-                  ))}
-                </div>
-              </Card>
-            </div>
-          </div>
-        </div>
-      )}
+      <ResumeShareFeedbackPanel
+        showSharePanel={showSharePanel}
+        setShowSharePanel={setShowSharePanel}
+        shareForResume={shareForResume}
+        successMessage={successMessage}
+        shareForm={shareForm}
+        setShareForm={setShareForm}
+        shareActionLoading={shareActionLoading}
+        handleGenerateShare={handleGenerateShare}
+        createdShareUrl={createdShareUrl}
+        isLoadingShares={isLoadingShares}
+        shareLinks={shareLinks}
+        loadShares={loadShares}
+        handleRevokeShare={handleRevokeShare}
+        isLoadingOwnerFeedback={isLoadingOwnerFeedback}
+        ownerFeedback={ownerFeedback}
+        loadOwnerFeedback={loadOwnerFeedback}
+        handleExportFeedback={handleExportFeedback}
+        handleResolveFeedback={handleResolveFeedback}
+      />
 
       {/* UC-110: Cover Letter Share & Feedback Panel (Owner) */}
-      {showCoverLetterSharePanel && shareForCoverLetter && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-50 p-4"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
-          onClick={() => setShowCoverLetterSharePanel(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto border border-gray-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between z-10">
-              <div>
-                <h3 className="text-2xl font-heading font-semibold">Share & Feedback — {shareForCoverLetter.name}</h3>
-                {shareForCoverLetter.approvalStatus && (
-                  <span className={`text-sm px-2 py-1 rounded mt-1 inline-block ${shareForCoverLetter.approvalStatus === 'approved' ? 'bg-green-100 text-green-700' :
-                    shareForCoverLetter.approvalStatus === 'needs_revision' ? 'bg-yellow-100 text-yellow-700' :
-                      'bg-gray-100 text-gray-700'
-                    }`}>
-                    Status: {shareForCoverLetter.approvalStatus.replace('_', ' ')}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-3">
-                {/* Approval buttons */}
-                <button
-                  onClick={() => handleUpdateCoverLetterApproval('approved')}
-                  className="px-3 py-1 text-sm rounded bg-green-100 text-green-700 hover:bg-green-200 transition"
-                >
-                  Mark Approved
-                </button>
-                <button
-                  onClick={() => handleUpdateCoverLetterApproval('needs_revision')}
-                  className="px-3 py-1 text-sm rounded bg-yellow-100 text-yellow-700 hover:bg-yellow-200 transition"
-                >
-                  Needs Revision
-                </button>
-                <button
-                  onClick={() => setShowCoverLetterSharePanel(false)}
-                  className="text-gray-400 hover:text-gray-600 transition"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            {coverLetterSuccessMessage && (
-              <div className="mx-6 mt-6 p-4 border rounded-lg" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }}>
-                <p className="font-medium" style={{ color: '#166534' }}>{coverLetterSuccessMessage}</p>
-              </div>
-            )}
-
-            <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Create New Share */}
-              <Card variant="outlined">
-                <div className="p-4">
-                  <h4 className="text-lg font-heading font-semibold mb-3">Create new share link</h4>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-sm text-gray-700 block mb-1">Privacy</label>
-                      <select
-                        className="w-full border rounded px-3 py-2"
-                        value={coverLetterShareForm.privacy}
-                        onChange={(e) => setCoverLetterShareForm(prev => ({ ...prev, privacy: e.target.value }))}
-                      >
-                        <option value="unlisted">Unlisted (anyone with link)</option>
-                        <option value="private">Private (allow-listed reviewers only)</option>
-                      </select>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input id="clAllowComments" type="checkbox" className="h-4 w-4" checked={coverLetterShareForm.allowComments} onChange={(e) => setCoverLetterShareForm(prev => ({ ...prev, allowComments: e.target.checked }))} />
-                      <label htmlFor="clAllowComments" className="text-sm">Allow comments</label>
-                    </div>
-                    {coverLetterShareForm.privacy === 'private' && (
-                      <div>
-                        <label className="text-sm text-gray-700 block mb-1">Allowed reviewer emails (comma-separated)</label>
-                        <input
-                          type="text"
-                          className="w-full border rounded px-3 py-2"
-                          placeholder="name@example.com, other@example.com"
-                          value={coverLetterShareForm.allowedReviewersText}
-                          onChange={(e) => setCoverLetterShareForm(prev => ({ ...prev, allowedReviewersText: e.target.value }))}
-                        />
-                      </div>
-                    )}
-                    <div>
-                      <label className="text-sm text-gray-700 block mb-1">Note (optional)</label>
-                      <input
-                        type="text"
-                        className="w-full border rounded px-3 py-2"
-                        placeholder="e.g., For career advisor review"
-                        value={coverLetterShareForm.note}
-                        onChange={(e) => setCoverLetterShareForm(prev => ({ ...prev, note: e.target.value }))}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-700 block mb-1">Feedback deadline (optional)</label>
-                      <input
-                        type="date"
-                        className="w-full border rounded px-3 py-2"
-                        value={coverLetterShareForm.deadline}
-                        onChange={(e) => setCoverLetterShareForm(prev => ({ ...prev, deadline: e.target.value }))}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-700 block mb-1">Link expiry (days, optional)</label>
-                      <input
-                        type="number"
-                        min="1"
-                        className="w-full border rounded px-3 py-2"
-                        placeholder="e.g., 7"
-                        value={coverLetterShareForm.expiresInDays}
-                        onChange={(e) => setCoverLetterShareForm(prev => ({ ...prev, expiresInDays: e.target.value }))}
-                      />
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={handleGenerateCoverLetterShare}
-                        disabled={coverLetterShareActionLoading}
-                        className="px-4 py-2 text-white rounded-lg transition focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50"
-                        style={{ backgroundColor: '#2563EB' }}
-                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#1D4ED8'}
-                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#2563EB'}
-                      >
-                        {coverLetterShareActionLoading ? 'Creating…' : 'Create link'}
-                      </button>
-                      {createdCoverLetterShareUrl && (
-                        <button
-                          onClick={() => navigator.clipboard.writeText(createdCoverLetterShareUrl)}
-                          className="px-3 py-2 border rounded text-sm"
-                          title={createdCoverLetterShareUrl}
-                        >Copy URL</button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </Card>
-
-              {/* Existing Share Links */}
-              <Card variant="outlined">
-                <div className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-lg font-heading font-semibold">Existing links</h4>
-                    <button
-                      onClick={() => loadCoverLetterShares(shareForCoverLetter._id)}
-                      className="text-sm px-3 py-1 border rounded"
-                    >Refresh</button>
-                  </div>
-                  {isLoadingCoverLetterShares ? (
-                    <div className="text-sm text-gray-500">Loading…</div>
-                  ) : (coverLetterShareLinks && coverLetterShareLinks.length > 0 ? (
-                    <div className="space-y-2">
-                      {coverLetterShareLinks.map((s) => (
-                        <div key={s.token} className={`p-3 border rounded flex items-center justify-between ${s.status === 'revoked' ? 'opacity-60' : ''}`}>
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium">{s.privacy === 'private' ? 'Private' : 'Unlisted'} • {s.allowComments ? 'Comments on' : 'Comments off'}</p>
-                            <p className="text-xs text-gray-600 truncate">Token: {s.token}</p>
-                            {s.expiresAt && (
-                              <p className="text-xs text-gray-500">Expires: {new Date(s.expiresAt).toLocaleString()}</p>
-                            )}
-                            {s.deadline && (
-                              <p className="text-xs text-gray-500">Feedback deadline: {new Date(s.deadline).toLocaleDateString()}</p>
-                            )}
-                            <p className="text-xs text-gray-500">Status: {s.status}</p>
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            {s.status !== 'revoked' && (
-                              <>
-                                <button
-                                  onClick={() => navigator.clipboard.writeText(`${window.location.origin}/share/cover-letter/${s.token}`)}
-                                  className="px-2 py-1 border rounded text-xs"
-                                >Copy URL</button>
-                                <button
-                                  onClick={() => handleRevokeCoverLetterShare(s.token)}
-                                  className="px-2 py-1 border rounded text-xs text-red-600 border-red-300"
-                                >Revoke</button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-500">No share links yet.</p>
-                  ))}
-                </div>
-              </Card>
-
-              {/* Feedback Management */}
-              <Card variant="outlined" className="lg:col-span-2">
-                <div className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-lg font-heading font-semibold">Feedback</h4>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => loadCoverLetterOwnerFeedback(shareForCoverLetter._id)} className="text-sm px-3 py-1 border rounded">Refresh</button>
-                      <button onClick={() => handleExportCoverLetterFeedback('csv')} className="text-sm px-3 py-1 border rounded">Export CSV</button>
-                      <button onClick={() => handleExportCoverLetterFeedback('json')} className="text-sm px-3 py-1 border rounded">Export JSON</button>
-                    </div>
-                  </div>
-
-                  {/* Feedback Stats */}
-                  {coverLetterOwnerFeedback && coverLetterOwnerFeedback.length > 0 && (
-                    <div className="mb-4 flex gap-4 flex-wrap">
-                      <div className="px-3 py-2 bg-gray-100 rounded">
-                        <span className="text-sm font-medium">Total: </span>
-                        <span className="text-sm">{coverLetterOwnerFeedback.length}</span>
-                      </div>
-                      <div className="px-3 py-2 bg-blue-50 rounded">
-                        <span className="text-sm font-medium text-blue-700">Open: </span>
-                        <span className="text-sm text-blue-700">{coverLetterOwnerFeedback.filter(f => f.status === 'open').length}</span>
-                      </div>
-                      <div className="px-3 py-2 bg-green-50 rounded">
-                        <span className="text-sm font-medium text-green-700">Resolved: </span>
-                        <span className="text-sm text-green-700">{coverLetterOwnerFeedback.filter(f => f.status === 'resolved').length}</span>
-                      </div>
-                      <div className="px-3 py-2 bg-yellow-50 rounded">
-                        <span className="text-sm font-medium text-yellow-700">Dismissed: </span>
-                        <span className="text-sm text-yellow-700">{coverLetterOwnerFeedback.filter(f => f.status === 'dismissed').length}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {isLoadingCoverLetterOwnerFeedback ? (
-                    <div className="text-sm text-gray-500">Loading…</div>
-                  ) : (coverLetterOwnerFeedback && coverLetterOwnerFeedback.length > 0 ? (
-                    <div className="divide-y">
-                      {coverLetterOwnerFeedback.map(fb => (
-                        <div key={fb._id} className="py-3 flex items-start justify-between gap-4">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <p className="text-sm font-medium">{fb.authorName || fb.authorEmail || 'Anonymous'}</p>
-                              <span className="text-xs text-gray-500">{new Date(fb.createdAt).toLocaleString()}</span>
-                              {fb.feedbackTheme && (
-                                <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded">{fb.feedbackTheme}</span>
-                              )}
-                              {fb.suggestionType && (
-                                <span className={`text-xs px-2 py-0.5 rounded ${fb.suggestionType === 'critical' ? 'bg-red-100 text-red-700' :
-                                  fb.suggestionType === 'suggestion' ? 'bg-blue-100 text-blue-700' :
-                                    'bg-gray-100 text-gray-700'
-                                  }`}>{fb.suggestionType}</span>
-                              )}
-                            </div>
-                            <p className="text-sm text-gray-800 whitespace-pre-wrap mt-1">{fb.comment}</p>
-                            {fb.selectionStart !== undefined && fb.selectionEnd !== undefined && (
-                              <p className="text-xs text-gray-500 mt-1 italic">Inline comment (chars {fb.selectionStart}-{fb.selectionEnd})</p>
-                            )}
-                            {fb.status === 'resolved' && (
-                              <p className="text-xs text-green-700 mt-1">✓ Resolved {fb.resolvedAt ? new Date(fb.resolvedAt).toLocaleString() : ''}{fb.resolutionNote ? ` • ${fb.resolutionNote}` : ''}</p>
-                            )}
-                            {fb.status === 'dismissed' && (
-                              <p className="text-xs text-yellow-700 mt-1">✗ Dismissed{fb.resolutionNote ? ` • ${fb.resolutionNote}` : ''}</p>
-                            )}
-                          </div>
-                          <div className="flex-shrink-0 flex gap-1">
-                            {fb.status === 'open' && (
-                              <>
-                                <button onClick={() => handleResolveCoverLetterFeedback(fb)} className="px-2 py-1 border rounded text-xs text-green-600 border-green-300 hover:bg-green-50">Resolve</button>
-                                <button onClick={async () => {
-                                  try {
-                                    await authWrap();
-                                    const note = window.prompt('Add a dismissal note (optional):', '');
-                                    const resp = await apiResolveCoverLetterFeedback(fb._id, { resolutionNote: note || '', status: 'dismissed' });
-                                    const payload = getPayload(resp);
-                                    const updated = payload.feedback || payload;
-                                    setCoverLetterOwnerFeedback(prev => prev.map(it => it._id === updated._id ? updated : it));
-                                  } catch (e) {
-                                    console.error('Dismiss cover letter feedback failed', e);
-                                  }
-                                }} className="px-2 py-1 border rounded text-xs text-yellow-600 border-yellow-300 hover:bg-yellow-50">Dismiss</button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-500">No feedback yet.</p>
-                  ))}
-                </div>
-              </Card>
-            </div>
-          </div>
-        </div>
-      )}
+      <CoverLetterShareFeedbackPanel
+        showCoverLetterSharePanel={showCoverLetterSharePanel}
+        setShowCoverLetterSharePanel={setShowCoverLetterSharePanel}
+        shareForCoverLetter={shareForCoverLetter}
+        coverLetterSuccessMessage={coverLetterSuccessMessage}
+        coverLetterShareForm={coverLetterShareForm}
+        setCoverLetterShareForm={setCoverLetterShareForm}
+        coverLetterShareActionLoading={coverLetterShareActionLoading}
+        handleGenerateCoverLetterShare={handleGenerateCoverLetterShare}
+        createdCoverLetterShareUrl={createdCoverLetterShareUrl}
+        isLoadingCoverLetterShares={isLoadingCoverLetterShares}
+        coverLetterShareLinks={coverLetterShareLinks}
+        loadCoverLetterShares={loadCoverLetterShares}
+        handleRevokeCoverLetterShare={handleRevokeCoverLetterShare}
+        isLoadingCoverLetterOwnerFeedback={isLoadingCoverLetterOwnerFeedback}
+        coverLetterOwnerFeedback={coverLetterOwnerFeedback}
+        setCoverLetterOwnerFeedback={setCoverLetterOwnerFeedback}
+        loadCoverLetterOwnerFeedback={loadCoverLetterOwnerFeedback}
+        handleExportCoverLetterFeedback={handleExportCoverLetterFeedback}
+        handleResolveCoverLetterFeedback={handleResolveCoverLetterFeedback}
+        handleUpdateCoverLetterApproval={handleUpdateCoverLetterApproval}
+        authWrap={authWrap}
+        apiResolveCoverLetterFeedback={apiResolveCoverLetterFeedback}
+        getPayload={getPayload}
+      />
 
       {/* UC-51: Watermark Configuration Modal */}
       <WatermarkModal
