@@ -14,9 +14,9 @@ export default function Button({
     ...props
 }) {
     const sizes = {
-        small: "py-1.5 px-3 text-sm",
-        medium: "py-2 px-4 text-base",
-        large: "py-2.5 px-5 text-lg"
+        small: "py-1.5 px-4 text-sm",
+        medium: "py-2 px-5 text-base",
+        large: "py-2.5 px-6 text-lg"
     };
 
     const base = "rounded-lg font-medium transition focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-md border-2";

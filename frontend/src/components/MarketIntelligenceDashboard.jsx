@@ -151,8 +151,12 @@ export default function MarketIntelligenceDashboard() {
               Track trends, analyze opportunities, and make informed career decisions
             </p>
           </div>
-          <Button onClick={() => setShowPreferences(true)} variant="outline">
-            Preferences
+          <Button
+            onClick={() => setShowPreferences(true)}
+            variant="outline"
+            size="lg"
+            className="min-w-[120px] px-6 py-3 text-lg"
+          >
             Preferences
           </Button>
         </div>
@@ -160,20 +164,19 @@ export default function MarketIntelligenceDashboard() {
         {/* Tabs */}
         <div className="flex overflow-x-auto border-b border-gray-200 gap-2">
           {tabs.map(tab => (
-            <button
+            <Button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`
-                px-4 py-3 font-medium text-sm whitespace-nowrap transition-colors
-                ${activeTab === tab.id
+              size="lg"
+              className={`min-w-[120px] px-6 py-3 text-lg font-medium whitespace-nowrap transition-colors ${
+                activeTab === tab.id
                   ? 'text-primary-600 border-b-2 border-primary-600'
                   : 'text-gray-600 hover:text-gray-900 hover:border-gray-300 border-b-2 border-transparent'
-                }
-              `}
+              }`}
+              variant={activeTab === tab.id ? 'primary' : 'outline'}
             >
-              {/* Removed icon */}
               {tab.label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -220,10 +223,14 @@ function OverviewTab({ intelligence, jobTrends, skillDemand, recommendations, op
   const urgentOpportunities = opportunities.filter(o => o.urgency === 'high').length;
   const trendingSkills = skillDemand.filter(s => s.trend === 'rising').length;
 
-  // Calculate data quality score
-  const dataQuality = intelligence?.lastUpdated
-    ? Math.round((1 - (Date.now() - new Date(intelligence.lastUpdated).getTime()) / (7 * 24 * 60 * 60 * 1000)) * 100)
-    : 0;
+  // Calculate data quality score based on available data
+  const hasJobTrends = jobTrends && jobTrends.length > 0;
+  const hasSkillData = skillDemand && skillDemand.length > 0;
+  const hasRecommendations = recommendations && recommendations.length > 0;
+  const hasOpportunities = opportunities && opportunities.length > 0;
+  
+  const dataPoints = [hasJobTrends, hasSkillData, hasRecommendations, hasOpportunities].filter(Boolean).length;
+  const dataQuality = Math.round((dataPoints / 4) * 100);
 
   const qualityLabel = dataQuality > 80 ? 'Excellent' : dataQuality > 60 ? 'Good' : dataQuality > 40 ? 'Fair' : 'Needs Update';
 
@@ -371,7 +378,9 @@ function JobTrendsTab({ trends }) {
                   </div>
                   <div>
                     <span className="text-gray-600">Avg Salary:</span>
-                    <span className="ml-2 font-medium">${trend.averageSalary.toLocaleString()}</span>
+                    <span className="ml-2 font-medium">
+                      {trend.averageSalary ? `$${trend.averageSalary.toLocaleString()}` : 'N/A'}
+                    </span>
                   </div>
                   <div>
                     <span className="text-gray-600">Competition:</span>
@@ -424,8 +433,9 @@ function SkillDemandTab({ skills }) {
             {['all', 'rising', 'stable', 'declining'].map(trend => (
               <Button
                 key={trend}
-                size="sm"
+                size="lg"
                 variant={filter === trend ? 'primary' : 'outline'}
+                className="min-w-[120px] px-6 py-3 text-lg"
                 onClick={() => setFilter(trend)}
               >
                 {trend.charAt(0).toUpperCase() + trend.slice(1)}
@@ -669,8 +679,9 @@ function RecommendationsTab({ recommendations, onUpdate }) {
             {['all', 'high', 'medium', 'low'].map(priority => (
               <Button
                 key={priority}
-                size="sm"
+                size="lg"
                 variant={filter === priority ? 'primary' : 'outline'}
+                className="min-w-[120px] px-6 py-3 text-lg"
                 onClick={() => setFilter(priority)}
               >
                 {priority.charAt(0).toUpperCase() + priority.slice(1)}

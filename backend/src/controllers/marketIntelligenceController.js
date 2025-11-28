@@ -865,6 +865,7 @@ async function analyzeJobMarketTrends(preferences, filterIndustry, filterLocatio
   } else if (preferences.industries && preferences.industries.length > 0) {
     query.industry = { $in: preferences.industries };
   }
+  // If no preferences set, analyze all jobs
   
   if (filterLocation) {
     query.location = { $regex: filterLocation, $options: 'i' };
@@ -893,16 +894,17 @@ async function analyzeJobMarketTrends(preferences, filterIndustry, filterLocatio
   const trends = Object.entries(industryGroups).map(([industry, industryJobs]) => {
     const openings = industryJobs.length;
     
-    // Calculate average salary
+    // Calculate average salary only if we have data
     const salariesWithData = industryJobs.filter(j => j.salary && (j.salary.min || j.salary.max));
-    const avgSalary = salariesWithData.length > 0
-      ? Math.round(salariesWithData.reduce((sum, j) => {
-          const jobAvg = j.salary.max && j.salary.min 
-            ? (j.salary.max + j.salary.min) / 2 
-            : (j.salary.max || j.salary.min || 0);
-          return sum + jobAvg;
-        }, 0) / salariesWithData.length)
-      : 0;
+    let avgSalary = null;
+    if (salariesWithData.length > 0) {
+      avgSalary = Math.round(salariesWithData.reduce((sum, j) => {
+        const jobAvg = j.salary.max && j.salary.min 
+          ? (j.salary.max + j.salary.min) / 2 
+          : (j.salary.max || j.salary.min || 0);
+        return sum + jobAvg;
+      }, 0) / salariesWithData.length);
+    }
 
     // Determine competition level based on job count
     const competitionLevel = openings > 100 ? 'low' : openings > 50 ? 'medium' : 'high';
@@ -949,10 +951,11 @@ async function analyzeJobMarketTrends(preferences, filterIndustry, filterLocatio
 async function analyzeSkillDemand(preferences, filterCategory, filterTrend) {
   const query = {};
   
-  // Apply filters from preferences
+  // Apply filters from preferences (only if they exist)
   if (preferences.industries && preferences.industries.length > 0) {
     query.industry = { $in: preferences.industries };
   }
+  // If no preferences set, analyze all jobs
 
   // Get all relevant jobs
   const jobs = await Job.find(query);
@@ -1007,10 +1010,11 @@ async function analyzeSkillDemand(preferences, filterCategory, filterTrend) {
       let trend = 'stable';
       let growthRate = 0;
       
-      if (demandScore > 40 && count > totalJobs * 0.3) {
+      // More realistic thresholds for limited data
+      if (demandScore >= 20 || count >= totalJobs * 0.2) {
         trend = 'rising';
         growthRate = Math.floor(Math.random() * 15) + 10; // 10-25% growth
-      } else if (demandScore < 20 || count < totalJobs * 0.1) {
+      } else if (demandScore < 10 && count < totalJobs * 0.1) {
         trend = 'declining';
         growthRate = -(Math.floor(Math.random() * 10) + 5); // -5% to -15% growth
       } else {
@@ -1081,7 +1085,7 @@ async function analyzeSalaryTrends(preferences, filterRole, filterLocation) {
 
   // Analyze each role
   const trends = Object.entries(roleGroups)
-    .filter(([_, roleJobs]) => roleJobs.length >= 3) // Need at least 3 jobs for meaningful data
+    .filter(([_, roleJobs]) => roleJobs.length >= 2) // Need at least 2 jobs for meaningful data
     .map(([role, roleJobs]) => {
       const salaries = roleJobs.map(j => {
         const min = j.salary?.min || 0;
@@ -1167,7 +1171,7 @@ async function analyzeCompanyGrowth(preferences) {
 
   // Analyze each company
   const companies = Object.entries(companyGroups)
-    .filter(([_, data]) => data.jobs.length >= 2) // At least 2 openings
+    .filter(([_, data]) => data.jobs.length >= 1) // At least 1 opening
     .map(([name, data]) => {
       const openPositions = data.jobs.length;
       
