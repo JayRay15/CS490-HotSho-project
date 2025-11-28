@@ -1,6 +1,7 @@
 import { Job } from "../models/Job.js";
 import { User } from "../models/User.js";
 import { SalaryNegotiation } from "../models/SalaryNegotiation.js";
+import { SalaryProgression } from "../models/SalaryProgression.js";
 import { successResponse, errorResponse, sendResponse, ERROR_CODES } from "../utils/responseFormat.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 
@@ -1628,4 +1629,718 @@ function calculateTotalExperience(employment) {
   });
   
   return Math.round(totalMonths / 12);
+}
+
+/**
+ * ========================================================================
+ * UC-100: SALARY PROGRESSION AND MARKET POSITIONING ENDPOINTS
+ * ========================================================================
+ */
+
+/**
+ * POST /api/salary/progression/offer - Track a salary offer
+ */
+export const trackSalaryOffer = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const offerData = req.body;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Validate required fields
+  if (!offerData.jobId || !offerData.jobTitle || !offerData.company || !offerData.baseSalary) {
+    const { response, statusCode } = errorResponse(
+      "Missing required fields: jobId, jobTitle, company, and baseSalary are required",
+      400,
+      ERROR_CODES.VALIDATION_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Calculate total compensation if not provided
+  if (!offerData.totalCompensation) {
+    offerData.totalCompensation = 
+      (offerData.baseSalary || 0) + 
+      (offerData.signingBonus || 0) + 
+      (offerData.performanceBonus || 0) + 
+      (offerData.equityValue || 0) + 
+      (offerData.benefitsValue || 0);
+  }
+
+  // Calculate negotiation metrics if negotiated
+  if (offerData.wasNegotiated && offerData.initialOffer && offerData.finalOffer) {
+    offerData.increaseFromInitial = {
+      amount: offerData.finalOffer - offerData.initialOffer,
+      percentage: ((offerData.finalOffer - offerData.initialOffer) / offerData.initialOffer * 100).toFixed(2)
+    };
+  }
+
+  // Calculate market position if market data provided
+  if (offerData.marketMedian) {
+    const diffFromMedian = offerData.baseSalary - offerData.marketMedian;
+    const percentDiff = (diffFromMedian / offerData.marketMedian) * 100;
+    
+    if (percentDiff < -10) {
+      offerData.marketPosition = 'Below Market';
+    } else if (percentDiff > 10) {
+      offerData.marketPosition = 'Above Market';
+    } else {
+      offerData.marketPosition = 'At Market';
+    }
+    
+    // Calculate percentile rank (simplified estimation)
+    offerData.percentileRank = Math.min(100, Math.max(0, 50 + (percentDiff / 2)));
+  }
+
+  // Get or create progression record
+  let progression = await SalaryProgression.findOne({ userId });
+  if (!progression) {
+    progression = new SalaryProgression({ 
+      userId,
+      salaryOffers: [],
+      careerMilestones: [],
+      negotiationHistory: [],
+      marketPositioning: [],
+      compensationHistory: [],
+      benefitsTrends: [],
+      advancementRecommendations: []
+    });
+  }
+
+  // Add the offer
+  await progression.addSalaryOffer(offerData);
+
+  // Add to compensation history if accepted
+  if (offerData.offerStatus === 'Accepted') {
+    await progression.addCompensationSnapshot({
+      date: offerData.offerDate || new Date(),
+      baseSalary: offerData.baseSalary,
+      bonuses: (offerData.signingBonus || 0) + (offerData.performanceBonus || 0),
+      equity: offerData.equityValue || 0,
+      benefits: offerData.benefitsValue || 0,
+      totalCompensation: offerData.totalCompensation,
+      source: 'Job Offer',
+      company: offerData.company,
+      title: offerData.jobTitle
+    });
+  }
+
+  const { response, statusCode } = successResponse("Salary offer tracked successfully", {
+    offer: offerData,
+    progressionId: progression._id,
+    analytics: progression.analytics
+  });
+  return sendResponse(res, response, statusCode);
+});
+
+/**
+ * GET /api/salary/progression - Get complete salary progression data
+ */
+export const getSalaryProgression = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  let progression = await SalaryProgression.findOne({ userId });
+  
+  // Create empty progression if none exists
+  if (!progression) {
+    progression = new SalaryProgression({ 
+      userId,
+      salaryOffers: [],
+      careerMilestones: [],
+      negotiationHistory: [],
+      marketPositioning: [],
+      compensationHistory: [],
+      benefitsTrends: [],
+      advancementRecommendations: []
+    });
+    await progression.save();
+  }
+
+  // Calculate career velocity
+  progression.calculateCareerVelocity();
+  await progression.save();
+
+  const { response, statusCode } = successResponse("Salary progression retrieved successfully", {
+    progression
+  });
+  return sendResponse(res, response, statusCode);
+});
+
+/**
+ * GET /api/salary/progression/analytics - Get salary progression analytics
+ */
+export const getProgressionAnalytics = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const progression = await SalaryProgression.findOne({ userId });
+  
+  if (!progression || progression.salaryOffers.length === 0) {
+    const { response, statusCode } = successResponse("No progression data available yet", {
+      analytics: {
+        hasData: false,
+        message: "Start tracking salary offers to see your progression analytics"
+      }
+    });
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Calculate comprehensive analytics
+  const analytics = {
+    hasData: true,
+    
+    // Offer statistics
+    offers: {
+      total: progression.analytics.totalOffersReceived,
+      accepted: progression.analytics.totalOffersAccepted,
+      declined: progression.analytics.totalOffersDeclined,
+      pending: progression.salaryOffers.filter(o => o.offerStatus === 'Active' || o.offerStatus === 'Pending').length,
+      acceptanceRate: progression.analytics.totalOffersReceived > 0 
+        ? ((progression.analytics.totalOffersAccepted / progression.analytics.totalOffersReceived) * 100).toFixed(1)
+        : 0
+    },
+    
+    // Negotiation success
+    negotiation: {
+      totalNegotiated: progression.salaryOffers.filter(o => o.wasNegotiated).length,
+      successRate: progression.analytics.negotiationSuccessRate.toFixed(1),
+      averageIncrease: progression.analytics.averageNegotiationIncrease.toFixed(1),
+      bestNegotiation: progression.salaryOffers
+        .filter(o => o.increaseFromInitial?.percentage)
+        .sort((a, b) => b.increaseFromInitial.percentage - a.increaseFromInitial.percentage)[0] || null,
+      improvementPattern: calculateNegotiationPattern(progression.negotiationHistory)
+    },
+    
+    // Compensation growth
+    compensation: {
+      totalGrowth: progression.analytics.totalCompensationGrowth.toFixed(1),
+      yearOverYear: progression.analytics.yearOverYearGrowth,
+      currentCompensation: progression.compensationHistory.length > 0 
+        ? progression.compensationHistory[0].totalCompensation 
+        : null,
+      highestOffer: Math.max(...progression.salaryOffers.map(o => o.totalCompensation)),
+      averageOffer: progression.salaryOffers.length > 0
+        ? (progression.salaryOffers.reduce((sum, o) => sum + o.totalCompensation, 0) / progression.salaryOffers.length).toFixed(0)
+        : 0
+    },
+    
+    // Career progression
+    career: {
+      velocity: progression.analytics.careerVelocity,
+      averageTimeToIncrease: progression.analytics.averageTimeToSalaryIncrease?.toFixed(1),
+      milestones: progression.careerMilestones.length,
+      promotions: progression.careerMilestones.filter(m => m.type === 'Promotion').length,
+      jobChanges: progression.careerMilestones.filter(m => m.type === 'Job Change').length
+    },
+    
+    // Market positioning
+    marketPosition: {
+      current: progression.marketPositioning.length > 0 
+        ? progression.marketPositioning[0] 
+        : null,
+      trend: calculateMarketPositionTrend(progression.marketPositioning),
+      averagePercentile: progression.salaryOffers.filter(o => o.percentileRank)
+        .reduce((sum, o, _, arr) => sum + o.percentileRank / arr.length, 0).toFixed(1)
+    },
+    
+    // Benefits evolution
+    benefits: {
+      totalTrends: progression.benefitsTrends.length,
+      latestValue: progression.benefitsTrends.length > 0 
+        ? progression.benefitsTrends[0].estimatedValue 
+        : 0,
+      evolution: analyzeBenefitsTrends(progression.benefitsTrends)
+    }
+  };
+
+  const { response, statusCode } = successResponse("Progression analytics retrieved successfully", {
+    analytics
+  });
+  return sendResponse(res, response, statusCode);
+});
+
+/**
+ * POST /api/salary/progression/milestone - Add career milestone
+ */
+export const addCareerMilestone = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const milestoneData = req.body;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Validate required fields
+  if (!milestoneData.date || !milestoneData.type || !milestoneData.title) {
+    const { response, statusCode } = errorResponse(
+      "Missing required fields: date, type, and title are required",
+      400,
+      ERROR_CODES.VALIDATION_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  let progression = await SalaryProgression.findOne({ userId });
+  if (!progression) {
+    progression = new SalaryProgression({ userId });
+  }
+
+  await progression.addCareerMilestone(milestoneData);
+
+  const { response, statusCode } = successResponse("Career milestone added successfully", {
+    milestone: milestoneData
+  });
+  return sendResponse(res, response, statusCode);
+});
+
+/**
+ * POST /api/salary/progression/market-assessment - Add market positioning assessment
+ */
+export const addMarketAssessment = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const assessmentData = req.body;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Calculate derived fields
+  if (assessmentData.currentSalary && assessmentData.marketMedian) {
+    const gap = assessmentData.currentSalary - assessmentData.marketMedian;
+    assessmentData.gapFromMarket = gap;
+    assessmentData.gapPercentage = (gap / assessmentData.marketMedian * 100).toFixed(2);
+    
+    const percentDiff = assessmentData.gapPercentage;
+    if (percentDiff < -10) {
+      assessmentData.position = 'Below Market';
+    } else if (percentDiff > 10) {
+      assessmentData.position = 'Above Market';
+    } else {
+      assessmentData.position = 'At Market';
+    }
+    
+    // Simplified percentile calculation
+    assessmentData.percentileRank = Math.min(100, Math.max(0, 50 + (percentDiff / 2)));
+  }
+
+  let progression = await SalaryProgression.findOne({ userId });
+  if (!progression) {
+    progression = new SalaryProgression({ userId });
+  }
+
+  await progression.addMarketAssessment(assessmentData);
+
+  const { response, statusCode } = successResponse("Market assessment added successfully", {
+    assessment: assessmentData
+  });
+  return sendResponse(res, response, statusCode);
+});
+
+/**
+ * POST /api/salary/progression/recommendations - Generate advancement recommendations
+ */
+export const generateAdvancementRecommendations = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const progression = await SalaryProgression.findOne({ userId });
+  const user = await User.findOne({ auth0Id: userId });
+  
+  if (!progression) {
+    const { response, statusCode } = errorResponse(
+      "No progression data found. Track some salary offers first.",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const recommendations = [];
+  
+  // Get latest market position
+  const latestMarketPosition = progression.marketPositioning.length > 0 
+    ? progression.marketPositioning[0] 
+    : null;
+  
+  // Get latest compensation
+  const latestComp = progression.compensationHistory.length > 0 
+    ? progression.compensationHistory[0] 
+    : null;
+
+  // Recommendation 1: Salary negotiation if below market
+  if (latestMarketPosition && latestMarketPosition.position === 'Below Market') {
+    const gapAmount = Math.abs(latestMarketPosition.gapFromMarket);
+    recommendations.push({
+      recommendationType: 'Negotiation',
+      title: 'Negotiate Salary to Market Rate',
+      description: `Your current salary is ${Math.abs(latestMarketPosition.gapPercentage).toFixed(1)}% below market median. Consider negotiating a raise or seeking opportunities that offer market-competitive compensation.`,
+      potentialImpact: {
+        salaryIncrease: gapAmount,
+        percentage: Math.abs(latestMarketPosition.gapPercentage)
+      },
+      timeframe: '3-6 months',
+      priority: 'High',
+      actionItems: [
+        'Schedule a performance review with your manager',
+        'Document your achievements and contributions',
+        'Research current market rates for your role',
+        'Prepare a data-driven case for a raise',
+        'Consider exploring external opportunities if internal negotiation fails'
+      ],
+      marketData: {
+        currentSalary: latestMarketPosition.currentSalary,
+        marketMedian: latestMarketPosition.marketMedian,
+        targetSalary: latestMarketPosition.marketMedian
+      }
+    });
+  }
+
+  // Recommendation 2: Job change based on career velocity
+  if (progression.analytics.careerVelocity === 'Slow' && progression.compensationHistory.length >= 2) {
+    const yearsInCurrent = progression.analytics.averageTimeToSalaryIncrease || 36;
+    if (yearsInCurrent > 24) {
+      recommendations.push({
+        recommendationType: 'Job Change',
+        title: 'Consider a Career Move for Salary Growth',
+        description: `Your career progression has been slower than average, with approximately ${yearsInCurrent.toFixed(0)} months between salary increases. Job changes typically result in 10-20% salary increases.`,
+        potentialImpact: {
+          salaryIncrease: latestComp ? latestComp.totalCompensation * 0.15 : 0,
+          percentage: 15
+        },
+        timeframe: '6-12 months',
+        priority: 'High',
+        actionItems: [
+          'Update your resume with recent achievements',
+          'Network with professionals in your target companies',
+          'Apply to 2-3 positions per week',
+          'Practice interviewing skills',
+          'Research companies with strong career growth opportunities'
+        ]
+      });
+    }
+  }
+
+  // Recommendation 3: Skill development based on market trends
+  const experienceLevel = user?.experienceLevel || 'Mid';
+  const targetLevel = experienceLevel === 'Entry' ? 'Mid' : experienceLevel === 'Mid' ? 'Senior' : 'Executive';
+  
+  if (experienceLevel !== 'Executive') {
+    const industry = latestComp?.company ? 'Technology' : 'Other';
+    const currentMedian = INDUSTRY_BENCHMARKS[industry]?.[experienceLevel]?.median || 0;
+    const nextLevelMedian = INDUSTRY_BENCHMARKS[industry]?.[targetLevel]?.median || 0;
+    const potentialIncrease = nextLevelMedian - currentMedian;
+    
+    recommendations.push({
+      recommendationType: 'Skill Development',
+      title: `Develop Skills for ${targetLevel}-Level Positions`,
+      description: `Advancing to ${targetLevel} level could increase your salary by ${((potentialIncrease / currentMedian) * 100).toFixed(0)}%. Focus on developing leadership, strategic thinking, and specialized technical skills.`,
+      potentialImpact: {
+        salaryIncrease: potentialIncrease,
+        percentage: (potentialIncrease / currentMedian) * 100
+      },
+      timeframe: '12-24 months',
+      priority: 'Medium',
+      actionItems: [
+        'Identify key skills required for next level',
+        'Take on leadership responsibilities in current role',
+        'Pursue relevant certifications or advanced training',
+        'Seek mentorship from senior professionals',
+        'Lead cross-functional projects'
+      ]
+    });
+  }
+
+  // Recommendation 4: Certification based on negotiation success rate
+  if (progression.analytics.negotiationSuccessRate < 50 && progression.negotiationHistory.length >= 2) {
+    recommendations.push({
+      recommendationType: 'Certification',
+      title: 'Obtain Industry Certification to Strengthen Negotiations',
+      description: `Your negotiation success rate is ${progression.analytics.negotiationSuccessRate.toFixed(0)}%. Earning a recognized certification can provide leverage in salary discussions and increase your market value.`,
+      potentialImpact: {
+        salaryIncrease: latestComp ? latestComp.baseSalary * 0.08 : 0,
+        percentage: 8
+      },
+      timeframe: '3-9 months',
+      priority: 'Medium',
+      actionItems: [
+        'Research high-value certifications in your field',
+        'Allocate study time weekly',
+        'Consider employer-sponsored certification programs',
+        'Update resume and LinkedIn immediately after certification',
+        'Use certification as leverage in next negotiation'
+      ]
+    });
+  }
+
+  // Recommendation 5: Industry switch if market position consistently low
+  if (progression.marketPositioning.length >= 3) {
+    const belowMarketCount = progression.marketPositioning
+      .slice(0, 3)
+      .filter(mp => mp.position === 'Below Market').length;
+    
+    if (belowMarketCount >= 2) {
+      recommendations.push({
+        recommendationType: 'Industry Switch',
+        title: 'Explore Higher-Paying Industries',
+        description: `Your compensation has consistently been below market. Consider industries with higher compensation for your skills, such as Technology, Finance, or Consulting.`,
+        potentialImpact: {
+          salaryIncrease: latestComp ? latestComp.totalCompensation * 0.25 : 0,
+          percentage: 25
+        },
+        timeframe: '12-18 months',
+        priority: 'Low',
+        actionItems: [
+          'Research industries that value your transferable skills',
+          'Network with professionals in target industries',
+          'Identify skill gaps for target industry',
+          'Tailor resume to highlight relevant experience',
+          'Consider informational interviews'
+        ]
+      });
+    }
+  }
+
+  // Recommendation 6: Optimal timing for next move
+  if (progression.compensationHistory.length >= 2) {
+    const timeSinceLastIncrease = calculateMonthsSinceLastIncrease(progression.compensationHistory);
+    
+    if (timeSinceLastIncrease >= 18 && timeSinceLastIncrease < 36) {
+      recommendations.push({
+        recommendationType: 'Negotiation',
+        title: 'Optimal Timing for Salary Discussion',
+        description: `It's been ${timeSinceLastIncrease} months since your last significant salary increase. This is an ideal time to discuss compensation with your current employer or explore new opportunities.`,
+        potentialImpact: {
+          salaryIncrease: latestComp ? latestComp.totalCompensation * 0.12 : 0,
+          percentage: 12
+        },
+        timeframe: '1-3 months',
+        priority: 'High',
+        actionItems: [
+          'Document recent achievements and impact',
+          'Research current market rates',
+          'Schedule meeting with manager',
+          'Prepare negotiation talking points',
+          'Have backup plan if negotiation unsuccessful'
+        ]
+      });
+    }
+  }
+
+  // Save recommendations to progression
+  for (const rec of recommendations) {
+    await progression.addRecommendation(rec);
+  }
+
+  const { response, statusCode } = successResponse("Advancement recommendations generated successfully", {
+    count: recommendations.length,
+    recommendations: recommendations.sort((a, b) => {
+      const priorityOrder = { 'High': 3, 'Medium': 2, 'Low': 1 };
+      return priorityOrder[b.priority] - priorityOrder[a.priority];
+    })
+  });
+  return sendResponse(res, response, statusCode);
+});
+
+/**
+ * POST /api/salary/progression/negotiation-outcome - Track negotiation outcome
+ */
+export const trackNegotiationOutcome = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { negotiationId, outcome } = req.body;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Get the negotiation record
+  const negotiation = await SalaryNegotiation.findById(negotiationId);
+  if (!negotiation || negotiation.userId !== userId) {
+    const { response, statusCode } = errorResponse(
+      "Negotiation not found",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  let progression = await SalaryProgression.findOne({ userId });
+  if (!progression) {
+    progression = new SalaryProgression({ userId });
+  }
+
+  // Calculate success metrics
+  const targetAchievedPercentage = negotiation.targetSalary > 0
+    ? (outcome.achievedSalary / negotiation.targetSalary * 100)
+    : 0;
+  
+  const success = targetAchievedPercentage >= 90; // 90% or more of target = success
+
+  const outcomeData = {
+    negotiationId,
+    date: new Date(),
+    jobTitle: negotiation.jobTitle,
+    company: negotiation.company,
+    targetSalary: negotiation.targetSalary,
+    achievedSalary: outcome.achievedSalary,
+    success,
+    successRate: targetAchievedPercentage,
+    strategyUsed: negotiation.negotiationStrategy,
+    lessonsLearned: outcome.lessonsLearned || []
+  };
+
+  await progression.addNegotiationOutcome(outcomeData);
+
+  const { response, statusCode } = successResponse("Negotiation outcome tracked successfully", {
+    outcome: outcomeData,
+    successRate: progression.analytics.negotiationSuccessRate
+  });
+  return sendResponse(res, response, statusCode);
+});
+
+/**
+ * Helper: Calculate negotiation improvement pattern
+ */
+function calculateNegotiationPattern(history) {
+  if (history.length < 2) return 'Insufficient Data';
+  
+  const recent = history.slice(0, Math.min(3, history.length));
+  const older = history.slice(Math.min(3, history.length));
+  
+  if (older.length === 0) return 'Building History';
+  
+  const recentSuccessRate = recent.filter(n => n.success).length / recent.length;
+  const olderSuccessRate = older.filter(n => n.success).length / older.length;
+  
+  if (recentSuccessRate > olderSuccessRate + 0.15) return 'Improving';
+  if (recentSuccessRate < olderSuccessRate - 0.15) return 'Declining';
+  return 'Stable';
+}
+
+/**
+ * Helper: Calculate market position trend
+ */
+function calculateMarketPositionTrend(positioning) {
+  if (positioning.length < 2) return 'Insufficient Data';
+  
+  const recent = positioning.slice(0, 3);
+  const scores = {
+    'Below Market': 1,
+    'At Market': 2,
+    'Above Market': 3
+  };
+  
+  const avgRecent = recent.reduce((sum, p) => sum + scores[p.position], 0) / recent.length;
+  
+  if (avgRecent >= 2.5) return 'Strong';
+  if (avgRecent >= 1.5) return 'Competitive';
+  return 'Below Average';
+}
+
+/**
+ * Helper: Analyze benefits trends
+ */
+function analyzeBenefitsTrends(trends) {
+  if (trends.length < 2) return { trend: 'Insufficient Data', changes: [] };
+  
+  const latest = trends[0];
+  const previous = trends[1];
+  
+  const changes = [];
+  
+  if (latest.paidTimeOff > previous.paidTimeOff) {
+    changes.push('Increased PTO');
+  }
+  if (latest.retirement401k && !previous.retirement401k) {
+    changes.push('Added 401k');
+  }
+  if (latest.remoteWork && !previous.remoteWork) {
+    changes.push('Gained Remote Work');
+  }
+  if (latest.estimatedValue > previous.estimatedValue) {
+    changes.push('Benefits Value Increased');
+  }
+  
+  return {
+    trend: changes.length > 0 ? 'Improving' : 'Stable',
+    changes
+  };
+}
+
+/**
+ * Helper: Calculate months since last compensation increase
+ */
+function calculateMonthsSinceLastIncrease(history) {
+  if (history.length < 2) return 0;
+  
+  const sorted = history.slice().sort((a, b) => b.date - a.date);
+  const latest = sorted[0];
+  const previous = sorted[1];
+  
+  // Check if there was a meaningful increase (at least 3%)
+  if (latest.totalCompensation > previous.totalCompensation * 1.03) {
+    const diffMs = Date.now() - new Date(latest.date).getTime();
+    return Math.floor(diffMs / (1000 * 60 * 60 * 24 * 30));
+  }
+  
+  // If no recent increase, check when the last one was
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i - 1].totalCompensation > sorted[i].totalCompensation * 1.03) {
+      const diffMs = Date.now() - new Date(sorted[i - 1].date).getTime();
+      return Math.floor(diffMs / (1000 * 60 * 60 * 24 * 30));
+    }
+  }
+  
+  // No significant increase found
+  if (sorted.length > 0) {
+    const diffMs = Date.now() - new Date(sorted[0].date).getTime();
+    return Math.floor(diffMs / (1000 * 60 * 60 * 24 * 30));
+  }
+  
+  return 0;
 }

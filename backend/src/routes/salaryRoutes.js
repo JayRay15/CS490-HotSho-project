@@ -16,7 +16,15 @@ import {
   addConfidenceExercise,
   completeExercise,
   completeNegotiation,
-  getTimingStrategy
+  getTimingStrategy,
+  // UC-100: Salary Progression and Market Positioning endpoints
+  trackSalaryOffer,
+  getSalaryProgression,
+  getProgressionAnalytics,
+  addCareerMilestone,
+  addMarketAssessment,
+  generateAdvancementRecommendations,
+  trackNegotiationOutcome
 } from "../controllers/salaryController.js";
 
 const router = express.Router();
@@ -66,5 +74,27 @@ router.post("/negotiation/:id/complete", checkJwt, completeNegotiation);
 
 // GET /api/salary/negotiation/:id/timing - Get timing strategy recommendations
 router.get("/negotiation/:id/timing", checkJwt, getTimingStrategy);
+
+// UC-100: Salary Progression and Market Positioning Routes
+// POST /api/salary/progression/offer - Track a salary offer
+router.post("/progression/offer", checkJwt, trackSalaryOffer);
+
+// GET /api/salary/progression - Get complete salary progression data
+router.get("/progression", checkJwt, getSalaryProgression);
+
+// GET /api/salary/progression/analytics - Get salary progression analytics
+router.get("/progression/analytics", checkJwt, getProgressionAnalytics);
+
+// POST /api/salary/progression/milestone - Add career milestone
+router.post("/progression/milestone", checkJwt, addCareerMilestone);
+
+// POST /api/salary/progression/market-assessment - Add market positioning assessment
+router.post("/progression/market-assessment", checkJwt, addMarketAssessment);
+
+// POST /api/salary/progression/recommendations - Generate advancement recommendations
+router.post("/progression/recommendations", checkJwt, generateAdvancementRecommendations);
+
+// POST /api/salary/progression/negotiation-outcome - Track negotiation outcome
+router.post("/progression/negotiation-outcome", checkJwt, trackNegotiationOutcome);
 
 export default router;
