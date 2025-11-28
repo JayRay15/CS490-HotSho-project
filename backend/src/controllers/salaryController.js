@@ -1,5 +1,6 @@
 import { Job } from "../models/Job.js";
 import { User } from "../models/User.js";
+import { SalaryNegotiation } from "../models/SalaryNegotiation.js";
 import { successResponse, errorResponse, sendResponse, ERROR_CODES } from "../utils/responseFormat.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 
@@ -716,4 +717,915 @@ function generateMarkdownReport(reportData) {
   markdown += `*This report is based on market data and industry benchmarks. Actual salaries may vary based on specific circumstances.*\n`;
   
   return markdown;
+}
+
+/**
+ * ========================================================================
+ * UC-083: SALARY NEGOTIATION PREPARATION ENDPOINTS
+ * ========================================================================
+ */
+
+/**
+ * POST /api/salary/negotiation - Create new negotiation preparation
+ */
+export const createNegotiation = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { jobId, targetSalary, minimumAcceptable, idealSalary } = req.body;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  if (!jobId || !targetSalary || !minimumAcceptable) {
+    const { response, statusCode } = errorResponse(
+      "Missing required fields: jobId, targetSalary, and minimumAcceptable are required",
+      400,
+      ERROR_CODES.VALIDATION_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Get job details
+  const job = await Job.findOne({ _id: jobId, userId });
+  if (!job) {
+    const { response, statusCode } = errorResponse(
+      "Job not found or you don't have permission to access it",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Get market research data
+  const user = await User.findOne({ auth0Id: userId });
+  const experienceLevel = user?.experienceLevel || "Mid";
+  const industry = job.industry || "Other";
+  const benchmark = INDUSTRY_BENCHMARKS[industry]?.[experienceLevel] || INDUSTRY_BENCHMARKS["Other"][experienceLevel];
+  
+  const locationMultiplier = getLocationMultiplier(job.location);
+  const companySizeMultiplier = COMPANY_SIZE_MULTIPLIERS[estimateCompanySize(job.company)];
+  
+  const locationAdjusted = Math.round(benchmark.median * locationMultiplier);
+  const finalAdjusted = Math.round(locationAdjusted * companySizeMultiplier);
+
+  // Create negotiation
+  const negotiation = new SalaryNegotiation({
+    userId,
+    jobId,
+    jobTitle: job.title,
+    company: job.company,
+    targetSalary,
+    minimumAcceptable,
+    idealSalary: idealSalary || Math.round(targetSalary * 1.15),
+    marketResearch: {
+      industryMedian: benchmark.median,
+      locationAdjusted,
+      experienceLevel,
+      researched: true
+    }
+  });
+
+  await negotiation.save();
+
+  const { response, statusCode } = successResponse("Negotiation preparation created successfully", {
+    negotiation
+  });
+  return sendResponse(res, response, statusCode);
+});
+
+/**
+ * GET /api/salary/negotiation/:jobId - Get negotiation preparation for a job
+ */
+export const getNegotiation = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { jobId } = req.params;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const negotiation = await SalaryNegotiation.findOne({ userId, jobId }).populate('jobId');
+  
+  if (!negotiation) {
+    const { response, statusCode } = errorResponse(
+      "Negotiation preparation not found",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const { response, statusCode } = successResponse("Negotiation preparation retrieved successfully", {
+    negotiation
+  });
+  return sendResponse(res, response, statusCode);
+});
+
+/**
+ * GET /api/salary/negotiations - Get all negotiations for user
+ */
+export const getAllNegotiations = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const negotiations = await SalaryNegotiation.find({ userId })
+    .populate('jobId')
+    .sort({ createdAt: -1 });
+
+  const { response, statusCode } = successResponse("Negotiations retrieved successfully", {
+    count: negotiations.length,
+    negotiations
+  });
+  return sendResponse(res, response, statusCode);
+});
+
+/**
+ * POST /api/salary/negotiation/:id/talking-points - Generate talking points
+ */
+export const generateTalkingPoints = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { id } = req.params;
+  const { achievements, skills, education, certifications } = req.body;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const negotiation = await SalaryNegotiation.findOne({ _id: id, userId });
+  if (!negotiation) {
+    const { response, statusCode } = errorResponse(
+      "Negotiation preparation not found",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const user = await User.findOne({ auth0Id: userId });
+  
+  // Generate talking points based on user data
+  const talkingPoints = [];
+
+  // Achievement-based talking points
+  if (achievements && achievements.length > 0) {
+    achievements.forEach(achievement => {
+      talkingPoints.push({
+        category: 'Achievement',
+        description: achievement.description || achievement,
+        evidence: achievement.evidence || achievement.metrics || '',
+        strength: achievement.impact === 'High' || achievement.metrics ? 'High' : 'Medium'
+      });
+    });
+  }
+
+  // Skills-based talking points
+  if (skills && skills.length > 0) {
+    const advancedSkills = skills.filter(s => s.level === 'Advanced' || s.level === 'Expert');
+    advancedSkills.forEach(skill => {
+      talkingPoints.push({
+        category: 'Unique Skills',
+        description: `Expert-level proficiency in ${skill.name}`,
+        evidence: `${skill.level} level - ${skill.category}`,
+        strength: skill.level === 'Expert' ? 'High' : 'Medium'
+      });
+    });
+  }
+
+  // Education-based talking points
+  if (education && education.length > 0) {
+    education.forEach(edu => {
+      const gpaNote = edu.gpa && edu.gpa >= 3.5 ? ` with ${edu.gpa} GPA` : '';
+      talkingPoints.push({
+        category: 'Education',
+        description: `${edu.degree} in ${edu.fieldOfStudy} from ${edu.institution}${gpaNote}`,
+        evidence: edu.honors || '',
+        strength: edu.gpa >= 3.8 || edu.honors ? 'High' : 'Medium'
+      });
+    });
+  }
+
+  // Certification-based talking points
+  if (certifications && certifications.length > 0) {
+    certifications.forEach(cert => {
+      talkingPoints.push({
+        category: 'Certifications',
+        description: `${cert.name} certification`,
+        evidence: cert.issuingOrganization || '',
+        strength: 'Medium'
+      });
+    });
+  }
+
+  // Market value talking points
+  if (negotiation.marketResearch?.locationAdjusted) {
+    talkingPoints.push({
+      category: 'Market Value',
+      description: `Market research shows comparable positions pay $${negotiation.marketResearch.locationAdjusted.toLocaleString()} for ${negotiation.marketResearch.experienceLevel} level`,
+      evidence: 'Based on industry benchmarks and location adjustment',
+      strength: 'High'
+    });
+  }
+
+  // Add experience from employment history
+  if (user?.employment && user.employment.length > 0) {
+    const totalYears = calculateTotalExperience(user.employment);
+    if (totalYears > 0) {
+      talkingPoints.push({
+        category: 'Impact',
+        description: `${totalYears} years of progressive experience in the field`,
+        evidence: `${user.employment.length} positions demonstrating career growth`,
+        strength: totalYears >= 5 ? 'High' : 'Medium'
+      });
+    }
+  }
+
+  // Add talking points to negotiation
+  negotiation.talkingPoints.push(...talkingPoints);
+  await negotiation.save();
+
+  const { response, statusCode } = successResponse("Talking points generated successfully", {
+    talkingPoints,
+    count: talkingPoints.length
+  });
+  return sendResponse(res, response, statusCode);
+});
+
+/**
+ * POST /api/salary/negotiation/:id/script - Generate negotiation script
+ */
+export const generateNegotiationScript = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { id } = req.params;
+  const { scenario, customScenario } = req.body;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const negotiation = await SalaryNegotiation.findOne({ _id: id, userId });
+  if (!negotiation) {
+    const { response, statusCode } = errorResponse(
+      "Negotiation preparation not found",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Generate script based on scenario
+  const script = generateScriptForScenario(scenario, customScenario, negotiation);
+  
+  negotiation.scripts.push(script);
+  await negotiation.save();
+
+  const { response, statusCode } = successResponse("Negotiation script generated successfully", {
+    script
+  });
+  return sendResponse(res, response, statusCode);
+});
+
+/**
+ * POST /api/salary/negotiation/:id/offer - Add offer to negotiation
+ */
+export const addOffer = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { id } = req.params;
+  const offerData = req.body;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const negotiation = await SalaryNegotiation.findOne({ _id: id, userId });
+  if (!negotiation) {
+    const { response, statusCode } = errorResponse(
+      "Negotiation preparation not found",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Calculate total compensation if not provided
+  if (!offerData.totalCompensation) {
+    offerData.totalCompensation = 
+      (offerData.baseSalary || 0) + 
+      (offerData.signingBonus || 0) + 
+      (offerData.performanceBonus || 0);
+  }
+
+  await negotiation.addOffer(offerData);
+
+  const { response, statusCode } = successResponse("Offer added successfully", {
+    offer: offerData,
+    negotiationStatus: negotiation.status
+  });
+  return sendResponse(res, response, statusCode);
+});
+
+/**
+ * POST /api/salary/negotiation/:id/counteroffer - Evaluate and generate counteroffer
+ */
+export const evaluateCounteroffer = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { id } = req.params;
+  const { currentOffer } = req.body;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const negotiation = await SalaryNegotiation.findOne({ _id: id, userId });
+  if (!negotiation) {
+    const { response, statusCode } = errorResponse(
+      "Negotiation preparation not found",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Evaluate current offer
+  const evaluation = {
+    meetsMinimum: currentOffer.baseSalary >= negotiation.minimumAcceptable,
+    meetsTarget: currentOffer.baseSalary >= negotiation.targetSalary,
+    meetsIdeal: currentOffer.baseSalary >= negotiation.idealSalary,
+    gapFromTarget: negotiation.targetSalary - currentOffer.baseSalary,
+    gapFromIdeal: negotiation.idealSalary - currentOffer.baseSalary,
+    recommendation: ''
+  };
+
+  // Generate recommendation
+  if (evaluation.meetsIdeal) {
+    evaluation.recommendation = 'Accept';
+    evaluation.reasoning = 'This offer meets or exceeds your ideal salary. This is an excellent offer.';
+  } else if (evaluation.meetsTarget) {
+    evaluation.recommendation = 'Consider Accepting or Minor Counter';
+    evaluation.reasoning = `This offer meets your target salary. Consider negotiating for additional benefits or a slightly higher salary (around $${Math.round(negotiation.idealSalary).toLocaleString()}).`;
+  } else if (evaluation.meetsMinimum) {
+    evaluation.recommendation = 'Counter Offer Recommended';
+    evaluation.reasoning = `This offer is above your minimum but below your target. Counter with $${Math.round(negotiation.targetSalary).toLocaleString()} and be prepared to settle around $${Math.round((currentOffer.baseSalary + negotiation.targetSalary) / 2).toLocaleString()}.`;
+  } else {
+    evaluation.recommendation = 'Counter Offer Strongly Recommended';
+    evaluation.reasoning = `This offer is below your minimum acceptable salary. Counter with $${Math.round(negotiation.targetSalary).toLocaleString()} and emphasize your value and market research.`;
+  }
+
+  // Generate counteroffer suggestions
+  const counterofferSuggestions = [];
+
+  // Salary counteroffer
+  if (!evaluation.meetsTarget) {
+    const counterSalary = Math.min(
+      negotiation.idealSalary,
+      currentOffer.baseSalary + Math.round(evaluation.gapFromTarget * 1.2)
+    );
+    
+    counterofferSuggestions.push({
+      type: 'Salary',
+      current: currentOffer.baseSalary,
+      proposed: counterSalary,
+      justification: `Based on market research and my ${negotiation.marketResearch.experienceLevel} level experience, comparable positions pay $${negotiation.marketResearch.locationAdjusted?.toLocaleString() || 'competitive rates'}.`
+    });
+  }
+
+  // Benefits alternatives
+  if (evaluation.gapFromTarget > 0) {
+    const benefitsGap = Math.round(evaluation.gapFromTarget * 0.7);
+    counterofferSuggestions.push({
+      type: 'Sign-on Bonus',
+      current: currentOffer.signingBonus || 0,
+      proposed: (currentOffer.signingBonus || 0) + Math.min(benefitsGap, 20000),
+      justification: 'A sign-on bonus helps offset the gap in base salary expectations.'
+    });
+
+    counterofferSuggestions.push({
+      type: 'Performance Bonus',
+      current: currentOffer.performanceBonus || 0,
+      proposed: Math.round(currentOffer.baseSalary * 0.15),
+      justification: 'A performance-based bonus aligns my compensation with value delivered to the company.'
+    });
+
+    counterofferSuggestions.push({
+      type: 'Additional PTO',
+      current: currentOffer.benefits?.paidTimeOff || 0,
+      proposed: (currentOffer.benefits?.paidTimeOff || 15) + 5,
+      justification: 'Additional paid time off enhances work-life balance and overall compensation value.'
+    });
+
+    if (!currentOffer.benefits?.remoteWork || currentOffer.benefits.remoteWork === 'None') {
+      counterofferSuggestions.push({
+        type: 'Remote Work',
+        current: currentOffer.benefits?.remoteWork || 'None',
+        proposed: 'Hybrid',
+        justification: 'Flexible work arrangements improve productivity and reduce commuting costs.'
+      });
+    }
+  }
+
+  const { response, statusCode } = successResponse("Counteroffer evaluation completed", {
+    evaluation,
+    counterofferSuggestions,
+    negotiationGoals: {
+      minimum: negotiation.minimumAcceptable,
+      target: negotiation.targetSalary,
+      ideal: negotiation.idealSalary
+    }
+  });
+  return sendResponse(res, response, statusCode);
+});
+
+/**
+ * POST /api/salary/negotiation/:id/confidence-exercise - Add confidence exercise
+ */
+export const addConfidenceExercise = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { id } = req.params;
+  const { exerciseType, customDescription } = req.body;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const negotiation = await SalaryNegotiation.findOne({ _id: id, userId });
+  if (!negotiation) {
+    const { response, statusCode } = errorResponse(
+      "Negotiation preparation not found",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Generate exercises based on type
+  const exercises = generateConfidenceExercises(exerciseType, customDescription, negotiation);
+  
+  negotiation.confidenceExercises.push(...exercises);
+  await negotiation.save();
+
+  const { response, statusCode } = successResponse("Confidence exercises added successfully", {
+    exercises,
+    count: exercises.length
+  });
+  return sendResponse(res, response, statusCode);
+});
+
+/**
+ * PUT /api/salary/negotiation/:id/exercise/:exerciseId - Mark exercise as completed
+ */
+export const completeExercise = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { id, exerciseId } = req.params;
+  const { notes } = req.body;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const negotiation = await SalaryNegotiation.findOne({ _id: id, userId });
+  if (!negotiation) {
+    const { response, statusCode } = errorResponse(
+      "Negotiation preparation not found",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const exercise = negotiation.confidenceExercises.id(exerciseId);
+  if (!exercise) {
+    const { response, statusCode } = errorResponse(
+      "Exercise not found",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  exercise.completed = true;
+  exercise.completedDate = new Date();
+  exercise.notes = notes || '';
+  
+  await negotiation.save();
+
+  const { response, statusCode } = successResponse("Exercise marked as completed", {
+    exercise
+  });
+  return sendResponse(res, response, statusCode);
+});
+
+/**
+ * POST /api/salary/negotiation/:id/complete - Complete negotiation with outcome
+ */
+export const completeNegotiation = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { id } = req.params;
+  const outcomeData = req.body;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const negotiation = await SalaryNegotiation.findOne({ _id: id, userId });
+  if (!negotiation) {
+    const { response, statusCode } = errorResponse(
+      "Negotiation preparation not found",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  await negotiation.completeNegotiation(outcomeData);
+
+  const { response, statusCode } = successResponse("Negotiation completed successfully", {
+    outcome: negotiation.outcome,
+    status: negotiation.status,
+    summary: {
+      increaseFromInitial: negotiation.outcome.increaseFromInitial,
+      metTarget: negotiation.outcome.compareToTarget.metTarget,
+      satisfaction: negotiation.outcome.satisfaction
+    }
+  });
+  return sendResponse(res, response, statusCode);
+});
+
+/**
+ * GET /api/salary/negotiation/:id/timing - Get timing strategy recommendations
+ */
+export const getTimingStrategy = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { id } = req.params;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const negotiation = await SalaryNegotiation.findOne({ _id: id, userId });
+  if (!negotiation) {
+    const { response, statusCode } = errorResponse(
+      "Negotiation preparation not found",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const timingStrategies = [
+    {
+      phase: 'Before Offer',
+      strategy: 'Research and Preparation',
+      timing: 'As soon as you start interviewing',
+      actions: [
+        'Research market salaries thoroughly',
+        'Document your achievements and value proposition',
+        'Practice negotiation scenarios',
+        'Determine your target, ideal, and minimum acceptable salaries'
+      ],
+      rationale: 'Being prepared early gives you confidence and prevents rushed decisions.'
+    },
+    {
+      phase: 'After Initial Offer',
+      strategy: 'Strategic Pause',
+      timing: '24-48 hours after receiving offer',
+      actions: [
+        'Thank them for the offer enthusiastically',
+        'Request time to review (24-48 hours is reasonable)',
+        'Analyze the complete compensation package',
+        'Prepare your counteroffer with specific numbers'
+      ],
+      rationale: 'Taking time shows professionalism and prevents accepting too quickly. Employers expect some deliberation.'
+    },
+    {
+      phase: 'Counteroffer',
+      strategy: 'Professional Counter',
+      timing: 'Within 2-3 days of initial offer',
+      actions: [
+        'Schedule a call or in-person meeting if possible',
+        'Present your counteroffer with confidence and data',
+        'Use your prepared talking points',
+        'Be specific about numbers and reasoning'
+      ],
+      rationale: 'Prompt response shows interest while your preparation demonstrates professionalism and value.'
+    },
+    {
+      phase: 'Negotiation Discussion',
+      strategy: 'Collaborative Dialogue',
+      timing: 'During the negotiation conversation',
+      actions: [
+        'Listen actively to their constraints and priorities',
+        'Be flexible on lower-priority items',
+        'Focus on total compensation, not just base salary',
+        'Use "we" language to show partnership mindset'
+      ],
+      rationale: 'Collaborative approach builds goodwill and often leads to creative solutions that work for both parties.'
+    },
+    {
+      phase: 'Final Decision',
+      strategy: 'Decisive Conclusion',
+      timing: 'Within 5-7 days of initial offer',
+      actions: [
+        'Make your final decision within their timeline',
+        'If accepting, express genuine enthusiasm',
+        'If declining, remain professional and grateful',
+        'Request written confirmation of final terms'
+      ],
+      rationale: 'Timely decisions maintain positive relationships regardless of outcome. Extended delays can harm the relationship.'
+    }
+  ];
+
+  // Add specific deadline recommendations if there's an offer
+  const latestOffer = negotiation.offers?.[negotiation.offers.length - 1];
+  let deadlineAdvice = null;
+  
+  if (latestOffer?.responseDeadline) {
+    const daysUntilDeadline = Math.ceil(
+      (new Date(latestOffer.responseDeadline) - new Date()) / (1000 * 60 * 60 * 24)
+    );
+    
+    deadlineAdvice = {
+      deadline: latestOffer.responseDeadline,
+      daysRemaining: daysUntilDeadline,
+      recommendation: daysUntilDeadline > 5 
+        ? 'You have adequate time to negotiate. Use 2-3 days for careful consideration.'
+        : daysUntilDeadline > 2
+        ? 'Timeline is moderate. Counter within 1-2 days to allow for discussion.'
+        : 'Timeline is tight. Counter promptly (within 24 hours) or request a brief extension if needed.',
+      urgency: daysUntilDeadline > 5 ? 'Low' : daysUntilDeadline > 2 ? 'Medium' : 'High'
+    };
+  }
+
+  const { response, statusCode } = successResponse("Timing strategy retrieved successfully", {
+    strategies: timingStrategies,
+    deadlineAdvice,
+    generalTips: [
+      'Never negotiate via email if you can have a conversation',
+      'Best time for negotiation calls: Tuesday-Thursday, 10am-3pm',
+      'Avoid negotiating on Fridays or before holidays when decisions may be rushed',
+      'If they say "this is our final offer," ask about benefits or other compensation',
+      'Always get final offer in writing before accepting'
+    ]
+  });
+  return sendResponse(res, response, statusCode);
+});
+
+/**
+ * Helper: Generate script for specific scenario
+ */
+function generateScriptForScenario(scenario, customScenario, negotiation) {
+  const scripts = {
+    'Initial Offer Too Low': {
+      opening: `Thank you so much for the offer for the ${negotiation.jobTitle} position. I'm very excited about the opportunity to join ${negotiation.company} and contribute to the team. I've given the offer careful consideration, and I'd like to discuss the compensation package.`,
+      keyPoints: [
+        `Based on my research of market rates for ${negotiation.jobTitle} positions in this location, the typical range is $${negotiation.marketResearch.locationAdjusted?.toLocaleString() || 'X'}`,
+        `With my ${negotiation.marketResearch.experienceLevel} level experience and proven track record of [specific achievement], I believe a salary of $${negotiation.targetSalary.toLocaleString()} better reflects the value I'll bring`,
+        `I'm confident I can make an immediate impact in areas such as [mention 2-3 key skills/achievements]`
+      ],
+      closingStatement: `I'm very interested in joining ${negotiation.company}, and I believe this adjusted compensation reflects both market rates and the value I'll bring to the role. Is there flexibility to move closer to $${negotiation.targetSalary.toLocaleString()}?`,
+      alternativeResponses: [
+        {
+          situation: 'If they mention budget constraints',
+          response: 'I understand budget considerations. Would it be possible to discuss alternative compensation such as a sign-on bonus, performance bonuses, or additional benefits that might bridge this gap?'
+        },
+        {
+          situation: 'If they ask for your current salary',
+          response: 'I\'d prefer to focus on the value I can bring to this role rather than my current compensation. Based on my research and the responsibilities of this position, I believe $' + negotiation.targetSalary.toLocaleString() + ' is appropriate.'
+        }
+      ]
+    },
+    'Benefits Negotiation': {
+      opening: `I appreciate the offer and the base salary is competitive. I'd like to discuss the benefits package to ensure the total compensation aligns with my needs and the market standard.`,
+      keyPoints: [
+        'Additional PTO days for work-life balance',
+        'Flexible work arrangements (remote/hybrid options)',
+        'Professional development budget for continued learning',
+        'Enhanced retirement benefits or 401(k) matching'
+      ],
+      closingStatement: `These benefits would significantly enhance the overall value of the package and help me be most effective in the role. Which of these might be possible to include?`,
+      alternativeResponses: [
+        {
+          situation: 'If benefits are fixed',
+          response: 'I understand the benefits structure is standardized. Would it be possible to add a sign-on bonus or increase the base salary to offset these considerations?'
+        }
+      ]
+    },
+    'Equity Discussion': {
+      opening: `I'm excited about ${negotiation.company}'s growth potential and would like to discuss including equity as part of my compensation package.`,
+      keyPoints: [
+        'Equity aligns my success with the company\'s long-term growth',
+        'This is standard for this role at similar companies',
+        'I\'m committed to contributing to the company\'s success over the long term'
+      ],
+      closingStatement: `Would it be possible to include stock options or RSUs as part of the offer? This would demonstrate a mutual investment in the company's future.`,
+      alternativeResponses: []
+    },
+    'Remote Work': {
+      opening: `I'm enthusiastic about the role and want to discuss the possibility of remote or hybrid work arrangements.`,
+      keyPoints: [
+        'Remote work has proven to increase my productivity',
+        'This arrangement would eliminate commute time, allowing me to focus more on deliverables',
+        'I have a proven track record of successful remote collaboration'
+      ],
+      closingStatement: `Would the team be open to a hybrid arrangement, perhaps 2-3 days remote per week? I believe this flexibility would allow me to deliver my best work.`,
+      alternativeResponses: []
+    },
+    'Sign-on Bonus': {
+      opening: `I'm very interested in the position. To make the transition, I'd like to discuss including a sign-on bonus.`,
+      keyPoints: [
+        'A sign-on bonus would help offset relocation costs / transition expenses',
+        'This is common practice for positions at this level',
+        'It would demonstrate the company\'s commitment to bringing me aboard'
+      ],
+      closingStatement: `Would it be possible to include a sign-on bonus of $${Math.round(negotiation.targetSalary * 0.1).toLocaleString()} to help facilitate this transition?`,
+      alternativeResponses: []
+    },
+    'Performance Review': {
+      opening: `Thank you for meeting with me. I'd like to discuss my compensation in light of my performance and contributions over the past [time period].`,
+      keyPoints: [
+        'I\'ve successfully [specific achievement #1]',
+        'I\'ve taken on additional responsibilities including [examples]',
+        'My contributions have resulted in [quantifiable impact]',
+        'Market research shows my current salary is below the median for my role and experience'
+      ],
+      closingStatement: `Based on my performance and market research, I believe a salary adjustment to $${negotiation.targetSalary.toLocaleString()} is appropriate. Can we discuss making this change?`,
+      alternativeResponses: []
+    },
+    'Promotion': {
+      opening: `I'm honored to be considered for the ${negotiation.jobTitle} position. I'd like to discuss the compensation for this new role.`,
+      keyPoints: [
+        'This promotion reflects increased responsibilities and scope',
+        'Market research indicates the typical range for this role is $X-$Y',
+        'I\'ve already demonstrated capability in this role through [examples]',
+        'This adjustment would align my compensation with the new responsibilities'
+      ],
+      closingStatement: `Given the expanded role and market data, I believe $${negotiation.targetSalary.toLocaleString()} is appropriate for this position. Is this something we can work towards?`,
+      alternativeResponses: []
+    },
+    'Counter Offer': {
+      opening: `I want to be transparent with you. I've received another offer, but I'm genuinely interested in staying with ${negotiation.company} because [specific reasons].`,
+      keyPoints: [
+        'The other offer includes [competitive elements]',
+        'I value the work we\'re doing here and my relationships with the team',
+        'I\'d like to see if we can adjust my compensation to be more competitive',
+        'I believe my contributions justify this adjustment'
+      ],
+      closingStatement: `I'd really like to continue growing here. Is there flexibility to match or come closer to the competitive offer? I'm happy to discuss the details.`,
+      alternativeResponses: [
+        {
+          situation: 'If they ask to see the other offer',
+          response: 'I prefer to keep that confidential, but I can share that the total compensation is around $' + negotiation.targetSalary.toLocaleString() + '. My preference is to stay here if we can find common ground.'
+        }
+      ]
+    },
+    'Custom': {
+      opening: customScenario || `Thank you for the offer. I'd like to discuss the compensation package.`,
+      keyPoints: [
+        'Present your key value proposition',
+        'Reference market research and data',
+        'Highlight specific achievements and skills'
+      ],
+      closingStatement: `I'm very interested in this opportunity and believe we can find terms that work for both of us. Can we discuss some adjustments?`,
+      alternativeResponses: []
+    }
+  };
+
+  const selectedScript = scripts[scenario] || scripts['Custom'];
+  
+  return {
+    scenario,
+    customScenario: scenario === 'Custom' ? customScenario : undefined,
+    ...selectedScript
+  };
+}
+
+/**
+ * Helper: Generate confidence-building exercises
+ */
+function generateConfidenceExercises(exerciseType, customDescription, negotiation) {
+  const exercises = [];
+
+  if (!exerciseType || exerciseType === 'Power Posing') {
+    exercises.push({
+      exerciseType: 'Power Posing',
+      description: `Before your negotiation, practice power posing for 2 minutes: Stand tall with your hands on your hips or arms raised in a V-shape. Research shows this can increase confidence and reduce stress hormones.`
+    });
+  }
+
+  if (!exerciseType || exerciseType === 'Visualization') {
+    exercises.push({
+      exerciseType: 'Visualization',
+      description: `Close your eyes and visualize the negotiation going well. See yourself speaking confidently, the hiring manager nodding in agreement, and reaching a positive outcome. Visualize how you'll feel when you successfully negotiate your target salary of $${negotiation.targetSalary.toLocaleString()}.`
+    });
+  }
+
+  if (!exerciseType || exerciseType === 'Affirmations') {
+    exercises.push({
+      exerciseType: 'Affirmations',
+      description: `Repeat these affirmations: "I am worth $${negotiation.targetSalary.toLocaleString()}.", "My skills and experience bring significant value.", "I negotiate from a position of strength and collaboration.", "I deserve to be compensated fairly for my work." Say each one 3 times aloud before your negotiation.`
+    });
+  }
+
+  if (!exerciseType || exerciseType === 'Mock Negotiation') {
+    exercises.push({
+      exerciseType: 'Mock Negotiation',
+      description: `Practice your negotiation script with a friend, mentor, or family member. Have them play the role of the hiring manager and give you pushback on your requests. This helps you prepare responses and build confidence in handling objections.`
+    });
+  }
+
+  if (!exerciseType || exerciseType === 'Research Review') {
+    exercises.push({
+      exerciseType: 'Research Review',
+      description: `Review your market research one more time. Remind yourself that comparable positions pay around $${negotiation.marketResearch.locationAdjusted?.toLocaleString() || negotiation.targetSalary.toLocaleString()}. Your request is backed by data, not just wishes. Write down 3 data points that support your target salary.`
+    });
+  }
+
+  if (!exerciseType || exerciseType === 'Value Reflection') {
+    exercises.push({
+      exerciseType: 'Value Reflection',
+      description: `Write down your 3-5 most significant achievements that demonstrate your value. For each one, note the quantifiable impact it had. This exercise reminds you of your worth and gives you concrete examples to reference during negotiation.`
+    });
+  }
+
+  if (exerciseType === 'Custom' && customDescription) {
+    exercises.push({
+      exerciseType: 'Custom',
+      description: customDescription
+    });
+  }
+
+  return exercises;
+}
+
+/**
+ * Helper: Calculate total years of experience
+ */
+function calculateTotalExperience(employment) {
+  if (!employment || employment.length === 0) return 0;
+  
+  let totalMonths = 0;
+  employment.forEach(job => {
+    const start = new Date(job.startDate);
+    const end = job.endDate ? new Date(job.endDate) : new Date();
+    const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+    totalMonths += months;
+  });
+  
+  return Math.round(totalMonths / 12);
 }

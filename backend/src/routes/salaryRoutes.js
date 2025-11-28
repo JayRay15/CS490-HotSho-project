@@ -4,7 +4,19 @@ import {
   getSalaryResearch,
   compareSalaries,
   getSalaryBenchmarks,
-  exportSalaryReport
+  exportSalaryReport,
+  // UC-083: Salary Negotiation Preparation endpoints
+  createNegotiation,
+  getNegotiation,
+  getAllNegotiations,
+  generateTalkingPoints,
+  generateNegotiationScript,
+  addOffer,
+  evaluateCounteroffer,
+  addConfidenceExercise,
+  completeExercise,
+  completeNegotiation,
+  getTimingStrategy
 } from "../controllers/salaryController.js";
 
 const router = express.Router();
@@ -20,5 +32,39 @@ router.get("/research/:jobId", checkJwt, getSalaryResearch);
 
 // UC-067: POST /api/salary/export - Export salary research report
 router.post("/export", checkJwt, exportSalaryReport);
+
+// UC-083: Salary Negotiation Preparation Routes
+// GET /api/salary/negotiations - Get all negotiations for user
+router.get("/negotiations", checkJwt, getAllNegotiations);
+
+// POST /api/salary/negotiation - Create new negotiation preparation
+router.post("/negotiation", checkJwt, createNegotiation);
+
+// GET /api/salary/negotiation/:jobId - Get negotiation for specific job
+router.get("/negotiation/:jobId", checkJwt, getNegotiation);
+
+// POST /api/salary/negotiation/:id/talking-points - Generate talking points
+router.post("/negotiation/:id/talking-points", checkJwt, generateTalkingPoints);
+
+// POST /api/salary/negotiation/:id/script - Generate negotiation script
+router.post("/negotiation/:id/script", checkJwt, generateNegotiationScript);
+
+// POST /api/salary/negotiation/:id/offer - Add offer to negotiation
+router.post("/negotiation/:id/offer", checkJwt, addOffer);
+
+// POST /api/salary/negotiation/:id/counteroffer - Evaluate and generate counteroffer
+router.post("/negotiation/:id/counteroffer", checkJwt, evaluateCounteroffer);
+
+// POST /api/salary/negotiation/:id/confidence-exercise - Add confidence exercise
+router.post("/negotiation/:id/confidence-exercise", checkJwt, addConfidenceExercise);
+
+// PUT /api/salary/negotiation/:id/exercise/:exerciseId - Mark exercise as completed
+router.put("/negotiation/:id/exercise/:exerciseId", checkJwt, completeExercise);
+
+// POST /api/salary/negotiation/:id/complete - Complete negotiation with outcome
+router.post("/negotiation/:id/complete", checkJwt, completeNegotiation);
+
+// GET /api/salary/negotiation/:id/timing - Get timing strategy recommendations
+router.get("/negotiation/:id/timing", checkJwt, getTimingStrategy);
 
 export default router;
