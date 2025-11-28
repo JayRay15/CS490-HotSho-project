@@ -229,6 +229,7 @@ export function useVersionManagement(authWrap) {
     selectedMergeChanges,
     setSelectedMergeChanges,
     isMerging,
+    setIsMerging,
     handleMergeResumes,
     
     // Archive
