@@ -51,9 +51,9 @@ export default function SharedWithMeSection({
               <Card
                 key={`${invitation.type}-${invitation.token}`}
                 variant="outlined"
-                className="overflow-hidden hover:shadow-md transition-shadow"
+                className="overflow-hidden hover:shadow-md transition-shadow flex flex-col h-full"
               >
-                <div className="p-4">
+                <div className="p-4 flex flex-col flex-1">
                   {/* Header */}
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2">
@@ -118,7 +118,10 @@ export default function SharedWithMeSection({
                     </div>
                   )}
 
-                  {/* Actions */}
+                  {/* Spacer to push actions to bottom */}
+                  <div className="flex-1" />
+
+                  {/* Actions - Always at bottom */}
                   <div className="flex gap-2 mt-3">
                     <a
                       href={isResume

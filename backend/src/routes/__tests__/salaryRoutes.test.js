@@ -7,12 +7,34 @@ const mockGetSalaryResearch = jest.fn((req, res) => res.json({ success: true }))
 const mockCompareSalaries = jest.fn((req, res) => res.json({ success: true }));
 const mockGetSalaryBenchmarks = jest.fn((req, res) => res.json({ success: true }));
 const mockExportSalaryReport = jest.fn((req, res) => res.json({ success: true }));
+const mockCreateNegotiation = jest.fn((req, res) => res.json({ success: true }));
+const mockGetNegotiation = jest.fn((req, res) => res.json({ success: true }));
+const mockGetAllNegotiations = jest.fn((req, res) => res.json({ success: true }));
+const mockGenerateTalkingPoints = jest.fn((req, res) => res.json({ success: true }));
+const mockGenerateNegotiationScript = jest.fn((req, res) => res.json({ success: true }));
+const mockAddOffer = jest.fn((req, res) => res.json({ success: true }));
+const mockEvaluateCounteroffer = jest.fn((req, res) => res.json({ success: true }));
+const mockAddConfidenceExercise = jest.fn((req, res) => res.json({ success: true }));
+const mockCompleteExercise = jest.fn((req, res) => res.json({ success: true }));
+const mockCompleteNegotiation = jest.fn((req, res) => res.json({ success: true }));
+const mockGetTimingStrategy = jest.fn((req, res) => res.json({ success: true }));
 
 jest.unstable_mockModule('../../controllers/salaryController.js', () => ({
   getSalaryResearch: mockGetSalaryResearch,
   compareSalaries: mockCompareSalaries,
   getSalaryBenchmarks: mockGetSalaryBenchmarks,
   exportSalaryReport: mockExportSalaryReport,
+  createNegotiation: mockCreateNegotiation,
+  getNegotiation: mockGetNegotiation,
+  getAllNegotiations: mockGetAllNegotiations,
+  generateTalkingPoints: mockGenerateTalkingPoints,
+  generateNegotiationScript: mockGenerateNegotiationScript,
+  addOffer: mockAddOffer,
+  evaluateCounteroffer: mockEvaluateCounteroffer,
+  addConfidenceExercise: mockAddConfidenceExercise,
+  completeExercise: mockCompleteExercise,
+  completeNegotiation: mockCompleteNegotiation,
+  getTimingStrategy: mockGetTimingStrategy,
 }));
 
 // Mock the middleware

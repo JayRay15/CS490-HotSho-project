@@ -21,6 +21,7 @@ const mockBulkRestoreJobs = jest.fn((req, res) => res.json({ success: true }));
 const mockAutoArchiveJobs = jest.fn((req, res) => res.json({ success: true }));
 const mockScrapeJobFromURL = jest.fn((req, res) => res.json({ success: true }));
 const mockGetInterviewInsights = jest.fn((req, res) => res.json({ success: true }));
+const mockGetJobById = jest.fn((req, res) => res.json({ success: true }));
 
 jest.unstable_mockModule('../../controllers/jobController.js', () => ({
   getJobs: mockGetJobs,
@@ -39,6 +40,7 @@ jest.unstable_mockModule('../../controllers/jobController.js', () => ({
   bulkArchiveJobs: mockBulkArchiveJobs,
   bulkRestoreJobs: mockBulkRestoreJobs,
   autoArchiveJobs: mockAutoArchiveJobs,
+  getJobById: mockGetJobById,
 }));
 
 jest.unstable_mockModule('../../controllers/jobScraperController.js', () => ({
