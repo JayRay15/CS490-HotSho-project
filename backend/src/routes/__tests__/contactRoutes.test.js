@@ -18,6 +18,12 @@ const mockHandlers = {
   linkContactToJob: jest.fn((req, res) => res.json({ handler: 'linkContactToJob', id: req.params.id, jobId: req.params.jobId })),
   batchCreateContacts: jest.fn((req, res) => res.status(201).json({ handler: 'batchCreateContacts' })),
   generateReferenceRequest: jest.fn((req, res) => res.status(200).json({ handler: 'generateReferenceRequest' })),
+  // Discovery-related controllers (route imports expect these named exports)
+  discoverContactsController: jest.fn((req, res) => res.json({ handler: 'discoverContactsController' })),
+  discoverExternalContactsController: jest.fn((req, res) => res.json({ handler: 'discoverExternalContactsController' })),
+  getDiscoveryFiltersController: jest.fn((req, res) => res.json({ handler: 'getDiscoveryFiltersController' })),
+  getSuggestedContactsController: jest.fn((req, res) => res.json({ handler: 'getSuggestedContactsController' })),
+  trackDiscoverySuccess: jest.fn((req, res) => res.status(200).json({ handler: 'trackDiscoverySuccess' })),
 };
 
 jest.unstable_mockModule('../../controllers/contactController.js', () => mockHandlers);
