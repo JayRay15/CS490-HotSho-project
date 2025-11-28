@@ -92,6 +92,51 @@ A centralized platform where candidates can:
   - Grid/card portfolio view
   - Filtering and sorting capabilities
 
+### 📊 Market Intelligence & Career Insights (UC-102)
+- **Job Market Trends**
+  - Monitor job postings in target industries and locations
+  - Track demand scores and competition levels
+  - Historical trend visualization with charts
+  
+- **Skill Demand Analysis**
+  - Track skill demand evolution and growth rates
+  - Identify emerging technologies
+  - Analyze salary impact of specific skills
+  - Get learning resource recommendations
+  
+- **Salary Trends**
+  - View historical salary data for roles
+  - Compare compensation across industries/locations
+  - Analyze compensation breakdowns (base, bonus, stock, benefits)
+  - Track year-over-year growth rates
+  
+- **Company Growth Monitoring**
+  - Track hiring activity and open positions
+  - Monitor revenue and employee growth
+  - Identify companies with aggressive hiring
+  - View company health scores
+  
+- **Industry Disruption Insights**
+  - Understand disruption levels and emerging trends
+  - Identify emerging opportunities
+  - Get future outlook predictions
+  
+- **Personalized Recommendations**
+  - AI-powered skill development suggestions
+  - Career positioning strategies
+  - Market opportunity identification
+  - Timing optimization for career moves
+  
+- **Market Opportunities**
+  - Track opportunities with optimal timing
+  - View requirements and action plans
+  - Assess estimated value and growth potential
+  
+- **Competitive Landscape Analysis**
+  - Understand your market position
+  - SWOT analysis for career planning
+  - Benchmarking against market standards
+
 ### 🎨 Design & UX
 - **Professional Brand Identity** with custom logo and consistent styling
 - **Fully Responsive Design** (Mobile, Tablet, Desktop)

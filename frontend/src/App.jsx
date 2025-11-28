@@ -44,6 +44,7 @@ import InterviewSuccessPredictions from "./pages/InterviewSuccessPredictions.jsx
 import InterviewPredictionDetail from "./pages/InterviewPredictionDetail.jsx";
 import ReportsPage from "./pages/ReportsPage.jsx";
 import SharedReportView from "./pages/SharedReportView.jsx";
+import MarketIntelligenceDashboard from "./components/MarketIntelligenceDashboard.jsx";
 
 import InterviewsPage from "./pages/auth/InterviewsPage.jsx";
 import CalendarSettings from "./pages/auth/CalendarSettings.jsx";
@@ -108,6 +109,7 @@ function App() {
           <Route path="/interview-predictions/:interviewId" element={<ProtectedRoute><InterviewPredictionDetail /></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
           <Route path="/reports/shared/:token" element={<SharedReportView />} />
+          <Route path="/market-intelligence" element={<ProtectedRoute><MarketIntelligenceDashboard /></ProtectedRoute>} />
           <Route path="/mentors" element={<ProtectedRoute><MentorDashboard /></ProtectedRoute>} />
           <Route path="/mentors/progress" element={<ProtectedRoute><ProgressSharing /></ProtectedRoute>} />
           <Route path="/mentors/messages" element={<ProtectedRoute><MentorMessaging /></ProtectedRoute>} />
