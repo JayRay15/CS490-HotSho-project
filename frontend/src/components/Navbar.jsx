@@ -161,6 +161,9 @@ export default function Navbar() {
                                         <NavLink to="/productivity" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Productivity Analysis" onClick={() => setCareerDropdownOpen(false)}>
                                             Productivity Analysis
                                         </NavLink>
+                                        <NavLink to="/market-intelligence" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Market Intelligence" onClick={() => setCareerDropdownOpen(false)}>
+                                            Market Intelligence
+                                        </NavLink>
                                         <NavLink to="/mentors" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Mentor Hub" onClick={() => setCareerDropdownOpen(false)}>
                                             Mentor Hub
                                         </NavLink>
@@ -448,6 +451,18 @@ export default function Navbar() {
                             aria-label="Productivity Analysis"
                         >
                             Productivity Analysis
+                        </NavLink>
+                        <NavLink
+                            to="/market-intelligence"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                }`
+                            }
+                            aria-label="Market Intelligence"
+                        >
+                            Market Intelligence
                         </NavLink>
                         <NavLink
                             to="/mentors"
