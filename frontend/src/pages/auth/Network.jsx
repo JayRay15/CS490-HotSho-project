@@ -14,6 +14,7 @@ import ReferralList from '../../components/network/ReferralList';
 import NetworkingEventList from '../../components/network/NetworkingEventList';
 import ReferencesTab from '../../components/network/ReferencesTab';
 import NetworkAnalytics from '../../components/network/NetworkAnalytics';
+import ContactDiscoveryTab from '../../components/network/ContactDiscoveryTab';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ErrorMessage from '../../components/ErrorMessage';
 import RelationshipReminderCard from '../../components/network/RelationshipReminderCard';
@@ -330,6 +331,15 @@ export default function Network() {
                   Events
                 </button>
                 <button
+                  onClick={() => setActiveTab('discover')}
+                  className={`${activeTab === 'discover'
+                      ? 'border-[#777C6D] text-[#777C6D]'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+                >
+                  Discover
+                </button>
+                <button
                   onClick={() => setActiveTab('activities')}
                   className={`${activeTab === 'activities'
                       ? 'border-[#777C6D] text-[#777C6D]'
@@ -607,6 +617,12 @@ export default function Network() {
           {activeTab === 'analytics' && (
             <div className="mt-6">
               <NetworkAnalytics />
+            </div>
+          )}
+
+          {activeTab === 'discover' && (
+            <div className="mt-6">
+              <ContactDiscoveryTab onContactAdded={fetchData} />
             </div>
           )}
         </div>

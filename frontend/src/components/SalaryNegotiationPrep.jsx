@@ -12,7 +12,6 @@ import {
   completeNegotiation,
   getTimingStrategy
 } from '../api/salary';
-import { getProfile } from '../api/profile';
 import LoadingSpinner from './LoadingSpinner';
 import ErrorMessage from './ErrorMessage';
 import Card from './Card';
@@ -37,7 +36,6 @@ const SalaryNegotiationPrep = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [negotiation, setNegotiation] = useState(null);
-  const [userProfile, setUserProfile] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [timingStrategy, setTimingStrategy] = useState(null);
@@ -95,10 +93,6 @@ const SalaryNegotiationPrep = () => {
           throw err;
         }
       }
-
-      // Get user profile for talking points generation
-      const profileResponse = await getProfile();
-      setUserProfile(profileResponse.data.data);
     } catch (err) {
       console.error('Error fetching data:', err);
       setError(err.response?.data?.message || 'Failed to load negotiation data');
@@ -131,12 +125,7 @@ const SalaryNegotiationPrep = () => {
   const handleGenerateTalkingPoints = async () => {
     try {
       setLoading(true);
-      const response = await generateTalkingPoints(negotiation._id, {
-        achievements: userProfile?.achievements || [],
-        skills: userProfile?.skills || [],
-        education: userProfile?.education || [],
-        certifications: userProfile?.certifications || []
-      });
+      const response = await generateTalkingPoints(negotiation._id, {});
       
       // Refresh negotiation data
       await fetchData();

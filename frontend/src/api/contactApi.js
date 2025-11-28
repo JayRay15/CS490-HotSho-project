@@ -31,3 +31,25 @@ export const getContactStats = () => {
 export const batchCreateContacts = (contacts) => {
     return api.post('/api/contacts/batch', { contacts });
 };
+
+// Discovery API endpoints
+export const discoverContacts = (params) => {
+    return api.get('/api/contacts/discover', { params });
+};
+
+// Discover contacts from external APIs only (OpenAlex, Wikidata, Wikipedia)
+export const discoverExternalContacts = (params) => {
+    return api.get('/api/contacts/discover/external', { params });
+};
+
+export const getDiscoveryFilters = () => {
+    return api.get('/api/contacts/discover/filters');
+};
+
+export const getSuggestedContacts = (params) => {
+    return api.get('/api/contacts/discover/suggestions', { params });
+};
+
+export const trackDiscoveryAction = (data) => {
+    return api.post('/api/contacts/discover/track', data);
+};

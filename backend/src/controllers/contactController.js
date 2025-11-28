@@ -534,3 +534,229 @@ export const generateReferenceRequest = async (req, res) => {
     });
   }
 };
+
+// @desc    Discover new contacts based on filters
+// @route   GET /api/contacts/discover
+// @access  Private
+export const discoverContactsController = async (req, res) => {
+  try {
+    const { discoverContacts } = await import('../utils/contactDiscoveryService.js');
+    
+    const {
+      industry,
+      company,
+      role,
+      location,
+      connectionType,
+      university,
+      q,
+      page = 1,
+      limit = 12,
+      source = 'all' // 'all', 'mock', 'external'
+    } = req.query;
+
+    const results = await discoverContacts({
+      industry,
+      company,
+      role,
+      location,
+      connectionType,
+      university,
+      q,
+      page: parseInt(page),
+      limit: parseInt(limit)
+    });
+
+    // If requesting external sources, also fetch from APIs
+    if (source === 'all' || source === 'external') {
+      try {
+        const { discoverExternalContacts } = await import('../utils/externalContactDiscoveryService.js');
+        const externalResults = await discoverExternalContacts({
+          query: q,
+          industry,
+          company,
+          role,
+          limit: Math.ceil(parseInt(limit) / 2)
+        });
+
+        // Merge external contacts with mock data
+        if (externalResults.contacts && externalResults.contacts.length > 0) {
+          // Add source badge to external contacts
+          const externalContacts = externalResults.contacts.map(c => ({
+            ...c,
+            isExternal: true,
+            sourceApi: c.source
+          }));
+
+          // Combine and sort by match score
+          results.data = [...results.data, ...externalContacts]
+            .sort((a, b) => b.matchScore - a.matchScore)
+            .slice(0, parseInt(limit));
+
+          // Add source info to response
+          results.externalSources = externalResults.sources;
+          results.externalErrors = externalResults.errors;
+        }
+      } catch (externalError) {
+        console.error('External discovery error (non-fatal):', externalError.message);
+        // Continue with mock data if external APIs fail
+      }
+    }
+
+    res.status(200).json(results);
+  } catch (error) {
+    console.error('Error discovering contacts:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to discover contacts',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Discover contacts from external APIs only (OpenAlex, Wikidata, Wikipedia)
+// @route   GET /api/contacts/discover/external
+// @access  Private
+export const discoverExternalContactsController = async (req, res) => {
+  try {
+    const { discoverExternalContacts, searchOpenAlexAuthors, searchWikidataPersons } = 
+      await import('../utils/externalContactDiscoveryService.js');
+    
+    const {
+      query,
+      industry,
+      company,
+      role,
+      source, // 'openalex', 'wikidata', 'wikipedia', or undefined for all
+      limit = 20
+    } = req.query;
+
+    let results;
+
+    if (source === 'openalex') {
+      const contacts = await searchOpenAlexAuthors({
+        query,
+        topic: industry,
+        institution: company,
+        limit: parseInt(limit)
+      });
+      results = { contacts, sources: ['OpenAlex'], errors: [] };
+    } else if (source === 'wikidata') {
+      const contacts = await searchWikidataPersons({
+        occupation: role,
+        company,
+        industry,
+        limit: parseInt(limit)
+      });
+      results = { contacts, sources: ['Wikidata'], errors: [] };
+    } else {
+      // Search all sources
+      results = await discoverExternalContacts({
+        query,
+        industry,
+        company,
+        role,
+        limit: parseInt(limit)
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: results.contacts,
+      sources: results.sources,
+      errors: results.errors,
+      pagination: {
+        total: results.contacts.length,
+        limit: parseInt(limit)
+      }
+    });
+  } catch (error) {
+    console.error('Error discovering external contacts:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to discover external contacts',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Get discovery filter options
+// @route   GET /api/contacts/discover/filters
+// @access  Private
+export const getDiscoveryFiltersController = async (req, res) => {
+  try {
+    const { getDiscoveryFilters } = await import('../utils/contactDiscoveryService.js');
+    const filters = await getDiscoveryFilters();
+    res.status(200).json(filters);
+  } catch (error) {
+    console.error('Error fetching discovery filters:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch discovery filters',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Get personalized contact suggestions
+// @route   GET /api/contacts/discover/suggestions
+// @access  Private
+export const getSuggestedContactsController = async (req, res) => {
+  try {
+    const { getSuggestedContacts } = await import('../utils/contactDiscoveryService.js');
+    const { Job } = await import('../models/Job.js');
+    
+    // Get user's target companies and industries from their job applications
+    const jobs = await Job.find({ userId: req.auth.userId })
+      .select('company industry jobTitle')
+      .limit(20);
+
+    const targetCompanies = [...new Set(jobs.map(j => j.company).filter(Boolean))];
+    const targetIndustries = [...new Set(jobs.map(j => j.industry).filter(Boolean))];
+    const targetRoles = [...new Set(jobs.map(j => j.jobTitle).filter(Boolean))];
+
+    // TODO: Get user's university from profile when available
+    const university = req.query.university || null;
+
+    const suggestions = await getSuggestedContacts({
+      targetCompanies,
+      targetIndustries,
+      targetRoles,
+      university
+    });
+
+    res.status(200).json(suggestions);
+  } catch (error) {
+    console.error('Error fetching contact suggestions:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch contact suggestions',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Track discovery success (when user adds a discovered contact)
+// @route   POST /api/contacts/discover/track
+// @access  Private
+export const trackDiscoverySuccess = async (req, res) => {
+  try {
+    const { discoveredContactId, action, notes } = req.body;
+
+    // In a real implementation, this would store analytics data
+    // For now, we just acknowledge the tracking
+    console.log(`Discovery tracked: ${action} for contact ${discoveredContactId}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Discovery action tracked successfully'
+    });
+  } catch (error) {
+    console.error('Error tracking discovery:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to track discovery',
+      error: error.message
+    });
+  }
+};
