@@ -18,6 +18,16 @@ const mockAddConfidenceExercise = jest.fn((req, res) => res.json({ success: true
 const mockCompleteExercise = jest.fn((req, res) => res.json({ success: true }));
 const mockCompleteNegotiation = jest.fn((req, res) => res.json({ success: true }));
 const mockGetTimingStrategy = jest.fn((req, res) => res.json({ success: true }));
+// UC-100 mocks
+const mockTrackSalaryOffer = jest.fn((req, res) => res.json({ success: true }));
+const mockUpdateSalaryOffer = jest.fn((req, res) => res.json({ success: true }));
+const mockDeleteSalaryOffer = jest.fn((req, res) => res.json({ success: true }));
+const mockGetSalaryProgression = jest.fn((req, res) => res.json({ success: true }));
+const mockGetProgressionAnalytics = jest.fn((req, res) => res.json({ success: true }));
+const mockAddCareerMilestone = jest.fn((req, res) => res.json({ success: true }));
+const mockAddMarketAssessment = jest.fn((req, res) => res.json({ success: true }));
+const mockGenerateAdvancementRecommendations = jest.fn((req, res) => res.json({ success: true }));
+const mockTrackNegotiationOutcome = jest.fn((req, res) => res.json({ success: true }));
 
 jest.unstable_mockModule('../../controllers/salaryController.js', () => ({
   getSalaryResearch: mockGetSalaryResearch,
@@ -35,6 +45,15 @@ jest.unstable_mockModule('../../controllers/salaryController.js', () => ({
   completeExercise: mockCompleteExercise,
   completeNegotiation: mockCompleteNegotiation,
   getTimingStrategy: mockGetTimingStrategy,
+  trackSalaryOffer: mockTrackSalaryOffer,
+  updateSalaryOffer: mockUpdateSalaryOffer,
+  deleteSalaryOffer: mockDeleteSalaryOffer,
+  getSalaryProgression: mockGetSalaryProgression,
+  getProgressionAnalytics: mockGetProgressionAnalytics,
+  addCareerMilestone: mockAddCareerMilestone,
+  addMarketAssessment: mockAddMarketAssessment,
+  generateAdvancementRecommendations: mockGenerateAdvancementRecommendations,
+  trackNegotiationOutcome: mockTrackNegotiationOutcome,
 }));
 
 // Mock the middleware

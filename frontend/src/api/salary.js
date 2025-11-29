@@ -165,3 +165,81 @@ export const completeNegotiation = (negotiationId, outcomeData) =>
  */
 export const getTimingStrategy = (negotiationId) =>
   retryRequest(() => api.get(`/api/salary/negotiation/${negotiationId}/timing`));
+
+/**
+ * ========================================================================
+ * UC-100: SALARY PROGRESSION AND MARKET POSITIONING API
+ * ========================================================================
+ */
+
+/**
+ * Track a salary offer
+ * @param {Object} offerData - Salary offer details
+ * @returns {Promise} Tracked offer data with analytics
+ */
+export const trackSalaryOffer = (offerData) =>
+  retryRequest(() => api.post('/api/salary/progression/offer', offerData));
+
+/**
+ * Update a tracked salary offer
+ * @param {string} offerId - Offer ID to update
+ * @param {Object} offerData - Updated offer details
+ * @returns {Promise} Updated offer data with analytics
+ */
+export const updateSalaryOffer = (offerId, offerData) =>
+  retryRequest(() => api.put(`/api/salary/progression/offer/${offerId}`, offerData));
+
+/**
+ * Delete a tracked salary offer
+ * @param {string} offerId - Offer ID to delete
+ * @returns {Promise} Deletion confirmation with updated analytics
+ */
+export const deleteSalaryOffer = (offerId) =>
+  retryRequest(() => api.delete(`/api/salary/progression/offer/${offerId}`));
+
+/**
+ * Get complete salary progression data
+ * @returns {Promise} Complete progression history and analytics
+ */
+export const getSalaryProgression = () =>
+  retryRequest(() => api.get('/api/salary/progression'));
+
+/**
+ * Get salary progression analytics
+ * @returns {Promise} Comprehensive analytics on salary progression
+ */
+export const getProgressionAnalytics = () =>
+  retryRequest(() => api.get('/api/salary/progression/analytics'));
+
+/**
+ * Add career milestone
+ * @param {Object} milestoneData - Career milestone details
+ * @returns {Promise} Added milestone
+ */
+export const addCareerMilestone = (milestoneData) =>
+  retryRequest(() => api.post('/api/salary/progression/milestone', milestoneData));
+
+/**
+ * Add market positioning assessment
+ * @param {Object} assessmentData - Market assessment details
+ * @returns {Promise} Added assessment
+ */
+export const addMarketAssessment = (assessmentData) =>
+  retryRequest(() => api.post('/api/salary/progression/market-assessment', assessmentData));
+
+/**
+ * Generate advancement recommendations
+ * @returns {Promise} Career advancement recommendations
+ */
+export const generateAdvancementRecommendations = () =>
+  retryRequest(() => api.post('/api/salary/progression/recommendations'));
+
+/**
+ * Track negotiation outcome
+ * @param {Object} data - Negotiation outcome data
+ * @param {string} data.negotiationId - Negotiation ID
+ * @param {Object} data.outcome - Outcome details
+ * @returns {Promise} Tracked outcome with success metrics
+ */
+export const trackNegotiationOutcome = (data) =>
+  retryRequest(() => api.post('/api/salary/progression/negotiation-outcome', data));
