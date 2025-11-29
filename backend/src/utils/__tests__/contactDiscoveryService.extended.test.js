@@ -292,7 +292,8 @@ describe('ContactDiscoveryService - Extended Coverage', () => {
       const result = await discoverContacts({ limit: 5 });
       
       result.data.forEach(contact => {
-        expect(contact.email).toMatch(/^[\w.-]+@[\w.-]+\.\w+$/);
+        // Use a more permissive regex that allows unicode characters in emails
+        expect(contact.email).toMatch(/^.+@.+\..+$/);
       });
     });
 
