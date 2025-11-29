@@ -181,6 +181,23 @@ export const trackSalaryOffer = (offerData) =>
   retryRequest(() => api.post('/api/salary/progression/offer', offerData));
 
 /**
+ * Update a tracked salary offer
+ * @param {string} offerId - Offer ID to update
+ * @param {Object} offerData - Updated offer details
+ * @returns {Promise} Updated offer data with analytics
+ */
+export const updateSalaryOffer = (offerId, offerData) =>
+  retryRequest(() => api.put(`/api/salary/progression/offer/${offerId}`, offerData));
+
+/**
+ * Delete a tracked salary offer
+ * @param {string} offerId - Offer ID to delete
+ * @returns {Promise} Deletion confirmation with updated analytics
+ */
+export const deleteSalaryOffer = (offerId) =>
+  retryRequest(() => api.delete(`/api/salary/progression/offer/${offerId}`));
+
+/**
  * Get complete salary progression data
  * @returns {Promise} Complete progression history and analytics
  */

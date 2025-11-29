@@ -7,6 +7,8 @@ import {
   getProgressionAnalytics,
   generateAdvancementRecommendations,
   trackSalaryOffer,
+  updateSalaryOffer,
+  deleteSalaryOffer,
   getSalaryProgression
 } from '../api/salary';
 import LoadingSpinner from './LoadingSpinner';
@@ -71,8 +73,12 @@ const SalaryResearch = () => {
   const [advancementRecommendations, setAdvancementRecommendations] = useState(null);
   const [showProgressionSection, setShowProgressionSection] = useState(false);
   const [trackOfferModalOpen, setTrackOfferModalOpen] = useState(false);
+  const [editOfferModalOpen, setEditOfferModalOpen] = useState(false);
+  const [editingOffer, setEditingOffer] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
   const [trackedOffers, setTrackedOffers] = useState([]);
+  const [deleteConfirmModalOpen, setDeleteConfirmModalOpen] = useState(false);
+  const [offerToDelete, setOfferToDelete] = useState(null);
 
   const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
@@ -86,9 +92,11 @@ const SalaryResearch = () => {
       setLoading(true);
       setError(null);
       const response = await getSalaryResearch(jobId);
+      console.log('Salary research response:', response.data.data);
       setSalaryData(response.data.data);
     } catch (err) {
       console.error('Error fetching salary research:', err);
+      console.error('Error details:', err.response?.data);
       setError(err.response?.data?.message || 'Failed to load salary research');
     } finally {
       setLoading(false);
@@ -144,6 +152,52 @@ const SalaryResearch = () => {
     }
   };
 
+  const handleEditOffer = (offer) => {
+    setEditingOffer(offer);
+    setEditOfferModalOpen(true);
+  };
+
+  const handleUpdateOffer = async (offerData) => {
+    try {
+      await updateSalaryOffer(editingOffer._id, offerData);
+      setEditOfferModalOpen(false);
+      setEditingOffer(null);
+      // Refresh analytics
+      await fetchProgressionAnalytics();
+      setSuccessMessage('Salary offer updated successfully!');
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (err) {
+      console.error('Error updating offer:', err);
+      setError(err.response?.data?.message || 'Failed to update offer');
+    }
+  };
+
+  const handleDeleteOffer = async (offerId) => {
+    setOfferToDelete(offerId);
+    setDeleteConfirmModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!offerToDelete) return;
+    
+    try {
+      await deleteSalaryOffer(offerToDelete);
+      // Refresh analytics
+      await fetchProgressionAnalytics();
+      // Set frontend success message
+      setSuccessMessage('Salary offer deleted successfully!');
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (err) {
+      console.error('Error deleting offer:', err);
+      // Set frontend error message
+      setError('Failed to delete offer. Please try again.');
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setDeleteConfirmModalOpen(false);
+      setOfferToDelete(null);
+    }
+  };
+
   const handleCompare = async () => {
     if (selectedJobs.length === 0) {
       alert('Please select at least one job to compare');
@@ -193,8 +247,9 @@ const SalaryResearch = () => {
 
   if (loading && !salaryData) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
+      <div className="flex flex-col justify-center items-center min-h-screen">
         <LoadingSpinner size="large" />
+        <p className="mt-4 text-gray-600">Loading salary research data...</p>
       </div>
     );
   }
@@ -212,7 +267,7 @@ const SalaryResearch = () => {
 
   if (!salaryData) return null;
 
-  const { job, marketData, factors, similarPositions, historicalTrends, recommendations, salaryComparison } = salaryData;
+  const { job = {}, marketData, factors, similarPositions, historicalTrends, recommendations, salaryComparison } = salaryData;
 
   // Prepare data for charts
   const salaryBreakdownData = [
@@ -246,14 +301,33 @@ const SalaryResearch = () => {
           </div>
         </div>
       )}
+
+      {/* Error Message - Fixed at top */}
+      {error && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md">
+          <div className="mx-4 p-4 bg-red-50 border border-red-200 rounded-lg shadow-lg flex items-start">
+            <svg className="w-5 h-5 text-red-600 mr-3 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+            <div className="flex-1">
+              <p className="text-red-800 font-medium">{error}</p>
+            </div>
+            <button onClick={() => setError(null)} className="text-red-600 hover:text-red-800 shrink-0 ml-2">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
       
       {/* Breadcrumb */}
       <nav className="mb-6 text-sm text-gray-600">
         <button onClick={() => navigate('/jobs')} className="hover:text-blue-600">Home</button>
         <span className="mx-2">›</span>
-        <button onClick={() => navigate('/jobs')} className="hover:text-blue-600">Jobs</button>
+        <button onClick={() => navigate('/jobs')} className="hover:text-blue-600">Salary Research</button>
         <span className="mx-2">›</span>
-        <span className="text-gray-900">{job.title}</span>
+        <span className="text-gray-900">{job?.title || jobId}</span>
       </nav>
 
       {/* Header */}
@@ -263,12 +337,16 @@ const SalaryResearch = () => {
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
               Salary Research & Benchmarking
             </h1>
-            <p className="text-gray-600">
-              {job.title} at {job.company}
-            </p>
-            <p className="text-sm text-gray-500">
-              {job.location} • {job.industry}
-            </p>
+            {job && (
+              <>
+                <p className="text-gray-600">
+                  {job.title} at {job.company}
+                </p>
+                <p className="text-sm text-gray-500">
+                  {job.location} • {job.industry}
+                </p>
+              </>
+            )}
           </div>
           <div className="flex gap-2">
             <Button
@@ -297,8 +375,6 @@ const SalaryResearch = () => {
           </div>
         </div>
       </div>
-
-      {error && <ErrorMessage message={error} className="mb-4" />}
 
       {/* Market Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -347,7 +423,7 @@ const SalaryResearch = () => {
           </div>
           <div className="border-l-4 border-orange-500 pl-4">
             <p className="text-sm text-gray-600">Industry</p>
-            <p className="text-lg font-semibold">{job.industry}</p>
+            <p className="text-lg font-semibold">{job?.industry || 'N/A'}</p>
           </div>
         </div>
       </Card>
@@ -858,14 +934,14 @@ const SalaryResearch = () => {
                     {progressionAnalytics.negotiation.successRate}%
                   </p>
                   <p className="text-sm text-gray-600 mt-1">
-                    Avg +{progressionAnalytics.negotiation.averageIncrease}% increase
+                    Avg {parseFloat(progressionAnalytics.negotiation.averageIncrease) >= 0 ? '+' : ''}{progressionAnalytics.negotiation.averageIncrease}% increase
                   </p>
                 </Card>
 
                 <Card className="p-6 border border-gray-200">
                   <h3 className="text-sm font-medium text-gray-600 mb-2">Total Growth</h3>
                   <p className="text-3xl font-bold text-purple-600">
-                    +{progressionAnalytics.compensation.totalGrowth}%
+                    {parseFloat(progressionAnalytics.compensation.totalGrowth) >= 0 ? '+' : ''}{progressionAnalytics.compensation.totalGrowth}%
                   </p>
                   <p className="text-sm text-gray-600 mt-1">
                     Career compensation growth
@@ -896,7 +972,7 @@ const SalaryResearch = () => {
                             <p className="text-sm text-gray-600">{offer.company} • {offer.location}</p>
                             <p className="text-xs text-gray-500 mt-1">{new Date(offer.offerDate).toLocaleDateString()}</p>
                           </div>
-                          <div className="text-right">
+                          <div className="flex items-center gap-2">
                             <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
                               offer.offerStatus === 'Accepted' ? 'bg-green-100 text-green-800' :
                               offer.offerStatus === 'Declined' ? 'bg-red-100 text-red-800' :
@@ -905,6 +981,24 @@ const SalaryResearch = () => {
                             }`}>
                               {offer.offerStatus}
                             </span>
+                            <button
+                              onClick={() => handleEditOffer(offer)}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Edit offer"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => handleDeleteOffer(offer._id)}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Delete offer"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
                           </div>
                         </div>
                         
@@ -1030,7 +1124,7 @@ const SalaryResearch = () => {
                       <div className="flex justify-between items-center p-4 bg-purple-50 rounded-lg">
                         <span className="text-gray-700">Average Increase</span>
                         <span className="text-xl font-bold text-purple-600">
-                          +{progressionAnalytics.negotiation.averageIncrease}%
+                          {parseFloat(progressionAnalytics.negotiation.averageIncrease) >= 0 ? '+' : ''}{progressionAnalytics.negotiation.averageIncrease}%
                         </span>
                       </div>
                       {progressionAnalytics.negotiation.improvementPattern && (
@@ -1082,7 +1176,7 @@ const SalaryResearch = () => {
                           <div className="mt-4 p-3 bg-white rounded">
                             <p className="text-sm text-gray-600">Increase Achieved</p>
                             <p className="text-2xl font-bold text-green-600">
-                              +{progressionAnalytics.negotiation.bestNegotiation.increaseFromInitial.percentage}%
+                              {parseFloat(progressionAnalytics.negotiation.bestNegotiation.increaseFromInitial.percentage) >= 0 ? '+' : ''}{progressionAnalytics.negotiation.bestNegotiation.increaseFromInitial.percentage}%
                             </p>
                           </div>
                         )}
@@ -1262,10 +1356,10 @@ const SalaryResearch = () => {
                 e.preventDefault();
                 const formData = new FormData(e.target);
                 const offerData = {
-                  jobTitle: job.title,
-                  company: job.company,
-                  industry: job.industry,
-                  location: job.location,
+                  jobTitle: job?.title || '',
+                  company: job?.company || '',
+                  industry: job?.industry || '',
+                  location: job?.location || '',
                   baseSalary: parseFloat(formData.get('baseSalary')),
                   signingBonus: parseFloat(formData.get('signingBonus')) || 0,
                   performanceBonus: parseFloat(formData.get('performanceBonus')) || 0,
@@ -1273,6 +1367,7 @@ const SalaryResearch = () => {
                   benefitsValue: parseFloat(formData.get('benefitsValue')) || 0,
                   wasNegotiated: formData.get('wasNegotiated') === 'true',
                   initialOffer: parseFloat(formData.get('initialOffer')) || undefined,
+                  finalOffer: parseFloat(formData.get('finalOffer')) || undefined,
                   negotiationRounds: parseInt(formData.get('negotiationRounds')) || 0,
                   offerStatus: formData.get('offerStatus'),
                   marketMedian: marketData?.companySizeAdjusted?.median,
@@ -1373,15 +1468,27 @@ const SalaryResearch = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Negotiation Rounds
+                        Final Offer (if negotiated)
                       </label>
                       <input
                         type="number"
-                        name="negotiationRounds"
+                        name="finalOffer"
                         className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                        placeholder="0"
+                        placeholder="75000"
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Negotiation Rounds
+                    </label>
+                    <input
+                      type="number"
+                      name="negotiationRounds"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      placeholder="0"
+                    />
                   </div>
 
                   <div>
@@ -1430,6 +1537,347 @@ const SalaryResearch = () => {
                   </Button>
                 </div>
               </form>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Edit Offer Modal */}
+      {editOfferModalOpen && editingOffer && (
+        <div className="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <Card className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold">Edit Salary Offer</h2>
+                <button
+                  onClick={() => {
+                    setEditOfferModalOpen(false);
+                    setEditingOffer(null);
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const offerData = {
+                  jobTitle: formData.get('jobTitle'),
+                  company: formData.get('company'),
+                  industry: formData.get('industry'),
+                  location: formData.get('location'),
+                  baseSalary: parseFloat(formData.get('baseSalary')),
+                  signingBonus: parseFloat(formData.get('signingBonus')) || 0,
+                  performanceBonus: parseFloat(formData.get('performanceBonus')) || 0,
+                  equityValue: parseFloat(formData.get('equityValue')) || 0,
+                  benefitsValue: parseFloat(formData.get('benefitsValue')) || 0,
+                  wasNegotiated: formData.get('wasNegotiated') === 'true',
+                  initialOffer: parseFloat(formData.get('initialOffer')) || undefined,
+                  finalOffer: parseFloat(formData.get('finalOffer')) || undefined,
+                  negotiationRounds: parseInt(formData.get('negotiationRounds')) || 0,
+                  offerStatus: formData.get('offerStatus'),
+                  notes: formData.get('notes')
+                };
+                handleUpdateOffer(offerData);
+              }}>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Job Title *
+                      </label>
+                      <input
+                        type="text"
+                        name="jobTitle"
+                        defaultValue={editingOffer.jobTitle}
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Company *
+                      </label>
+                      <input
+                        type="text"
+                        name="company"
+                        defaultValue={editingOffer.company}
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Industry
+                      </label>
+                      <input
+                        type="text"
+                        name="industry"
+                        defaultValue={editingOffer.industry}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Location
+                      </label>
+                      <input
+                        type="text"
+                        name="location"
+                        defaultValue={editingOffer.location}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Base Salary *
+                    </label>
+                    <input
+                      type="number"
+                      name="baseSalary"
+                      defaultValue={editingOffer.baseSalary}
+                      required
+                      min="0"
+                      step="1000"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Signing Bonus
+                      </label>
+                      <input
+                        type="number"
+                        name="signingBonus"
+                        defaultValue={editingOffer.signingBonus || 0}
+                        min="0"
+                        step="1000"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Performance Bonus
+                      </label>
+                      <input
+                        type="number"
+                        name="performanceBonus"
+                        defaultValue={editingOffer.performanceBonus || 0}
+                        min="0"
+                        step="1000"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Equity Value
+                      </label>
+                      <input
+                        type="number"
+                        name="equityValue"
+                        defaultValue={editingOffer.equityValue || 0}
+                        min="0"
+                        step="1000"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Benefits Value
+                      </label>
+                      <input
+                        type="number"
+                        name="benefitsValue"
+                        defaultValue={editingOffer.benefitsValue || 0}
+                        min="0"
+                        step="1000"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Was This Offer Negotiated?
+                    </label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          name="wasNegotiated"
+                          value="true"
+                          defaultChecked={editingOffer.wasNegotiated}
+                          className="mr-2"
+                        />
+                        Yes
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          name="wasNegotiated"
+                          value="false"
+                          defaultChecked={!editingOffer.wasNegotiated}
+                          className="mr-2"
+                        />
+                        No
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Initial Offer Amount
+                      </label>
+                      <input
+                        type="number"
+                        name="initialOffer"
+                        defaultValue={editingOffer.initialOffer || ''}
+                        min="0"
+                        step="1000"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        placeholder="If negotiated"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Final Offer Amount
+                      </label>
+                      <input
+                        type="number"
+                        name="finalOffer"
+                        defaultValue={editingOffer.finalOffer || ''}
+                        min="0"
+                        step="1000"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        placeholder="If negotiated"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Number of Negotiation Rounds
+                    </label>
+                    <input
+                      type="number"
+                      name="negotiationRounds"
+                      defaultValue={editingOffer.negotiationRounds || 0}
+                      min="0"
+                      max="10"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Offer Status *
+                    </label>
+                    <select
+                      name="offerStatus"
+                      defaultValue={editingOffer.offerStatus}
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    >
+                      <option value="Active">Active (Pending Decision)</option>
+                      <option value="Accepted">Accepted</option>
+                      <option value="Declined">Declined</option>
+                      <option value="Expired">Expired</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Notes (Optional)
+                    </label>
+                    <textarea
+                      name="notes"
+                      rows="3"
+                      defaultValue={editingOffer.notes || ''}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      placeholder="Any additional context about this offer..."
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 mt-6">
+                  <Button
+                    type="submit"
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Update Offer
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setEditOfferModalOpen(false);
+                      setEditingOffer(null);
+                    }}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmModalOpen && (
+        <div className="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <Card className="max-w-md w-full">
+            <div className="p-6">
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
+                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Delete Salary Offer</h2>
+                  <p className="text-sm text-gray-600">This action cannot be undone</p>
+                </div>
+              </div>
+              
+              <p className="text-gray-700 mb-6">
+                Are you sure you want to delete this salary offer? All associated data and analytics will be permanently removed.
+              </p>
+
+              <div className="flex gap-3">
+                <Button
+                  onClick={confirmDelete}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                >
+                  Delete Offer
+                </Button>
+                <Button
+                  onClick={() => {
+                    setDeleteConfirmModalOpen(false);
+                    setOfferToDelete(null);
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
             </div>
           </Card>
         </div>

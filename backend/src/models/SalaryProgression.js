@@ -330,11 +330,48 @@ careerProgressionSchema.methods.addSalaryOffer = function(offerData) {
   this.analytics.totalOffersAccepted = this.salaryOffers.filter(o => o.offerStatus === 'Accepted').length;
   this.analytics.totalOffersDeclined = this.salaryOffers.filter(o => o.offerStatus === 'Declined').length;
   
-  // Calculate average negotiation increase
-  const negotiatedOffers = this.salaryOffers.filter(o => o.wasNegotiated && o.increaseFromInitial);
+  // Calculate negotiation success rate
+  const negotiatedOffers = this.salaryOffers.filter(o => o.wasNegotiated);
   if (negotiatedOffers.length > 0) {
-    const totalIncrease = negotiatedOffers.reduce((sum, o) => sum + (o.increaseFromInitial.percentage || 0), 0);
-    this.analytics.averageNegotiationIncrease = totalIncrease / negotiatedOffers.length;
+    // Count successful negotiations (those with positive increase)
+    const successfulNegotiations = negotiatedOffers.filter(o => 
+      o.increaseFromInitial && o.increaseFromInitial.percentage > 0
+    );
+    this.analytics.negotiationSuccessRate = (successfulNegotiations.length / negotiatedOffers.length) * 100;
+  } else {
+    this.analytics.negotiationSuccessRate = 0;
+  }
+  
+  // Calculate average negotiation increase (only from successful negotiations)
+  const successfulNegotiations = this.salaryOffers.filter(o => 
+    o.wasNegotiated && o.increaseFromInitial && o.increaseFromInitial.percentage > 0
+  );
+  if (successfulNegotiations.length > 0) {
+    const totalIncrease = successfulNegotiations.reduce((sum, o) => sum + parseFloat(o.increaseFromInitial.percentage), 0);
+    this.analytics.averageNegotiationIncrease = totalIncrease / successfulNegotiations.length;
+  } else {
+    this.analytics.averageNegotiationIncrease = 0;
+  }
+  
+  // Calculate total compensation growth from salary offers
+  const sortedOffers = this.salaryOffers
+    .filter(o => o.totalCompensation && o.offerDate)
+    .sort((a, b) => new Date(a.offerDate) - new Date(b.offerDate));
+  
+  if (sortedOffers.length >= 2) {
+    const earliest = sortedOffers[0];
+    const latest = sortedOffers[sortedOffers.length - 1];
+    this.analytics.totalCompensationGrowth = 
+      ((latest.totalCompensation - earliest.totalCompensation) / earliest.totalCompensation) * 100;
+  } else if (sortedOffers.length === 1 && this.compensationHistory.length > 0) {
+    // If only one offer but we have compensation history, compare with history
+    const historyComp = this.compensationHistory[this.compensationHistory.length - 1];
+    if (historyComp.totalCompensation) {
+      this.analytics.totalCompensationGrowth = 
+        ((sortedOffers[0].totalCompensation - historyComp.totalCompensation) / historyComp.totalCompensation) * 100;
+    }
+  } else {
+    this.analytics.totalCompensationGrowth = 0;
   }
   
   return this.save();

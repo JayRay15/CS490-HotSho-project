@@ -1831,7 +1831,7 @@ export const getProgressionAnalytics = asyncHandler(async (req, res) => {
       bestNegotiation: progression.salaryOffers
         .filter(o => o.increaseFromInitial?.percentage)
         .sort((a, b) => b.increaseFromInitial.percentage - a.increaseFromInitial.percentage)[0] || null,
-      improvementPattern: calculateNegotiationPattern(progression.negotiationHistory)
+      improvementPattern: calculateNegotiationPattern(progression.salaryOffers)
     },
     
     // Compensation growth
@@ -2244,18 +2244,242 @@ export const trackNegotiationOutcome = asyncHandler(async (req, res) => {
 });
 
 /**
+ * PUT /api/salary/progression/offer/:offerId - Update a tracked salary offer
+ */
+export const updateSalaryOffer = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { offerId } = req.params;
+  const updateData = req.body;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const progression = await SalaryProgression.findOne({ userId });
+  if (!progression) {
+    const { response, statusCode } = errorResponse(
+      "No progression data found",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Find the offer to update
+  const offerIndex = progression.salaryOffers.findIndex(o => o._id.toString() === offerId);
+  if (offerIndex === -1) {
+    const { response, statusCode } = errorResponse(
+      "Offer not found",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Update the offer fields
+  const offer = progression.salaryOffers[offerIndex];
+  Object.keys(updateData).forEach(key => {
+    if (updateData[key] !== undefined && key !== '_id') {
+      offer[key] = updateData[key];
+    }
+  });
+
+  // Recalculate total compensation if components changed
+  if (updateData.baseSalary !== undefined || updateData.signingBonus !== undefined || 
+      updateData.performanceBonus !== undefined || updateData.equityValue !== undefined || 
+      updateData.benefitsValue !== undefined) {
+    offer.totalCompensation = 
+      (offer.baseSalary || 0) + 
+      (offer.signingBonus || 0) + 
+      (offer.performanceBonus || 0) + 
+      (offer.equityValue || 0) + 
+      (offer.benefitsValue || 0);
+  }
+
+  // Recalculate negotiation metrics if relevant fields changed
+  if (offer.wasNegotiated && offer.initialOffer && offer.finalOffer) {
+    offer.increaseFromInitial = {
+      amount: offer.finalOffer - offer.initialOffer,
+      percentage: ((offer.finalOffer - offer.initialOffer) / offer.initialOffer * 100).toFixed(2)
+    };
+  }
+
+  // Recalculate market position if market data changed
+  if (offer.marketMedian && offer.baseSalary) {
+    const diffFromMedian = offer.baseSalary - offer.marketMedian;
+    const percentDiff = (diffFromMedian / offer.marketMedian) * 100;
+    
+    if (percentDiff < -10) {
+      offer.marketPosition = 'Below Market';
+    } else if (percentDiff > 10) {
+      offer.marketPosition = 'Above Market';
+    } else {
+      offer.marketPosition = 'At Market';
+    }
+    
+    offer.percentileRank = Math.min(100, Math.max(0, 50 + (percentDiff / 2)));
+  }
+
+  // Update the offer in place
+  progression.salaryOffers[offerIndex] = offer;
+
+  // Recalculate analytics after update
+  progression.analytics.totalOffersReceived = progression.salaryOffers.length;
+  progression.analytics.totalOffersAccepted = progression.salaryOffers.filter(o => o.offerStatus === 'Accepted').length;
+  progression.analytics.totalOffersDeclined = progression.salaryOffers.filter(o => o.offerStatus === 'Declined').length;
+
+  // Recalculate negotiation metrics
+  const negotiatedOffers = progression.salaryOffers.filter(o => o.wasNegotiated);
+  if (negotiatedOffers.length > 0) {
+    const successfulNegotiations = negotiatedOffers.filter(o => 
+      o.increaseFromInitial && o.increaseFromInitial.percentage > 0
+    );
+    progression.analytics.negotiationSuccessRate = (successfulNegotiations.length / negotiatedOffers.length) * 100;
+    
+    if (successfulNegotiations.length > 0) {
+      const totalIncrease = successfulNegotiations.reduce((sum, o) => sum + parseFloat(o.increaseFromInitial.percentage), 0);
+      progression.analytics.averageNegotiationIncrease = totalIncrease / successfulNegotiations.length;
+    } else {
+      progression.analytics.averageNegotiationIncrease = 0;
+    }
+  } else {
+    progression.analytics.negotiationSuccessRate = 0;
+    progression.analytics.averageNegotiationIncrease = 0;
+  }
+
+  // Recalculate total compensation growth
+  const sortedOffers = progression.salaryOffers
+    .filter(o => o.totalCompensation && o.offerDate)
+    .sort((a, b) => new Date(a.offerDate) - new Date(b.offerDate));
+  
+  if (sortedOffers.length >= 2) {
+    const earliest = sortedOffers[0];
+    const latest = sortedOffers[sortedOffers.length - 1];
+    progression.analytics.totalCompensationGrowth = 
+      ((latest.totalCompensation - earliest.totalCompensation) / earliest.totalCompensation) * 100;
+  } else {
+    progression.analytics.totalCompensationGrowth = 0;
+  }
+
+  await progression.save();
+
+  const { response, statusCode } = successResponse("Salary offer updated successfully", {
+    offer: progression.salaryOffers[offerIndex],
+    analytics: progression.analytics
+  });
+  return sendResponse(res, response, statusCode);
+});
+
+/**
+ * DELETE /api/salary/progression/offer/:offerId - Delete a tracked salary offer
+ */
+export const deleteSalaryOffer = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { offerId } = req.params;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const progression = await SalaryProgression.findOne({ userId });
+  if (!progression) {
+    const { response, statusCode } = errorResponse(
+      "No progression data found",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Find and remove the offer
+  const offerIndex = progression.salaryOffers.findIndex(o => o._id.toString() === offerId);
+  if (offerIndex === -1) {
+    const { response, statusCode } = errorResponse(
+      "Offer not found",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  progression.salaryOffers.splice(offerIndex, 1);
+
+  // Recalculate analytics
+  progression.analytics.totalOffersReceived = progression.salaryOffers.length;
+  progression.analytics.totalOffersAccepted = progression.salaryOffers.filter(o => o.offerStatus === 'Accepted').length;
+  progression.analytics.totalOffersDeclined = progression.salaryOffers.filter(o => o.offerStatus === 'Declined').length;
+
+  // Recalculate negotiation metrics
+  const negotiatedOffers = progression.salaryOffers.filter(o => o.wasNegotiated);
+  if (negotiatedOffers.length > 0) {
+    const successfulNegotiations = negotiatedOffers.filter(o => 
+      o.increaseFromInitial && o.increaseFromInitial.percentage > 0
+    );
+    progression.analytics.negotiationSuccessRate = (successfulNegotiations.length / negotiatedOffers.length) * 100;
+    
+    if (successfulNegotiations.length > 0) {
+      const totalIncrease = successfulNegotiations.reduce((sum, o) => sum + parseFloat(o.increaseFromInitial.percentage), 0);
+      progression.analytics.averageNegotiationIncrease = totalIncrease / successfulNegotiations.length;
+    } else {
+      progression.analytics.averageNegotiationIncrease = 0;
+    }
+  } else {
+    progression.analytics.negotiationSuccessRate = 0;
+    progression.analytics.averageNegotiationIncrease = 0;
+  }
+
+  // Recalculate total compensation growth
+  const sortedOffers = progression.salaryOffers
+    .filter(o => o.totalCompensation && o.offerDate)
+    .sort((a, b) => new Date(a.offerDate) - new Date(b.offerDate));
+  
+  if (sortedOffers.length >= 2) {
+    const earliest = sortedOffers[0];
+    const latest = sortedOffers[sortedOffers.length - 1];
+    progression.analytics.totalCompensationGrowth = 
+      ((latest.totalCompensation - earliest.totalCompensation) / earliest.totalCompensation) * 100;
+  } else {
+    progression.analytics.totalCompensationGrowth = 0;
+  }
+
+  await progression.save();
+
+  const { response, statusCode } = successResponse("Salary offer deleted successfully", {
+    analytics: progression.analytics
+  });
+  return sendResponse(res, response, statusCode);
+});
+
+/**
  * Helper: Calculate negotiation improvement pattern
  */
-function calculateNegotiationPattern(history) {
-  if (history.length < 2) return 'Insufficient Data';
+function calculateNegotiationPattern(salaryOffers) {
+  // Filter to only negotiated offers with valid data
+  const negotiatedOffers = salaryOffers
+    .filter(o => o.wasNegotiated && o.increaseFromInitial?.percentage)
+    .sort((a, b) => new Date(a.offerDate) - new Date(b.offerDate)); // Sort chronologically
   
-  const recent = history.slice(0, Math.min(3, history.length));
-  const older = history.slice(Math.min(3, history.length));
+  if (negotiatedOffers.length < 2) return 'Insufficient Data';
+  
+  // Split into recent (last 3) and older negotiations
+  const recent = negotiatedOffers.slice(-3); // Last 3
+  const older = negotiatedOffers.slice(0, -3); // Everything before last 3
   
   if (older.length === 0) return 'Building History';
   
-  const recentSuccessRate = recent.filter(n => n.success).length / recent.length;
-  const olderSuccessRate = older.filter(n => n.success).length / older.length;
+  // Calculate success rates (success = positive percentage increase)
+  const recentSuccessRate = recent.filter(n => parseFloat(n.increaseFromInitial.percentage) > 0).length / recent.length;
+  const olderSuccessRate = older.filter(n => parseFloat(n.increaseFromInitial.percentage) > 0).length / older.length;
   
   if (recentSuccessRate > olderSuccessRate + 0.15) return 'Improving';
   if (recentSuccessRate < olderSuccessRate - 0.15) return 'Declining';

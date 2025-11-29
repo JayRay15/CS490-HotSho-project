@@ -19,6 +19,8 @@ import {
   getTimingStrategy,
   // UC-100: Salary Progression and Market Positioning endpoints
   trackSalaryOffer,
+  updateSalaryOffer,
+  deleteSalaryOffer,
   getSalaryProgression,
   getProgressionAnalytics,
   addCareerMilestone,
@@ -78,6 +80,12 @@ router.get("/negotiation/:id/timing", checkJwt, getTimingStrategy);
 // UC-100: Salary Progression and Market Positioning Routes
 // POST /api/salary/progression/offer - Track a salary offer
 router.post("/progression/offer", checkJwt, trackSalaryOffer);
+
+// PUT /api/salary/progression/offer/:offerId - Update a tracked salary offer
+router.put("/progression/offer/:offerId", checkJwt, updateSalaryOffer);
+
+// DELETE /api/salary/progression/offer/:offerId - Delete a tracked salary offer
+router.delete("/progression/offer/:offerId", checkJwt, deleteSalaryOffer);
 
 // GET /api/salary/progression - Get complete salary progression data
 router.get("/progression", checkJwt, getSalaryProgression);
