@@ -6,7 +6,8 @@ import {
   exportSalaryReport,
   getProgressionAnalytics,
   generateAdvancementRecommendations,
-  trackSalaryOffer
+  trackSalaryOffer,
+  getSalaryProgression
 } from '../api/salary';
 import LoadingSpinner from './LoadingSpinner';
 import ErrorMessage from './ErrorMessage';
@@ -70,6 +71,8 @@ const SalaryResearch = () => {
   const [advancementRecommendations, setAdvancementRecommendations] = useState(null);
   const [showProgressionSection, setShowProgressionSection] = useState(false);
   const [trackOfferModalOpen, setTrackOfferModalOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState(null);
+  const [trackedOffers, setTrackedOffers] = useState([]);
 
   const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
@@ -96,6 +99,15 @@ const SalaryResearch = () => {
     try {
       const response = await getProgressionAnalytics();
       setProgressionAnalytics(response.data.data.analytics);
+      
+      // Also fetch the full progression data to get tracked offers
+      try {
+        const progressionResponse = await getSalaryProgression();
+        setTrackedOffers(progressionResponse.data.data.progression.salaryOffers || []);
+      } catch (err) {
+        // Offers might not exist yet
+        console.log('No tracked offers yet');
+      }
     } catch (err) {
       console.error('Error fetching progression analytics:', err);
       // Don't show error if no progression data exists yet
@@ -124,7 +136,8 @@ const SalaryResearch = () => {
       setTrackOfferModalOpen(false);
       // Refresh analytics
       await fetchProgressionAnalytics();
-      alert('Salary offer tracked successfully!');
+      setSuccessMessage('Salary offer tracked successfully!');
+      setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err) {
       console.error('Error tracking offer:', err);
       setError(err.response?.data?.message || 'Failed to track offer');
@@ -215,6 +228,25 @@ const SalaryResearch = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
+      {/* Success Message - Fixed at top */}
+      {successMessage && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md">
+          <div className="mx-4 p-4 bg-green-50 border border-green-200 rounded-lg shadow-lg flex items-start">
+            <svg className="w-5 h-5 text-green-600 mr-3 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            </svg>
+            <div className="flex-1">
+              <p className="text-green-800 font-medium">{successMessage}</p>
+            </div>
+            <button onClick={() => setSuccessMessage(null)} className="text-green-600 hover:text-green-800 shrink-0 ml-2">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+      
       {/* Breadcrumb */}
       <nav className="mb-6 text-sm text-gray-600">
         <button onClick={() => navigate('/jobs')} className="hover:text-blue-600">Home</button>
@@ -850,6 +882,67 @@ const SalaryResearch = () => {
                   </p>
                 </Card>
               </div>
+
+              {/* Tracked Salary Offers */}
+              {trackedOffers && trackedOffers.length > 0 && (
+                <Card className="p-6 mb-8">
+                  <h2 className="text-xl font-bold mb-6">Your Tracked Salary Offers</h2>
+                  <div className="space-y-4">
+                    {trackedOffers.slice().reverse().map((offer, index) => (
+                      <div key={index} className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors">
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-lg text-gray-900">{offer.jobTitle}</h3>
+                            <p className="text-sm text-gray-600">{offer.company} • {offer.location}</p>
+                            <p className="text-xs text-gray-500 mt-1">{new Date(offer.offerDate).toLocaleDateString()}</p>
+                          </div>
+                          <div className="text-right">
+                            <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+                              offer.offerStatus === 'Accepted' ? 'bg-green-100 text-green-800' :
+                              offer.offerStatus === 'Declined' ? 'bg-red-100 text-red-800' :
+                              offer.offerStatus === 'Active' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {offer.offerStatus}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                          <div>
+                            <p className="text-xs text-gray-500">Base Salary</p>
+                            <p className="font-semibold text-gray-900">${offer.baseSalary.toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500">Total Compensation</p>
+                            <p className="font-semibold text-blue-600">${offer.totalCompensation.toLocaleString()}</p>
+                          </div>
+                          {offer.wasNegotiated && (
+                            <div>
+                              <p className="text-xs text-gray-500">Negotiated</p>
+                              <p className="font-semibold text-green-600">
+                                +{offer.increaseFromInitial?.percentage?.toFixed(1) || 0}%
+                              </p>
+                            </div>
+                          )}
+                          {offer.percentileRank && (
+                            <div>
+                              <p className="text-xs text-gray-500">Market Percentile</p>
+                              <p className="font-semibold text-purple-600">{Math.round(offer.percentileRank)}th</p>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {offer.notes && (
+                          <div className="mt-3 pt-3 border-t border-gray-100">
+                            <p className="text-sm text-gray-600">{offer.notes}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )}
 
               {/* Compensation Growth Over Time */}
               {progressionAnalytics.compensation.yearOverYear.length > 0 && (
