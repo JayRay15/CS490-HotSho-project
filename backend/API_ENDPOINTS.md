@@ -1,6 +1,6 @@
 # API Endpoints Documentation
 
-**Last Updated:** November 10, 2025
+**Last Updated:** November 29, 2025
 
 ## Base URL
 ```
@@ -8,16 +8,16 @@ http://localhost:5000/api
 ```
 
 ## Authentication
-All endpoints (except health check) require a valid Auth0 JWT token in the Authorization header:
+All endpoints (except health check) require a valid Clerk JWT token in the Authorization header:
 ```
-Authorization: Bearer <your-auth0-jwt-token>
+Authorization: Bearer <your-clerk-jwt-token>
 ```
 
-### Auth0 Integration
-- Users register and authenticate through Auth0
-- Auth0 provides JWT tokens with user information
-- Backend validates tokens using `express-oauth2-jwt-bearer`
-- User data is stored in MongoDB with `auth0Id` linking to Auth0
+### Clerk Integration
+- Users register and authenticate through Clerk
+- Clerk provides JWT tokens with user information
+- Backend validates tokens using `@clerk/express`
+- User data is stored in MongoDB with `clerkId` linking to Clerk
 
 ## Response Format
 All endpoints return a consistent JSON response format:
@@ -83,7 +83,7 @@ All endpoints return a consistent JSON response format:
   - Bio limited to 500 characters
   - Industry must be one of: `Technology`, `Healthcare`, `Finance`, `Education`, `Construction`, `Real Estate`
   - Experience level must be one of: `Entry`, `Mid`, `Senior`, `Executive`
-  - Cannot update: `auth0Id`, `_id`, `uuid`, `createdAt`, `updatedAt`
+  - Cannot update: `clerkId`, `_id`, `uuid`, `createdAt`, `updatedAt`
   - Empty request body returns 400 error
 - **Error Codes:**
   - `1001` - Unauthorized (missing credentials)
@@ -249,13 +249,13 @@ All endpoints return a consistent JSON response format:
 #### Register New User
 - **POST** `/api/auth/register`
 - **Status Code:** 201 (Created), 400 (Validation error), 401 (Invalid token), 409 (Duplicate email), 500 (Server error)
-- **Description:** Create new user account linked to Clerk/Auth0
-- **Auth Required:** Yes (Clerk/Auth0 token)
+- **Description:** Create new user account linked to Clerk
+- **Auth Required:** Yes (Clerk token)
 - **Behavior:** 
   - Extracts user data from Clerk token payload (`userId`, `fullName`, `email`, `imageUrl`)
   - Validates email format
   - Checks for duplicate email (returns 409 if exists)
-  - Creates user in MongoDB with `auth0Id` linking to Clerk
+  - Creates user in MongoDB with `clerkId` linking to Clerk
   - Returns user data without password
 - **Error Codes:**
   - `1001` - Unauthorized (missing credentials)
@@ -266,10 +266,10 @@ All endpoints return a consistent JSON response format:
 - **POST** `/api/auth/login`
 - **Status Code:** 200 (Success), 401 (Invalid token), 404 (User not found), 500 (Server error)
 - **Description:** Authenticate user and return user data
-- **Auth Required:** Yes (Clerk/Auth0 token)
+- **Auth Required:** Yes (Clerk token)
 - **Behavior:**
-  - Validates Clerk/Auth0 token
-  - Finds user by `auth0Id` from token payload
+  - Validates Clerk token
+  - Finds user by `clerkId` from token payload
   - Returns user profile data
 - **Error Codes:**
   - `1001` - Unauthorized (missing credentials)
@@ -279,11 +279,11 @@ All endpoints return a consistent JSON response format:
 - **POST** `/api/auth/logout`
 - **Status Code:** 200 (Success), 401 (Invalid token), 500 (Server error)
 - **Description:** End user session (server-side cleanup)
-- **Auth Required:** Yes (Auth0 token)
+- **Auth Required:** Yes (Clerk token)
 - **Behavior:**
-  - Validates Auth0 token
+  - Validates Clerk token
   - Performs any server-side cleanup if needed
-  - Actual logout handled by Auth0 on frontend
+  - Actual logout handled by Clerk on frontend
 
 ### Profile Section Endpoints
 
@@ -494,7 +494,7 @@ node test-endpoints.js
 ```
 
 This test:
-1. Gets Clerk/Auth0 token
+1. Gets Clerk token
 2. Registers a new user
 3. Tests all user profile endpoints
 4. Tests all authentication endpoints

@@ -1,12 +1,16 @@
 # Backend API
 
-RESTful API for the Job Seeker ATS application with Auth0 authentication.
+RESTful API for the Job Seeker ATS application with Clerk authentication.
 
 ## Tech Stack
 
-- **Node.js** with **Express.js**
-- **MongoDB** with **Mongoose**
-- **Auth0** for authentication (JWT)
+- **Node.js** (v20+) with **Express.js 5**
+- **MongoDB** with **Mongoose 8**
+- **Clerk** for authentication (primary)
+- **Google Gemini AI** for AI features (@google/genai, @google/generative-ai)
+- **Document Processing**: PDFKit, Puppeteer, pdf-lib, pdf-parse
+- **Calendar Integration**: googleapis, ical-generator, Microsoft Graph
+- **Email**: Nodemailer
 - **CORS** enabled for frontend integration
 
 ## Setup
@@ -26,9 +30,10 @@ cp .env.example .env
 ```
 
 Required environment variables:
-- `AUTH0_AUDIENCE` - Your Auth0 API audience
-- `AUTH0_DOMAIN` - Your Auth0 tenant domain
+- `CLERK_PUBLISHABLE_KEY` - Your Clerk publishable key
+- `CLERK_SECRET_KEY` - Your Clerk secret key
 - `MONGO_URI` - MongoDB connection string
+- `GEMINI_API_KEY` - Google Gemini API key for AI features
 - `PORT` - Server port (default: 5000)
 - `FRONTEND_ORIGIN` - Frontend URL for CORS (default: http://localhost:5173)
 
@@ -55,7 +60,7 @@ See `API_ENDPOINTS.md` for detailed API documentation.
 GET /api/health
 ```
 
-### Authentication (Auth0)
+### Authentication (Clerk)
 ```
 POST /api/auth/register  - Register new user
 POST /api/auth/login     - Login user
@@ -87,7 +92,7 @@ PUT    /api/profile/projects/:projectId      - Update project
 DELETE /api/profile/projects/:projectId      - Delete project
 ```
 
-All endpoints (except `/api/health`) require a valid Auth0 JWT Bearer token.
+All endpoints (except `/api/health`) require a valid Clerk JWT Bearer token.
 
 ## Project Structure
 
@@ -100,7 +105,7 @@ backend/
 │   │   ├── userController.js
 │   │   └── profileController.js
 │   ├── middleware/            # Custom middleware
-│   │   └── checkJwt.js       # Auth0 JWT validation
+│   │   └── checkJwt.js       # Clerk JWT validation
 │   ├── models/                # Mongoose schemas
 │   │   └── User.js
 │   ├── routes/                # Express routes
@@ -133,14 +138,15 @@ Or use tools like:
 ### Common Issues
 
 1. **MongoDB connection failed**: Check your `MONGO_URI` in `.env`
-2. **JWT validation error**: Verify `AUTH0_AUDIENCE` and `AUTH0_DOMAIN` are correct
+2. **JWT validation error**: Verify `CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` are correct
 3. **CORS errors**: Ensure `FRONTEND_ORIGIN` matches your frontend URL
+4. **AI features not working**: Check your `GEMINI_API_KEY` is valid
 
 ## Authentication Flow
 
-1. User logs in via Auth0 on frontend
-2. Frontend receives JWT token from Auth0
+1. User logs in via Clerk on frontend
+2. Frontend receives JWT token from Clerk
 3. Frontend sends token in `Authorization: Bearer <token>` header
-4. Backend validates token with Auth0
-5. Backend extracts user info from token (`req.auth.payload.sub`)
+4. Backend validates token with Clerk Express SDK
+5. Backend extracts user info from token
 6. Backend performs requested operation
