@@ -2,25 +2,48 @@
 ├── .github/
 ├── .gitignore
 ├── APPLICATION_AUTOMATION_GUIDE.md
+├── CUSTOM_REPORTS_COMPLETE_GUIDE.md
+├── LOGIN_TESTING_GUIDE.md
+├── LOGOUT_VERIFICATION.md
+├── MENTOR_ARCHITECTURE_DIAGRAM.md
+├── MENTOR_COLLABORATION_GUIDE.md
+├── MENTOR_QUICK_START.md
+├── MENTOR_TESTING_GUIDE.md
+├── OAUTH_QUICK_SETUP.md
+├── PASSWORD_RESET_CLICKABLE_LINK.md
+├── PASSWORD_RESET_VERIFICATION.md
+├── README.md
+├── SKILLS_CATEGORY_ORGANIZATION_GUIDE.md
+├── Sprint1Demo.md
+├── Sprint1PRD.md
+├── Sprint2Demo.md
+├── Sprint2PRD.md
+├── Sprint3Demo.md
+├── Sprint3PRD.md
+├── TEMPLATE_CLEANUP_GUIDE.md
 ├── backend/
 │   ├── .env
 │   ├── .env.example
 │   ├── .gitignore
 │   ├── API_ENDPOINTS.md
-│   ├── cleanup-duplicate-templates.js
-│   ├── coverage/
 │   ├── EMAIL_QUICK_REFERENCE.md
 │   ├── EMAIL_SETUP_GUIDE.md
+│   ├── PASSWORD_RESET_GUIDE.md
+│   ├── QUICK_START.md
+│   ├── README.md
+│   ├── cleanup-duplicate-templates.js
+│   ├── coverage/
 │   ├── jest.config.cjs
 │   ├── move-ghosted-jobs.js
 │   ├── node_modules/
 │   ├── package-lock.json
 │   ├── package.json
-│   ├── PASSWORD_RESET_GUIDE.md
-│   ├── QUICK_START.md
-│   ├── README.md
 │   ├── requirements.txt
+│   ├── scripts/
+│   │   └── seedReportTemplates.js
 │   ├── src/
+│   │   ├── backend/
+│   │   │   └── package.json
 │   │   ├── config/
 │   │   │   ├── coverLetterTones.js
 │   │   │   └── __tests__/
@@ -67,22 +90,39 @@
 │   │   │   ├── User.js
 │   │   │   └── __tests__/
 │   │   ├── routes/
+│   │   │   ├── analyticsRoutes.js
 │   │   │   ├── applicationRoutes.js
 │   │   │   ├── applicationStatusRoutes.js
 │   │   │   ├── authRoutes.js
+│   │   │   ├── calendarRoutes.js
+│   │   │   ├── companyResearchRoutes.js
 │   │   │   ├── companyRoutes.js
+│   │   │   ├── contactRoutes.js
 │   │   │   ├── coverLetterRoutes.js
 │   │   │   ├── coverLetterTemplateRoutes.js
 │   │   │   ├── followUp.js
+│   │   │   ├── goalRoutes.js
+│   │   │   ├── interviewCoachingRoutes.js
+│   │   │   ├── interviewPredictionRoutes.js
+│   │   │   ├── interviewQuestionBankRoutes.js
 │   │   │   ├── interviewRoutes.js
 │   │   │   ├── jobMatchRoutes.js
 │   │   │   ├── jobRoutes.js
+│   │   │   ├── marketIntelligenceRoutes.js
+│   │   │   ├── mentorRoutes.js
+│   │   │   ├── mockInterviewRoutes.js
+│   │   │   ├── networkingEventRoutes.js
 │   │   │   ├── pdfAnalysisRoutes.js
 │   │   │   ├── profileRoutes.js
+│   │   │   ├── referralRoutes.js
+│   │   │   ├── relationshipMaintenanceRoutes.js
+│   │   │   ├── reportRoutes.js
 │   │   │   ├── resumeRoutes.js
 │   │   │   ├── salaryRoutes.js
 │   │   │   ├── skillGapRoutes.js
+│   │   │   ├── technicalPrepRoutes.js
 │   │   │   ├── userRoutes.js
+│   │   │   ├── writingPracticeRoutes.js
 │   │   │   └── __tests__/
 │   │   ├── server.js
 │   │   ├── test_scripts/
@@ -115,6 +155,7 @@
 │   │       └── __tests__/
 │   ├── test-gemini.js
 │   ├── test_scripts/
+│   │   ├── check-job-skills.js
 │   │   ├── check-mongodb-users.js
 │   │   ├── fix-orphaned-accounts.js
 │   │   ├── test-account-deletion.js
@@ -133,22 +174,28 @@
 │   └── coverage/
 ├── coverage/
 ├── directoryOrganization.txt
+├── documentation/
+│   ├── API.md
+│   ├── development.md
+│   └── techStack.md
 ├── frontend/
 │   ├── .env
 │   ├── .env.example
 │   ├── .gitignore
 │   ├── CARD_SYSTEM_GUIDE.md
+│   ├── INTERVIEW_QUESTION_BANK_FRONTEND_PLAN.md
+│   ├── NAVIGATION.md
+│   ├── README.md
+│   ├── TYPOGRAPHY.md
 │   ├── coverage/
 │   ├── dist/
 │   ├── eslint.config.js
 │   ├── index.html
-│   ├── NAVIGATION.md
 │   ├── node_modules/
 │   ├── package-lock.json
 │   ├── package.json
 │   ├── postcss.config.js
 │   ├── public/
-│   ├── README.md
 │   ├── src/
 │   │   ├── api/
 │   │   │   ├── aiResume.js
@@ -265,24 +312,10 @@
 │   │       └── __tests__/
 │   ├── tailwind.config.js
 │   ├── test-api.html
-│   ├── TYPOGRAPHY.md
 │   ├── vite.config.js
 │   └── vitest.config.js
-├── LOGIN_TESTING_GUIDE.md
-├── LOGOUT_VERIFICATION.md
 ├── node_modules/
-├── OAUTH_QUICK_SETUP.md
 ├── package-lock.json
 ├── package.json
-├── PASSWORD_RESET_CLICKABLE_LINK.md
-├── PASSWORD_RESET_VERIFICATION.md
-├── README.md
-├── SKILLS_CATEGORY_ORGANIZATION_GUIDE.md
-├── Sprint1Demo.md
-├── Sprint1PRD.md
-├── Sprint2Demo.md
-├── Sprint2PRD.md
-├── Sprint3PRD.md
 ├── techStack.md
-├── TEMPLATE_CLEANUP_GUIDE.md
 └── test-company-research.html
