@@ -96,12 +96,7 @@ export const inviteMentor = async (req, res) => {
     });
 
     if (mentorUser) {
-      // Mentor exists, update relationship
-      relationship.mentorId = mentorUser._id;
-      relationship.status = "pending";
-      await relationship.save();
-
-      // Send notification email to mentor
+      // Mentor exists, send notification email (but DON'T set mentorId yet - wait for acceptance)
       await sendMentorInvitationEmail(
         mentorUser.email,
         currentUser.firstName || "A mentee",
@@ -179,7 +174,7 @@ export const acceptMentorInvitation = async (req, res) => {
     // Send confirmation email to mentee
     const menteeUser = await User.findById(relationship.menteeId);
     if (menteeUser) {
-      await sendMentorAcceptedEmail(menteeUser.email, mentorId);
+      await sendMentorAcceptedEmail(menteeUser.email, currentUser._id);
     }
 
     res.status(200).json({
@@ -362,14 +357,14 @@ export const getPendingInvitations = async (req, res) => {
     const sentInvitations = await MentorRelationship.find({
       menteeId: currentUser._id,
       status: "pending",
-    });
+    }).populate("mentorId", "firstName lastName email profilePicture");
 
     // Get invitations received by user (as potential mentor)
+    // Only show invitations that are truly pending (not accepted/rejected)
     const receivedInvitations = await MentorRelationship.find({
-      mentorEmail: currentUser.email,
+      mentorEmail: currentUser.email.toLowerCase(),
       status: "pending",
-      mentorId: null,
-    });
+    }).populate("menteeId", "firstName lastName email profilePicture headline");
 
     res.status(200).json({
       success: true,
@@ -1260,4 +1255,692 @@ async function sendProgressReportNotificationEmail(mentorEmail) {
   } catch (error) {
     console.error("Error sending progress report notification email:", error);
   }
+}
+
+// ===== MENTOR DASHBOARD SPECIALIZED ENDPOINTS =====
+
+/**
+ * Get comprehensive mentor dashboard with all mentee information
+ * GET /api/mentors/dashboard
+ */
+export const getMentorDashboard = async (req, res) => {
+  try {
+    const clerkUserId = req.auth.userId;
+
+    // Get MongoDB user by auth0Id
+    const currentUser = await User.findOne({ auth0Id: clerkUserId });
+    if (!currentUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User profile not found",
+      });
+    }
+
+    // Get all accepted mentee relationships
+    const relationships = await MentorRelationship.find({
+      mentorId: currentUser._id,
+      status: "accepted",
+    }).populate("menteeId", "firstName lastName email profilePicture");
+
+    if (!relationships || relationships.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          menteeCount: 0,
+          mentees: [],
+          recentActivity: [],
+          pendingFeedback: 0,
+          upcomingMilestones: [],
+        },
+      });
+    }
+
+    const menteeIds = relationships.map((r) => r.menteeId._id);
+    const relationshipIds = relationships.map((r) => r._id);
+
+    // Get recent feedback given
+    const recentFeedback = await MentorFeedback.find({
+      mentorId: currentUser._id,
+      menteeId: { $in: menteeIds },
+    })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .populate("menteeId", "firstName lastName");
+
+    // Get pending recommendations
+    const pendingRecommendations = await MentorRecommendation.find({
+      mentorId: currentUser._id,
+      menteeId: { $in: menteeIds },
+      status: { $in: ["pending", "in_progress"] },
+    }).countDocuments();
+
+    // Get unread messages count
+    const unreadMessages = await MentorMessage.find({
+      relationshipId: { $in: relationshipIds },
+      recipientId: currentUser._id,
+      isRead: false,
+    }).countDocuments();
+
+    // Build activity timeline (last 30 days)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const recentActivity = [];
+
+    // Activity from feedback
+    const feedbackActivity = await MentorFeedback.find({
+      mentorId: currentUser._id,
+      createdAt: { $gte: thirtyDaysAgo },
+    })
+      .populate("menteeId", "firstName lastName")
+      .sort({ createdAt: -1 });
+
+    feedbackActivity.forEach((f) => {
+      recentActivity.push({
+        type: "feedback",
+        date: f.createdAt,
+        description: `Provided ${f.type} feedback to ${f.menteeId?.firstName || "mentee"}`,
+        mentee: f.menteeId,
+      });
+    });
+
+    // Activity from recommendations
+    const recommendationActivity = await MentorRecommendation.find({
+      mentorId: currentUser._id,
+      createdAt: { $gte: thirtyDaysAgo },
+    })
+      .populate("menteeId", "firstName lastName")
+      .sort({ createdAt: -1 });
+
+    recommendationActivity.forEach((r) => {
+      recentActivity.push({
+        type: "recommendation",
+        date: r.createdAt,
+        description: `Added recommendation: ${r.title}`,
+        mentee: r.menteeId,
+      });
+    });
+
+    // Sort combined activity by date
+    recentActivity.sort((a, b) => b.date - a.date);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        menteeCount: relationships.length,
+        mentees: relationships,
+        recentActivity: recentActivity.slice(0, 15),
+        pendingRecommendations,
+        unreadMessages,
+        recentFeedback,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching mentor dashboard:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch mentor dashboard",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get detailed mentee profile with progress and KPIs
+ * GET /api/mentors/mentee/:menteeId/profile
+ */
+export const getMenteeProfile = async (req, res) => {
+  try {
+    const clerkUserId = req.auth.userId;
+    const { menteeId } = req.params;
+
+    // Get MongoDB user by auth0Id
+    const currentUser = await User.findOne({ auth0Id: clerkUserId });
+    if (!currentUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User profile not found",
+      });
+    }
+
+    // Verify mentor-mentee relationship
+    const relationship = await MentorRelationship.findOne({
+      mentorId: currentUser._id,
+      menteeId: menteeId,
+      status: "accepted",
+    });
+
+    if (!relationship) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to view this mentee's profile",
+      });
+    }
+
+    // Get mentee user data
+    const menteeUser = await User.findById(menteeId);
+    if (!menteeUser) {
+      return res.status(404).json({
+        success: false,
+        message: "Mentee not found",
+      });
+    }
+
+    // Get shared data based on permissions
+    const sharedData = {};
+
+    if (relationship.sharedData?.shareResume) {
+      // Import Resume model dynamically
+      const { Resume } = await import("../models/Resume.js");
+      sharedData.resumes = await Resume.find({ userId: menteeUser.auth0Id })
+        .sort({ updatedAt: -1 })
+        .limit(5);
+    }
+
+    if (relationship.sharedData?.shareApplications) {
+      // Import Job model dynamically
+      const { Job } = await import("../models/Job.js");
+      sharedData.applications = await Job.find({ userId: menteeUser.auth0Id })
+        .sort({ updatedAt: -1 })
+        .limit(10);
+    }
+
+    if (relationship.sharedData?.shareGoals) {
+      // Import Goal model dynamically
+      const { default: Goal } = await import("../models/Goal.js");
+      sharedData.goals = await Goal.find({ userId: menteeUser.auth0Id })
+        .sort({ targetDate: 1 })
+        .limit(10);
+    }
+
+    if (relationship.sharedData?.shareInterviewPrep) {
+      // Import Interview model dynamically
+      const { Interview } = await import("../models/Interview.js");
+      sharedData.interviews = await Interview.find({ userId: menteeUser.auth0Id })
+        .sort({ scheduledDate: -1 })
+        .limit(10);
+    }
+
+    // Get feedback history
+    const feedbackHistory = await MentorFeedback.find({
+      relationshipId: relationship._id,
+    })
+      .sort({ createdAt: -1 })
+      .limit(20);
+
+    // Get recommendations
+    const recommendations = await MentorRecommendation.find({
+      relationshipId: relationship._id,
+    }).sort({ priority: 1, targetDate: 1 });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        mentee: {
+          id: menteeUser._id,
+          firstName: menteeUser.firstName,
+          lastName: menteeUser.lastName,
+          email: menteeUser.email,
+          profilePicture: menteeUser.profilePicture,
+          headline: menteeUser.headline,
+          summary: menteeUser.summary,
+        },
+        relationship,
+        sharedData,
+        feedbackHistory,
+        recommendations,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching mentee profile:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch mentee profile",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get mentee progress summary and KPIs
+ * GET /api/mentors/mentee/:menteeId/progress
+ */
+export const getMenteeProgress = async (req, res) => {
+  try {
+    const clerkUserId = req.auth.userId;
+    const { menteeId } = req.params;
+    const { period = "30" } = req.query; // days
+
+    // Get MongoDB user by auth0Id
+    const currentUser = await User.findOne({ auth0Id: clerkUserId });
+    if (!currentUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User profile not found",
+      });
+    }
+
+    // Verify mentor-mentee relationship
+    const relationship = await MentorRelationship.findOne({
+      mentorId: currentUser._id,
+      menteeId: menteeId,
+      status: "accepted",
+    });
+
+    if (!relationship) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to view this mentee's progress",
+      });
+    }
+
+    const menteeUser = await User.findById(menteeId);
+    if (!menteeUser) {
+      return res.status(404).json({
+        success: false,
+        message: "Mentee not found",
+      });
+    }
+
+    const periodDays = parseInt(period);
+    const startDate = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000);
+
+    // Calculate KPIs
+    const kpis = {
+      applications: { total: 0, change: 0, trend: "neutral" },
+      interviews: { total: 0, change: 0, trend: "neutral" },
+      goals: { completed: 0, total: 0, completionRate: 0 },
+      engagement: { lastActive: null, activityScore: 0 },
+    };
+
+    // Import models dynamically
+    const { Job } = await import("../models/Job.js");
+    const { default: Goal } = await import("../models/Goal.js");
+    const { Interview } = await import("../models/Interview.js");
+
+    // Applications in period
+    const applicationsInPeriod = await Job.countDocuments({
+      userId: menteeUser.auth0Id,
+      updatedAt: { $gte: startDate },
+      status: { $in: ["Applied", "Phone Screen", "Interview", "Offer"] },
+    });
+
+    const totalApplications = await Job.countDocuments({
+      userId: menteeUser.auth0Id,
+      status: { $in: ["Applied", "Phone Screen", "Interview", "Offer"] },
+    });
+
+    kpis.applications.total = totalApplications;
+    kpis.applications.change = applicationsInPeriod;
+
+    // Interviews in period
+    const interviewsInPeriod = await Interview.countDocuments({
+      userId: menteeUser.auth0Id,
+      createdAt: { $gte: startDate },
+    });
+
+    const totalInterviews = await Interview.countDocuments({
+      userId: menteeUser.auth0Id,
+    });
+
+    kpis.interviews.total = totalInterviews;
+    kpis.interviews.change = interviewsInPeriod;
+
+    // Goals progress
+    const goals = await Goal.find({ userId: menteeUser.auth0Id });
+    const completedGoals = goals.filter((g) => g.status === "completed");
+    kpis.goals.total = goals.length;
+    kpis.goals.completed = completedGoals.length;
+    kpis.goals.completionRate =
+      goals.length > 0 ? (completedGoals.length / goals.length) * 100 : 0;
+
+    // Engagement metrics
+    const recentMessages = await MentorMessage.find({
+      relationshipId: relationship._id,
+      senderId: menteeId,
+      createdAt: { $gte: startDate },
+    });
+
+    kpis.engagement.lastActive = recentMessages.length > 0 
+      ? recentMessages[recentMessages.length - 1].createdAt 
+      : null;
+    kpis.engagement.activityScore = recentMessages.length;
+
+    // Get goal progress over time
+    const goalProgressData = await Goal.aggregate([
+      { $match: { userId: menteeUser.auth0Id } },
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // Get milestone achievements
+    const goalsWithMilestones = await Goal.find({
+      userId: menteeUser.auth0Id,
+      "milestones.completed": true,
+    });
+
+    const achievedMilestones = goalsWithMilestones.flatMap((goal) =>
+      goal.milestones
+        .filter((m) => m.completed)
+        .map((m) => ({
+          goalTitle: goal.title,
+          milestoneTitle: m.title,
+          completedDate: m.completedDate,
+        }))
+    );
+
+    res.status(200).json({
+      success: true,
+      data: {
+        period: periodDays,
+        kpis,
+        goalProgressData,
+        achievedMilestones: achievedMilestones.slice(-10),
+        trends: {
+          applications: applicationsInPeriod > 0 ? "up" : "stable",
+          interviews: interviewsInPeriod > 0 ? "up" : "stable",
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching mentee progress:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch mentee progress",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get coaching insights and recommendations for mentee
+ * GET /api/mentors/mentee/:menteeId/insights
+ */
+export const getMenteeInsights = async (req, res) => {
+  try {
+    const clerkUserId = req.auth.userId;
+    const { menteeId } = req.params;
+
+    // Get MongoDB user by auth0Id
+    const currentUser = await User.findOne({ auth0Id: clerkUserId });
+    if (!currentUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User profile not found",
+      });
+    }
+
+    // Verify mentor-mentee relationship
+    const relationship = await MentorRelationship.findOne({
+      mentorId: currentUser._id,
+      menteeId: menteeId,
+      status: "accepted",
+    });
+
+    if (!relationship) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to view insights for this mentee",
+      });
+    }
+
+    const menteeUser = await User.findById(menteeId);
+    if (!menteeUser) {
+      return res.status(404).json({
+        success: false,
+        message: "Mentee not found",
+      });
+    }
+
+    // Import models
+    const { Job } = await import("../models/Job.js");
+    const { default: Goal } = await import("../models/Goal.js");
+
+    // Generate insights based on mentee data
+    const insights = {
+      strengths: [],
+      areasForImprovement: [],
+      actionableRecommendations: [],
+      achievementPatterns: [],
+    };
+
+    // Analyze application patterns
+    const applications = await Job.find({ userId: menteeUser.auth0Id });
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const recentApplications = applications.filter(
+      (app) => new Date(app.createdAt) >= thirtyDaysAgo
+    );
+
+    if (recentApplications.length >= 5) {
+      insights.strengths.push({
+        area: "Application Volume",
+        description: `Submitted ${recentApplications.length} applications in the last 30 days`,
+        impact: "high",
+      });
+    } else if (recentApplications.length < 3) {
+      insights.areasForImprovement.push({
+        area: "Application Activity",
+        description: "Low application volume in recent weeks",
+        impact: "medium",
+      });
+      insights.actionableRecommendations.push({
+        title: "Increase Application Frequency",
+        description: "Aim for at least 5 applications per week to improve job search momentum",
+        priority: "high",
+        estimatedImpact: "Increases interview chances by 40%",
+      });
+    }
+
+    // Analyze goal completion
+    const goals = await Goal.find({ userId: menteeUser.auth0Id });
+    const completedGoals = goals.filter((g) => g.status === "completed");
+    const completionRate = goals.length > 0 ? (completedGoals.length / goals.length) * 100 : 0;
+
+    if (completionRate >= 70) {
+      insights.strengths.push({
+        area: "Goal Achievement",
+        description: `Excellent goal completion rate: ${completionRate.toFixed(1)}%`,
+        impact: "high",
+      });
+    } else if (completionRate < 40) {
+      insights.areasForImprovement.push({
+        area: "Goal Completion",
+        description: `Low goal completion rate: ${completionRate.toFixed(1)}%`,
+        impact: "high",
+      });
+      insights.actionableRecommendations.push({
+        title: "Break Down Goals into Smaller Milestones",
+        description: "Create more achievable short-term milestones to build momentum",
+        priority: "high",
+        estimatedImpact: "Improves motivation and tracking",
+      });
+    }
+
+    // Analyze interview conversion
+    const interviewStages = ["Interview", "Offer"];
+    const interviewCount = applications.filter((app) =>
+      interviewStages.includes(app.status)
+    ).length;
+    const conversionRate = applications.length > 0 
+      ? (interviewCount / applications.length) * 100 
+      : 0;
+
+    if (conversionRate >= 15) {
+      insights.strengths.push({
+        area: "Interview Conversion",
+        description: `Strong conversion rate: ${conversionRate.toFixed(1)}%`,
+        impact: "high",
+      });
+    } else if (conversionRate < 5 && applications.length >= 10) {
+      insights.areasForImprovement.push({
+        area: "Application Quality",
+        description: "Low interview conversion rate suggests need for application improvements",
+        impact: "high",
+      });
+      insights.actionableRecommendations.push({
+        title: "Enhance Resume and Cover Letter Quality",
+        description: "Focus on tailoring applications to specific job requirements",
+        priority: "high",
+        estimatedImpact: "Can double interview callback rate",
+      });
+    }
+
+    // Achievement patterns
+    if (completedGoals.length > 0) {
+      const avgTimeToComplete = completedGoals.reduce((sum, goal) => {
+        const created = new Date(goal.createdAt);
+        const completed = new Date(goal.completedAt || goal.updatedAt);
+        return sum + (completed - created) / (1000 * 60 * 60 * 24);
+      }, 0) / completedGoals.length;
+
+      insights.achievementPatterns.push({
+        pattern: "Goal Completion Time",
+        description: `Average time to complete goals: ${avgTimeToComplete.toFixed(0)} days`,
+        insight: avgTimeToComplete < 30 
+          ? "Quick achiever - setting and completing goals efficiently" 
+          : "Consider setting shorter-term goals for more frequent wins",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: insights,
+    });
+  } catch (error) {
+    console.error("Error generating mentee insights:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to generate insights",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get mentee engagement and activity metrics
+ * GET /api/mentors/mentee/:menteeId/engagement
+ */
+export const getMenteeEngagement = async (req, res) => {
+  try {
+    const clerkUserId = req.auth.userId;
+    const { menteeId } = req.params;
+
+    // Get MongoDB user by auth0Id
+    const currentUser = await User.findOne({ auth0Id: clerkUserId });
+    if (!currentUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User profile not found",
+      });
+    }
+
+    // Verify mentor-mentee relationship
+    const relationship = await MentorRelationship.findOne({
+      mentorId: currentUser._id,
+      menteeId: menteeId,
+      status: "accepted",
+    });
+
+    if (!relationship) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to view engagement for this mentee",
+      });
+    }
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    // Message activity
+    const messages = await MentorMessage.find({
+      relationshipId: relationship._id,
+      senderId: menteeId,
+      createdAt: { $gte: thirtyDaysAgo },
+    });
+
+    // Feedback acknowledgment rate
+    const feedbackSent = await MentorFeedback.find({
+      relationshipId: relationship._id,
+      mentorId: currentUser._id,
+    });
+
+    const acknowledgedFeedback = feedbackSent.filter((f) => f.acknowledged);
+    const acknowledgmentRate = feedbackSent.length > 0 
+      ? (acknowledgedFeedback.length / feedbackSent.length) * 100 
+      : 0;
+
+    // Recommendation completion
+    const recommendations = await MentorRecommendation.find({
+      relationshipId: relationship._id,
+    });
+
+    const completedRecommendations = recommendations.filter(
+      (r) => r.status === "completed"
+    );
+    const recommendationCompletionRate = recommendations.length > 0 
+      ? (completedRecommendations.length / recommendations.length) * 100 
+      : 0;
+
+    // Recent activity timeline
+    const activityTimeline = [];
+
+    messages.forEach((msg) => {
+      activityTimeline.push({
+        type: "message",
+        date: msg.createdAt,
+        description: "Sent message",
+      });
+    });
+
+    acknowledgedFeedback.forEach((f) => {
+      if (f.acknowledgedAt && f.acknowledgedAt >= thirtyDaysAgo) {
+        activityTimeline.push({
+          type: "feedback_acknowledged",
+          date: f.acknowledgedAt,
+          description: `Acknowledged feedback on ${f.type}`,
+        });
+      }
+    });
+
+    activityTimeline.sort((a, b) => b.date - a.date);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        messageCount: messages.length,
+        acknowledgmentRate: acknowledgmentRate.toFixed(1),
+        recommendationCompletionRate: recommendationCompletionRate.toFixed(1),
+        activityTimeline: activityTimeline.slice(0, 20),
+        engagementScore: calculateEngagementScore({
+          messages: messages.length,
+          acknowledgmentRate,
+          recommendationCompletionRate,
+        }),
+        lastActive: messages.length > 0 ? messages[messages.length - 1].createdAt : null,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching mentee engagement:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch engagement metrics",
+      error: error.message,
+    });
+  }
+};
+
+// Helper function to calculate engagement score
+function calculateEngagementScore({ messages, acknowledgmentRate, recommendationCompletionRate }) {
+  // Score out of 100
+  const messageScore = Math.min((messages / 10) * 40, 40); // Max 40 points for messages
+  const acknowledgmentScore = (acknowledgmentRate / 100) * 30; // Max 30 points
+  const completionScore = (recommendationCompletionRate / 100) * 30; // Max 30 points
+  
+  const totalScore = messageScore + acknowledgmentScore + completionScore;
+  
+  return {
+    score: Math.round(totalScore),
+    rating: totalScore >= 80 ? "Excellent" : totalScore >= 60 ? "Good" : totalScore >= 40 ? "Fair" : "Needs Attention",
+  };
 }
