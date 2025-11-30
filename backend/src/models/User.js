@@ -416,6 +416,41 @@ userSchema.add({
   }
 });
 
+// UC-096: Job Search Performance Dashboard - Custom Goals
+userSchema.add({
+  searchGoals: {
+    weekly: {
+      applications: {
+        target: { type: Number, default: 10 },
+        enabled: { type: Boolean, default: true }
+      },
+      networking: {
+        target: { type: Number, default: 5 },
+        enabled: { type: Boolean, default: true }
+      }
+    },
+    monthly: {
+      applications: {
+        target: { type: Number, default: 40 },
+        enabled: { type: Boolean, default: true }
+      },
+      interviews: {
+        target: { type: Number, default: 4 },
+        enabled: { type: Boolean, default: true }
+      },
+      offers: {
+        target: { type: Number, default: 1 },
+        enabled: { type: Boolean, default: true }
+      }
+    },
+    overall: {
+      targetRole: { type: String, trim: true },
+      targetSalary: { type: Number, min: 0 },
+      targetDate: { type: Date }
+    }
+  }
+});
+
 // Hash password before saving (only if password exists)
 userSchema.pre('save', async function (next) {
   // Only hash the password if it has been modified (or is new) AND exists

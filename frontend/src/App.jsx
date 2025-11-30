@@ -49,6 +49,7 @@ import MarketIntelligenceDashboard from "./components/MarketIntelligenceDashboar
 import InterviewsPage from "./pages/auth/InterviewsPage.jsx";
 import CalendarSettings from "./pages/auth/CalendarSettings.jsx";
 import LinkedInSettings from "./pages/auth/LinkedInSettings.jsx";
+import PerformanceDashboard from "./pages/auth/PerformanceDashboard.jsx";
 
 function App() {
   return (
@@ -112,6 +113,7 @@ function App() {
           <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
           <Route path="/reports/shared/:token" element={<SharedReportView />} />
           <Route path="/market-intelligence" element={<ProtectedRoute><MarketIntelligenceDashboard /></ProtectedRoute>} />
+          <Route path="/performance-dashboard" element={<ProtectedRoute><PerformanceDashboard /></ProtectedRoute>} />
           <Route path="/mentors" element={<ProtectedRoute><MentorDashboard /></ProtectedRoute>} />
           <Route path="/mentors/progress" element={<ProtectedRoute><ProgressSharing /></ProtectedRoute>} />
           <Route path="/mentors/messages" element={<ProtectedRoute><MentorMessaging /></ProtectedRoute>} />

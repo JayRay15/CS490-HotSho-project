@@ -179,13 +179,18 @@ export default function Jobs() {
     try {
       const token = await getToken();
       setAuthToken(token);
-      const statuses = await statusAPI.getAllApplicationStatuses();
+      const response = await statusAPI.getAllApplicationStatuses();
+      
+      // Extract data array from response (API returns { success, message, data })
+      const statuses = response?.data || response || [];
       
       // Convert array to object map by jobId for easy lookup
       const statusMap = {};
-      statuses.forEach(status => {
-        statusMap[status.jobId] = status;
-      });
+      if (Array.isArray(statuses)) {
+        statuses.forEach(status => {
+          statusMap[status.jobId] = status;
+        });
+      }
       setApplicationStatuses(statusMap);
     } catch (error) {
       console.error('Failed to load application statuses:', error);
