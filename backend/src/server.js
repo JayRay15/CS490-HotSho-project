@@ -40,6 +40,7 @@ import analyticsRoutes from "./routes/analyticsRoutes.js";
 import marketIntelligenceRoutes from "./routes/marketIntelligenceRoutes.js";
 import linkedinRoutes from "./routes/linkedinRoutes.js";
 import performanceDashboardRoutes from "./routes/performanceDashboardRoutes.js";
+import teamRoutes from "./routes/teamRoutes.js";
 import { getPublicProject } from "./controllers/profileController.js";
 import { viewSharedReport } from "./controllers/reportController.js";
 import { startDeadlineReminderSchedule } from "./utils/deadlineReminders.js";
@@ -113,6 +114,8 @@ app.use("/api/analytics", analyticsRoutes);
 app.use("/api/market-intelligence", marketIntelligenceRoutes);
 app.use("/api/linkedin", linkedinRoutes);
 app.use("/api/performance-dashboard", performanceDashboardRoutes);
+app.use("/api/teams", teamRoutes);
+console.log('✅ Team routes registered at /api/teams');
 // Mount profile routes under /api/profile (existing) and also under /api/users
 // so frontend requests to /api/users/... (used elsewhere in the app) resolve correctly.
 app.use("/api/profile", profileRoutes);

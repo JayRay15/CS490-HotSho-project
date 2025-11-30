@@ -16,8 +16,8 @@ export default function Breadcrumb() {
 
         // Check if we're on a detail page (last segment is ObjectId)
         const isDetailPage = paths.length > 0 && /^[a-f\d]{24}$/i.test(paths[paths.length - 1]);
-        const isOnTechnicalPrepDetail = isDetailPage && paths.includes('technical-prep') && 
-                                        (paths.includes('coding') || paths.includes('system-design') || paths.includes('case-study'));
+        const isOnTechnicalPrepDetail = isDetailPage && paths.includes('technical-prep') &&
+            (paths.includes('coding') || paths.includes('system-design') || paths.includes('case-study'));
 
         // Build breadcrumb trail
         let currentPath = '';
@@ -39,7 +39,7 @@ export default function Breadcrumb() {
             }
 
             // Skip the intermediate path (coding/system-design/case-study) if on detail page
-            if (isOnTechnicalPrepDetail && index === paths.length - 2 && 
+            if (isOnTechnicalPrepDetail && index === paths.length - 2 &&
                 ['coding', 'system-design', 'case-study'].includes(path)) {
                 return; // Skip this breadcrumb
             }
@@ -87,6 +87,20 @@ export default function Breadcrumb() {
                             setJobLabel('Mock Interview');
                         }
                     }).catch(() => setJobLabel('Mock Interview'));
+                });
+                return; // prevent other fetch attempts
+            }
+            // Team name label override
+            if (paths.includes('teams')) {
+                import('../api/teams').then(api => {
+                    api.getTeam(objectId).then(res => {
+                        const team = res.data?.team;
+                        if (team?.name) {
+                            setJobLabel(team.name);
+                        } else {
+                            setJobLabel('Team');
+                        }
+                    }).catch(() => setJobLabel('Team'));
                 });
                 return; // prevent other fetch attempts
             }
@@ -199,37 +213,37 @@ export default function Breadcrumb() {
     }
 
     return (
-        <nav 
-            aria-label="Breadcrumb" 
+        <nav
+            aria-label="Breadcrumb"
             className="bg-secondary-50 border-b border-secondary-300 px-4 sm:px-6 lg:px-8"
         >
             <ol className="flex items-center space-x-2 py-3 text-sm">
                 {breadcrumbs.map((crumb, index) => (
                     <li key={crumb.path} className="flex items-center">
                         {index > 0 && (
-                            <svg 
-                                className="w-4 h-4 text-secondary-500 mx-2" 
-                                fill="currentColor" 
+                            <svg
+                                className="w-4 h-4 text-secondary-500 mx-2"
+                                fill="currentColor"
                                 viewBox="0 0 20 20"
                                 aria-hidden="true"
                             >
-                                <path 
-                                    fillRule="evenodd" 
-                                    d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" 
-                                    clipRule="evenodd" 
+                                <path
+                                    fillRule="evenodd"
+                                    d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                                    clipRule="evenodd"
                                 />
                             </svg>
                         )}
                         {crumb.isLast ? (
-                            <span 
-                                className="font-medium text-text-primary" 
+                            <span
+                                className="font-medium text-text-primary"
                                 aria-current="page"
                             >
                                 {crumb.label}
                             </span>
                         ) : (
-                            <Link 
-                                to={crumb.path} 
+                            <Link
+                                to={crumb.path}
                                 className="text-primary hover:text-primary-600 hover:underline transition-colors focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-1 rounded px-1"
                             >
                                 {crumb.label}
