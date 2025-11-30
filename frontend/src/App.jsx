@@ -30,6 +30,8 @@ import InterviewCoaching from "./pages/InterviewCoaching";
 import Network from "./pages/auth/Network";
 import WritingPracticePage from "./pages/WritingPracticePage";
 import { MentorDashboard, ProgressSharing, MentorMessaging } from "./components/mentors";
+import AdvisorsPage from "./pages/AdvisorsPage";
+import AdvisorMessagingPage from "./pages/AdvisorMessagingPage";
 import GoalsPage from "./pages/GoalsPage";
 import NewGoalPage from "./pages/NewGoalPage";
 import TeamsPage from "./pages/TeamsPage";
@@ -123,6 +125,8 @@ function App() {
           <Route path="/teams" element={<ProtectedRoute><TeamsPage /></ProtectedRoute>} />
           <Route path="/teams/:teamId" element={<ProtectedRoute><TeamDashboardPage /></ProtectedRoute>} />
           <Route path="/teams/:teamId/settings" element={<ProtectedRoute><TeamSettingsPage /></ProtectedRoute>} />
+          <Route path="/advisors" element={<ProtectedRoute><AdvisorsPage /></ProtectedRoute>} />
+          <Route path="/advisors/messages" element={<ProtectedRoute><AdvisorMessagingPage /></ProtectedRoute>} />
 
         </Routes>
       </Router>
