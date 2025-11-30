@@ -15,6 +15,7 @@ import NetworkingEventList from '../../components/network/NetworkingEventList';
 import ReferencesTab from '../../components/network/ReferencesTab';
 import NetworkAnalytics from '../../components/network/NetworkAnalytics';
 import ContactDiscoveryTab from '../../components/network/ContactDiscoveryTab';
+import CampaignsTab from '../../components/network/CampaignsTab';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ErrorMessage from '../../components/ErrorMessage';
 import RelationshipReminderCard from '../../components/network/RelationshipReminderCard';
@@ -358,6 +359,15 @@ export default function Network() {
                   Maintenance Reminders
                 </button>
                 <button
+                  onClick={() => setActiveTab('campaigns')}
+                  className={`${activeTab === 'campaigns'
+                      ? 'border-[#777C6D] text-[#777C6D]'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+                >
+                  Campaigns
+                </button>
+                <button
                   onClick={() => setActiveTab('analytics')}
                   className={`${activeTab === 'analytics'
                       ? 'border-[#777C6D] text-[#777C6D]'
@@ -617,6 +627,12 @@ export default function Network() {
           {activeTab === 'analytics' && (
             <div className="mt-6">
               <NetworkAnalytics />
+            </div>
+          )}
+
+          {activeTab === 'campaigns' && (
+            <div className="mt-6">
+              <CampaignsTab />
             </div>
           )}
 
