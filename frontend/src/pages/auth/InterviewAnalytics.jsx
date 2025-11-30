@@ -25,7 +25,8 @@ export default function InterviewAnalytics() {
       const token = await getToken();
       setAuthToken(token);
       const response = await getInterviewPerformanceAnalytics();
-      setAnalytics(response.data?.analytics);
+      // Backend wraps data in response.data.data structure
+      setAnalytics(response.data?.data?.analytics || response.data?.analytics);
     } catch (error) {
       console.error("Error loading analytics:", error);
     } finally {

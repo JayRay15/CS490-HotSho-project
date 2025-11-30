@@ -18,8 +18,23 @@ import {
   deleteInterview,
   downloadInterviewICS,
 } from "../controllers/interviewController.js";
+import {
+  getInterviewPerformanceAnalytics,
+  seedInterviewData,
+  clearInterviewData,
+} from "../controllers/interviewAnalyticsController.js";
 
 const router = express.Router();
+
+// Analytics routes (must be before /:interviewId to avoid conflicts)
+// GET /api/interviews/analytics/performance - Get comprehensive interview analytics
+router.get("/analytics/performance", checkJwt, getInterviewPerformanceAnalytics);
+
+// POST /api/interviews/analytics/seed - Generate test data for analytics
+router.post("/analytics/seed", checkJwt, seedInterviewData);
+
+// DELETE /api/interviews/analytics/clear - Clear all interview data
+router.delete("/analytics/clear", checkJwt, clearInterviewData);
 
 // GET /api/interviews/upcoming - Get upcoming interviews (must be before /:interviewId)
 router.get("/upcoming", checkJwt, getUpcomingInterviews);

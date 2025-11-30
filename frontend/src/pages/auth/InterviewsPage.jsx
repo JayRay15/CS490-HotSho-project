@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@clerk/clerk-react";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import InterviewCard from "../../components/InterviewCard";
 import { getInterviews } from "../../api/interviews";
+import { setAuthToken } from "../../api/axios";
 
 export default function InterviewsPage() {
   const navigate = useNavigate();
+  const { getToken } = useAuth();
   const [loading, setLoading] = useState(true);
   const [interviews, setInterviews] = useState([]);
   const [filteredInterviews, setFilteredInterviews] = useState([]);
@@ -27,8 +30,12 @@ export default function InterviewsPage() {
   const loadInterviews = async () => {
     try {
       setLoading(true);
+      // Set auth token before making API call
+      const token = await getToken();
+      setAuthToken(token);
       const response = await getInterviews();
-      const interviewList = response.data?.interviews || [];
+      // Backend wraps data in response.data.data structure
+      const interviewList = response.data?.data?.interviews || response.data?.interviews || [];
       setInterviews(interviewList);
     } catch (error) {
       console.error("Error loading interviews:", error);
@@ -144,7 +151,7 @@ export default function InterviewsPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <Card>
           <div className="flex items-center space-x-3">
             <div className="text-3xl">📅</div>
@@ -174,6 +181,18 @@ export default function InterviewsPage() {
             </div>
           </div>
         </Card>
+        <div 
+          className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-4 text-white cursor-pointer hover:from-blue-600 hover:to-purple-700 transition-all shadow-md"
+          onClick={() => navigate("/interviews/analytics")}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-blue-100">Performance</p>
+              <p className="text-lg font-bold">View Analytics</p>
+            </div>
+            <div className="text-3xl">📊</div>
+          </div>
+        </div>
       </div>
 
       {/* Filters */}

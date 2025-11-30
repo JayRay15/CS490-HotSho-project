@@ -50,6 +50,7 @@ import SharedReportView from "./pages/SharedReportView.jsx";
 import MarketIntelligenceDashboard from "./components/MarketIntelligenceDashboard.jsx";
 
 import InterviewsPage from "./pages/auth/InterviewsPage.jsx";
+import InterviewAnalytics from "./pages/auth/InterviewAnalytics.jsx";
 import CalendarSettings from "./pages/auth/CalendarSettings.jsx";
 import LinkedInSettings from "./pages/auth/LinkedInSettings.jsx";
 import PerformanceDashboard from "./pages/auth/PerformanceDashboard.jsx";
@@ -101,6 +102,7 @@ function App() {
           <Route path="/goals/:id" element={<ProtectedRoute><GoalDetailPage /></ProtectedRoute>} />
           <Route path="/jobs/:jobId/interview-prep" element={<ProtectedRoute><InterviewPrepPage /></ProtectedRoute>} />
           <Route path="/interviews" element={<ProtectedRoute><InterviewsPage /></ProtectedRoute>} />
+          <Route path="/interviews/analytics" element={<ProtectedRoute><InterviewAnalytics /></ProtectedRoute>} />
           <Route path="/interviews/:interviewId/company-research" element={<ProtectedRoute><CompanyResearch /></ProtectedRoute>} />
           <Route path="/settings/calendar" element={<ProtectedRoute><CalendarSettings /></ProtectedRoute>} />
           <Route path="/settings/linkedin" element={<ProtectedRoute><LinkedInSettings /></ProtectedRoute>} />

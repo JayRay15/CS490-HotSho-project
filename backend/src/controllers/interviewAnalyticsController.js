@@ -593,6 +593,148 @@ function extractCommonThemes(feedbackArray) {
   return themes.slice(0, 3);
 }
 
-export default {
-  getInterviewPerformanceAnalytics,
-};
+/**
+ * POST /api/interviews/analytics/seed
+ * Generate test data for analytics demonstration
+ */
+export const seedInterviewData = asyncHandler(async (req, res) => {
+  const userId = req.user?.id;
+  
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Clear existing data first
+  await Interview.deleteMany({ userId });
+  await MockInterviewSession.deleteMany({ clerkId: userId });
+
+  // Create test jobs first
+  const industries = ['Technology', 'Finance', 'Healthcare', 'Retail', 'Consulting'];
+  const companies = [
+    { name: 'Google', industry: 'Technology' },
+    { name: 'Microsoft', industry: 'Technology' },
+    { name: 'Amazon', industry: 'Technology' },
+    { name: 'Goldman Sachs', industry: 'Finance' },
+    { name: 'JPMorgan', industry: 'Finance' },
+    { name: 'McKinsey', industry: 'Consulting' },
+    { name: 'Pfizer', industry: 'Healthcare' },
+    { name: 'Target', industry: 'Retail' },
+  ];
+
+  const interviewTypes = ['Phone Screen', 'Video Call', 'In-Person', 'Technical', 'Final Round'];
+  const outcomes = ['Passed', 'Failed', 'Moved to Next Round', 'Offer Extended', 'Waiting for Feedback'];
+  const statuses = ['Completed', 'Completed', 'Completed', 'Scheduled', 'Cancelled'];
+
+  const testInterviews = [];
+  
+  // Generate 25 test interviews spanning 6 months
+  for (let i = 0; i < 25; i++) {
+    const company = companies[Math.floor(Math.random() * companies.length)];
+    const daysAgo = Math.floor(Math.random() * 180) - 30; // -30 to 150 days ago
+    const scheduledDate = new Date();
+    scheduledDate.setDate(scheduledDate.getDate() - daysAgo);
+    
+    const status = daysAgo > 0 ? statuses[Math.floor(Math.random() * 3)] : 'Scheduled';
+    const isCompleted = status === 'Completed';
+    const outcome = isCompleted ? outcomes[Math.floor(Math.random() * outcomes.length)] : null;
+    const rating = isCompleted ? Math.floor(Math.random() * 3) + 3 : null; // 3-5 rating
+    
+    const interviewType = interviewTypes[Math.floor(Math.random() * interviewTypes.length)];
+    
+    testInterviews.push({
+      userId,
+      jobId: null, // We'll skip job linking for test data
+      title: `${interviewType} Interview`,
+      company: company.name,
+      interviewType,
+      scheduledDate,
+      duration: [30, 45, 60, 90][Math.floor(Math.random() * 4)],
+      location: interviewType === 'In-Person' ? '123 Main St' : null,
+      meetingLink: interviewType !== 'In-Person' ? 'https://meet.google.com/abc-defg-hij' : null,
+      status,
+      outcome: isCompleted ? {
+        result: outcome,
+        notes: `Interview went ${rating >= 4 ? 'well' : 'okay'}`,
+        feedback: rating >= 4 ? 'Strong technical skills' : 'Need more preparation',
+        rating,
+        followUpRequired: outcome === 'Moved to Next Round',
+      } : undefined,
+      preparationTasks: [
+        { title: 'Research company', completed: Math.random() > 0.3 },
+        { title: 'Review job description', completed: Math.random() > 0.2 },
+        { title: 'Prepare questions', completed: Math.random() > 0.4 },
+      ],
+      // Store industry in notes for analytics
+      notes: `Industry: ${company.industry}`,
+    });
+  }
+
+  await Interview.insertMany(testInterviews);
+
+  // Create some mock interview sessions
+  const mockSessions = [];
+  for (let i = 0; i < 8; i++) {
+    const daysAgo = Math.floor(Math.random() * 90);
+    const startedAt = new Date();
+    startedAt.setDate(startedAt.getDate() - daysAgo);
+    
+    mockSessions.push({
+      clerkId: userId,
+      type: ['behavioral', 'technical', 'mixed'][Math.floor(Math.random() * 3)],
+      difficulty: ['entry', 'mid', 'senior'][Math.floor(Math.random() * 3)],
+      status: 'completed',
+      startedAt,
+      completedAt: new Date(startedAt.getTime() + 30 * 60 * 1000),
+      performance: {
+        overallScore: Math.floor(Math.random() * 30) + 70,
+        strengths: ['Communication', 'Problem-solving'],
+        areasForImprovement: ['Technical depth'],
+      },
+    });
+  }
+  
+  await MockInterviewSession.insertMany(mockSessions);
+
+  const { response, statusCode } = successResponse(
+    "Test data generated successfully",
+    { 
+      interviewsCreated: testInterviews.length,
+      mockSessionsCreated: mockSessions.length 
+    }
+  );
+  return sendResponse(res, response, statusCode);
+});
+
+/**
+ * DELETE /api/interviews/analytics/clear
+ * Clear all interview data for the user
+ */
+export const clearInterviewData = asyncHandler(async (req, res) => {
+  const userId = req.user?.id;
+  
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const interviewResult = await Interview.deleteMany({ userId });
+  const mockResult = await MockInterviewSession.deleteMany({ clerkId: userId });
+
+  const { response, statusCode } = successResponse(
+    "All interview data cleared successfully",
+    { 
+      interviewsDeleted: interviewResult.deletedCount,
+      mockSessionsDeleted: mockResult.deletedCount 
+    }
+  );
+  return sendResponse(res, response, statusCode);
+});

@@ -137,6 +137,9 @@ export default function Navbar() {
                                         <NavLink to="/interviews" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="My Interviews" onClick={() => setCareerDropdownOpen(false)}>
                                             My Interviews
                                         </NavLink>
+                                        <NavLink to="/interviews/analytics" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Interview Analytics" onClick={() => setCareerDropdownOpen(false)}>
+                                            📊 Interview Analytics
+                                        </NavLink>
                                         <NavLink to="/interview-coaching" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Interview Coaching" onClick={() => setCareerDropdownOpen(false)}>
                                             Interview Coaching
                                         </NavLink>
@@ -375,6 +378,18 @@ export default function Navbar() {
                             aria-label="My Interviews"
                         >
                             My Interviews
+                        </NavLink>
+                        <NavLink
+                            to="/interviews/analytics"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                }`
+                            }
+                            aria-label="Interview Analytics"
+                        >
+                            📊 Interview Analytics
                         </NavLink>
                         <NavLink
                             to="/interview-coaching"
