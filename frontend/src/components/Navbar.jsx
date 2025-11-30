@@ -161,6 +161,9 @@ export default function Navbar() {
                                         <NavLink to="/productivity" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Productivity Analysis" onClick={() => setCareerDropdownOpen(false)}>
                                             Productivity Analysis
                                         </NavLink>
+                                        <NavLink to="/performance-dashboard" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Performance Dashboard" onClick={() => setCareerDropdownOpen(false)}>
+                                            📊 Performance Dashboard
+                                        </NavLink>
                                         <NavLink to="/market-intelligence" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Market Intelligence" onClick={() => setCareerDropdownOpen(false)}>
                                             Market Intelligence
                                         </NavLink>
@@ -454,6 +457,18 @@ export default function Navbar() {
                             aria-label="Productivity Analysis"
                         >
                             Productivity Analysis
+                        </NavLink>
+                        <NavLink
+                            to="/performance-dashboard"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                }`
+                            }
+                            aria-label="Performance Dashboard"
+                        >
+                            📊 Performance Dashboard
                         </NavLink>
                         <NavLink
                             to="/market-intelligence"
