@@ -48,6 +48,7 @@ import MarketIntelligenceDashboard from "./components/MarketIntelligenceDashboar
 
 import InterviewsPage from "./pages/auth/InterviewsPage.jsx";
 import CalendarSettings from "./pages/auth/CalendarSettings.jsx";
+import LinkedInSettings from "./pages/auth/LinkedInSettings.jsx";
 
 function App() {
   return (
@@ -98,6 +99,7 @@ function App() {
           <Route path="/interviews" element={<ProtectedRoute><InterviewsPage /></ProtectedRoute>} />
           <Route path="/interviews/:interviewId/company-research" element={<ProtectedRoute><CompanyResearch /></ProtectedRoute>} />
           <Route path="/settings/calendar" element={<ProtectedRoute><CalendarSettings /></ProtectedRoute>} />
+          <Route path="/settings/linkedin" element={<ProtectedRoute><LinkedInSettings /></ProtectedRoute>} />
           <Route path="/mock-interviews" element={<ProtectedRoute><MockInterviewHistory /></ProtectedRoute>} />
           <Route path="/mock-interviews/start" element={<ProtectedRoute><MockInterviewStart /></ProtectedRoute>} />
           <Route path="/mock-interviews/:sessionId" element={<ProtectedRoute><MockInterviewSession /></ProtectedRoute>} />

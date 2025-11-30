@@ -390,6 +390,32 @@ userSchema.add({
   }
 });
 
+// UC-089: LinkedIn integration settings
+userSchema.add({
+  linkedinSettings: {
+    lastSynced: { type: Date },
+    profileImported: { type: Boolean, default: false },
+    networkingCampaigns: [{
+      name: { type: String, required: true },
+      targetCompanies: [{ type: String }],
+      targetRoles: [{ type: String }],
+      goals: { type: String },
+      duration: { type: Number, default: 30 }, // days
+      notes: { type: String },
+      status: { type: String, enum: ['active', 'paused', 'completed'], default: 'active' },
+      metrics: {
+        connectionsSent: { type: Number, default: 0 },
+        connectionsAccepted: { type: Number, default: 0 },
+        messagesSent: { type: Number, default: 0 },
+        responses: { type: Number, default: 0 },
+        meetings: { type: Number, default: 0 }
+      },
+      startedAt: { type: Date, default: Date.now },
+      completedAt: { type: Date }
+    }]
+  }
+});
+
 // Hash password before saving (only if password exists)
 userSchema.pre('save', async function (next) {
   // Only hash the password if it has been modified (or is new) AND exists

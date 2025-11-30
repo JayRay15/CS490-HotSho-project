@@ -38,6 +38,7 @@ import reportRoutes from "./routes/reportRoutes.js";
 import relationshipMaintenanceRoutes from "./routes/relationshipMaintenanceRoutes.js";
 import analyticsRoutes from "./routes/analyticsRoutes.js";
 import marketIntelligenceRoutes from "./routes/marketIntelligenceRoutes.js";
+import linkedinRoutes from "./routes/linkedinRoutes.js";
 import { getPublicProject } from "./controllers/profileController.js";
 import { viewSharedReport } from "./controllers/reportController.js";
 import { startDeadlineReminderSchedule } from "./utils/deadlineReminders.js";
@@ -109,6 +110,7 @@ console.log('✅ Reports routes registered at /api/reports');
 app.use("/api/relationship-maintenance", relationshipMaintenanceRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/market-intelligence", marketIntelligenceRoutes);
+app.use("/api/linkedin", linkedinRoutes);
 // Mount profile routes under /api/profile (existing) and also under /api/users
 // so frontend requests to /api/users/... (used elsewhere in the app) resolve correctly.
 app.use("/api/profile", profileRoutes);
