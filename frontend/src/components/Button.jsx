@@ -14,6 +14,7 @@ export default function Button({
     ...props
 }) {
     const sizes = {
+        sm: "py-1 px-3 text-xs",
         small: "py-1.5 px-4 text-sm",
         medium: "py-2 px-5 text-base",
         large: "py-2.5 px-6 text-lg"

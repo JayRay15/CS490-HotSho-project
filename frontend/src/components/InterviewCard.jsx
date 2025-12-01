@@ -390,14 +390,21 @@ export default function InterviewCard({ interview, onUpdate, onEdit, onDelete, c
         )}
 
         {/* Actions */}
-        <div className="flex flex-wrap gap-2 pt-4 border-t">
-          {/* Calendar sync status */}
-          {interview.calendarSyncStatus && (
-            <span className={`text-xs px-2 py-1 rounded border ${
+        <div className="flex flex-wrap gap-2 pt-4 border-t items-center">
+          {/* Calendar sync status - only show for meaningful states */}
+          {interview.calendarSyncStatus && interview.calendarSyncStatus !== 'not_synced' && (
+            <span className={`text-xs px-2 py-1 rounded border whitespace-nowrap flex items-center gap-1 ${
               interview.calendarSyncStatus === 'synced' ? 'bg-green-50 border-green-300 text-green-700' :
               interview.calendarSyncStatus === 'failed' ? 'bg-red-50 border-red-300 text-red-700' :
               interview.calendarSyncStatus === 'pending' ? 'bg-yellow-50 border-yellow-300 text-yellow-700' : 'bg-gray-50 border-gray-300 text-gray-600'
-            }`}>Cal: {interview.calendarSyncStatus}</span>
+            }`}>
+              {interview.calendarSyncStatus === 'synced' && '📅 '}
+              {interview.calendarSyncStatus === 'pending' && '⏳ '}
+              {interview.calendarSyncStatus === 'failed' && '⚠️ '}
+              {interview.calendarSyncStatus === 'synced' ? 'Calendar synced' :
+               interview.calendarSyncStatus === 'pending' ? 'Syncing...' :
+               interview.calendarSyncStatus === 'failed' ? 'Sync failed' : interview.calendarSyncStatus}
+            </span>
           )}
           {(interview.googleCalendarEventId || interview.outlookCalendarEventId) && (
             <Button onClick={handleDownloadICS} variant="secondary" size="sm" title="Download .ics calendar file">
@@ -419,20 +426,20 @@ export default function InterviewCard({ interview, onUpdate, onEdit, onDelete, c
                 }
               }}
               size="sm"
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-blue-600 hover:bg-blue-700 text-white whitespace-nowrap"
               title="Go to Interview Prep for this job"
             >
-              🎤 Interview Prep
+              🎤 Prep
             </Button>
           )}
           {/* Company Research Button */}
           <Button
             onClick={() => navigate(`/interviews/${interview._id}/company-research`)}
             size="sm"
-            className="bg-purple-600 hover:bg-purple-700 text-white"
+            className="bg-purple-600 hover:bg-purple-700 text-white whitespace-nowrap"
             title="View company research for this interview"
           >
-            🔍 Company Research
+            🔍 Research
           </Button>
           {interview.status === "Scheduled" && (
             <Button onClick={handleConfirm} disabled={loading} size="sm">
@@ -452,8 +459,8 @@ export default function InterviewCard({ interview, onUpdate, onEdit, onDelete, c
           )}
           
           {interview.status === "Completed" && !interview.outcome?.result && (
-            <Button onClick={() => setShowOutcomeForm(true)} size="sm">
-              Record Outcome
+            <Button onClick={() => setShowOutcomeForm(true)} size="sm" className="whitespace-nowrap">
+              Outcome
             </Button>
           )}
 
@@ -474,15 +481,16 @@ export default function InterviewCard({ interview, onUpdate, onEdit, onDelete, c
               }}
               variant="secondary"
               size="sm"
+              className="whitespace-nowrap"
               title="Mark thank-you note as sent"
             >
-              ✉️ Sent Thank-You
+              ✉️ Thanks
             </Button>
           )}
           
           {interview.status !== "Completed" && !showOutcomeForm && (
-            <Button onClick={() => setShowOutcomeForm(true)} variant="secondary" size="sm">
-              Mark Complete
+            <Button onClick={() => setShowOutcomeForm(true)} variant="secondary" size="sm" className="whitespace-nowrap">
+              Complete
             </Button>
           )}
           

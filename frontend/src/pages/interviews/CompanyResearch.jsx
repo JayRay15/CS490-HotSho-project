@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Button from '../../components/Button';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+
 export default function CompanyResearch() {
   const { interviewId } = useParams();
   const navigate = useNavigate();
@@ -22,7 +24,7 @@ export default function CompanyResearch() {
       setLoading(true);
       setError('');
       const token = await window.Clerk.session.getToken();
-      const response = await fetch(`http://localhost:5000/api/company-research/interview/${interviewId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/company-research/interview/${interviewId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -55,7 +57,7 @@ export default function CompanyResearch() {
       const token = await window.Clerk.session.getToken();
       
       // First get the interview to find the job details
-      const interviewResponse = await fetch(`http://localhost:5000/api/interviews/${interviewId}`, {
+      const interviewResponse = await fetch(`${API_BASE_URL}/api/interviews/${interviewId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -76,7 +78,7 @@ export default function CompanyResearch() {
       const jobId = typeof interview.jobId === 'object' ? interview.jobId._id : interview.jobId;
       const companyName = typeof interview.jobId === 'object' ? interview.jobId.company : interview.company;
 
-      const response = await fetch('http://localhost:5000/api/company-research/generate', {
+      const response = await fetch(`${API_BASE_URL}/api/company-research/generate`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -109,7 +111,7 @@ export default function CompanyResearch() {
   const handleExport = async (format) => {
     try {
       const token = await window.Clerk.session.getToken();
-      const response = await fetch(`http://localhost:5000/api/company-research/${research._id}/export`, {
+      const response = await fetch(`${API_BASE_URL}/api/company-research/${research._id}/export`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

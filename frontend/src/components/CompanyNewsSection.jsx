@@ -42,7 +42,7 @@ export default function CompanyNewsSection({ companyName, initialNews = [], onNe
         console.log('🔍 Fetching news for company:', companyName);
 
         try {
-            const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
+            const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
             const url = `${API_URL}/api/companies/news`;
             console.log('📡 API URL:', url);
 
@@ -116,7 +116,7 @@ export default function CompanyNewsSection({ companyName, initialNews = [], onNe
     // Export news summary
     const handleExport = async (format) => {
         try {
-            const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
+            const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
             const response = await axios.get(`${API_URL}/api/companies/news/export`, {
                 params: {
                     company: companyName,

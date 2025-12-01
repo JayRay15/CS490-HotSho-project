@@ -30,7 +30,7 @@ export default function CompanyResearchReport({ companyName, jobDescription = ''
         setError(null);
 
         try {
-            const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
+            const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
             const response = await axios.get(`${API_URL}/api/companies/research`, {
                 params: {
                     company: companyName,
@@ -52,7 +52,7 @@ export default function CompanyResearchReport({ companyName, jobDescription = ''
 
     const handleExport = async (format) => {
         try {
-            const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
+            const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
             const response = await axios.get(`${API_URL}/api/companies/research/export`, {
                 params: {
                     company: companyName,
