@@ -86,8 +86,8 @@ export const technicalPrepAPI = {
   },
 
   // Bookmarks
-  bookmarkChallenge: async (challengeId) => {
-    const response = await api.post('/api/technical-prep/bookmark', { challengeId });
+  bookmarkChallenge: async (data) => {
+    const response = await api.post('/api/technical-prep/bookmark', data);
     return response.data;
   },
 

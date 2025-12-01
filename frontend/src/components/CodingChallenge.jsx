@@ -293,7 +293,6 @@ const CodingChallenge = () => {
                 value={language}
                 onChange={(e) => handleLanguageChange(e.target.value)}
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                disabled={results !== null}
               >
                 <option value="javascript">JavaScript</option>
                 <option value="python">Python</option>
@@ -320,7 +319,6 @@ const CodingChallenge = () => {
               }}
               className="w-full h-96 p-4 font-mono text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Write your solution here..."
-              disabled={results !== null}
             />
 
             {/* Action Buttons */}
@@ -329,7 +327,7 @@ const CodingChallenge = () => {
                 <Button
                   onClick={handleGetHint}
                   variant="secondary"
-                  disabled={results !== null || hintsUsed.length >= (challenge.hints?.length || 0)}
+                  disabled={hintsUsed.length >= (challenge.hints?.length || 0)}
                 >
                   <LightBulbIcon className="h-5 w-5 mr-2" />
                   Get Hint ({hintsUsed.length}/{challenge.hints?.length || 0})
@@ -338,7 +336,7 @@ const CodingChallenge = () => {
 
               <Button
                 onClick={handleSubmit}
-                disabled={submitting || results !== null || !code.trim()}
+                disabled={submitting || !code.trim()}
                 className="flex items-center"
               >
                 {submitting ? (
@@ -432,8 +430,8 @@ const CodingChallenge = () => {
 
             {/* Hint Modal */}
             {showHintModal && currentHint && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-lg max-w-xl w-full p-6 shadow-xl" style={{background: 'rgba(255,255,255,0.95)'}}>
+              <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-lg max-w-xl w-full p-6 shadow-xl">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-xl font-semibold text-gray-900">
                       {currentHint.index ? `Hint ${currentHint.index}` : 'Hint'}
