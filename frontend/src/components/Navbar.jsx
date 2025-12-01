@@ -137,17 +137,11 @@ export default function Navbar() {
                                         <NavLink to="/interviews" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="My Interviews" onClick={() => setCareerDropdownOpen(false)}>
                                             My Interviews
                                         </NavLink>
-                                        <NavLink to="/interviews/analytics" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Interview Analytics" onClick={() => setCareerDropdownOpen(false)}>
-                                            📊 Interview Analytics
-                                        </NavLink>
                                         <NavLink to="/interview-coaching" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Interview Coaching" onClick={() => setCareerDropdownOpen(false)}>
                                             Interview Coaching
                                         </NavLink>
                                         <NavLink to="/mock-interviews" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Mock Interview History" onClick={() => setCareerDropdownOpen(false)}>
                                             Mock Interviews
-                                        </NavLink>
-                                        <NavLink to="/interview-predictions" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Interview Success Predictions" onClick={() => setCareerDropdownOpen(false)}>
-                                            Success Predictions
                                         </NavLink>
                                         <NavLink to="/prep" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Technical Prep" onClick={() => setCareerDropdownOpen(false)}>
                                             Technical Prep
@@ -380,18 +374,6 @@ export default function Navbar() {
                             My Interviews
                         </NavLink>
                         <NavLink
-                            to="/interviews/analytics"
-                            className={({ isActive }) =>
-                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
-                                    ? 'bg-primary-900 text-white shadow-md'
-                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
-                                }`
-                            }
-                            aria-label="Interview Analytics"
-                        >
-                            📊 Interview Analytics
-                        </NavLink>
-                        <NavLink
                             to="/interview-coaching"
                             className={({ isActive }) =>
                                 `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
@@ -402,18 +384,6 @@ export default function Navbar() {
                             aria-label="Interview Coaching"
                         >
                             Interview Coaching
-                        </NavLink>
-                        <NavLink
-                            to="/interview-predictions"
-                            className={({ isActive }) =>
-                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
-                                    ? 'bg-primary-900 text-white shadow-md'
-                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
-                                }`
-                            }
-                            aria-label="Interview Success Predictions"
-                        >
-                            Success Predictions
                         </NavLink>
                         <NavLink
                             to="/prep"
