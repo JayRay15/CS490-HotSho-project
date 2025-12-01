@@ -632,3 +632,5 @@ function DynamicInterviewPrepLinkMobile() {
     );
 }
 
+    export { DynamicInterviewPrepLink, DynamicInterviewPrepLinkMobile };
+
