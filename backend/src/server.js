@@ -44,6 +44,7 @@ import performanceDashboardRoutes from "./routes/performanceDashboardRoutes.js";
 import teamRoutes from "./routes/teamRoutes.js";
 import networkingCampaignRoutes from "./routes/networkingCampaignRoutes.js";
 import accountabilityRoutes from "./routes/accountabilityRoutes.js";
+import peerSupportRoutes from "./routes/peerSupportRoutes.js";
 import { getPublicProject } from "./controllers/profileController.js";
 import { viewSharedReport } from "./controllers/reportController.js";
 import { startDeadlineReminderSchedule } from "./utils/deadlineReminders.js";
@@ -125,6 +126,8 @@ app.use("/api/networking-campaigns", networkingCampaignRoutes);
 console.log('✅ Networking Campaign routes registered at /api/networking-campaigns');
 app.use("/api/accountability", accountabilityRoutes);
 console.log('✅ Accountability routes registered at /api/accountability');
+app.use("/api/peer-support", peerSupportRoutes);
+console.log('✅ Peer Support routes registered at /api/peer-support');
 // Mount profile routes under /api/profile (existing) and also under /api/users
 // so frontend requests to /api/users/... (used elsewhere in the app) resolve correctly.
 app.use("/api/profile", profileRoutes);
