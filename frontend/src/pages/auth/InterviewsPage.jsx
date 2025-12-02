@@ -8,7 +8,8 @@ import { getInterviews } from "../../api/interviews";
 import { setAuthToken } from "../../api/axios";
 import InterviewAnalyticsTab from "../../components/interviews/InterviewAnalyticsTab";
 import InterviewPredictionsTab from "../../components/interviews/InterviewPredictionsTab";
-import { Calendar, BarChart3, Target } from "lucide-react";
+import InterviewPerformanceTab from "../../components/interviews/InterviewPerformanceTab";
+import { Calendar, BarChart3, Target, TrendingUp } from "lucide-react";
 
 export default function InterviewsPage() {
   const navigate = useNavigate();
@@ -33,6 +34,7 @@ export default function InterviewsPage() {
     { id: "interviews", label: "My Interviews", icon: Calendar },
     { id: "analytics", label: "Analytics", icon: BarChart3 },
     { id: "predictions", label: "Success Predictions", icon: Target },
+    { id: "performance", label: "Performance", icon: TrendingUp },
   ];
 
   // Handle tab change
@@ -347,6 +349,8 @@ export default function InterviewsPage() {
       {activeTab === "analytics" && <InterviewAnalyticsTab />}
 
       {activeTab === "predictions" && <InterviewPredictionsTab />}
+
+      {activeTab === "performance" && <InterviewPerformanceTab />}
     </div>
   );
 }

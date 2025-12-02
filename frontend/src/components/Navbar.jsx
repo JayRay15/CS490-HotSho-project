@@ -191,14 +191,8 @@ export default function Navbar() {
                                         <NavLink to="/productivity" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Productivity Analysis" onClick={() => setCareerDropdownOpen(false)}>
                                             Productivity Analysis
                                         </NavLink>
-                                        <NavLink to="/performance-dashboard" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Performance Dashboard" onClick={() => setCareerDropdownOpen(false)}>
-                                            📊 Performance Dashboard
-                                        </NavLink>
-                                        <NavLink to="/application-success" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Application Success Analysis" onClick={() => setCareerDropdownOpen(false)}>
-                                            🎯 Success Analysis
-                                        </NavLink>
-                                        <NavLink to="/interview-performance" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Interview Performance Analytics" onClick={() => setCareerDropdownOpen(false)}>
-                                            📈 Interview Performance
+                                        <NavLink to="/my-performance" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="My Performance" onClick={() => setCareerDropdownOpen(false)}>
+                                            📊 My Performance
                                         </NavLink>
                                         <NavLink to="/competitive-analysis" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Competitive Analysis" onClick={() => setCareerDropdownOpen(false)}>
                                             🏆 Competitive Analysis
@@ -206,11 +200,8 @@ export default function Navbar() {
                                         <NavLink to="/market-intelligence" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Market Intelligence" onClick={() => setCareerDropdownOpen(false)}>
                                             Market Intelligence
                                         </NavLink>
-                                        <NavLink to="/mentors" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Mentor Hub" onClick={() => setCareerDropdownOpen(false)}>
-                                            Mentor Hub
-                                        </NavLink>
-                                        <NavLink to="/advisors" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Advisors Hub" onClick={() => setCareerDropdownOpen(false)}>
-                                            🎓 Advisors Hub
+                                        <NavLink to="/mentors-advisors" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Mentors & Advisors" onClick={() => setCareerDropdownOpen(false)}>
+                                            Mentors & Advisors
                                         </NavLink>
                                         <NavLink to="/teams" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Teams" onClick={() => setCareerDropdownOpen(false)}>
                                             👥 Teams
@@ -474,40 +465,16 @@ export default function Navbar() {
                             Productivity Analysis
                         </NavLink>
                         <NavLink
-                            to="/performance-dashboard"
+                            to="/my-performance"
                             className={({ isActive }) =>
                                 `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
                                     ? 'bg-primary-900 text-white shadow-md'
                                     : 'text-white hover:bg-primary-700 active:bg-primary-900'
                                 }`
                             }
-                            aria-label="Performance Dashboard"
+                            aria-label="My Performance"
                         >
-                            📊 Performance Dashboard
-                        </NavLink>
-                        <NavLink
-                            to="/application-success"
-                            className={({ isActive }) =>
-                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
-                                    ? 'bg-primary-900 text-white shadow-md'
-                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
-                                }`
-                            }
-                            aria-label="Application Success Analysis"
-                        >
-                            🎯 Success Analysis
-                        </NavLink>
-                        <NavLink
-                            to="/interview-performance"
-                            className={({ isActive }) =>
-                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
-                                    ? 'bg-primary-900 text-white shadow-md'
-                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
-                                }`
-                            }
-                            aria-label="Interview Performance Analytics"
-                        >
-                            📈 Interview Performance
+                            📊 My Performance
                         </NavLink>
                         <NavLink
                             to="/competitive-analysis"
@@ -534,28 +501,16 @@ export default function Navbar() {
                             Market Intelligence
                         </NavLink>
                         <NavLink
-                            to="/mentors"
+                            to="/mentors-advisors"
                             className={({ isActive }) =>
                                 `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
                                     ? 'bg-primary-900 text-white shadow-md'
                                     : 'text-white hover:bg-primary-700 active:bg-primary-900'
                                 }`
                             }
-                            aria-label="Mentor Hub"
+                            aria-label="Mentors & Advisors"
                         >
-                            Mentor Hub
-                        </NavLink>
-                        <NavLink
-                            to="/advisors"
-                            className={({ isActive }) =>
-                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
-                                    ? 'bg-primary-900 text-white shadow-md'
-                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
-                                }`
-                            }
-                            aria-label="Advisors Hub"
-                        >
-                            🎓 Advisors Hub
+                            Mentors & Advisors
                         </NavLink>
                         <NavLink
                             to="/teams"
