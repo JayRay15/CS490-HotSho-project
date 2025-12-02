@@ -1090,7 +1090,7 @@ async function sendMentorSignUpInvitationEmail(mentorEmail, menteeName, invitati
     }
   });
 
-  const signUpLink = `${process.env.FRONTEND_URL}/sign-up?mentor-invite=${invitationToken}`;
+  const signUpLink = `${process.env.FRONTEND_URL}/register?mentor-invite=${invitationToken}`;
 
   const mailOptions = {
     from: process.env.SMTP_FROM || process.env.SMTP_USER,

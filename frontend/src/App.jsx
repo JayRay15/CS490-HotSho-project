@@ -61,7 +61,9 @@ import PerformanceDashboard from "./pages/auth/PerformanceDashboard.jsx";
 import PeerSupportPage from "./pages/PeerSupportPage.jsx";
 import ApplicationSuccessAnalysis from "./pages/auth/ApplicationSuccessAnalysis.jsx";
 import InterviewPerformance from "./pages/auth/InterviewPerformance.jsx";
+import PredictiveAnalytics from "./pages/PredictiveAnalytics.jsx";
 import CompetitiveAnalysis from "./pages/auth/CompetitiveAnalysis.jsx";
+import InformationalInterviewsPage from "./pages/InformationalInterviews.jsx";
 
 function App() {
   return (
@@ -103,6 +105,7 @@ function App() {
           <Route path="/technical-prep/case-study/:caseStudyId" element={<ProtectedRoute><CaseStudyPractice /></ProtectedRoute>} />
           <Route path="/interview-coaching" element={<ProtectedRoute><InterviewCoaching /></ProtectedRoute>} />
           <Route path="/network" element={<ProtectedRoute><Network /></ProtectedRoute>} />
+          <Route path="/informational-interviews" element={<ProtectedRoute><InformationalInterviewsPage /></ProtectedRoute>} />
           <Route path="/writing-practice" element={<ProtectedRoute><WritingPracticePage /></ProtectedRoute>} />
           <Route path="/goals" element={<ProtectedRoute><GoalsPage /></ProtectedRoute>} />
           <Route path="/goals/new" element={<ProtectedRoute><NewGoalPage /></ProtectedRoute>} />
@@ -130,6 +133,7 @@ function App() {
           <Route path="/performance-dashboard" element={<Navigate to="/my-performance" replace />} />
           <Route path="/application-success" element={<Navigate to="/my-performance?tab=success" replace />} />
           <Route path="/interview-performance" element={<Navigate to="/interviews?tab=performance" replace />} />
+          <Route path="/predictive-analytics" element={<ProtectedRoute><PredictiveAnalytics /></ProtectedRoute>} />
           <Route path="/competitive-analysis" element={<ProtectedRoute><CompetitiveAnalysis /></ProtectedRoute>} />
           <Route path="/mentors-advisors" element={<ProtectedRoute><MentorsAdvisorsPage /></ProtectedRoute>} />
           <Route path="/mentors" element={<Navigate to="/mentors-advisors" replace />} />
@@ -148,3 +152,5 @@ function App() {
 }
 
 export default App;
+
+

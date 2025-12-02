@@ -61,11 +61,11 @@ router.get('/google/callback', async (req, res) => {
 
   if (error) {
     console.error('Google OAuth error:', error);
-    return res.redirect(`${process.env.FRONTEND_URL}/settings?calendar_error=${error}`);
+    return res.redirect(`${process.env.FRONTEND_URL}/settings/calendar?calendar_error=${error}`);
   }
 
   if (!code) {
-    return res.redirect(`${process.env.FRONTEND_URL}/settings?calendar_error=no_code`);
+    return res.redirect(`${process.env.FRONTEND_URL}/settings/calendar?calendar_error=no_code`);
   }
 
   try {
@@ -106,10 +106,10 @@ router.get('/google/callback', async (req, res) => {
 
     await user.save();
 
-    res.redirect(`${process.env.FRONTEND_URL}/settings?calendar_connected=google`);
+    res.redirect(`${process.env.FRONTEND_URL}/settings/calendar?calendar_connected=google`);
   } catch (error) {
     console.error('Error handling Google OAuth callback:', error);
-    res.redirect(`${process.env.FRONTEND_URL}/settings?calendar_error=callback_failed`);
+    res.redirect(`${process.env.FRONTEND_URL}/settings/calendar?calendar_error=callback_failed`);
   }
 });
 
@@ -139,11 +139,11 @@ router.get('/outlook/callback', async (req, res) => {
 
   if (error) {
     console.error('Outlook OAuth error:', error, error_description);
-    return res.redirect(`${process.env.FRONTEND_URL}/settings?calendar_error=${error}`);
+    return res.redirect(`${process.env.FRONTEND_URL}/settings/calendar?calendar_error=${error}`);
   }
 
   if (!code) {
-    return res.redirect(`${process.env.FRONTEND_URL}/settings?calendar_error=no_code`);
+    return res.redirect(`${process.env.FRONTEND_URL}/settings/calendar?calendar_error=no_code`);
   }
 
   try {
@@ -167,7 +167,7 @@ router.get('/outlook/callback', async (req, res) => {
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();
       console.error('Token exchange failed:', errorText);
-      return res.redirect(`${process.env.FRONTEND_URL}/settings?calendar_error=token_exchange_failed`);
+      return res.redirect(`${process.env.FRONTEND_URL}/settings/calendar?calendar_error=token_exchange_failed`);
     }
 
     const tokens = await tokenResponse.json();
@@ -186,7 +186,7 @@ router.get('/outlook/callback', async (req, res) => {
     const user = await User.findOne({ auth0Id: userId });
 
     if (!user) {
-      return res.redirect(`${process.env.FRONTEND_URL}/settings?calendar_error=user_not_found`);
+      return res.redirect(`${process.env.FRONTEND_URL}/settings/calendar?calendar_error=user_not_found`);
     }
 
     // Update user with calendar tokens
@@ -208,10 +208,10 @@ router.get('/outlook/callback', async (req, res) => {
 
     await user.save();
 
-    res.redirect(`${process.env.FRONTEND_URL}/settings?calendar_connected=outlook`);
+    res.redirect(`${process.env.FRONTEND_URL}/settings/calendar?calendar_connected=outlook`);
   } catch (error) {
     console.error('Error handling Outlook OAuth callback:', error);
-    res.redirect(`${process.env.FRONTEND_URL}/settings?calendar_error=callback_failed`);
+    res.redirect(`${process.env.FRONTEND_URL}/settings/calendar?calendar_error=callback_failed`);
   }
 });
 

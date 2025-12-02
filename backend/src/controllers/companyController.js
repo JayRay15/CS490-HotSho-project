@@ -8,6 +8,12 @@ import { asyncHandler } from "../middleware/errorHandler.js";
  * Fetches company data from multiple sources and consolidates it
  */
 
+// Check if Gemini API key is configured
+const GEMINI_CONFIGURED = !!process.env.GEMINI_API_KEY;
+if (!GEMINI_CONFIGURED) {
+    console.warn('[company-controller] WARNING: GEMINI_API_KEY is not configured. AI-powered company research will not be available.');
+}
+
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -343,6 +349,16 @@ export const getComprehensiveResearch = asyncHandler(async (req, res) => {
         return sendResponse(res, response, statusCode);
     }
 
+    // Check if Gemini API is configured before proceeding
+    if (!GEMINI_CONFIGURED) {
+        const { response, statusCode } = errorResponse(
+            "Company research is temporarily unavailable. Please try again later.",
+            503,
+            ERROR_CODES.SERVICE_UNAVAILABLE
+        );
+        return sendResponse(res, response, statusCode);
+    }
+
     try {
         // Dynamic import of research service
         const { conductComprehensiveResearch, formatComprehensiveResearch } = await import('../utils/companyResearchService.js');
@@ -390,6 +406,16 @@ export const exportResearchReport = asyncHandler(async (req, res) => {
             "Company name is required",
             400,
             ERROR_CODES.VALIDATION_ERROR
+        );
+        return sendResponse(res, response, statusCode);
+    }
+
+    // Check if Gemini API is configured before proceeding
+    if (!GEMINI_CONFIGURED) {
+        const { response, statusCode } = errorResponse(
+            "Company research is temporarily unavailable. Please try again later.",
+            503,
+            ERROR_CODES.SERVICE_UNAVAILABLE
         );
         return sendResponse(res, response, statusCode);
     }

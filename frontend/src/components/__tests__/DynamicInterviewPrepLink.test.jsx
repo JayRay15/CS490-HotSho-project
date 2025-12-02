@@ -2,6 +2,23 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
+
+// Mock Clerk to prevent import errors
+vi.mock('@clerk/clerk-react', () => ({
+  SignedIn: ({ children }) => <>{children}</>,
+  SignedOut: ({ children }) => <>{children}</>,
+  UserButton: () => <div data-testid="user-button" />,
+  useAuth: () => ({ getToken: async () => 'token-123' }),
+  useUser: () => ({ user: { id: 'u1' } }),
+  useClerk: () => ({ signOut: vi.fn() }),
+}));
+
+// Mock api/axios
+vi.mock('../../api/axios', () => ({
+  default: { get: vi.fn().mockResolvedValue({ data: { data: {} } }) },
+  setAuthToken: () => {},
+}));
+
 import { DynamicInterviewPrepLink, DynamicInterviewPrepLinkMobile } from '../Navbar.jsx';
 
 describe('DynamicInterviewPrepLink', () => {

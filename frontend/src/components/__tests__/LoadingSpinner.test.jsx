@@ -1,11 +1,13 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { vi, describe, test, expect } from 'vitest';
+import { describe, test, expect, vi } from 'vitest';
 import LoadingSpinner from '../LoadingSpinner.jsx';
 
 // Mock Logo component
 vi.mock('../Logo', () => ({
-  default: ({ variant, size }) => <div data-testid="mock-logo" data-variant={variant} data-size={size}>Logo</div>,
+  default: function MockLogo({ variant, size }) {
+    return <div data-testid="mock-logo" data-variant={variant} data-size={size}>Logo</div>;
+  },
 }));
 
 describe('LoadingSpinner - Comprehensive Tests', () => {
