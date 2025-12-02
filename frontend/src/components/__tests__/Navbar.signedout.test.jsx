@@ -10,6 +10,7 @@ vi.mock('@clerk/clerk-react', () => ({
   UserButton: () => <div />,
   useAuth: () => ({ getToken: vi.fn().mockResolvedValue(null), isSignedIn: false }),
   useUser: () => ({ user: null }),
+  useClerk: () => ({ signOut: vi.fn() }),
 }));
 
 vi.mock('../../api/axios', () => ({
