@@ -57,7 +57,7 @@ describe('companyResearchController', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     mockReq = {
       auth: { userId: 'user123' },
       params: {},
@@ -74,9 +74,9 @@ describe('companyResearchController', () => {
   describe('generateCompanyResearch', () => {
     it('should return 401 if user not authenticated', async () => {
       mockReq.auth = {};
-      
+
       await generateCompanyResearch(mockReq, mockRes);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(401);
       expect(mockRes.json).toHaveBeenCalledWith(expect.objectContaining({
         success: false
@@ -85,26 +85,26 @@ describe('companyResearchController', () => {
 
     it('should return 400 if jobId missing', async () => {
       mockReq.body = { companyName: 'Test Company' };
-      
+
       await generateCompanyResearch(mockReq, mockRes);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(400);
     });
 
     it('should return 400 if companyName missing', async () => {
       mockReq.body = { jobId: 'job123' };
-      
+
       await generateCompanyResearch(mockReq, mockRes);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(400);
     });
 
     it('should return 404 if job not found', async () => {
       mockReq.body = { jobId: 'job123', companyName: 'Test Company' };
       mockJob.findOne.mockResolvedValue(null);
-      
+
       await generateCompanyResearch(mockReq, mockRes);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(404);
     });
 
@@ -112,9 +112,9 @@ describe('companyResearchController', () => {
       mockReq.body = { jobId: 'job123', companyName: 'Test Company', interviewId: 'int123' };
       mockJob.findOne.mockResolvedValue({ _id: 'job123', industry: 'Tech' });
       mockInterview.findOne.mockResolvedValue(null);
-      
+
       await generateCompanyResearch(mockReq, mockRes);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(404);
     });
 
@@ -130,21 +130,21 @@ describe('companyResearchController', () => {
       } catch (e) {
         // Expected since we can't fully mock the constructor
       }
-      
+
       expect(mockJob.findOne).toHaveBeenCalledWith({ _id: 'job123', userId: 'user123' });
     });
 
     it('should look up existing research before creating', async () => {
       mockReq.body = { jobId: 'job123', companyName: 'Test Company' };
-      mockJob.findOne.mockResolvedValue({ 
-        _id: 'job123', 
+      mockJob.findOne.mockResolvedValue({
+        _id: 'job123',
         industry: 'Tech',
         location: 'NYC',
         workMode: 'Remote',
         title: 'Engineer',
         url: 'http://example.com'
       });
-      
+
       const existingResearch = {
         _id: 'research123',
         companyName: 'Test Company',
@@ -159,17 +159,17 @@ describe('companyResearchController', () => {
         save: jest.fn().mockResolvedValue({ _id: 'research123' })
       };
       mockCompanyResearch.findOne.mockResolvedValue(existingResearch);
-      
+
       await generateCompanyResearch(mockReq, mockRes);
-      
+
       expect(mockCompanyResearch.findOne).toHaveBeenCalled();
       expect(existingResearch.save).toHaveBeenCalled();
     });
 
     it('should look up interview when interviewId provided', async () => {
       mockReq.body = { jobId: 'job123', companyName: 'Test Company', interviewId: 'int123' };
-      mockJob.findOne.mockResolvedValue({ 
-        _id: 'job123', 
+      mockJob.findOne.mockResolvedValue({
+        _id: 'job123',
         industry: 'Tech',
         location: 'NYC',
         workMode: 'Remote',
@@ -180,7 +180,7 @@ describe('companyResearchController', () => {
         _id: 'int123',
         interviewer: { name: 'John Doe', title: 'Manager' }
       });
-      
+
       const existingResearch = {
         _id: 'research123',
         companyName: 'Test Company',
@@ -195,9 +195,9 @@ describe('companyResearchController', () => {
         save: jest.fn().mockResolvedValue({ _id: 'research123' })
       };
       mockCompanyResearch.findOne.mockResolvedValue(existingResearch);
-      
+
       await generateCompanyResearch(mockReq, mockRes);
-      
+
       expect(mockInterview.findOne).toHaveBeenCalled();
     });
   });
@@ -206,9 +206,9 @@ describe('companyResearchController', () => {
     it('should return 401 if user not authenticated', async () => {
       mockReq.auth = {};
       mockReq.params = { interviewId: 'int123' };
-      
+
       await getResearchByInterview(mockReq, mockRes);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(401);
     });
 
@@ -219,9 +219,9 @@ describe('companyResearchController', () => {
           populate: jest.fn().mockResolvedValue(null)
         })
       });
-      
+
       await getResearchByInterview(mockReq, mockRes);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(404);
     });
 
@@ -233,9 +233,9 @@ describe('companyResearchController', () => {
           populate: jest.fn().mockResolvedValue(mockResearch)
         })
       });
-      
+
       await getResearchByInterview(mockReq, mockRes);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(200);
       expect(mockRes.json).toHaveBeenCalledWith(expect.objectContaining({
         success: true
@@ -247,9 +247,9 @@ describe('companyResearchController', () => {
     it('should return 401 if user not authenticated', async () => {
       mockReq.auth = {};
       mockReq.params = { jobId: 'job123' };
-      
+
       await getResearchByJob(mockReq, mockRes);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(401);
     });
 
@@ -260,9 +260,9 @@ describe('companyResearchController', () => {
           populate: jest.fn().mockResolvedValue(null)
         })
       });
-      
+
       await getResearchByJob(mockReq, mockRes);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(404);
     });
 
@@ -274,9 +274,9 @@ describe('companyResearchController', () => {
           populate: jest.fn().mockResolvedValue(mockResearch)
         })
       });
-      
+
       await getResearchByJob(mockReq, mockRes);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(200);
       expect(mockRes.json).toHaveBeenCalledWith(expect.objectContaining({
         success: true
@@ -287,9 +287,9 @@ describe('companyResearchController', () => {
   describe('getAllResearch', () => {
     it('should return 401 if user not authenticated', async () => {
       mockReq.auth = {};
-      
+
       await getAllResearch(mockReq, mockRes);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(401);
     });
 
@@ -305,9 +305,9 @@ describe('companyResearchController', () => {
           })
         })
       });
-      
+
       await getAllResearch(mockReq, mockRes);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(200);
       expect(mockRes.json).toHaveBeenCalledWith(expect.objectContaining({
         success: true,
@@ -322,9 +322,9 @@ describe('companyResearchController', () => {
     it('should return 401 if user not authenticated', async () => {
       mockReq.auth = {};
       mockReq.params = { id: 'research123' };
-      
+
       await updateResearch(mockReq, mockRes);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(401);
     });
 
@@ -332,25 +332,25 @@ describe('companyResearchController', () => {
       mockReq.params = { id: 'research123' };
       mockReq.body = { profile: { overview: 'Updated' } };
       mockCompanyResearch.findOne.mockResolvedValue(null);
-      
+
       await updateResearch(mockReq, mockRes);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(404);
     });
 
     it('should update research successfully', async () => {
       mockReq.params = { id: 'research123' };
       mockReq.body = { profile: { overview: 'Updated' } };
-      
+
       const mockResearch = {
         _id: 'research123',
         companyName: 'Test',
         save: jest.fn().mockResolvedValue({ _id: 'research123' })
       };
       mockCompanyResearch.findOne.mockResolvedValue(mockResearch);
-      
+
       await updateResearch(mockReq, mockRes);
-      
+
       expect(mockResearch.save).toHaveBeenCalled();
       expect(mockRes.status).toHaveBeenCalledWith(200);
     });
@@ -358,7 +358,7 @@ describe('companyResearchController', () => {
     it('should not update protected fields', async () => {
       mockReq.params = { id: 'research123' };
       mockReq.body = { userId: 'hacker123', jobId: 'hijacked' };
-      
+
       const mockResearch = {
         _id: 'research123',
         userId: 'user123',
@@ -366,9 +366,9 @@ describe('companyResearchController', () => {
         save: jest.fn().mockResolvedValue({})
       };
       mockCompanyResearch.findOne.mockResolvedValue(mockResearch);
-      
+
       await updateResearch(mockReq, mockRes);
-      
+
       // Should not have changed userId
       expect(mockResearch.userId).toBe('user123');
     });
@@ -378,9 +378,9 @@ describe('companyResearchController', () => {
     it('should return 401 if user not authenticated', async () => {
       mockReq.auth = {};
       mockReq.params = { id: 'research123' };
-      
+
       await exportResearch(mockReq, mockRes);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(401);
     });
 
@@ -391,16 +391,16 @@ describe('companyResearchController', () => {
           populate: jest.fn().mockResolvedValue(null)
         })
       });
-      
+
       await exportResearch(mockReq, mockRes);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(404);
     });
 
     it('should export research successfully', async () => {
       mockReq.params = { id: 'research123' };
       mockReq.body = { format: 'pdf' };
-      
+
       const mockResearch = {
         _id: 'research123',
         companyName: 'Test Company',
@@ -412,16 +412,16 @@ describe('companyResearchController', () => {
           populate: jest.fn().mockResolvedValue(mockResearch)
         })
       });
-      
+
       await exportResearch(mockReq, mockRes);
-      
+
       expect(mockResearch.save).toHaveBeenCalled();
       expect(mockRes.status).toHaveBeenCalledWith(200);
     });
 
     it('should mark research as exported', async () => {
       mockReq.params = { id: 'research123' };
-      
+
       const mockResearch = {
         _id: 'research123',
         companyName: 'Test Company',
@@ -433,9 +433,9 @@ describe('companyResearchController', () => {
           populate: jest.fn().mockResolvedValue(mockResearch)
         })
       });
-      
+
       await exportResearch(mockReq, mockRes);
-      
+
       expect(mockResearch.exported).toBe(true);
       expect(mockResearch.exportedAt).toBeDefined();
     });
@@ -445,27 +445,27 @@ describe('companyResearchController', () => {
     it('should return 401 if user not authenticated', async () => {
       mockReq.auth = {};
       mockReq.params = { id: 'research123' };
-      
+
       await deleteResearch(mockReq, mockRes);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(401);
     });
 
     it('should return 404 if research not found', async () => {
       mockReq.params = { id: 'research123' };
       mockCompanyResearch.findOneAndDelete.mockResolvedValue(null);
-      
+
       await deleteResearch(mockReq, mockRes);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(404);
     });
 
     it('should delete research successfully', async () => {
       mockReq.params = { id: 'research123' };
       mockCompanyResearch.findOneAndDelete.mockResolvedValue({ _id: 'research123' });
-      
+
       await deleteResearch(mockReq, mockRes);
-      
+
       expect(mockCompanyResearch.findOneAndDelete).toHaveBeenCalledWith({
         _id: 'research123',
         userId: 'user123'
@@ -477,9 +477,9 @@ describe('companyResearchController', () => {
       mockReq.params = { id: 'research123' };
       // Just mock an error scenario - the actual error handling is tested elsewhere
       mockCompanyResearch.findOneAndDelete.mockResolvedValue(null);
-      
+
       await deleteResearch(mockReq, mockRes);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(404);
     });
   });
@@ -488,7 +488,7 @@ describe('companyResearchController', () => {
     it('should export as JSON format', async () => {
       mockReq.params = { id: 'research123' };
       mockReq.body = { format: 'json' };
-      
+
       const mockResearch = {
         _id: 'research123',
         companyName: 'Test Company',
@@ -506,9 +506,9 @@ describe('companyResearchController', () => {
           populate: jest.fn().mockResolvedValue(mockResearch)
         })
       });
-      
+
       await exportResearch(mockReq, mockRes);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(200);
       expect(mockRes.json).toHaveBeenCalledWith(expect.objectContaining({
         success: true
@@ -518,7 +518,7 @@ describe('companyResearchController', () => {
     it('should export as markdown format', async () => {
       mockReq.params = { id: 'research123' };
       mockReq.body = { format: 'markdown' };
-      
+
       const mockResearch = {
         _id: 'research123',
         companyName: 'Test Company',
@@ -556,9 +556,9 @@ describe('companyResearchController', () => {
           populate: jest.fn().mockResolvedValue(mockResearch)
         })
       });
-      
+
       await exportResearch(mockReq, mockRes);
-      
+
       expect(mockRes.status).toHaveBeenCalledWith(200);
     });
   });
