@@ -59,6 +59,7 @@ import PerformanceDashboard from "./pages/auth/PerformanceDashboard.jsx";
 import PeerSupportPage from "./pages/PeerSupportPage.jsx";
 import ApplicationSuccessAnalysis from "./pages/auth/ApplicationSuccessAnalysis.jsx";
 import InterviewPerformance from "./pages/auth/InterviewPerformance.jsx";
+import PredictiveAnalytics from "./pages/PredictiveAnalytics.jsx";
 import CompetitiveAnalysis from "./pages/auth/CompetitiveAnalysis.jsx";
 
 function App() {
@@ -127,6 +128,7 @@ function App() {
           <Route path="/performance-dashboard" element={<ProtectedRoute><PerformanceDashboard /></ProtectedRoute>} />
           <Route path="/application-success" element={<ProtectedRoute><ApplicationSuccessAnalysis /></ProtectedRoute>} />
           <Route path="/interview-performance" element={<ProtectedRoute><InterviewPerformance /></ProtectedRoute>} />
+          <Route path="/predictive-analytics" element={<ProtectedRoute><PredictiveAnalytics /></ProtectedRoute>} />
           <Route path="/competitive-analysis" element={<ProtectedRoute><CompetitiveAnalysis /></ProtectedRoute>} />
           <Route path="/mentors" element={<ProtectedRoute><MentorDashboard /></ProtectedRoute>} />
           <Route path="/mentors/progress" element={<ProtectedRoute><ProgressSharing /></ProtectedRoute>} />
@@ -144,3 +146,5 @@ function App() {
 }
 
 export default App;
+
+

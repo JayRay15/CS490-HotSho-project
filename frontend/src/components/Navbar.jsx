@@ -167,6 +167,9 @@ export default function Navbar() {
                                         <NavLink to="/interview-performance" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Interview Performance Analytics" onClick={() => setCareerDropdownOpen(false)}>
                                             📈 Interview Performance
                                         </NavLink>
+                                        <NavLink to="/predictive-analytics" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Predictive Analytics" onClick={() => setCareerDropdownOpen(false)}>
+                                            🔮 Predictive Analytics
+                                        </NavLink>
                                         <NavLink to="/competitive-analysis" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Competitive Analysis" onClick={() => setCareerDropdownOpen(false)}>
                                             🏆 Competitive Analysis
                                         </NavLink>
@@ -496,6 +499,18 @@ export default function Navbar() {
                             aria-label="Interview Performance Analytics"
                         >
                             📈 Interview Performance
+                        </NavLink>
+                        <NavLink
+                            to="/predictive-analytics"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                }`
+                            }
+                            aria-label="Predictive Analytics"
+                        >
+                            🔮 Predictive Analytics
                         </NavLink>
                         <NavLink
                             to="/competitive-analysis"
