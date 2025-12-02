@@ -173,6 +173,9 @@ export default function Navbar() {
                                         <NavLink to="/teams" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Teams" onClick={() => setCareerDropdownOpen(false)}>
                                             👥 Teams
                                         </NavLink>
+                                        <NavLink to="/peer-support" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Peer Support Groups" onClick={() => setCareerDropdownOpen(false)}>
+                                            🤝 Peer Support
+                                        </NavLink>
                                         <div className="border-t border-gray-200 my-1"></div>
                                         <NavLink to="/settings/calendar" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Calendar Settings" onClick={() => setCareerDropdownOpen(false)}>
                                             📅 Calendar Settings
@@ -508,6 +511,18 @@ export default function Navbar() {
                             aria-label="Teams"
                         >
                             👥 Teams
+                        </NavLink>
+                        <NavLink
+                            to="/peer-support"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                }`
+                            }
+                            aria-label="Peer Support Groups"
+                        >
+                            🤝 Peer Support
                         </NavLink>
                         <NavLink
                             to="/settings/calendar"

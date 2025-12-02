@@ -56,6 +56,7 @@ import InterviewAnalytics from "./pages/auth/InterviewAnalytics.jsx";
 import CalendarSettings from "./pages/auth/CalendarSettings.jsx";
 import LinkedInSettings from "./pages/auth/LinkedInSettings.jsx";
 import PerformanceDashboard from "./pages/auth/PerformanceDashboard.jsx";
+import PeerSupportPage from "./pages/PeerSupportPage.jsx";
 
 function App() {
   return (
@@ -129,6 +130,7 @@ function App() {
           <Route path="/teams/:teamId/settings" element={<ProtectedRoute><TeamSettingsPage /></ProtectedRoute>} />
           <Route path="/advisors" element={<ProtectedRoute><AdvisorsPage /></ProtectedRoute>} />
           <Route path="/advisors/messages" element={<ProtectedRoute><AdvisorMessagingPage /></ProtectedRoute>} />
+          <Route path="/peer-support" element={<ProtectedRoute><PeerSupportPage /></ProtectedRoute>} />
 
         </Routes>
       </Router>
