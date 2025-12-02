@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+﻿import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Breadcrumb from "./components/Breadcrumb";
 import Register from "./pages/auth/Register";
@@ -57,6 +57,7 @@ import CalendarSettings from "./pages/auth/CalendarSettings.jsx";
 import LinkedInSettings from "./pages/auth/LinkedInSettings.jsx";
 import PerformanceDashboard from "./pages/auth/PerformanceDashboard.jsx";
 import PeerSupportPage from "./pages/PeerSupportPage.jsx";
+import ApplicationSuccessAnalysis from "./pages/auth/ApplicationSuccessAnalysis.jsx";
 
 function App() {
   return (
@@ -122,6 +123,7 @@ function App() {
           <Route path="/reports/shared/:token" element={<SharedReportView />} />
           <Route path="/market-intelligence" element={<ProtectedRoute><MarketIntelligenceDashboard /></ProtectedRoute>} />
           <Route path="/performance-dashboard" element={<ProtectedRoute><PerformanceDashboard /></ProtectedRoute>} />
+          <Route path="/application-success" element={<ProtectedRoute><ApplicationSuccessAnalysis /></ProtectedRoute>} />
           <Route path="/mentors" element={<ProtectedRoute><MentorDashboard /></ProtectedRoute>} />
           <Route path="/mentors/progress" element={<ProtectedRoute><ProgressSharing /></ProtectedRoute>} />
           <Route path="/mentors/messages" element={<ProtectedRoute><MentorMessaging /></ProtectedRoute>} />
@@ -131,7 +133,6 @@ function App() {
           <Route path="/advisors" element={<ProtectedRoute><AdvisorsPage /></ProtectedRoute>} />
           <Route path="/advisors/messages" element={<ProtectedRoute><AdvisorMessagingPage /></ProtectedRoute>} />
           <Route path="/peer-support" element={<ProtectedRoute><PeerSupportPage /></ProtectedRoute>} />
-
         </Routes>
       </Router>
     </ErrorBoundary>
