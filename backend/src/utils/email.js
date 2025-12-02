@@ -868,7 +868,7 @@ export const sendThankYouReminderEmail = async (toEmail, fullName, interview) =>
               <p><strong>Tip:</strong> Reference a specific topic from the conversation and restate your enthusiasm.</p>
             </div>
             <div style="text-align:center; margin:28px 0;">
-              <a class="button" href="${process.env.FRONTEND_ORIGIN || 'http://localhost:5173'}/follow-ups">Write Thank-You Note</a>
+              <a class="button" href="${process.env.FRONTEND_ORIGIN || 'http://localhost:5173'}/jobs">Write Thank-You Note</a>
             </div>
             <p>If you've already sent a note, you can mark it as sent in the interview record to dismiss future reminders.</p>
             <p>Best regards,<br><strong>The Nirvana Team</strong></p>
@@ -884,7 +884,7 @@ export const sendThankYouReminderEmail = async (toEmail, fullName, interview) =>
   const textContent = `Hello ${fullName || 'there'},\n\n` +
     `Your interview for ${interview.title} at ${interview.company} (${interviewDate}) has been marked completed.\n\n` +
     `Send a concise thank-you within 24 hours referencing something specific you discussed.\n\n` +
-    `Write Thank-You: ${(process.env.FRONTEND_ORIGIN || 'http://localhost:5173') + '/follow-ups'}\n\n` +
+    `Write Thank-You: ${(process.env.FRONTEND_ORIGIN || 'http://localhost:5173') + '/jobs'}\n\n` +
     `Best regards,\nThe Nirvana Team`;
 
   const transporter = createTransporter();

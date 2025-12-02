@@ -60,6 +60,7 @@ import PeerSupportPage from "./pages/PeerSupportPage.jsx";
 import ApplicationSuccessAnalysis from "./pages/auth/ApplicationSuccessAnalysis.jsx";
 import InterviewPerformance from "./pages/auth/InterviewPerformance.jsx";
 import CompetitiveAnalysis from "./pages/auth/CompetitiveAnalysis.jsx";
+import InformationalInterviewsPage from "./pages/InformationalInterviews.jsx";
 
 function App() {
   return (
@@ -101,6 +102,7 @@ function App() {
           <Route path="/technical-prep/case-study/:caseStudyId" element={<ProtectedRoute><CaseStudyPractice /></ProtectedRoute>} />
           <Route path="/interview-coaching" element={<ProtectedRoute><InterviewCoaching /></ProtectedRoute>} />
           <Route path="/network" element={<ProtectedRoute><Network /></ProtectedRoute>} />
+          <Route path="/informational-interviews" element={<ProtectedRoute><InformationalInterviewsPage /></ProtectedRoute>} />
           <Route path="/writing-practice" element={<ProtectedRoute><WritingPracticePage /></ProtectedRoute>} />
           <Route path="/goals" element={<ProtectedRoute><GoalsPage /></ProtectedRoute>} />
           <Route path="/goals/new" element={<ProtectedRoute><NewGoalPage /></ProtectedRoute>} />
