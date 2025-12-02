@@ -164,8 +164,13 @@ export default function Navbar() {
                                         <NavLink to="/application-success" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Application Success Analysis" onClick={() => setCareerDropdownOpen(false)}>
                                             🎯 Success Analysis
                                         </NavLink>
+<<<<<<< HEAD
                                         <NavLink to="/interview-performance" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Interview Performance Analytics" onClick={() => setCareerDropdownOpen(false)}>
                                             📈 Interview Performance
+=======
+                                        <NavLink to="/competitive-analysis" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Competitive Analysis" onClick={() => setCareerDropdownOpen(false)}>
+                                            🏆 Competitive Analysis
+>>>>>>> 7fa08f1ad1e0038e8dc31f9b85672ebb9836b20b
                                         </NavLink>
                                         <NavLink to="/market-intelligence" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Market Intelligence" onClick={() => setCareerDropdownOpen(false)}>
                                             Market Intelligence
@@ -483,16 +488,26 @@ export default function Navbar() {
                             🎯 Success Analysis
                         </NavLink>
                         <NavLink
+<<<<<<< HEAD
                             to="/interview-performance"
+=======
+                            to="/competitive-analysis"
+>>>>>>> 7fa08f1ad1e0038e8dc31f9b85672ebb9836b20b
                             className={({ isActive }) =>
                                 `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
                                     ? 'bg-primary-900 text-white shadow-md'
                                     : 'text-white hover:bg-primary-700 active:bg-primary-900'
                                 }`
                             }
+<<<<<<< HEAD
                             aria-label="Interview Performance Analytics"
                         >
                             📈 Interview Performance
+=======
+                            aria-label="Competitive Analysis"
+                        >
+                            🏆 Competitive Analysis
+>>>>>>> 7fa08f1ad1e0038e8dc31f9b85672ebb9836b20b
                         </NavLink>
                         <NavLink
                             to="/market-intelligence"
@@ -677,5 +692,5 @@ function DynamicInterviewPrepLinkMobile() {
     );
 }
 
-    export { DynamicInterviewPrepLink, DynamicInterviewPrepLinkMobile };
+export { DynamicInterviewPrepLink, DynamicInterviewPrepLinkMobile };
 

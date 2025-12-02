@@ -44,3 +44,33 @@ export const getMaterialsImpact = async () => {
   const response = await api.get('/api/application-success/materials-impact');
   return response.data;
 };
+
+// ============================================================================
+// UC-105: Success Pattern Recognition API
+// ============================================================================
+
+/**
+ * Get success prediction for a potential application
+ * @param {Object} params - Prediction parameters
+ * @param {string} params.industry - Target industry
+ * @param {string} params.companySize - Target company size
+ * @param {string} params.roleType - Target role type
+ */
+export const getSuccessPrediction = async (params = {}) => {
+  const queryParams = new URLSearchParams();
+  if (params.industry) queryParams.append('industry', params.industry);
+  if (params.companySize) queryParams.append('companySize', params.companySize);
+  if (params.roleType) queryParams.append('roleType', params.roleType);
+
+  const query = queryParams.toString();
+  const response = await api.get(`/api/application-success/prediction${query ? `?${query}` : ''}`);
+  return response.data;
+};
+
+/**
+ * Get pattern evolution and strategy adaptation over time
+ */
+export const getPatternEvolution = async () => {
+  const response = await api.get('/api/application-success/evolution');
+  return response.data;
+};

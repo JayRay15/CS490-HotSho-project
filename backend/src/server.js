@@ -46,7 +46,11 @@ import networkingCampaignRoutes from "./routes/networkingCampaignRoutes.js";
 import accountabilityRoutes from "./routes/accountabilityRoutes.js";
 import peerSupportRoutes from "./routes/peerSupportRoutes.js";
 import applicationSuccessRoutes from "./routes/applicationSuccessRoutes.js";
+<<<<<<< HEAD
 import interviewPerformanceRoutes from "./routes/interviewPerformanceRoutes.js";
+=======
+import competitiveAnalysisRoutes from "./routes/competitiveAnalysisRoutes.js";
+>>>>>>> 7fa08f1ad1e0038e8dc31f9b85672ebb9836b20b
 import { getPublicProject } from "./controllers/profileController.js";
 import { viewSharedReport } from "./controllers/reportController.js";
 import { startDeadlineReminderSchedule } from "./utils/deadlineReminders.js";
@@ -132,8 +136,13 @@ app.use("/api/peer-support", peerSupportRoutes);
 console.log('✅ Peer Support routes registered at /api/peer-support');
 app.use("/api/application-success", applicationSuccessRoutes);
 console.log(' Application Success routes registered at /api/application-success');
+<<<<<<< HEAD
 app.use("/api/interview-performance", interviewPerformanceRoutes);
 console.log(' Interview Performance routes registered at /api/interview-performance');
+=======
+app.use("/api/competitive-analysis", competitiveAnalysisRoutes);
+console.log('✅ Competitive Analysis routes registered at /api/competitive-analysis');
+>>>>>>> 7fa08f1ad1e0038e8dc31f9b85672ebb9836b20b
 
 // Mount profile routes under /api/profile (existing) and also under /api/users
 // so frontend requests to /api/users/... (used elsewhere in the app) resolve correctly.
