@@ -5,6 +5,12 @@ import { successResponse, errorResponse, sendResponse, ERROR_CODES } from "../ut
 import { asyncHandler } from "../middleware/errorHandler.js";
 import { conductComprehensiveResearch, researchCompany } from "../utils/companyResearchService.js";
 
+// Check if Gemini API key is configured
+const GEMINI_CONFIGURED = !!process.env.GEMINI_API_KEY;
+if (!GEMINI_CONFIGURED) {
+  console.warn('[company-research] WARNING: GEMINI_API_KEY is not configured. AI-powered company research will not work. Add GEMINI_API_KEY to your .env file.');
+}
+
 const getUserId = (req) => {
   const auth = typeof req.auth === 'function' ? req.auth() : req.auth;
   return auth?.userId || auth?.payload?.sub;
@@ -22,6 +28,16 @@ export const generateCompanyResearch = asyncHandler(async (req, res) => {
 
   if (!jobId || !companyName) {
     const { response, statusCode } = errorResponse("Job ID and company name are required", 400, ERROR_CODES.VALIDATION_ERROR);
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Check if Gemini API is configured before proceeding
+  if (!GEMINI_CONFIGURED) {
+    const { response, statusCode } = errorResponse(
+      "Company research is temporarily unavailable. Please try again later.",
+      503,
+      ERROR_CODES.SERVICE_UNAVAILABLE
+    );
     return sendResponse(res, response, statusCode);
   }
 
@@ -114,14 +130,17 @@ export const generateCompanyResearch = asyncHandler(async (req, res) => {
     await generateIntelligentQuestions(research, job);
 
   } catch (err) {
-    console.warn('[company-research] AI research failed, falling back to local heuristics', err?.message || err);
-    // Fallback to existing local generators
-    await generateCompanyProfile(research, job);
-    await generateLeadershipInfo(research, companyName);
-    await generateCompetitiveAnalysis(research, job);
-    await generateRecentNews(research, companyName);
-    await generateTalkingPoints(research, job);
-    await generateIntelligentQuestions(research, job);
+    console.error('[company-research] AI research failed:', err?.message || err);
+    if (!GEMINI_CONFIGURED) {
+      console.error('[company-research] GEMINI_API_KEY is not configured - cannot generate AI-powered research');
+    }
+    // Return user-friendly error
+    const { response, statusCode } = errorResponse(
+      "Unable to generate company research at this time. Please try again later.",
+      503,
+      ERROR_CODES.SERVICE_UNAVAILABLE
+    );
+    return sendResponse(res, response, statusCode);
   }
 
   // Populate potential interviewers from interview data if available

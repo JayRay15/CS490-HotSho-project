@@ -30,15 +30,17 @@ export default function Navbar() {
             });
             
             // Store logout message BEFORE clearing session storage
-            // (so it survives the sign out process)
             const logoutMsg = "You have been signed out successfully. If using a shared computer, please also sign out of LinkedIn/Google directly.";
             
             // Clear session storage but immediately set the message
             sessionStorage.clear();
             sessionStorage.setItem("logoutMessage", logoutMsg);
             
-            // Sign out from Clerk with explicit redirect to login
-            await signOut({ redirectUrl: "/login" });
+            // Sign out from Clerk
+            await signOut();
+            
+            // Force redirect to login page after signOut completes
+            window.location.href = "/login";
         } catch (error) {
             console.error("Sign out error:", error);
             // Force redirect even on error
