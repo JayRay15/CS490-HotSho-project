@@ -295,12 +295,16 @@ export default function InviteMentorModal({ isOpen, onClose, onInviteSent }) {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="flex-1 px-4 py-2 text-white rounded-lg transition font-medium disabled:opacity-50"
+                            className="flex-1 px-4 py-2 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                             style={{ backgroundColor: '#777C6D' }}
                             onMouseOver={e => !loading && (e.currentTarget.style.backgroundColor = '#656A5C')}
                             onMouseOut={e => !loading && (e.currentTarget.style.backgroundColor = '#777C6D')}
                         >
-                            {loading ? "Sending..." : "Send Invitation"}
+                            {loading ? (
+                                <span>Sending...</span>
+                            ) : (
+                                <span>Send Invitation</span>
+                            )}
                         </button>
                     </div>
                 </form>

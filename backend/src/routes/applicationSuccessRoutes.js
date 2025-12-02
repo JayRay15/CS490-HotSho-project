@@ -6,6 +6,8 @@ import {
   getOptimizationRecommendations,
   getTimingAnalysis,
   getMaterialsImpact,
+  getSuccessPrediction,
+  getPatternEvolution,
 } from '../controllers/applicationSuccessController.js';
 
 const router = express.Router();
@@ -48,5 +50,23 @@ router.get('/timing', checkJwt, getTimingAnalysis);
  * @access  Protected
  */
 router.get('/materials-impact', checkJwt, getMaterialsImpact);
+
+// ============================================================================
+// UC-105: Success Pattern Recognition Routes
+// ============================================================================
+
+/**
+ * @route   GET /api/application-success/prediction
+ * @desc    Generate success prediction for potential applications
+ * @access  Protected
+ */
+router.get('/prediction', checkJwt, getSuccessPrediction);
+
+/**
+ * @route   GET /api/application-success/evolution
+ * @desc    Track pattern evolution and strategy adaptation over time
+ * @access  Protected
+ */
+router.get('/evolution', checkJwt, getPatternEvolution);
 
 export default router;
