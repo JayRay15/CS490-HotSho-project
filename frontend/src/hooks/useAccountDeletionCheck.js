@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useAuth } from '@clerk/clerk-react';
+import { useAuth, useClerk } from '@clerk/clerk-react';
 import api, { setAuthToken } from '../api/axios';
 
 /**
@@ -12,7 +12,8 @@ import api, { setAuthToken } from '../api/axios';
  * useAccountDeletionCheck();
  */
 export const useAccountDeletionCheck = () => {
-  const { isSignedIn, getToken, signOut } = useAuth();
+  const { isSignedIn, getToken } = useAuth();
+  const { signOut } = useClerk();
 
   useEffect(() => {
     const checkAccountStatus = async () => {
@@ -34,7 +35,8 @@ export const useAccountDeletionCheck = () => {
             "logoutMessage", 
             err?.response?.data?.message || "Your account has been deleted."
           );
-          signOut();
+          // Use signOut with redirectUrl to ensure redirect to login
+          signOut({ redirectUrl: "/login" });
         }
         // For other errors (network, 500, etc.), don't force logout
       }

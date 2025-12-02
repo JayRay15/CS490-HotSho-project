@@ -1,5 +1,5 @@
-import { Link, NavLink, useLocation } from "react-router-dom";
-import { SignedIn, SignedOut, UserButton } from "@clerk/clerk-react";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { SignedIn, SignedOut, useClerk } from "@clerk/clerk-react";
 import { useEffect, useState } from "react";
 import { useAuth, useUser } from "@clerk/clerk-react";
 import api, { setAuthToken } from "../api/axios";
@@ -8,11 +8,44 @@ import Logo from "./Logo";
 export default function Navbar() {
     const { getToken } = useAuth();
     const { user } = useUser();
+    const { signOut } = useClerk();
+    const navigate = useNavigate();
     const location = useLocation();
     const [profilePicture, setProfilePicture] = useState(null);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [careerDropdownOpen, setCareerDropdownOpen] = useState(false);
     const [dropdownTimeout, setDropdownTimeout] = useState(null);
+
+    // Full sign out - clears all sessions and storage
+    const handleFullSignOut = async () => {
+        try {
+            // Clear all local storage
+            localStorage.clear();
+            
+            // Clear all cookies (including OAuth provider cookies)
+            document.cookie.split(";").forEach((c) => {
+                document.cookie = c
+                    .replace(/^ +/, "")
+                    .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+            });
+            
+            // Store logout message BEFORE clearing session storage
+            // (so it survives the sign out process)
+            const logoutMsg = "You have been signed out successfully. If using a shared computer, please also sign out of LinkedIn/Google directly.";
+            
+            // Clear session storage but immediately set the message
+            sessionStorage.clear();
+            sessionStorage.setItem("logoutMessage", logoutMsg);
+            
+            // Sign out from Clerk with explicit redirect to login
+            await signOut({ redirectUrl: "/login" });
+        } catch (error) {
+            console.error("Sign out error:", error);
+            // Force redirect even on error
+            sessionStorage.setItem("logoutMessage", "You have been signed out.");
+            window.location.href = "/login";
+        }
+    };
 
     // Fetch user's custom profile picture
     useEffect(() => {
@@ -198,51 +231,30 @@ export default function Navbar() {
                                     </div>
                                 )}
                             </div>
-                            <div className="ml-3 custom-user-button">
-                                <UserButton
-                                    afterSignOutUrl="/login"
-                                    appearance={{
-                                        elements: {
-                                            avatarBox: "w-8 h-8",
-                                            userButtonAvatarBox: "w-8 h-8"
-                                        }
-                                    }}
-                                />
-                                {profilePicture && (
-                                    <style>{`
-                                .custom-user-button [class*="avatarBox"],
-                                .custom-user-button [class*="Avatar"] {
-                                    background-image: url('${profilePicture}') !important;
-                                    background-size: cover !important;
-                                    background-position: center !important;
-                                    border-radius: 9999px !important;
-                                    overflow: hidden !important;
-                                    display: block !important;
-                                }
-                                .custom-user-button [class*="avatarBox"] img,
-                                .custom-user-button [class*="Avatar"] img {
-                                    opacity: 0 !important;
-                                }
-                                /* Also apply to menu dropdown */
-                                [class*="userButton"][class*="popover"] [class*="avatarBox"],
-                                [class*="userButton"][class*="popover"] [class*="Avatar"],
-                                [class*="userProfile"] [class*="avatarBox"],
-                                [class*="userProfile"] [class*="Avatar"] {
-                                    background-image: url('${profilePicture}') !important;
-                                    background-size: cover !important;
-                                    background-position: center !important;
-                                    border-radius: 9999px !important;
-                                    overflow: hidden !important;
-                                    display: block !important;
-                                }
-                                [class*="userButton"][class*="popover"] [class*="avatarBox"] img,
-                                [class*="userButton"][class*="popover"] [class*="Avatar"] img,
-                                [class*="userProfile"] [class*="avatarBox"] img,
-                                [class*="userProfile"] [class*="Avatar"] img {
-                                    opacity: 0 !important;
-                                }
-                            `}</style>
-                                )}
+                            <div className="ml-3 flex items-center gap-3">
+                                {/* User avatar */}
+                                <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
+                                    {profilePicture ? (
+                                        <img src={profilePicture} alt="Profile" className="w-full h-full object-cover" />
+                                    ) : user?.imageUrl ? (
+                                        <img src={user.imageUrl} alt="Profile" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <span className="text-gray-500 text-sm font-medium">
+                                            {user?.firstName?.[0] || user?.emailAddresses?.[0]?.emailAddress?.[0]?.toUpperCase() || '?'}
+                                        </span>
+                                    )}
+                                </div>
+                                {/* Sign Out button */}
+                                <button
+                                    onClick={handleFullSignOut}
+                                    className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-1.5"
+                                    aria-label="Sign Out"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                    </svg>
+                                    Sign Out
+                                </button>
                             </div>
                         </SignedIn>
                     </div>
@@ -608,53 +620,18 @@ export default function Navbar() {
                         >
                             💼 LinkedIn Settings
                         </NavLink>
-                        <div className="pt-3 pb-2 flex items-center space-x-3 px-4">
-                            <span className="text-sm text-primary-50">Account</span>
-                            <div className="custom-user-button">
-                                <UserButton
-                                    afterSignOutUrl="/login"
-                                    appearance={{
-                                        elements: {
-                                            avatarBox: "w-8 h-8",
-                                            userButtonAvatarBox: "w-8 h-8"
-                                        }
-                                    }}
-                                />
-                                {profilePicture && (
-                                    <style>{`
-                                        .custom-user-button [class*="avatarBox"],
-                                        .custom-user-button [class*="Avatar"] {
-                                            background-image: url('${profilePicture}') !important;
-                                            background-size: cover !important;
-                                            background-position: center !important;
-                                            border-radius: 9999px !important;
-                                            overflow: hidden !important;
-                                            display: block !important;
-                                        }
-                                        .custom-user-button [class*="avatarBox"] img,
-                                        .custom-user-button [class*="Avatar"] img {
-                                            opacity: 0 !important;
-                                        }
-                                        [class*="userButton"][class*="popover"] [class*="avatarBox"],
-                                        [class*="userButton"][class*="popover"] [class*="Avatar"],
-                                        [class*="userProfile"] [class*="avatarBox"],
-                                        [class*="userProfile"] [class*="Avatar"] {
-                                            background-image: url('${profilePicture}') !important;
-                                            background-size: cover !important;
-                                            background-position: center !important;
-                                            border-radius: 9999px !important;
-                                            overflow: hidden !important;
-                                            display: block !important;
-                                        }
-                                        [class*="userButton"][class*="popover"] [class*="avatarBox"] img,
-                                        [class*="userButton"][class*="popover"] [class*="Avatar"] img,
-                                        [class*="userProfile"] [class*="avatarBox"] img,
-                                        [class*="userProfile"] [class*="Avatar"] img {
-                                            opacity: 0 !important;
-                                        }
-                                    `}</style>
-                                )}
-                            </div>
+                        {/* Sign Out button for mobile */}
+                        <div className="pt-3 pb-2 px-4">
+                            <button
+                                onClick={handleFullSignOut}
+                                className="w-full px-4 py-2.5 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors flex items-center justify-center gap-2"
+                                aria-label="Sign Out"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                </svg>
+                                Sign Out
+                            </button>
                         </div>
                     </SignedIn>
                 </div>
