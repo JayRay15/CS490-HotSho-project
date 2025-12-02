@@ -363,7 +363,7 @@ export const getSuccessPrediction = asyncHandler(async (req, res) => {
 
   // Build historical patterns
   const historicalPatterns = buildHistoricalPatterns(allJobs, successfulJobs);
-  
+
   // Generate prediction
   const prediction = generateSuccessPrediction(
     { industry, companySize, roleType },
@@ -425,7 +425,7 @@ export const getPatternEvolution = asyncHandler(async (req, res) => {
  */
 function buildHistoricalPatterns(allJobs, successfulJobs) {
   const patterns = {};
-  
+
   // Industry success rates
   const industryStats = {};
   allJobs.forEach(job => {
@@ -434,7 +434,7 @@ function buildHistoricalPatterns(allJobs, successfulJobs) {
     industryStats[industry].total++;
     if (successfulJobs.find(s => s._id.equals(job._id))) industryStats[industry].success++;
   });
-  
+
   patterns.topIndustries = Object.entries(industryStats)
     .filter(([_, stats]) => stats.total >= 2)
     .map(([industry, stats]) => ({
@@ -444,7 +444,7 @@ function buildHistoricalPatterns(allJobs, successfulJobs) {
     }))
     .sort((a, b) => parseFloat(b.successRate) - parseFloat(a.successRate))
     .slice(0, 5);
-  
+
   // Company size success rates
   const sizeStats = {};
   allJobs.forEach(job => {
@@ -453,7 +453,7 @@ function buildHistoricalPatterns(allJobs, successfulJobs) {
     sizeStats[size].total++;
     if (successfulJobs.find(s => s._id.equals(job._id))) sizeStats[size].success++;
   });
-  
+
   patterns.bestCompanySize = Object.entries(sizeStats)
     .filter(([_, stats]) => stats.total >= 2)
     .map(([size, stats]) => ({
@@ -462,7 +462,7 @@ function buildHistoricalPatterns(allJobs, successfulJobs) {
       count: stats.total
     }))
     .sort((a, b) => parseFloat(b.successRate) - parseFloat(a.successRate))[0];
-  
+
   // Best days for application
   const dayStats = {};
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -472,7 +472,7 @@ function buildHistoricalPatterns(allJobs, successfulJobs) {
     dayStats[day].total++;
     if (successfulJobs.find(s => s._id.equals(job._id))) dayStats[day].success++;
   });
-  
+
   patterns.bestDays = Object.entries(dayStats)
     .filter(([_, stats]) => stats.total >= 2)
     .map(([day, stats]) => ({
@@ -482,7 +482,7 @@ function buildHistoricalPatterns(allJobs, successfulJobs) {
     }))
     .sort((a, b) => parseFloat(b.successRate) - parseFloat(a.successRate))
     .slice(0, 3);
-  
+
   // Role type success rates
   const roleStats = {};
   allJobs.forEach(job => {
@@ -491,7 +491,7 @@ function buildHistoricalPatterns(allJobs, successfulJobs) {
     roleStats[role].total++;
     if (successfulJobs.find(s => s._id.equals(job._id))) roleStats[role].success++;
   });
-  
+
   patterns.bestRoleTypes = Object.entries(roleStats)
     .filter(([_, stats]) => stats.total >= 2)
     .map(([roleType, stats]) => ({
@@ -501,7 +501,7 @@ function buildHistoricalPatterns(allJobs, successfulJobs) {
     }))
     .sort((a, b) => parseFloat(b.successRate) - parseFloat(a.successRate))
     .slice(0, 5);
-  
+
   return patterns;
 }
 
@@ -576,9 +576,9 @@ function analyzeByCompanySize(jobs, successStatuses, baselineRate) {
         successRate: parseFloat(successRate.toFixed(1)),
         vsAverage: parseFloat((successRate - baselineRate).toFixed(1)),
         statisticalSignificance: significance,
-        sizeCategory: size === "Unknown" ? "unknown" : 
+        sizeCategory: size === "Unknown" ? "unknown" :
           ["1-10", "11-50"].includes(size) ? "startup" :
-          ["51-200", "201-500"].includes(size) ? "mid-size" : "enterprise",
+            ["51-200", "201-500"].includes(size) ? "mid-size" : "enterprise",
       };
     })
     .sort((a, b) => {
@@ -589,7 +589,7 @@ function analyzeByCompanySize(jobs, successStatuses, baselineRate) {
 
   return {
     bySize: analysis,
-    bestPerforming: analysis.reduce((best, curr) => 
+    bestPerforming: analysis.reduce((best, curr) =>
       curr.total >= 3 && curr.successRate > (best?.successRate || 0) ? curr : best, null),
   };
 }
@@ -769,9 +769,9 @@ function analyzeMaterialsImpact(jobs, resumes, coverLetters, successStatuses) {
       baseline: overallStats,
     },
     customizationCorrelation: correlation,
-    recommendation: correlation.correlation > 0.2 
+    recommendation: correlation.correlation > 0.2
       ? "Custom materials significantly improve your success rate"
-      : correlation.correlation > 0 
+      : correlation.correlation > 0
         ? "Custom materials have a moderate positive impact"
         : "Consider improving the quality of your application materials",
   };
@@ -797,8 +797,8 @@ function analyzeTimingPatterns(jobs, successStatuses) {
     // Hour of day analysis
     const hourRange = hour < 9 ? "Early Morning (before 9am)" :
       hour < 12 ? "Morning (9am-12pm)" :
-      hour < 17 ? "Afternoon (12pm-5pm)" :
-      hour < 21 ? "Evening (5pm-9pm)" : "Night (after 9pm)";
+        hour < 17 ? "Afternoon (12pm-5pm)" :
+          hour < 21 ? "Evening (5pm-9pm)" : "Night (after 9pm)";
     if (!hourStats[hourRange]) hourStats[hourRange] = { total: 0, successful: 0 };
     hourStats[hourRange].total++;
     if (successStatuses.includes(job.status)) hourStats[hourRange].successful++;
@@ -832,7 +832,7 @@ function analyzeTimingPatterns(jobs, successStatuses) {
 
 function identifyOptimalTiming(jobs, successStatuses) {
   const timingAnalysis = analyzeTimingPatterns(jobs, successStatuses);
-  
+
   return {
     optimalDay: timingAnalysis.bestDay?.day || "Not enough data",
     optimalTime: timingAnalysis.bestTime?.timeRange || "Not enough data",
@@ -1058,10 +1058,10 @@ function identifySuccessPatterns(allJobs, successfulJobs) {
 
   // Pattern 3: Interview to Offer Conversion
   if (interviewJobs.length >= 3) {
-    const interviewToOfferRate = offerJobs.length > 0 
+    const interviewToOfferRate = offerJobs.length > 0
       ? ((offerJobs.length / interviewJobs.length) * 100).toFixed(1)
       : "0";
-    
+
     patterns.push({
       type: "Interview Conversion",
       description: `${interviewToOfferRate}% of your interviews lead to offers`,
@@ -1070,7 +1070,7 @@ function identifySuccessPatterns(allJobs, successfulJobs) {
         totalOffers: offerJobs.length,
         conversionRate: interviewToOfferRate,
       },
-      recommendation: parseFloat(interviewToOfferRate) < 30 
+      recommendation: parseFloat(interviewToOfferRate) < 30
         ? "Focus on interview preparation to improve conversion"
         : "Your interview skills are strong - keep it up!",
     });
@@ -1079,7 +1079,7 @@ function identifySuccessPatterns(allJobs, successfulJobs) {
   // Pattern 4: Application to Interview Conversion
   if (allJobs.length >= 5) {
     const appToInterviewRate = ((interviewJobs.length / allJobs.length) * 100).toFixed(1);
-    
+
     patterns.push({
       type: "Application to Interview",
       description: `${appToInterviewRate}% of applications lead to interviews`,
@@ -1097,11 +1097,11 @@ function identifySuccessPatterns(allJobs, successfulJobs) {
   // Pattern 5: Preparation correlation (jobs with notes/preparation tend to be more successful)
   const jobsWithPrep = allJobs.filter(j => j.notes && j.notes.length > 50);
   const jobsWithoutPrep = allJobs.filter(j => !j.notes || j.notes.length <= 50);
-  
+
   if (jobsWithPrep.length >= 3 && jobsWithoutPrep.length >= 3) {
     const prepSuccessRate = (jobsWithPrep.filter(j => successfulJobs.includes(j)).length / jobsWithPrep.length) * 100;
     const noPrepSuccessRate = (jobsWithoutPrep.filter(j => successfulJobs.includes(j)).length / jobsWithoutPrep.length) * 100;
-    
+
     if (prepSuccessRate > noPrepSuccessRate + 5) {
       patterns.push({
         type: "Preparation Impact",
@@ -1138,7 +1138,7 @@ function identifySuccessPatterns(allJobs, successfulJobs) {
   if (monthPatterns.length >= 2) {
     const bestMonth = monthPatterns[0];
     const worstMonth = monthPatterns[monthPatterns.length - 1];
-    
+
     if (parseFloat(bestMonth.successRate) - parseFloat(worstMonth.successRate) > 15) {
       patterns.push({
         type: "Market Timing",
@@ -1268,7 +1268,7 @@ function getWeeksDifference(startDate, endDate) {
 export function generateSuccessPrediction(jobData, historicalPatterns) {
   const factors = [];
   let baseScore = 50; // Start with 50% base probability
-  
+
   // Factor 1: Industry match (weight: 25%)
   if (historicalPatterns.topIndustries && jobData.industry) {
     const industryMatch = historicalPatterns.topIndustries.find(
@@ -1285,7 +1285,7 @@ export function generateSuccessPrediction(jobData, historicalPatterns) {
       });
     }
   }
-  
+
   // Factor 2: Company size match (weight: 15%)
   if (historicalPatterns.bestCompanySize && jobData.companySize) {
     const sizeMatch = jobData.companySize === historicalPatterns.bestCompanySize.size;
@@ -1295,12 +1295,12 @@ export function generateSuccessPrediction(jobData, historicalPatterns) {
       factor: "Company Size",
       impact: sizeMatch ? "positive" : "neutral",
       score: sizeScore,
-      detail: sizeMatch 
+      detail: sizeMatch
         ? `Matches your strongest company size (${historicalPatterns.bestCompanySize.size})`
         : `Different from your optimal company size`
     });
   }
-  
+
   // Factor 3: Timing optimization (weight: 10%)
   const dayOfWeek = new Date().getDay();
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -1312,12 +1312,12 @@ export function generateSuccessPrediction(jobData, historicalPatterns) {
       factor: "Submission Timing",
       impact: isOptimalDay ? "positive" : "neutral",
       score: timingScore,
-      detail: isOptimalDay 
+      detail: isOptimalDay
         ? `${days[dayOfWeek]} is one of your optimal application days`
         : `Consider applying on ${historicalPatterns.bestDays[0]?.day || "weekdays"} for better results`
     });
   }
-  
+
   // Factor 4: Role type match (weight: 15%)
   if (historicalPatterns.bestRoleTypes && jobData.roleType) {
     const roleMatch = historicalPatterns.bestRoleTypes.find(
@@ -1334,15 +1334,15 @@ export function generateSuccessPrediction(jobData, historicalPatterns) {
       });
     }
   }
-  
+
   // Ensure score is within bounds
   const finalScore = Math.max(5, Math.min(95, baseScore));
-  
+
   // Determine confidence level
   let confidence = "low";
   if (historicalPatterns.sampleSize >= 20) confidence = "high";
   else if (historicalPatterns.sampleSize >= 10) confidence = "medium";
-  
+
   return {
     successProbability: Math.round(finalScore),
     confidence,
@@ -1358,7 +1358,7 @@ export function generateSuccessPrediction(jobData, historicalPatterns) {
  */
 function generatePredictionRecommendations(factors, patterns) {
   const recommendations = [];
-  
+
   const negativeFactors = factors.filter(f => f.impact === "negative" || f.score < 0);
   negativeFactors.forEach(factor => {
     if (factor.factor === "Industry Match") {
@@ -1370,20 +1370,20 @@ function generatePredictionRecommendations(factors, patterns) {
     }
     if (factor.factor === "Submission Timing") {
       recommendations.push({
-        priority: "medium", 
+        priority: "medium",
         action: `Apply on ${patterns.bestDays?.[0]?.day || "Monday-Wednesday"}`,
         detail: "Your historical data shows better success rates on these days"
       });
     }
   });
-  
+
   // Always add general recommendations
   recommendations.push({
     priority: "medium",
     action: "Customize your application materials",
     detail: "Tailored resumes and cover letters typically improve success rates by 20-40%"
   });
-  
+
   return recommendations.slice(0, 3);
 }
 
@@ -1398,15 +1398,15 @@ export function analyzePatternEvolution(allJobs) {
       evolution: []
     };
   }
-  
+
   // Sort jobs by date
   const sortedJobs = [...allJobs].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-  
+
   // Divide into time periods (quarters or months based on data span)
   const firstDate = new Date(sortedJobs[0].createdAt);
   const lastDate = new Date(sortedJobs[sortedJobs.length - 1].createdAt);
   const daySpan = (lastDate - firstDate) / (1000 * 60 * 60 * 24);
-  
+
   let periodSize;
   let periodLabel;
   if (daySpan > 180) {
@@ -1419,27 +1419,27 @@ export function analyzePatternEvolution(allJobs) {
     periodSize = 14; // Bi-weekly
     periodLabel = "Period";
   }
-  
+
   const successStatuses = ["Interview", "Phone Screen", "Offer", "Accepted"];
   const periods = [];
   let currentPeriodStart = firstDate;
   let periodIndex = 1;
-  
+
   while (currentPeriodStart < lastDate) {
     const periodEnd = new Date(currentPeriodStart.getTime() + periodSize * 24 * 60 * 60 * 1000);
     const periodJobs = sortedJobs.filter(j => {
       const jobDate = new Date(j.createdAt);
       return jobDate >= currentPeriodStart && jobDate < periodEnd;
     });
-    
+
     if (periodJobs.length > 0) {
       const successCount = periodJobs.filter(j => successStatuses.includes(j.status)).length;
       const successRate = (successCount / periodJobs.length) * 100;
-      
+
       // Calculate strategy metrics
       const avgApplicationsPerWeek = periodJobs.length / Math.max(1, periodSize / 7);
       const topIndustries = getTopCategories(periodJobs.filter(j => successStatuses.includes(j.status)), "industry", 2);
-      
+
       periods.push({
         period: `${periodLabel} ${periodIndex}`,
         startDate: currentPeriodStart.toISOString().split("T")[0],
@@ -1452,14 +1452,14 @@ export function analyzePatternEvolution(allJobs) {
         trend: periodIndex > 1 ? calculateTrend(periods[periods.length - 1]?.successRate || 0, successRate) : "baseline"
       });
     }
-    
+
     currentPeriodStart = periodEnd;
     periodIndex++;
   }
-  
+
   // Calculate overall evolution insights
   const evolutionInsights = generateEvolutionInsights(periods);
-  
+
   return {
     hasEnoughData: true,
     periodType: periodLabel,
@@ -1478,14 +1478,14 @@ function calculateTrend(previous, current) {
 
 function generateEvolutionInsights(periods) {
   if (periods.length < 2) return [];
-  
+
   const insights = [];
   const firstHalf = periods.slice(0, Math.floor(periods.length / 2));
   const secondHalf = periods.slice(Math.floor(periods.length / 2));
-  
+
   const firstHalfAvg = firstHalf.reduce((sum, p) => sum + p.successRate, 0) / firstHalf.length;
   const secondHalfAvg = secondHalf.reduce((sum, p) => sum + p.successRate, 0) / secondHalf.length;
-  
+
   if (secondHalfAvg > firstHalfAvg + 5) {
     insights.push({
       type: "positive_trend",
@@ -1499,7 +1499,7 @@ function generateEvolutionInsights(periods) {
       detail: `Consider revisiting strategies that worked in earlier periods`
     });
   }
-  
+
   // Check for consistency
   const successRates = periods.map(p => p.successRate);
   const variance = calculateVariance(successRates);
@@ -1510,7 +1510,7 @@ function generateEvolutionInsights(periods) {
       detail: "Low variance in success rates indicates stable performance"
     });
   }
-  
+
   return insights;
 }
 
@@ -1522,13 +1522,13 @@ function calculateVariance(values) {
 
 function identifyStrategyChanges(periods) {
   if (periods.length < 3) return [];
-  
+
   const changes = [];
-  
+
   for (let i = 1; i < periods.length; i++) {
     const current = periods[i];
     const previous = periods[i - 1];
-    
+
     // Check for volume changes
     if (current.avgApplicationsPerWeek > previous.avgApplicationsPerWeek * 1.5) {
       changes.push({
@@ -1538,7 +1538,7 @@ function identifyStrategyChanges(periods) {
         detail: `Application volume increased by ${((current.avgApplicationsPerWeek / previous.avgApplicationsPerWeek - 1) * 100).toFixed(0)}%`
       });
     }
-    
+
     // Check for industry focus changes
     const industryShift = current.topSuccessfulIndustries.some(
       i => !previous.topSuccessfulIndustries.includes(i)
@@ -1552,6 +1552,6 @@ function identifyStrategyChanges(periods) {
       });
     }
   }
-  
+
   return changes;
 }

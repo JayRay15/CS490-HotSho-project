@@ -61,7 +61,7 @@ export const getSuccessPrediction = async (params = {}) => {
   if (params.industry) queryParams.append('industry', params.industry);
   if (params.companySize) queryParams.append('companySize', params.companySize);
   if (params.roleType) queryParams.append('roleType', params.roleType);
-  
+
   const query = queryParams.toString();
   const response = await api.get(`/api/application-success/prediction${query ? `?${query}` : ''}`);
   return response.data;

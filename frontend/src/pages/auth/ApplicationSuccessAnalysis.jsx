@@ -58,15 +58,21 @@ export default function ApplicationSuccessAnalysis() {
     }
   };
 
+  const [predictionError, setPredictionError] = useState(null);
+
   const loadPrediction = async (params = {}) => {
     try {
       setPredictionLoading(true);
+      setPredictionError(null);
       const token = await getToken();
       setAuthToken(token);
       const predictionData = await getSuccessPrediction(params);
-      setPrediction(predictionData.data);
+      console.log("Prediction response:", predictionData);
+      // The API returns { data: { hasData, prediction, basedOn } }
+      setPrediction(predictionData.data || predictionData);
     } catch (err) {
       console.error("Failed to load prediction:", err);
+      setPredictionError(err.response?.data?.message || "Failed to load prediction");
     } finally {
       setPredictionLoading(false);
     }
@@ -78,7 +84,8 @@ export default function ApplicationSuccessAnalysis() {
       const token = await getToken();
       setAuthToken(token);
       const evolutionData = await getPatternEvolution();
-      setEvolution(evolutionData.data);
+      console.log("Evolution response:", evolutionData);
+      setEvolution(evolutionData.data || evolutionData);
     } catch (err) {
       console.error("Failed to load evolution:", err);
     } finally {
@@ -186,11 +193,10 @@ export default function ApplicationSuccessAnalysis() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 rounded-lg font-medium transition ${
-              activeTab === tab.id
+            className={`px-4 py-2 rounded-lg font-medium transition ${activeTab === tab.id
                 ? "bg-blue-600 text-white"
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
+              }`}
           >
             {tab.icon} {tab.label}
           </button>
@@ -203,19 +209,20 @@ export default function ApplicationSuccessAnalysis() {
         {activeTab === "industry" && <IndustryTab analysis={analysis} />}
         {activeTab === "patterns" && <PatternsTab patterns={patterns} analysis={analysis} />}
         {activeTab === "prediction" && (
-          <PredictionTab 
-            prediction={prediction} 
-            onLoadPrediction={loadPrediction} 
-            loading={predictionLoading} 
+          <PredictionTab
+            prediction={prediction}
+            onLoadPrediction={loadPrediction}
+            loading={predictionLoading}
+            error={predictionError}
             analysis={analysis}
           />
         )}
         {activeTab === "evolution" && (
-          <EvolutionTab 
-            evolution={evolution} 
-            onLoadEvolution={loadEvolution} 
+          <EvolutionTab
+            evolution={evolution}
+            onLoadEvolution={loadEvolution}
             loading={evolutionLoading}
-            analysis={analysis} 
+            analysis={analysis}
           />
         )}
         {activeTab === "materials" && <MaterialsTab analysis={analysis} />}
@@ -286,13 +293,12 @@ function OverviewTab({ analysis }) {
             {analysis.recommendations.slice(0, 3).map((rec, idx) => (
               <div
                 key={idx}
-                className={`p-3 rounded-lg border-l-4 ${
-                  rec.priority === "high"
+                className={`p-3 rounded-lg border-l-4 ${rec.priority === "high"
                     ? "bg-red-50 border-red-500"
                     : rec.priority === "medium"
-                    ? "bg-yellow-50 border-yellow-500"
-                    : "bg-blue-50 border-blue-500"
-                }`}
+                      ? "bg-yellow-50 border-yellow-500"
+                      : "bg-blue-50 border-blue-500"
+                  }`}
               >
                 <div className="font-medium">{rec.title}</div>
                 <div className="text-sm text-gray-600">{rec.description}</div>
@@ -395,9 +401,8 @@ function IndustryTab({ analysis }) {
           {companySizeAnalysis.bySize.map((item, idx) => (
             <div
               key={idx}
-              className={`p-4 rounded-lg text-center ${
-                item.vsAverage > 0 ? "bg-green-50" : item.vsAverage < 0 ? "bg-red-50" : "bg-gray-50"
-              }`}
+              className={`p-4 rounded-lg text-center ${item.vsAverage > 0 ? "bg-green-50" : item.vsAverage < 0 ? "bg-red-50" : "bg-gray-50"
+                }`}
             >
               <div className="text-sm text-gray-600 mb-1">{item.companySize}</div>
               <div className="text-2xl font-bold">{item.successRate}%</div>
@@ -500,13 +505,13 @@ function PatternsTab({ patterns, analysis }) {
   }
 
   // Group patterns by category
-  const conversionPatterns = patterns.patterns.filter(p => 
+  const conversionPatterns = patterns.patterns.filter(p =>
     ["Interview Conversion", "Application to Interview"].includes(p.type)
   );
-  const timingPatterns = patterns.patterns.filter(p => 
+  const timingPatterns = patterns.patterns.filter(p =>
     ["Optimal Timing", "Market Timing", "Response Velocity"].includes(p.type)
   );
-  const strategyPatterns = patterns.patterns.filter(p => 
+  const strategyPatterns = patterns.patterns.filter(p =>
     ["Industry Strength", "Company Size Preference", "Preparation Impact"].includes(p.type)
   );
 
@@ -798,13 +803,12 @@ function MaterialsTab({ analysis }) {
             <div className="flex items-center gap-2">
               <div className="flex-1 h-4 bg-gray-200 rounded-full overflow-hidden">
                 <div
-                  className={`h-full rounded-full ${
-                    materialsAnalysis.customizationCorrelation.strength === "strong"
+                  className={`h-full rounded-full ${materialsAnalysis.customizationCorrelation.strength === "strong"
                       ? "bg-green-500"
                       : materialsAnalysis.customizationCorrelation.strength === "moderate"
-                      ? "bg-yellow-500"
-                      : "bg-gray-400"
-                  }`}
+                        ? "bg-yellow-500"
+                        : "bg-gray-400"
+                    }`}
                   style={{
                     width: `${Math.abs(materialsAnalysis.customizationCorrelation.correlation) * 100}%`,
                   }}
@@ -875,9 +879,8 @@ function TimingTab({ analysis }) {
           {timingAnalysis.byDayOfWeek.map((day, idx) => (
             <div
               key={idx}
-              className={`p-3 rounded-lg text-center ${
-                day.successRate >= 20 ? "bg-green-100" : day.successRate >= 10 ? "bg-yellow-100" : "bg-gray-100"
-              }`}
+              className={`p-3 rounded-lg text-center ${day.successRate >= 20 ? "bg-green-100" : day.successRate >= 10 ? "bg-yellow-100" : "bg-gray-100"
+                }`}
             >
               <div className="text-xs text-gray-600">{day.day.slice(0, 3)}</div>
               <div className="text-lg font-bold">{day.successRate}%</div>
@@ -898,9 +901,8 @@ function TimingTab({ analysis }) {
                 <div className="flex items-center gap-2">
                   <div className="flex-1 h-6 bg-gray-200 rounded-full overflow-hidden">
                     <div
-                      className={`h-full rounded-full ${
-                        time.successRate >= 20 ? "bg-green-500" : time.successRate >= 10 ? "bg-yellow-500" : "bg-gray-400"
-                      }`}
+                      className={`h-full rounded-full ${time.successRate >= 20 ? "bg-green-500" : time.successRate >= 10 ? "bg-yellow-500" : "bg-gray-400"
+                        }`}
                       style={{ width: `${Math.min(time.successRate, 100)}%` }}
                     />
                   </div>
@@ -919,12 +921,13 @@ function TimingTab({ analysis }) {
 // ============================================================================
 // UC-105: Prediction Tab - Success Probability Prediction
 // ============================================================================
-function PredictionTab({ prediction, onLoadPrediction, loading, analysis }) {
+function PredictionTab({ prediction, onLoadPrediction, loading, error, analysis }) {
   const [industry, setIndustry] = useState("");
   const [companySize, setCompanySize] = useState("");
   const [roleType, setRoleType] = useState("");
 
   const handlePredict = () => {
+    console.log("Predict button clicked", { industry, companySize, roleType });
     onLoadPrediction({ industry, companySize, roleType });
   };
 
@@ -936,7 +939,7 @@ function PredictionTab({ prediction, onLoadPrediction, loading, analysis }) {
         <p className="text-gray-600 mb-4">
           Enter details about a potential application to predict your success probability based on historical patterns.
         </p>
-        
+
         <div className="grid md:grid-cols-3 gap-4 mb-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
@@ -982,11 +985,11 @@ function PredictionTab({ prediction, onLoadPrediction, loading, analysis }) {
             </select>
           </div>
         </div>
-        
-        <button
+
+        <Button
           onClick={handlePredict}
           disabled={loading}
-          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          className="flex items-center gap-2"
         >
           {loading ? (
             <>
@@ -996,14 +999,36 @@ function PredictionTab({ prediction, onLoadPrediction, loading, analysis }) {
           ) : (
             <>🔮 Predict Success</>
           )}
-        </button>
+        </Button>
+
+        {error && (
+          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700">
+            ⚠️ {error}
+          </div>
+        )}
+
+        {/* Not enough data - inline message */}
+        {prediction && prediction.hasData === false && (
+          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-300 rounded-lg">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">📊</span>
+              <div>
+                <p className="font-semibold text-yellow-800">{prediction.message || "Not enough data for prediction"}</p>
+                <p className="text-sm text-yellow-700">
+                  You have <strong>{prediction.currentCount || 0}</strong> applications.
+                  Need at least <strong>{prediction.minimumRequired || 5}</strong> for predictions.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* Prediction Results */}
       {prediction?.prediction && (
         <Card>
           <h3 className="text-lg font-semibold mb-4">📊 Prediction Results</h3>
-          
+
           {/* Success Probability Gauge */}
           <div className="flex items-center justify-center mb-6">
             <div className="relative w-48 h-48">
@@ -1021,8 +1046,8 @@ function PredictionTab({ prediction, onLoadPrediction, loading, analysis }) {
                   cy="96"
                   r="80"
                   fill="none"
-                  stroke={prediction.prediction.successProbability >= 60 ? "#22c55e" : 
-                         prediction.prediction.successProbability >= 40 ? "#eab308" : "#ef4444"}
+                  stroke={prediction.prediction.successProbability >= 60 ? "#22c55e" :
+                    prediction.prediction.successProbability >= 40 ? "#eab308" : "#ef4444"}
                   strokeWidth="16"
                   strokeDasharray={`${(prediction.prediction.successProbability / 100) * 502.4} 502.4`}
                   strokeLinecap="round"
@@ -1036,37 +1061,34 @@ function PredictionTab({ prediction, onLoadPrediction, loading, analysis }) {
               </div>
             </div>
           </div>
-          
+
           {/* Confidence Level */}
           <div className="text-center mb-6">
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-              prediction.prediction.confidence === "high" ? "bg-green-100 text-green-700" :
-              prediction.prediction.confidence === "medium" ? "bg-yellow-100 text-yellow-700" :
-              "bg-gray-100 text-gray-700"
-            }`}>
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${prediction.prediction.confidence === "high" ? "bg-green-100 text-green-700" :
+                prediction.prediction.confidence === "medium" ? "bg-yellow-100 text-yellow-700" :
+                  "bg-gray-100 text-gray-700"
+              }`}>
               {prediction.prediction.confidence.charAt(0).toUpperCase() + prediction.prediction.confidence.slice(1)} Confidence
             </span>
             <p className="text-sm text-gray-500 mt-2">
               Based on {prediction.basedOn?.totalApplications || 0} historical applications
             </p>
           </div>
-          
+
           {/* Factors */}
           {prediction.prediction.factors?.length > 0 && (
             <div className="mb-6">
               <h4 className="font-medium text-gray-900 mb-3">Contributing Factors</h4>
               <div className="space-y-2">
                 {prediction.prediction.factors.map((factor, idx) => (
-                  <div key={idx} className={`p-3 rounded-lg ${
-                    factor.impact === "positive" ? "bg-green-50 border border-green-200" :
-                    factor.impact === "negative" ? "bg-red-50 border border-red-200" :
-                    "bg-gray-50 border border-gray-200"
-                  }`}>
+                  <div key={idx} className={`p-3 rounded-lg ${factor.impact === "positive" ? "bg-green-50 border border-green-200" :
+                      factor.impact === "negative" ? "bg-red-50 border border-red-200" :
+                        "bg-gray-50 border border-gray-200"
+                    }`}>
                     <div className="flex items-center justify-between">
                       <span className="font-medium">{factor.factor}</span>
-                      <span className={`text-sm font-medium ${
-                        factor.score > 0 ? "text-green-600" : factor.score < 0 ? "text-red-600" : "text-gray-600"
-                      }`}>
+                      <span className={`text-sm font-medium ${factor.score > 0 ? "text-green-600" : factor.score < 0 ? "text-red-600" : "text-gray-600"
+                        }`}>
                         {factor.score > 0 ? "+" : ""}{factor.score}%
                       </span>
                     </div>
@@ -1076,7 +1098,7 @@ function PredictionTab({ prediction, onLoadPrediction, loading, analysis }) {
               </div>
             </div>
           )}
-          
+
           {/* Recommendations */}
           {prediction.prediction.recommendations?.length > 0 && (
             <div>
@@ -1085,11 +1107,10 @@ function PredictionTab({ prediction, onLoadPrediction, loading, analysis }) {
                 {prediction.prediction.recommendations.map((rec, idx) => (
                   <div key={idx} className="p-3 bg-blue-50 rounded-lg border border-blue-200">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className={`px-2 py-0.5 text-xs font-medium rounded ${
-                        rec.priority === "high" ? "bg-red-100 text-red-700" :
-                        rec.priority === "medium" ? "bg-yellow-100 text-yellow-700" :
-                        "bg-blue-100 text-blue-700"
-                      }`}>
+                      <span className={`px-2 py-0.5 text-xs font-medium rounded ${rec.priority === "high" ? "bg-red-100 text-red-700" :
+                          rec.priority === "medium" ? "bg-yellow-100 text-yellow-700" :
+                            "bg-blue-100 text-blue-700"
+                        }`}>
                         {rec.priority.toUpperCase()}
                       </span>
                     </div>
@@ -1102,7 +1123,20 @@ function PredictionTab({ prediction, onLoadPrediction, loading, analysis }) {
           )}
         </Card>
       )}
-      
+
+      {/* Not enough data message */}
+      {prediction && prediction.hasData === false && (
+        <Card className="text-center py-8 bg-yellow-50 border border-yellow-200">
+          <div className="text-4xl mb-4">📊</div>
+          <h3 className="text-lg font-semibold text-yellow-800 mb-2">Not Enough Data</h3>
+          <p className="text-yellow-700 mb-2">{prediction.message}</p>
+          <p className="text-sm text-yellow-600">
+            You have <span className="font-bold">{prediction.currentCount || 0}</span> applications.
+            Need at least <span className="font-bold">{prediction.minimumRequired || 5}</span> for predictions.
+          </p>
+        </Card>
+      )}
+
       {!prediction && !loading && (
         <Card className="text-center py-8">
           <div className="text-4xl mb-4">🎯</div>
@@ -1164,14 +1198,13 @@ function EvolutionTab({ evolution, onLoadEvolution, loading, analysis }) {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`px-2 py-1 rounded text-sm font-medium ${
-                    period.trend === "improving" ? "bg-green-100 text-green-700" :
-                    period.trend === "declining" ? "bg-red-100 text-red-700" :
-                    "bg-gray-100 text-gray-700"
-                  }`}>
+                  <span className={`px-2 py-1 rounded text-sm font-medium ${period.trend === "improving" ? "bg-green-100 text-green-700" :
+                      period.trend === "declining" ? "bg-red-100 text-red-700" :
+                        "bg-gray-100 text-gray-700"
+                    }`}>
                     {period.trend === "improving" ? "↑ Improving" :
-                     period.trend === "declining" ? "↓ Declining" :
-                     "→ Stable"}
+                      period.trend === "declining" ? "↓ Declining" :
+                        "→ Stable"}
                   </span>
                 </div>
               </div>
@@ -1182,9 +1215,8 @@ function EvolutionTab({ evolution, onLoadEvolution, loading, analysis }) {
                 </div>
                 <div>
                   <span className="text-gray-500">Success Rate:</span>
-                  <span className={`ml-1 font-medium ${
-                    period.successRate >= 20 ? "text-green-600" : "text-gray-900"
-                  }`}>
+                  <span className={`ml-1 font-medium ${period.successRate >= 20 ? "text-green-600" : "text-gray-900"
+                    }`}>
                     {period.successRate}%
                   </span>
                 </div>
@@ -1210,11 +1242,10 @@ function EvolutionTab({ evolution, onLoadEvolution, loading, analysis }) {
           <h3 className="text-lg font-semibold mb-4">💡 Key Insights</h3>
           <div className="space-y-3">
             {evolution.evolution.insights.map((insight, idx) => (
-              <div key={idx} className={`p-4 rounded-lg ${
-                insight.type === "positive_trend" ? "bg-green-50 border border-green-200" :
-                insight.type === "negative_trend" ? "bg-red-50 border border-red-200" :
-                "bg-blue-50 border border-blue-200"
-              }`}>
+              <div key={idx} className={`p-4 rounded-lg ${insight.type === "positive_trend" ? "bg-green-50 border border-green-200" :
+                  insight.type === "negative_trend" ? "bg-red-50 border border-red-200" :
+                    "bg-blue-50 border border-blue-200"
+                }`}>
                 <p className="font-medium text-gray-900">{insight.message}</p>
                 <p className="text-sm text-gray-600 mt-1">{insight.detail}</p>
               </div>
@@ -1230,22 +1261,20 @@ function EvolutionTab({ evolution, onLoadEvolution, loading, analysis }) {
           <div className="space-y-3">
             {evolution.evolution.strategyAdaptation.map((change, idx) => (
               <div key={idx} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  change.impact === "positive" ? "bg-green-100 text-green-600" :
-                  change.impact === "negative" ? "bg-red-100 text-red-600" :
-                  "bg-gray-100 text-gray-600"
-                }`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${change.impact === "positive" ? "bg-green-100 text-green-600" :
+                    change.impact === "negative" ? "bg-red-100 text-red-600" :
+                      "bg-gray-100 text-gray-600"
+                  }`}>
                   {change.change === "increased_volume" ? "📊" :
-                   change.change === "industry_shift" ? "🏢" : "🔄"}
+                    change.change === "industry_shift" ? "🏢" : "🔄"}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-gray-900">{change.period}</span>
-                    <span className={`px-2 py-0.5 text-xs rounded ${
-                      change.impact === "positive" ? "bg-green-100 text-green-700" :
-                      change.impact === "negative" ? "bg-red-100 text-red-700" :
-                      "bg-gray-100 text-gray-700"
-                    }`}>
+                    <span className={`px-2 py-0.5 text-xs rounded ${change.impact === "positive" ? "bg-green-100 text-green-700" :
+                        change.impact === "negative" ? "bg-red-100 text-red-700" :
+                          "bg-gray-100 text-gray-700"
+                      }`}>
                       {change.impact} impact
                     </span>
                   </div>
@@ -1287,20 +1316,18 @@ function RecommendationsTab({ analysis, recommendations }) {
             {analysis.recommendations.map((rec, idx) => (
               <div
                 key={idx}
-                className={`p-4 rounded-lg border-l-4 ${
-                  rec.priority === "high"
+                className={`p-4 rounded-lg border-l-4 ${rec.priority === "high"
                     ? "bg-red-50 border-red-500"
                     : rec.priority === "medium"
-                    ? "bg-yellow-50 border-yellow-500"
-                    : "bg-blue-50 border-blue-500"
-                }`}
+                      ? "bg-yellow-50 border-yellow-500"
+                      : "bg-blue-50 border-blue-500"
+                  }`}
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <span className={`px-2 py-0.5 text-xs font-medium rounded ${
-                    rec.priority === "high" ? "bg-red-100 text-red-700" :
-                    rec.priority === "medium" ? "bg-yellow-100 text-yellow-700" :
-                    "bg-blue-100 text-blue-700"
-                  }`}>
+                  <span className={`px-2 py-0.5 text-xs font-medium rounded ${rec.priority === "high" ? "bg-red-100 text-red-700" :
+                      rec.priority === "medium" ? "bg-yellow-100 text-yellow-700" :
+                        "bg-blue-100 text-blue-700"
+                    }`}>
                     {rec.priority.toUpperCase()}
                   </span>
                   <span className="text-xs text-gray-500">{rec.category}</span>
@@ -1328,11 +1355,10 @@ function RecommendationsTab({ analysis, recommendations }) {
             {recommendations.recommendations.map((rec, idx) => (
               <div key={idx} className="border-b last:border-0 pb-4 last:pb-0">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className={`px-2 py-0.5 text-xs font-medium rounded ${
-                    rec.priority === "high" ? "bg-red-100 text-red-700" :
-                    rec.priority === "medium" ? "bg-yellow-100 text-yellow-700" :
-                    "bg-blue-100 text-blue-700"
-                  }`}>
+                  <span className={`px-2 py-0.5 text-xs font-medium rounded ${rec.priority === "high" ? "bg-red-100 text-red-700" :
+                      rec.priority === "medium" ? "bg-yellow-100 text-yellow-700" :
+                        "bg-blue-100 text-blue-700"
+                    }`}>
                     {rec.category}
                   </span>
                 </div>
