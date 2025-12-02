@@ -80,6 +80,14 @@ export default function Login() {
           Forgot your password?
         </button>
       </div>
+
+      {/* Shared computer warning */}
+      <div className="mt-6 max-w-md text-center text-xs text-gray-500 px-4">
+        <p>
+          <strong>Using a shared computer?</strong> If you previously signed in with Google or LinkedIn, 
+          make sure to sign out of those services directly or use an incognito/private window.
+        </p>
+      </div>
     </div>
   );
 }
