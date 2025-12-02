@@ -7,11 +7,14 @@ import {
   getSuccessAnalysis,
   getSuccessPatterns,
   getOptimizationRecommendations,
+  getSuccessPrediction,
+  getPatternEvolution,
 } from "../../api/applicationSuccess";
 import { setAuthToken } from "../../api/axios";
 
 // ============================================================================
 // UC-097: Application Success Rate Analysis
+// UC-105: Success Pattern Recognition
 // ============================================================================
 
 export default function ApplicationSuccessAnalysis() {
@@ -20,8 +23,12 @@ export default function ApplicationSuccessAnalysis() {
   const [analysis, setAnalysis] = useState(null);
   const [patterns, setPatterns] = useState(null);
   const [recommendations, setRecommendations] = useState(null);
+  const [prediction, setPrediction] = useState(null);
+  const [evolution, setEvolution] = useState(null);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
+  const [predictionLoading, setPredictionLoading] = useState(false);
+  const [evolutionLoading, setEvolutionLoading] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -48,6 +55,34 @@ export default function ApplicationSuccessAnalysis() {
       setError(err.response?.data?.message || "Failed to load analysis");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadPrediction = async (params = {}) => {
+    try {
+      setPredictionLoading(true);
+      const token = await getToken();
+      setAuthToken(token);
+      const predictionData = await getSuccessPrediction(params);
+      setPrediction(predictionData.data);
+    } catch (err) {
+      console.error("Failed to load prediction:", err);
+    } finally {
+      setPredictionLoading(false);
+    }
+  };
+
+  const loadEvolution = async () => {
+    try {
+      setEvolutionLoading(true);
+      const token = await getToken();
+      setAuthToken(token);
+      const evolutionData = await getPatternEvolution();
+      setEvolution(evolutionData.data);
+    } catch (err) {
+      console.error("Failed to load evolution:", err);
+    } finally {
+      setEvolutionLoading(false);
     }
   };
 
@@ -95,6 +130,8 @@ export default function ApplicationSuccessAnalysis() {
     { id: "overview", label: "Overview", icon: "📊" },
     { id: "industry", label: "Industry Analysis", icon: "🏢" },
     { id: "patterns", label: "Success Patterns", icon: "✨" },
+    { id: "prediction", label: "Prediction", icon: "🔮" },
+    { id: "evolution", label: "Strategy Evolution", icon: "📈" },
     { id: "materials", label: "Materials Impact", icon: "📄" },
     { id: "timing", label: "Timing Analysis", icon: "⏰" },
     { id: "recommendations", label: "Recommendations", icon: "💡" },
@@ -165,6 +202,22 @@ export default function ApplicationSuccessAnalysis() {
         {activeTab === "overview" && <OverviewTab analysis={analysis} />}
         {activeTab === "industry" && <IndustryTab analysis={analysis} />}
         {activeTab === "patterns" && <PatternsTab patterns={patterns} analysis={analysis} />}
+        {activeTab === "prediction" && (
+          <PredictionTab 
+            prediction={prediction} 
+            onLoadPrediction={loadPrediction} 
+            loading={predictionLoading} 
+            analysis={analysis}
+          />
+        )}
+        {activeTab === "evolution" && (
+          <EvolutionTab 
+            evolution={evolution} 
+            onLoadEvolution={loadEvolution} 
+            loading={evolutionLoading}
+            analysis={analysis} 
+          />
+        )}
         {activeTab === "materials" && <MaterialsTab analysis={analysis} />}
         {activeTab === "timing" && <TimingTab analysis={analysis} />}
         {activeTab === "recommendations" && <RecommendationsTab analysis={analysis} recommendations={recommendations} />}
@@ -404,9 +457,33 @@ function IndustryTab({ analysis }) {
 }
 
 // ============================================================================
-// Patterns Tab
+// Patterns Tab - UC-105 Success Pattern Recognition
 // ============================================================================
 function PatternsTab({ patterns, analysis }) {
+  // Pattern type to icon mapping
+  const patternIcons = {
+    "Industry Strength": "🏢",
+    "Optimal Timing": "⏰",
+    "Interview Conversion": "🎤",
+    "Application to Interview": "📝",
+    "Preparation Impact": "📚",
+    "Market Timing": "📅",
+    "Response Velocity": "⚡",
+    "Company Size Preference": "🏛️",
+  };
+
+  // Pattern type to color mapping
+  const patternColors = {
+    "Industry Strength": "from-blue-50 to-indigo-50 border-blue-200",
+    "Optimal Timing": "from-amber-50 to-yellow-50 border-amber-200",
+    "Interview Conversion": "from-green-50 to-emerald-50 border-green-200",
+    "Application to Interview": "from-purple-50 to-pink-50 border-purple-200",
+    "Preparation Impact": "from-cyan-50 to-teal-50 border-cyan-200",
+    "Market Timing": "from-orange-50 to-red-50 border-orange-200",
+    "Response Velocity": "from-violet-50 to-purple-50 border-violet-200",
+    "Company Size Preference": "from-slate-50 to-gray-50 border-slate-200",
+  };
+
   if (!patterns?.hasData) {
     return (
       <Card className="text-center py-12">
@@ -422,16 +499,151 @@ function PatternsTab({ patterns, analysis }) {
     );
   }
 
+  // Group patterns by category
+  const conversionPatterns = patterns.patterns.filter(p => 
+    ["Interview Conversion", "Application to Interview"].includes(p.type)
+  );
+  const timingPatterns = patterns.patterns.filter(p => 
+    ["Optimal Timing", "Market Timing", "Response Velocity"].includes(p.type)
+  );
+  const strategyPatterns = patterns.patterns.filter(p => 
+    ["Industry Strength", "Company Size Preference", "Preparation Impact"].includes(p.type)
+  );
+
   return (
     <div className="space-y-6">
-      {/* Identified Patterns */}
-      <Card>
-        <h3 className="text-lg font-semibold mb-4">✨ Identified Success Patterns</h3>
-        {patterns.patterns.length > 0 ? (
+      {/* Summary Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="text-center bg-green-50">
+          <div className="text-2xl mb-1">🎯</div>
+          <div className="text-2xl font-bold text-green-700">{patterns.sampleSize}</div>
+          <div className="text-sm text-gray-600">Applications Analyzed</div>
+        </Card>
+        <Card className="text-center bg-blue-50">
+          <div className="text-2xl mb-1">✅</div>
+          <div className="text-2xl font-bold text-blue-700">{patterns.successCount}</div>
+          <div className="text-sm text-gray-600">Successful Outcomes</div>
+        </Card>
+        <Card className="text-center bg-purple-50">
+          <div className="text-2xl mb-1">📊</div>
+          <div className="text-2xl font-bold text-purple-700">{patterns.patterns.length}</div>
+          <div className="text-sm text-gray-600">Patterns Identified</div>
+        </Card>
+        <Card className="text-center bg-amber-50">
+          <div className="text-2xl mb-1">💡</div>
+          <div className="text-2xl font-bold text-amber-700">
+            {((patterns.successCount / patterns.sampleSize) * 100).toFixed(0)}%
+          </div>
+          <div className="text-sm text-gray-600">Success Rate</div>
+        </Card>
+      </div>
+
+      {/* Conversion Patterns */}
+      {conversionPatterns.length > 0 && (
+        <Card>
+          <h3 className="text-lg font-semibold mb-4">🔄 Conversion Funnel Patterns</h3>
+          <div className="space-y-4">
+            {conversionPatterns.map((pattern, idx) => (
+              <div key={idx} className={`p-4 rounded-lg border bg-gradient-to-r ${patternColors[pattern.type] || "from-gray-50 to-gray-100 border-gray-200"}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-2xl">{patternIcons[pattern.type] || "📈"}</span>
+                  <span className="px-2 py-1 bg-white/50 text-gray-700 text-xs font-medium rounded">
+                    {pattern.type}
+                  </span>
+                </div>
+                <p className="font-medium text-gray-900">{pattern.description}</p>
+                {pattern.data && (
+                  <div className="mt-3 flex gap-4 text-sm">
+                    {pattern.data.conversionRate && (
+                      <div className="bg-white/60 px-3 py-1 rounded">
+                        <span className="text-gray-500">Rate:</span>{" "}
+                        <span className="font-bold">{pattern.data.conversionRate}%</span>
+                      </div>
+                    )}
+                    {pattern.data.totalInterviews !== undefined && (
+                      <div className="bg-white/60 px-3 py-1 rounded">
+                        <span className="text-gray-500">Interviews:</span>{" "}
+                        <span className="font-bold">{pattern.data.totalInterviews}</span>
+                      </div>
+                    )}
+                    {pattern.data.totalOffers !== undefined && (
+                      <div className="bg-white/60 px-3 py-1 rounded">
+                        <span className="text-gray-500">Offers:</span>{" "}
+                        <span className="font-bold">{pattern.data.totalOffers}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+                <p className="text-sm text-gray-600 mt-3 flex items-center gap-1">
+                  <span>💡</span> {pattern.recommendation}
+                </p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Timing Patterns */}
+      {timingPatterns.length > 0 && (
+        <Card>
+          <h3 className="text-lg font-semibold mb-4">⏱️ Timing & Market Patterns</h3>
+          <div className="space-y-4">
+            {timingPatterns.map((pattern, idx) => (
+              <div key={idx} className={`p-4 rounded-lg border bg-gradient-to-r ${patternColors[pattern.type] || "from-gray-50 to-gray-100 border-gray-200"}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-2xl">{patternIcons[pattern.type] || "📈"}</span>
+                  <span className="px-2 py-1 bg-white/50 text-gray-700 text-xs font-medium rounded">
+                    {pattern.type}
+                  </span>
+                </div>
+                <p className="font-medium text-gray-900">{pattern.description}</p>
+                <p className="text-sm text-gray-600 mt-3 flex items-center gap-1">
+                  <span>💡</span> {pattern.recommendation}
+                </p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Strategy Patterns */}
+      {strategyPatterns.length > 0 && (
+        <Card>
+          <h3 className="text-lg font-semibold mb-4">🎯 Strategy & Targeting Patterns</h3>
+          <div className="space-y-4">
+            {strategyPatterns.map((pattern, idx) => (
+              <div key={idx} className={`p-4 rounded-lg border bg-gradient-to-r ${patternColors[pattern.type] || "from-gray-50 to-gray-100 border-gray-200"}`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-2xl">{patternIcons[pattern.type] || "📈"}</span>
+                  <span className="px-2 py-1 bg-white/50 text-gray-700 text-xs font-medium rounded">
+                    {pattern.type}
+                  </span>
+                </div>
+                <p className="font-medium text-gray-900">{pattern.description}</p>
+                {pattern.data?.improvement && (
+                  <div className="mt-3 bg-white/60 px-3 py-1 rounded inline-block">
+                    <span className="text-gray-500">Improvement:</span>{" "}
+                    <span className="font-bold text-green-600">+{pattern.data.improvement}%</span>
+                  </div>
+                )}
+                <p className="text-sm text-gray-600 mt-3 flex items-center gap-1">
+                  <span>💡</span> {pattern.recommendation}
+                </p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* All Patterns (if no categorization matched) */}
+      {patterns.patterns.length > 0 && conversionPatterns.length === 0 && timingPatterns.length === 0 && strategyPatterns.length === 0 && (
+        <Card>
+          <h3 className="text-lg font-semibold mb-4">✨ Identified Success Patterns</h3>
           <div className="space-y-4">
             {patterns.patterns.map((pattern, idx) => (
-              <div key={idx} className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
+              <div key={idx} className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
                 <div className="flex items-center gap-2 mb-2">
+                  <span className="text-2xl">{patternIcons[pattern.type] || "📈"}</span>
                   <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">
                     {pattern.type}
                   </span>
@@ -443,10 +655,8 @@ function PatternsTab({ patterns, analysis }) {
               </div>
             ))}
           </div>
-        ) : (
-          <p className="text-gray-500">No significant patterns identified yet.</p>
-        )}
-      </Card>
+        </Card>
+      )}
 
       {/* Success vs Rejection Comparison */}
       <Card>
@@ -702,6 +912,361 @@ function TimingTab({ analysis }) {
           ))}
         </div>
       </Card>
+    </div>
+  );
+}
+
+// ============================================================================
+// UC-105: Prediction Tab - Success Probability Prediction
+// ============================================================================
+function PredictionTab({ prediction, onLoadPrediction, loading, analysis }) {
+  const [industry, setIndustry] = useState("");
+  const [companySize, setCompanySize] = useState("");
+  const [roleType, setRoleType] = useState("");
+
+  const handlePredict = () => {
+    onLoadPrediction({ industry, companySize, roleType });
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Prediction Form */}
+      <Card>
+        <h3 className="text-lg font-semibold mb-4">🔮 Success Prediction Tool</h3>
+        <p className="text-gray-600 mb-4">
+          Enter details about a potential application to predict your success probability based on historical patterns.
+        </p>
+        
+        <div className="grid md:grid-cols-3 gap-4 mb-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
+            <input
+              type="text"
+              value={industry}
+              onChange={(e) => setIndustry(e.target.value)}
+              placeholder="e.g., Technology, Healthcare"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Company Size</label>
+            <select
+              value={companySize}
+              onChange={(e) => setCompanySize(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Select size</option>
+              <option value="1-10">1-10 employees</option>
+              <option value="11-50">11-50 employees</option>
+              <option value="51-200">51-200 employees</option>
+              <option value="201-500">201-500 employees</option>
+              <option value="501-1000">501-1000 employees</option>
+              <option value="1001-5000">1001-5000 employees</option>
+              <option value="5001+">5001+ employees</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Role Type</label>
+            <select
+              value={roleType}
+              onChange={(e) => setRoleType(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Select type</option>
+              <option value="Full-time">Full-time</option>
+              <option value="Part-time">Part-time</option>
+              <option value="Contract">Contract</option>
+              <option value="Internship">Internship</option>
+              <option value="Remote">Remote</option>
+              <option value="Hybrid">Hybrid</option>
+            </select>
+          </div>
+        </div>
+        
+        <button
+          onClick={handlePredict}
+          disabled={loading}
+          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+        >
+          {loading ? (
+            <>
+              <LoadingSpinner size="sm" />
+              Analyzing...
+            </>
+          ) : (
+            <>🔮 Predict Success</>
+          )}
+        </button>
+      </Card>
+
+      {/* Prediction Results */}
+      {prediction?.prediction && (
+        <Card>
+          <h3 className="text-lg font-semibold mb-4">📊 Prediction Results</h3>
+          
+          {/* Success Probability Gauge */}
+          <div className="flex items-center justify-center mb-6">
+            <div className="relative w-48 h-48">
+              <svg className="w-full h-full transform -rotate-90">
+                <circle
+                  cx="96"
+                  cy="96"
+                  r="80"
+                  fill="none"
+                  stroke="#e5e7eb"
+                  strokeWidth="16"
+                />
+                <circle
+                  cx="96"
+                  cy="96"
+                  r="80"
+                  fill="none"
+                  stroke={prediction.prediction.successProbability >= 60 ? "#22c55e" : 
+                         prediction.prediction.successProbability >= 40 ? "#eab308" : "#ef4444"}
+                  strokeWidth="16"
+                  strokeDasharray={`${(prediction.prediction.successProbability / 100) * 502.4} 502.4`}
+                  strokeLinecap="round"
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-4xl font-bold text-gray-900">
+                  {prediction.prediction.successProbability}%
+                </span>
+                <span className="text-sm text-gray-600">Success Probability</span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Confidence Level */}
+          <div className="text-center mb-6">
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+              prediction.prediction.confidence === "high" ? "bg-green-100 text-green-700" :
+              prediction.prediction.confidence === "medium" ? "bg-yellow-100 text-yellow-700" :
+              "bg-gray-100 text-gray-700"
+            }`}>
+              {prediction.prediction.confidence.charAt(0).toUpperCase() + prediction.prediction.confidence.slice(1)} Confidence
+            </span>
+            <p className="text-sm text-gray-500 mt-2">
+              Based on {prediction.basedOn?.totalApplications || 0} historical applications
+            </p>
+          </div>
+          
+          {/* Factors */}
+          {prediction.prediction.factors?.length > 0 && (
+            <div className="mb-6">
+              <h4 className="font-medium text-gray-900 mb-3">Contributing Factors</h4>
+              <div className="space-y-2">
+                {prediction.prediction.factors.map((factor, idx) => (
+                  <div key={idx} className={`p-3 rounded-lg ${
+                    factor.impact === "positive" ? "bg-green-50 border border-green-200" :
+                    factor.impact === "negative" ? "bg-red-50 border border-red-200" :
+                    "bg-gray-50 border border-gray-200"
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">{factor.factor}</span>
+                      <span className={`text-sm font-medium ${
+                        factor.score > 0 ? "text-green-600" : factor.score < 0 ? "text-red-600" : "text-gray-600"
+                      }`}>
+                        {factor.score > 0 ? "+" : ""}{factor.score}%
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1">{factor.detail}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {/* Recommendations */}
+          {prediction.prediction.recommendations?.length > 0 && (
+            <div>
+              <h4 className="font-medium text-gray-900 mb-3">💡 Recommendations to Improve Chances</h4>
+              <div className="space-y-2">
+                {prediction.prediction.recommendations.map((rec, idx) => (
+                  <div key={idx} className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`px-2 py-0.5 text-xs font-medium rounded ${
+                        rec.priority === "high" ? "bg-red-100 text-red-700" :
+                        rec.priority === "medium" ? "bg-yellow-100 text-yellow-700" :
+                        "bg-blue-100 text-blue-700"
+                      }`}>
+                        {rec.priority.toUpperCase()}
+                      </span>
+                    </div>
+                    <p className="font-medium text-gray-900">{rec.action}</p>
+                    <p className="text-sm text-gray-600">{rec.detail}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
+      
+      {!prediction && !loading && (
+        <Card className="text-center py-8">
+          <div className="text-4xl mb-4">🎯</div>
+          <p className="text-gray-600">
+            Enter application details above to see your predicted success probability
+          </p>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// UC-105: Evolution Tab - Pattern Evolution Over Time
+// ============================================================================
+function EvolutionTab({ evolution, onLoadEvolution, loading, analysis }) {
+  useEffect(() => {
+    if (!evolution && !loading) {
+      onLoadEvolution();
+    }
+  }, []);
+
+  if (loading) {
+    return (
+      <Card className="flex items-center justify-center py-12">
+        <LoadingSpinner size="lg" />
+      </Card>
+    );
+  }
+
+  if (!evolution?.hasEnoughData) {
+    return (
+      <Card className="text-center py-12">
+        <div className="text-4xl mb-4">📈</div>
+        <h3 className="text-lg font-semibold mb-2">Building Your Strategy History</h3>
+        <p className="text-gray-600">
+          {evolution?.message || "Need at least 10 applications to track pattern evolution"}
+        </p>
+        <p className="text-sm text-gray-500 mt-2">
+          Current applications: {analysis?.summary?.totalApplications || 0}
+        </p>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Timeline Overview */}
+      <Card>
+        <h3 className="text-lg font-semibold mb-4">📈 Success Rate Evolution</h3>
+        <div className="space-y-4">
+          {evolution.evolution.periods.map((period, idx) => (
+            <div key={idx} className="border-l-4 border-blue-400 pl-4 py-2">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <span className="font-medium text-gray-900">{period.period}</span>
+                  <span className="text-sm text-gray-500 ml-2">
+                    ({period.startDate} - {period.endDate})
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-1 rounded text-sm font-medium ${
+                    period.trend === "improving" ? "bg-green-100 text-green-700" :
+                    period.trend === "declining" ? "bg-red-100 text-red-700" :
+                    "bg-gray-100 text-gray-700"
+                  }`}>
+                    {period.trend === "improving" ? "↑ Improving" :
+                     period.trend === "declining" ? "↓ Declining" :
+                     "→ Stable"}
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div>
+                  <span className="text-gray-500">Applications:</span>
+                  <span className="ml-1 font-medium">{period.totalApplications}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Success Rate:</span>
+                  <span className={`ml-1 font-medium ${
+                    period.successRate >= 20 ? "text-green-600" : "text-gray-900"
+                  }`}>
+                    {period.successRate}%
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Weekly Avg:</span>
+                  <span className="ml-1 font-medium">{period.avgApplicationsPerWeek}/week</span>
+                </div>
+              </div>
+              {period.topSuccessfulIndustries?.length > 0 && (
+                <div className="mt-2 text-sm">
+                  <span className="text-gray-500">Top Industries:</span>
+                  <span className="ml-1">{period.topSuccessfulIndustries.join(", ")}</span>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Insights */}
+      {evolution.evolution.insights?.length > 0 && (
+        <Card>
+          <h3 className="text-lg font-semibold mb-4">💡 Key Insights</h3>
+          <div className="space-y-3">
+            {evolution.evolution.insights.map((insight, idx) => (
+              <div key={idx} className={`p-4 rounded-lg ${
+                insight.type === "positive_trend" ? "bg-green-50 border border-green-200" :
+                insight.type === "negative_trend" ? "bg-red-50 border border-red-200" :
+                "bg-blue-50 border border-blue-200"
+              }`}>
+                <p className="font-medium text-gray-900">{insight.message}</p>
+                <p className="text-sm text-gray-600 mt-1">{insight.detail}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Strategy Changes */}
+      {evolution.evolution.strategyAdaptation?.length > 0 && (
+        <Card>
+          <h3 className="text-lg font-semibold mb-4">🔄 Strategy Adaptations</h3>
+          <div className="space-y-3">
+            {evolution.evolution.strategyAdaptation.map((change, idx) => (
+              <div key={idx} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                  change.impact === "positive" ? "bg-green-100 text-green-600" :
+                  change.impact === "negative" ? "bg-red-100 text-red-600" :
+                  "bg-gray-100 text-gray-600"
+                }`}>
+                  {change.change === "increased_volume" ? "📊" :
+                   change.change === "industry_shift" ? "🏢" : "🔄"}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-gray-900">{change.period}</span>
+                    <span className={`px-2 py-0.5 text-xs rounded ${
+                      change.impact === "positive" ? "bg-green-100 text-green-700" :
+                      change.impact === "negative" ? "bg-red-100 text-red-700" :
+                      "bg-gray-100 text-gray-700"
+                    }`}>
+                      {change.impact} impact
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-1">{change.detail}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Refresh Button */}
+      <div className="text-center">
+        <button
+          onClick={onLoadEvolution}
+          disabled={loading}
+          className="px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition"
+        >
+          🔄 Refresh Evolution Data
+        </button>
+      </div>
     </div>
   );
 }
