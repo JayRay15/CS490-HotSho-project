@@ -115,12 +115,16 @@ export const getGroups = async (req, res) => {
 
         const total = await PeerSupportGroup.countDocuments(query);
 
-        // Add membership status to each group
+        // Add membership status and owner status to each group
         const groupsWithMembership = groups.map(group => {
             const isMember = memberGroupIds.some(id => id.equals(group._id));
+            const groupObj = group.toObject();
+            const ownerId = groupObj.ownerId?._id || groupObj.ownerId;
+            const isOwner = ownerId ? ownerId.toString() === user._id.toString() : false;
             return {
-                ...group.toObject(),
+                ...groupObj,
                 isMember,
+                isOwner,
             };
         });
 
@@ -194,10 +198,14 @@ export const getGroup = async (req, res) => {
         res.json({
             success: true,
             data: {
-                group,
+                group: {
+                    ...group.toObject(),
+                    isOwner: group.ownerId._id.equals(user._id),
+                },
                 membership,
                 isMember: membership?.status === "active",
                 isAdmin: ["admin", "owner", "moderator"].includes(membership?.role),
+                isOwner: group.ownerId._id.equals(user._id),
             },
         });
     } catch (error) {
@@ -411,6 +419,53 @@ export const leaveGroup = async (req, res) => {
 };
 
 /**
+ * Delete a group (owner only)
+ */
+export const deleteGroup = async (req, res) => {
+    try {
+        const user = await getUserFromAuth(req.auth.userId);
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        const { groupId } = req.params;
+
+        const group = await PeerSupportGroup.findById(groupId);
+        if (!group) {
+            return res.status(404).json({ success: false, message: "Group not found" });
+        }
+
+        // Check if user is the owner
+        if (!group.ownerId.equals(user._id)) {
+            return res.status(403).json({ success: false, message: "Only the group owner can delete this group" });
+        }
+
+        // Delete all related data
+        await Promise.all([
+            GroupMembership.deleteMany({ groupId }),
+            PeerDiscussion.deleteMany({ groupId }),
+            DiscussionReply.deleteMany({ groupId }),
+            PeerChallenge.deleteMany({ groupId }),
+            PeerSuccessStory.deleteMany({ groupId }),
+            PeerReferral.deleteMany({ groupId }),
+            PeerWebinar.deleteMany({ groupId }),
+            OpportunityAlert.deleteMany({ groupId }),
+        ]);
+
+        // Delete the group
+        await PeerSupportGroup.findByIdAndDelete(groupId);
+
+        res.json({
+            success: true,
+            message: "Group deleted successfully",
+        });
+    } catch (error) {
+        console.error("Error deleting group:", error);
+        res.status(500).json({ success: false, message: "Failed to delete group", error: error.message });
+    }
+};
+
+/**
  * Update member privacy settings
  */
 export const updateMemberPrivacy = async (req, res) => {
@@ -471,14 +526,22 @@ export const getMyGroups = async (req, res) => {
             populate: { path: "ownerId", select: "name email profilePicture" },
         });
 
-        const groups = memberships.map(m => ({
-            ...m.groupId.toObject(),
-            membership: {
-                role: m.role,
-                joinedAt: m.createdAt,
-                engagement: m.engagement,
-            },
-        }));
+        const groups = memberships.map(m => {
+            const group = m.groupId.toObject();
+            // Check if user is owner - ownerId is populated so we need to check the _id
+            const ownerId = group.ownerId?._id || group.ownerId;
+            const isOwner = ownerId ? ownerId.toString() === user._id.toString() : false;
+            return {
+                ...group,
+                isMember: true,
+                isOwner,
+                membership: {
+                    role: m.role,
+                    joinedAt: m.createdAt,
+                    engagement: m.engagement,
+                },
+            };
+        });
 
         res.json({
             success: true,
@@ -749,7 +812,7 @@ export const replyToDiscussion = async (req, res) => {
 };
 
 /**
- * Like a discussion or reply
+ * Like a discussion, reply, or story
  */
 export const likeContent = async (req, res) => {
     try {
@@ -771,6 +834,8 @@ export const likeContent = async (req, res) => {
             content = await PeerDiscussion.findById(contentId);
         } else if (contentType === "reply") {
             content = await DiscussionReply.findById(contentId);
+        } else if (contentType === "story") {
+            content = await PeerSuccessStory.findById(contentId);
         } else {
             return res.status(400).json({ success: false, message: "Invalid content type" });
         }
@@ -785,16 +850,16 @@ export const likeContent = async (req, res) => {
         if (existingLike) {
             // Unlike
             content.likes = content.likes.filter(l => !l.userId.equals(user._id));
-            if (contentType === "discussion") {
-                content.stats.likeCount -= 1;
+            if (contentType === "discussion" || contentType === "story") {
+                content.stats.likeCount = Math.max(0, content.stats.likeCount - 1);
             } else {
-                content.likeCount -= 1;
+                content.likeCount = Math.max(0, content.likeCount - 1);
             }
-            membership.engagement.likesGiven -= 1;
+            membership.engagement.likesGiven = Math.max(0, membership.engagement.likesGiven - 1);
         } else {
             // Like
             content.likes.push({ userId: user._id });
-            if (contentType === "discussion") {
+            if (contentType === "discussion" || contentType === "story") {
                 content.stats.likeCount += 1;
             } else {
                 content.likeCount += 1;
@@ -984,6 +1049,54 @@ export const joinChallenge = async (req, res) => {
 };
 
 /**
+ * Leave a challenge
+ */
+export const leaveChallenge = async (req, res) => {
+    try {
+        const user = await getUserFromAuth(req.auth.userId);
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        const { groupId, challengeId } = req.params;
+
+        const membership = await isGroupMember(groupId, user._id);
+        if (!membership) {
+            return res.status(403).json({ success: false, message: "Must be a group member" });
+        }
+
+        const challenge = await PeerChallenge.findById(challengeId);
+        if (!challenge) {
+            return res.status(404).json({ success: false, message: "Challenge not found" });
+        }
+
+        // Find and remove participation
+        const participantIndex = challenge.participants.findIndex(p => p.userId.equals(user._id));
+        if (participantIndex === -1) {
+            return res.status(400).json({ success: false, message: "Not participating in this challenge" });
+        }
+
+        challenge.participants.splice(participantIndex, 1);
+        challenge.stats.totalParticipants = Math.max(0, challenge.stats.totalParticipants - 1);
+        challenge.stats.activeParticipants = Math.max(0, challenge.stats.activeParticipants - 1);
+
+        await challenge.save();
+
+        // Update member engagement
+        membership.engagement.challengesJoined = Math.max(0, membership.engagement.challengesJoined - 1);
+        await membership.save();
+
+        res.json({
+            success: true,
+            message: "Successfully left the challenge",
+        });
+    } catch (error) {
+        console.error("Error leaving challenge:", error);
+        res.status(500).json({ success: false, message: "Failed to leave challenge", error: error.message });
+    }
+};
+
+/**
  * Update challenge progress
  */
 export const updateChallengeProgress = async (req, res) => {
@@ -1086,9 +1199,10 @@ export const getSuccessStories = async (req, res) => {
 
         const total = await PeerSuccessStory.countDocuments(query);
 
-        // Process anonymous stories
+        // Process anonymous stories and add hasLiked status
         const processedStories = stories.map(s => {
             const story = s.toObject();
+            story.hasLiked = s.likes.some(l => l.userId.equals(user._id));
             if (story.isAnonymous) {
                 story.authorId = null;
                 story.authorName = "Anonymous Member";
@@ -1196,10 +1310,17 @@ export const getReferrals = async (req, res) => {
 
         const total = await PeerReferral.countDocuments(query);
 
+        // Add user's interest status to each referral
+        const referralsWithStatus = referrals.map(r => {
+            const referral = r.toObject();
+            referral.hasExpressedInterest = r.interestedUsers.some(u => u.userId.equals(user._id));
+            return referral;
+        });
+
         res.json({
             success: true,
             data: {
-                referrals,
+                referrals: referralsWithStatus,
                 pagination: {
                     page: parseInt(page),
                     limit: parseInt(limit),
@@ -1308,6 +1429,11 @@ export const expressInterest = async (req, res) => {
             requestedAt: new Date(),
         });
         referral.stats.interestCount += 1;
+        
+        // Increment used referral slots if canRefer is enabled
+        if (referral.canRefer && referral.referralSlots) {
+            referral.referralSlots.used = (referral.referralSlots.used || 0) + 1;
+        }
 
         await referral.save();
 
@@ -1325,6 +1451,54 @@ export const expressInterest = async (req, res) => {
     } catch (error) {
         console.error("Error expressing interest:", error);
         res.status(500).json({ success: false, message: "Failed to express interest", error: error.message });
+    }
+};
+
+/**
+ * Withdraw interest from a referral
+ */
+export const withdrawInterest = async (req, res) => {
+    try {
+        const user = await getUserFromAuth(req.auth.userId);
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        const { groupId, referralId } = req.params;
+
+        const membership = await isGroupMember(groupId, user._id);
+        if (!membership) {
+            return res.status(403).json({ success: false, message: "Must be a group member" });
+        }
+
+        const referral = await PeerReferral.findById(referralId);
+        if (!referral) {
+            return res.status(404).json({ success: false, message: "Opportunity not found" });
+        }
+
+        // Find and remove interest
+        const interestIndex = referral.interestedUsers.findIndex(u => u.userId.equals(user._id));
+        if (interestIndex === -1) {
+            return res.status(400).json({ success: false, message: "You have not expressed interest in this opportunity" });
+        }
+
+        referral.interestedUsers.splice(interestIndex, 1);
+        referral.stats.interestCount = Math.max(0, referral.stats.interestCount - 1);
+        
+        // Decrement used referral slots if canRefer is enabled
+        if (referral.canRefer && referral.referralSlots) {
+            referral.referralSlots.used = Math.max(0, (referral.referralSlots.used || 0) - 1);
+        }
+
+        await referral.save();
+
+        res.json({
+            success: true,
+            message: "Interest withdrawn successfully",
+        });
+    } catch (error) {
+        console.error("Error withdrawing interest:", error);
+        res.status(500).json({ success: false, message: "Failed to withdraw interest", error: error.message });
     }
 };
 
@@ -1400,11 +1574,27 @@ export const createWebinar = async (req, res) => {
         }
 
         const { groupId } = req.params;
-        const { title, description, sessionType, topic, scheduledAt, duration, meetingInfo, capacity } = req.body;
+        const { title, description, sessionType, topic, scheduledAt, duration, meetingInfo, meetingLink, capacity } = req.body;
 
         const membership = await isGroupMember(groupId, user._id);
         if (!membership) {
             return res.status(403).json({ success: false, message: "Must be a group member" });
+        }
+
+        // Build meetingInfo from meetingLink if provided
+        const finalMeetingInfo = meetingInfo || {};
+        if (meetingLink) {
+            finalMeetingInfo.link = meetingLink;
+            // Auto-detect platform from link
+            if (meetingLink.includes('zoom')) {
+                finalMeetingInfo.platform = 'zoom';
+            } else if (meetingLink.includes('meet.google')) {
+                finalMeetingInfo.platform = 'google_meet';
+            } else if (meetingLink.includes('teams')) {
+                finalMeetingInfo.platform = 'teams';
+            } else {
+                finalMeetingInfo.platform = 'other';
+            }
         }
 
         const webinar = new PeerWebinar({
@@ -1416,7 +1606,7 @@ export const createWebinar = async (req, res) => {
             topic,
             scheduledAt: new Date(scheduledAt),
             duration: duration || 60,
-            meetingInfo: meetingInfo || {},
+            meetingInfo: finalMeetingInfo,
             capacity: { max: capacity || 100, current: 0 },
         });
 
@@ -1488,6 +1678,50 @@ export const registerForWebinar = async (req, res) => {
     } catch (error) {
         console.error("Error registering for webinar:", error);
         res.status(500).json({ success: false, message: "Failed to register", error: error.message });
+    }
+};
+
+/**
+ * Unregister from a webinar
+ */
+export const unregisterFromWebinar = async (req, res) => {
+    try {
+        const user = await getUserFromAuth(req.auth.userId);
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        const { groupId, webinarId } = req.params;
+
+        const membership = await isGroupMember(groupId, user._id);
+        if (!membership) {
+            return res.status(403).json({ success: false, message: "Must be a group member" });
+        }
+
+        const webinar = await PeerWebinar.findById(webinarId);
+        if (!webinar) {
+            return res.status(404).json({ success: false, message: "Webinar not found" });
+        }
+
+        // Find and remove registration
+        const registrationIndex = webinar.registrations.findIndex(r => r.userId.equals(user._id));
+        if (registrationIndex === -1) {
+            return res.status(400).json({ success: false, message: "Not registered for this webinar" });
+        }
+
+        webinar.registrations.splice(registrationIndex, 1);
+        webinar.capacity.current = Math.max(0, webinar.capacity.current - 1);
+        webinar.stats.registrationCount = Math.max(0, webinar.stats.registrationCount - 1);
+
+        await webinar.save();
+
+        res.json({
+            success: true,
+            message: "Successfully unregistered from the webinar",
+        });
+    } catch (error) {
+        console.error("Error unregistering from webinar:", error);
+        res.status(500).json({ success: false, message: "Failed to unregister", error: error.message });
     }
 };
 

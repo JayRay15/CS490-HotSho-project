@@ -7,6 +7,7 @@ import {
     createGroup,
     joinGroup,
     leaveGroup,
+    deleteGroup,
     updateMemberPrivacy,
     getMyGroups,
     getGroupMembers,
@@ -20,6 +21,7 @@ import {
     getChallenges,
     createChallenge,
     joinChallenge,
+    leaveChallenge,
     updateChallengeProgress,
     // Success Stories
     getSuccessStories,
@@ -28,10 +30,12 @@ import {
     getReferrals,
     shareReferral,
     expressInterest,
+    withdrawInterest,
     // Webinars
     getWebinars,
     createWebinar,
     registerForWebinar,
+    unregisterFromWebinar,
     // Impact & Alerts
     getNetworkingImpact,
     getOpportunityAlerts,
@@ -59,6 +63,9 @@ router.post("/groups/:groupId/join", checkJwt, joinGroup);
 
 // Leave a group
 router.post("/groups/:groupId/leave", checkJwt, leaveGroup);
+
+// Delete a group (owner only)
+router.delete("/groups/:groupId", checkJwt, deleteGroup);
 
 // Update privacy settings for a group
 router.put("/groups/:groupId/privacy", checkJwt, updateMemberPrivacy);
@@ -94,6 +101,9 @@ router.post("/groups/:groupId/challenges", checkJwt, createChallenge);
 // Join a challenge
 router.post("/groups/:groupId/challenges/:challengeId/join", checkJwt, joinChallenge);
 
+// Leave a challenge
+router.post("/groups/:groupId/challenges/:challengeId/leave", checkJwt, leaveChallenge);
+
 // Update challenge progress
 router.put("/groups/:groupId/challenges/:challengeId/progress", checkJwt, updateChallengeProgress);
 
@@ -116,6 +126,9 @@ router.post("/groups/:groupId/referrals", checkJwt, shareReferral);
 // Express interest in a referral
 router.post("/groups/:groupId/referrals/:referralId/interest", checkJwt, expressInterest);
 
+// Withdraw interest from a referral
+router.delete("/groups/:groupId/referrals/:referralId/interest", checkJwt, withdrawInterest);
+
 // ===== WEBINARS & COACHING =====
 
 // Get webinars/coaching sessions
@@ -126,6 +139,9 @@ router.post("/groups/:groupId/webinars", checkJwt, createWebinar);
 
 // Register for a webinar
 router.post("/groups/:groupId/webinars/:webinarId/register", checkJwt, registerForWebinar);
+
+// Unregister from a webinar
+router.delete("/groups/:groupId/webinars/:webinarId/register", checkJwt, unregisterFromWebinar);
 
 // ===== OPPORTUNITY ALERTS =====
 

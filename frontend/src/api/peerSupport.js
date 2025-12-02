@@ -51,6 +51,14 @@ export const leaveGroup = async (groupId) => {
 };
 
 /**
+ * Delete a group (owner only)
+ */
+export const deleteGroup = async (groupId) => {
+    const response = await api.delete(`/api/peer-support/groups/${groupId}`);
+    return response.data;
+};
+
+/**
  * Update privacy settings for a group
  */
 export const updateMemberPrivacy = async (groupId, settings) => {
@@ -135,6 +143,14 @@ export const joinChallenge = async (groupId, challengeId) => {
 };
 
 /**
+ * Leave a challenge
+ */
+export const leaveChallenge = async (groupId, challengeId) => {
+    const response = await api.post(`/api/peer-support/groups/${groupId}/challenges/${challengeId}/leave`);
+    return response.data;
+};
+
+/**
  * Update challenge progress
  */
 export const updateChallengeProgress = async (groupId, challengeId, currentValue) => {
@@ -186,6 +202,14 @@ export const expressInterest = async (groupId, referralId) => {
     return response.data;
 };
 
+/**
+ * Withdraw interest from a referral
+ */
+export const withdrawInterest = async (groupId, referralId) => {
+    const response = await api.delete(`/api/peer-support/groups/${groupId}/referrals/${referralId}/interest`);
+    return response.data;
+};
+
 // ===== WEBINARS & COACHING =====
 
 /**
@@ -209,6 +233,14 @@ export const createWebinar = async (groupId, webinarData) => {
  */
 export const registerForWebinar = async (groupId, webinarId) => {
     const response = await api.post(`/api/peer-support/groups/${groupId}/webinars/${webinarId}/register`);
+    return response.data;
+};
+
+/**
+ * Unregister from a webinar
+ */
+export const unregisterFromWebinar = async (groupId, webinarId) => {
+    const response = await api.delete(`/api/peer-support/groups/${groupId}/webinars/${webinarId}/register`);
     return response.data;
 };
 

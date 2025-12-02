@@ -35,10 +35,13 @@ import {
     Sparkles,
     UserPlus,
     Settings,
+    Trash2,
+    LogOut,
+    Reply,
 } from 'lucide-react';
 
 const PeerSupportPage = () => {
-    const { getToken } = useAuth();
+    const { getToken, userId } = useAuth();
     const [activeTab, setActiveTab] = useState('discover'); // discover, myGroups, impact
     const [activeGroupTab, setActiveGroupTab] = useState('discussions'); // discussions, challenges, stories, referrals, webinars, alerts
     
@@ -47,6 +50,7 @@ const PeerSupportPage = () => {
     const [myGroups, setMyGroups] = useState([]);
     const [selectedGroup, setSelectedGroup] = useState(null);
     const [networkingImpact, setNetworkingImpact] = useState(null);
+    const [currentUser, setCurrentUser] = useState(null);
     
     // Group content
     const [discussions, setDiscussions] = useState([]);
@@ -71,6 +75,11 @@ const PeerSupportPage = () => {
     const [showCreateWebinarModal, setShowCreateWebinarModal] = useState(false);
     const [showPrivacyModal, setShowPrivacyModal] = useState(false);
     const [selectedDiscussion, setSelectedDiscussion] = useState(null);
+    const [showDiscussionDetailModal, setShowDiscussionDetailModal] = useState(false);
+    const [discussionReplies, setDiscussionReplies] = useState([]);
+    const [replyText, setReplyText] = useState('');
+    const [isAnonymousReply, setIsAnonymousReply] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     
     // Filters
     const [searchQuery, setSearchQuery] = useState('');
@@ -122,6 +131,7 @@ const PeerSupportPage = () => {
         jobDetails: {},
         applicationInfo: {},
         canRefer: false,
+        referralSlots: 1,
     });
     
     const [webinarForm, setWebinarForm] = useState({
@@ -131,6 +141,7 @@ const PeerSupportPage = () => {
         topic: 'interview_prep',
         scheduledAt: '',
         duration: 60,
+        meetingLink: '',
         meetingInfo: {},
         capacity: 100,
     });
@@ -293,8 +304,22 @@ const PeerSupportPage = () => {
     const handleShareReferral = async (e) => {
         e.preventDefault();
         try {
-            await peerSupportApi.shareReferral(selectedGroup._id, referralForm);
+            const formData = {
+                ...referralForm,
+                referralSlots: referralForm.canRefer ? { total: referralForm.referralSlots, used: 0 } : { total: 0, used: 0 }
+            };
+            await peerSupportApi.shareReferral(selectedGroup._id, formData);
             setShowShareReferralModal(false);
+            setReferralForm({
+                title: '',
+                company: '',
+                description: '',
+                opportunityType: 'job_opening',
+                jobDetails: {},
+                applicationInfo: {},
+                canRefer: false,
+                referralSlots: 1,
+            });
             fetchGroupContent(selectedGroup._id);
         } catch (error) {
             console.error('Error sharing referral:', error);
@@ -339,12 +364,39 @@ const PeerSupportPage = () => {
         }
     };
 
+    const handleWithdrawInterest = async (referralId) => {
+        try {
+            await peerSupportApi.withdrawInterest(selectedGroup._id, referralId);
+            fetchGroupContent(selectedGroup._id);
+        } catch (error) {
+            console.error('Error withdrawing interest:', error);
+        }
+    };
+
     const handleRegisterWebinar = async (webinarId) => {
         try {
             await peerSupportApi.registerForWebinar(selectedGroup._id, webinarId);
             fetchGroupContent(selectedGroup._id);
         } catch (error) {
             console.error('Error registering for webinar:', error);
+        }
+    };
+
+    const handleUnregisterWebinar = async (webinarId) => {
+        try {
+            await peerSupportApi.unregisterFromWebinar(selectedGroup._id, webinarId);
+            fetchGroupContent(selectedGroup._id);
+        } catch (error) {
+            console.error('Error unregistering from webinar:', error);
+        }
+    };
+
+    const handleLeaveChallenge = async (challengeId) => {
+        try {
+            await peerSupportApi.leaveChallenge(selectedGroup._id, challengeId);
+            fetchGroupContent(selectedGroup._id);
+        } catch (error) {
+            console.error('Error leaving challenge:', error);
         }
     };
 
@@ -358,7 +410,106 @@ const PeerSupportPage = () => {
         }
     };
 
-    const renderGroupCard = (group) => (
+    const handleLeaveGroup = async () => {
+        try {
+            await peerSupportApi.leaveGroup(selectedGroup._id);
+            setSelectedGroup(null);
+            fetchData();
+        } catch (error) {
+            console.error('Error leaving group:', error);
+            alert(error.response?.data?.message || 'Failed to leave group');
+        }
+    };
+
+    const handleDeleteGroup = async () => {
+        try {
+            await peerSupportApi.deleteGroup(selectedGroup._id);
+            setSelectedGroup(null);
+            setShowDeleteConfirm(false);
+            fetchData();
+        } catch (error) {
+            console.error('Error deleting group:', error);
+            alert(error.response?.data?.message || 'Failed to delete group');
+        }
+    };
+
+    const handleViewStory = (story) => {
+        // For now, just show an alert with the full story
+        // In a full implementation, this would open a modal with comments
+        alert(`${story.title}\n\n${story.fullStory || story.summary}\n\nBy: ${story.isAnonymous ? 'Anonymous' : story.authorId?.name || 'Unknown'}`);
+    };
+
+    const handleViewDiscussion = async (discussion) => {
+        setSelectedDiscussion(discussion);
+        setShowDiscussionDetailModal(true);
+        try {
+            const data = await peerSupportApi.getDiscussion(selectedGroup._id, discussion._id);
+            setSelectedDiscussion(data.data.discussion);
+            setDiscussionReplies(data.data.replies || []);
+        } catch (error) {
+            console.error('Error fetching discussion details:', error);
+        }
+    };
+
+    const handleReplyToDiscussion = async (e) => {
+        e.preventDefault();
+        if (!replyText.trim()) return;
+        
+        try {
+            await peerSupportApi.replyToDiscussion(selectedGroup._id, selectedDiscussion._id, {
+                content: replyText,
+                isAnonymous: isAnonymousReply,
+            });
+            setReplyText('');
+            setIsAnonymousReply(false);
+            // Refresh discussion details
+            const data = await peerSupportApi.getDiscussion(selectedGroup._id, selectedDiscussion._id);
+            setSelectedDiscussion(data.data.discussion);
+            setDiscussionReplies(data.data.replies || []);
+            fetchGroupContent(selectedGroup._id);
+        } catch (error) {
+            console.error('Error replying to discussion:', error);
+        }
+    };
+
+    const handleLikeDiscussion = async (e, discussionId) => {
+        e.stopPropagation();
+        try {
+            await peerSupportApi.likeContent(selectedGroup._id, 'discussion', discussionId);
+            fetchGroupContent(selectedGroup._id);
+            // Also update the selected discussion if we're viewing it
+            if (selectedDiscussion && selectedDiscussion._id === discussionId) {
+                const data = await peerSupportApi.getDiscussion(selectedGroup._id, discussionId);
+                setSelectedDiscussion(data.data.discussion);
+            }
+        } catch (error) {
+            console.error('Error liking discussion:', error);
+        }
+    };
+
+    const handleLikeReply = async (replyId) => {
+        try {
+            await peerSupportApi.likeContent(selectedGroup._id, 'reply', replyId);
+            // Refresh replies
+            const data = await peerSupportApi.getDiscussion(selectedGroup._id, selectedDiscussion._id);
+            setDiscussionReplies(data.data.replies || []);
+        } catch (error) {
+            console.error('Error liking reply:', error);
+        }
+    };
+
+    const handleLeaveGroupFromCard = async (groupId) => {
+        try {
+            await peerSupportApi.leaveGroup(groupId);
+            fetchData();
+        } catch (error) {
+            console.error('Error leaving group:', error);
+            alert(error.response?.data?.message || 'Failed to leave group');
+        }
+    };
+
+    // Render card for Discover tab - shows Join button for groups user hasn't joined
+    const renderDiscoverGroupCard = (group) => (
         <div key={group._id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
             {group.coverImage?.url && (
                 <img src={group.coverImage.url} alt={group.name} className="w-full h-32 object-cover rounded-lg mb-4" />
@@ -388,20 +539,66 @@ const PeerSupportPage = () => {
                 </span>
             </div>
             <div className="flex gap-2">
-                {group.isMember ? (
+                <button
+                    onClick={() => handleJoinGroup(group._id)}
+                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                >
+                    <UserPlus className="w-4 h-4" />
+                    Join Group
+                </button>
+            </div>
+        </div>
+    );
+
+    // Render card for My Groups tab - shows View and Leave buttons
+    const renderMyGroupCard = (group) => (
+        <div key={group._id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+            {group.coverImage?.url && (
+                <img src={group.coverImage.url} alt={group.name} className="w-full h-32 object-cover rounded-lg mb-4" />
+            )}
+            <div className="flex items-start justify-between mb-3">
+                <div>
+                    <h3 className="text-lg font-semibold text-gray-900">{group.name}</h3>
+                    <span className="inline-block px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded mt-1">
+                        {group.category}
+                    </span>
+                    {group.isOwner && (
+                        <span className="inline-block px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded mt-1 ml-1">
+                            Owner
+                        </span>
+                    )}
+                </div>
+                {group.groupType === 'private' && <Lock className="w-5 h-5 text-gray-400" />}
+            </div>
+            <p className="text-sm text-gray-600 mb-4 line-clamp-2">{group.description}</p>
+            <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
+                <span className="flex items-center gap-1">
+                    <Users className="w-4 h-4" />
+                    {group.stats.totalMembers} members
+                </span>
+                <span className="flex items-center gap-1">
+                    <MessageSquare className="w-4 h-4" />
+                    {group.stats.totalDiscussions}
+                </span>
+                <span className="flex items-center gap-1">
+                    <Trophy className="w-4 h-4" />
+                    {group.stats.totalChallenges}
+                </span>
+            </div>
+            <div className="flex gap-2">
+                <button
+                    onClick={() => setSelectedGroup(group)}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                    View Group
+                </button>
+                {!group.isOwner && (
                     <button
-                        onClick={() => setSelectedGroup(group)}
-                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        onClick={() => handleLeaveGroupFromCard(group._id)}
+                        className="px-4 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors flex items-center gap-2"
                     >
-                        View Group
-                    </button>
-                ) : (
-                    <button
-                        onClick={() => handleJoinGroup(group._id)}
-                        className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
-                    >
-                        <UserPlus className="w-4 h-4" />
-                        Join Group
+                        <LogOut className="w-4 h-4" />
+                        Leave
                     </button>
                 )}
             </div>
@@ -409,28 +606,35 @@ const PeerSupportPage = () => {
     );
 
     const renderDiscussion = (discussion) => (
-        <div key={discussion._id} className="bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow cursor-pointer"
-             onClick={() => setSelectedDiscussion(discussion)}>
+        <div key={discussion._id} className="bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow">
             {discussion.isPinned && (
                 <span className="inline-block px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded mb-2">
                     Pinned
                 </span>
             )}
-            <h3 className="font-semibold text-gray-900 mb-2">{discussion.title}</h3>
-            <p className="text-sm text-gray-600 mb-3 line-clamp-2">{discussion.content}</p>
+            <div className="cursor-pointer" onClick={() => handleViewDiscussion(discussion)}>
+                <h3 className="font-semibold text-gray-900 mb-2">{discussion.title}</h3>
+                <p className="text-sm text-gray-600 mb-3 line-clamp-2">{discussion.content}</p>
+            </div>
             <div className="flex items-center justify-between text-sm text-gray-500">
                 <div className="flex items-center gap-4">
-                    <span className="flex items-center gap-1">
-                        <ThumbsUp className="w-4 h-4" />
-                        {discussion.stats.likeCount}
-                    </span>
-                    <span className="flex items-center gap-1">
+                    <button 
+                        onClick={(e) => handleLikeDiscussion(e, discussion._id)}
+                        className="flex items-center gap-1 hover:text-blue-600 transition-colors"
+                    >
+                        <ThumbsUp className={`w-4 h-4 ${discussion.hasLiked ? 'text-blue-600 fill-blue-600' : ''}`} />
+                        {discussion.stats?.likeCount || 0}
+                    </button>
+                    <button 
+                        onClick={() => handleViewDiscussion(discussion)}
+                        className="flex items-center gap-1 hover:text-blue-600 transition-colors"
+                    >
                         <MessageCircle className="w-4 h-4" />
-                        {discussion.stats.replyCount} replies
-                    </span>
+                        {discussion.stats?.replyCount || 0} replies
+                    </button>
                     <span className="flex items-center gap-1">
                         <Eye className="w-4 h-4" />
-                        {discussion.stats.viewCount}
+                        {discussion.stats?.viewCount || 0}
                     </span>
                 </div>
                 <span className="text-xs">
@@ -475,11 +679,20 @@ const PeerSupportPage = () => {
                 </div>
             </div>
             {challenge.isParticipating ? (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <p className="text-sm text-blue-900 font-medium mb-1">Your Progress</p>
-                    <p className="text-2xl font-bold text-blue-600">
-                        {challenge.myProgress?.percentComplete.toFixed(0)}%
-                    </p>
+                <div>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                        <p className="text-sm text-blue-900 font-medium mb-1">Your Progress</p>
+                        <p className="text-2xl font-bold text-blue-600">
+                            {challenge.myProgress?.percentComplete?.toFixed(0) || 0}%
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => handleLeaveChallenge(challenge._id)}
+                        className="w-full px-4 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors flex items-center justify-center gap-2"
+                    >
+                        <X className="w-4 h-4" />
+                        Leave Challenge
+                    </button>
                 </div>
             ) : (
                 <button
@@ -503,6 +716,9 @@ const PeerSupportPage = () => {
             )}
             <h3 className="font-semibold text-gray-900 mb-2">{story.title}</h3>
             <p className="text-sm text-gray-600 mb-3">{story.summary}</p>
+            {story.fullStory && (
+                <p className="text-sm text-gray-700 mb-3 whitespace-pre-wrap">{story.fullStory}</p>
+            )}
             <div className="flex items-center gap-2 mb-3">
                 <span className={`px-2 py-1 text-xs rounded ${
                     story.storyType === 'job_offer' ? 'bg-green-100 text-green-800' :
@@ -514,14 +730,13 @@ const PeerSupportPage = () => {
             </div>
             <div className="flex items-center justify-between text-sm text-gray-500">
                 <div className="flex items-center gap-3">
-                    <span className="flex items-center gap-1">
-                        <Heart className="w-4 h-4" />
-                        {story.stats.likeCount}
-                    </span>
-                    <span className="flex items-center gap-1">
-                        <MessageCircle className="w-4 h-4" />
-                        {story.stats.commentCount}
-                    </span>
+                    <button 
+                        onClick={() => handleLikeContent('story', story._id)}
+                        className="flex items-center gap-1 hover:text-red-500 transition-colors"
+                    >
+                        <Heart className={`w-4 h-4 ${story.hasLiked ? 'text-red-500 fill-red-500' : ''}`} />
+                        {story.stats?.likeCount || 0}
+                    </button>
                 </div>
                 <span className="text-xs">
                     {story.isAnonymous ? 'Anonymous' : story.authorId?.name || 'Unknown'}
@@ -554,17 +769,27 @@ const PeerSupportPage = () => {
             </div>
             <div className="flex items-center justify-between">
                 <div className="text-sm text-gray-500">
-                    <span>{referral.stats.interestCount} interested</span>
-                    {referral.canRefer && (
-                        <span className="ml-2">• Can refer {referral.referralSlots.total - referral.referralSlots.used} more</span>
+                    <span>{referral.stats?.interestCount || 0} interested</span>
+                    {referral.canRefer && referral.referralSlots?.total > 0 && (
+                        <span className="ml-2">• {referral.referralSlots.total} referral{referral.referralSlots.total !== 1 ? 's' : ''} available</span>
                     )}
                 </div>
-                <button
-                    onClick={() => handleExpressInterest(referral._id)}
-                    className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
-                >
-                    Interested
-                </button>
+                {referral.hasExpressedInterest ? (
+                    <button
+                        onClick={() => handleWithdrawInterest(referral._id)}
+                        className="px-4 py-2 bg-orange-100 text-orange-700 text-sm rounded-lg hover:bg-orange-200 transition-colors flex items-center gap-1"
+                    >
+                        <X className="w-4 h-4" />
+                        Withdraw
+                    </button>
+                ) : (
+                    <button
+                        onClick={() => handleExpressInterest(referral._id)}
+                        className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                        Interested
+                    </button>
+                )}
             </div>
         </div>
     );
@@ -588,25 +813,47 @@ const PeerSupportPage = () => {
             <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
                 <span className="flex items-center gap-1">
                     <Calendar className="w-4 h-4" />
-                    {new Date(webinar.scheduledAt).toLocaleDateString()}
+                    {new Date(webinar.scheduledAt).toLocaleDateString()} at {new Date(webinar.scheduledAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                 </span>
                 <span>{webinar.duration} min</span>
-                <span>{webinar.stats.registrationCount}/{webinar.capacity.max}</span>
+                <span>{webinar.stats?.registrationCount || 0}/{webinar.capacity?.max || webinar.capacity}</span>
             </div>
             {webinar.isRegistered ? (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                    <p className="text-sm text-green-900 font-medium flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4" />
-                        You're registered!
-                    </p>
+                <div>
+                    {webinar.meetingInfo?.link && (
+                        <div className="mb-3 p-2 bg-purple-50 rounded-lg">
+                            <a 
+                                href={webinar.meetingInfo.link} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-sm text-purple-600 hover:text-purple-800 flex items-center gap-2"
+                            >
+                                <Video className="w-4 h-4" />
+                                Join Meeting
+                            </a>
+                        </div>
+                    )}
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
+                        <p className="text-sm text-green-900 font-medium flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4" />
+                            You're registered!
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => handleUnregisterWebinar(webinar._id)}
+                        className="w-full px-4 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors flex items-center justify-center gap-2"
+                    >
+                        <X className="w-4 h-4" />
+                        Cancel Registration
+                    </button>
                 </div>
             ) : (
                 <button
                     onClick={() => handleRegisterWebinar(webinar._id)}
                     className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                    disabled={webinar.capacity.current >= webinar.capacity.max}
+                    disabled={(webinar.capacity?.current || 0) >= (webinar.capacity?.max || webinar.capacity)}
                 >
-                    {webinar.capacity.current >= webinar.capacity.max ? 'Full' : 'Register'}
+                    {(webinar.capacity?.current || 0) >= (webinar.capacity?.max || webinar.capacity) ? 'Full' : 'Register'}
                 </button>
             )}
         </div>
@@ -805,13 +1052,29 @@ const PeerSupportPage = () => {
                         {/* Groups Grid */}
                         {activeTab === 'discover' && (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {groups.map(group => renderGroupCard(group))}
+                                {groups.filter(group => !group.isMember).length > 0 ? (
+                                    groups.filter(group => !group.isMember).map(group => renderDiscoverGroupCard(group))
+                                ) : (
+                                    <div className="col-span-full text-center py-12 text-gray-500">
+                                        <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                                        <p>You've joined all available groups!</p>
+                                        <p className="text-sm mt-2">Create a new group to connect with more peers.</p>
+                                    </div>
+                                )}
                             </div>
                         )}
 
                         {activeTab === 'myGroups' && (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {myGroups.map(group => renderGroupCard(group))}
+                                {myGroups.length > 0 ? (
+                                    myGroups.map(group => renderMyGroupCard(group))
+                                ) : (
+                                    <div className="col-span-full text-center py-12 text-gray-500">
+                                        <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                                        <p>You haven't joined any groups yet.</p>
+                                        <p className="text-sm mt-2">Discover groups to connect with peers in your field.</p>
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -850,13 +1113,32 @@ const PeerSupportPage = () => {
                                         </span>
                                     </div>
                                 </div>
-                                <button
-                                    onClick={() => setShowPrivacyModal(true)}
-                                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
-                                >
-                                    <Settings className="w-4 h-4" />
-                                    Privacy
-                                </button>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setShowPrivacyModal(true)}
+                                        className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
+                                    >
+                                        <Settings className="w-4 h-4" />
+                                        Privacy
+                                    </button>
+                                    {selectedGroup.isOwner ? (
+                                        <button
+                                            onClick={() => setShowDeleteConfirm(true)}
+                                            className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors flex items-center gap-2"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                            Delete Group
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={handleLeaveGroup}
+                                            className="px-4 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors flex items-center gap-2"
+                                        >
+                                            <LogOut className="w-4 h-4" />
+                                            Leave Group
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         </div>
 
@@ -869,7 +1151,6 @@ const PeerSupportPage = () => {
                                     { id: 'stories', label: 'Success Stories', icon: Star },
                                     { id: 'referrals', label: 'Referrals', icon: Briefcase },
                                     { id: 'webinars', label: 'Webinars', icon: Video },
-                                    { id: 'alerts', label: 'Alerts', icon: Bell },
                                     { id: 'members', label: 'Members', icon: Users },
                                 ].map(tab => (
                                     <button
@@ -952,27 +1233,6 @@ const PeerSupportPage = () => {
                                 {activeGroupTab === 'stories' && successStories.map(renderSuccessStory)}
                                 {activeGroupTab === 'referrals' && referrals.map(renderReferral)}
                                 {activeGroupTab === 'webinars' && webinars.map(renderWebinar)}
-                                {activeGroupTab === 'alerts' && alerts.map(alert => (
-                                    <div key={alert._id} className={`bg-white rounded-lg shadow p-4 border-l-4 ${
-                                        alert.priority === 'urgent' ? 'border-red-500' :
-                                        alert.priority === 'high' ? 'border-orange-500' :
-                                        'border-blue-500'
-                                    }`}>
-                                        <div className="flex items-start gap-3">
-                                            <Bell className="w-5 h-5 text-gray-600 mt-0.5" />
-                                            <div className="flex-1">
-                                                <h4 className="font-semibold text-gray-900">{alert.title}</h4>
-                                                <p className="text-sm text-gray-600 mt-1">{alert.description}</p>
-                                                {alert.link && (
-                                                    <a href={alert.link} target="_blank" rel="noopener noreferrer" 
-                                                       className="text-sm text-blue-600 hover:text-blue-800 mt-2 inline-block">
-                                                        Learn more →
-                                                    </a>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
                                 {activeGroupTab === 'members' && (
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                         {members.map(member => (
@@ -1002,7 +1262,7 @@ const PeerSupportPage = () => {
 
                 {/* Modals */}
                 {showCreateGroupModal && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                         <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                             <div className="flex justify-between items-center mb-4">
                                 <h2 className="text-xl font-bold text-gray-900">Create New Group</h2>
@@ -1078,7 +1338,7 @@ const PeerSupportPage = () => {
                 )}
 
                 {showCreateDiscussionModal && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                         <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                             <div className="flex justify-between items-center mb-4">
                                 <h2 className="text-xl font-bold text-gray-900">New Discussion</h2>
@@ -1157,7 +1417,7 @@ const PeerSupportPage = () => {
                 )}
 
                 {showPrivacyModal && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                         <div className="bg-white rounded-lg p-6 max-w-md w-full">
                             <div className="flex justify-between items-center mb-4">
                                 <h2 className="text-xl font-bold text-gray-900">Privacy Settings</h2>
@@ -1229,6 +1489,583 @@ const PeerSupportPage = () => {
                                     </button>
                                 </div>
                             </form>
+                        </div>
+                    </div>
+                )}
+
+                {/* Discussion Detail Modal */}
+                {showDiscussionDetailModal && selectedDiscussion && (
+                    <div className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                        <div className="bg-white rounded-lg p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+                            <div className="flex justify-between items-start mb-4">
+                                <div>
+                                    <h2 className="text-xl font-bold text-gray-900">{selectedDiscussion.title}</h2>
+                                    <p className="text-sm text-gray-500 mt-1">
+                                        Posted by {selectedDiscussion.isAnonymous ? selectedDiscussion.anonymousName || 'Anonymous' : selectedDiscussion.authorId?.name || 'Unknown'}
+                                        {' • '}
+                                        {new Date(selectedDiscussion.createdAt).toLocaleDateString()}
+                                    </p>
+                                </div>
+                                <button 
+                                    onClick={() => {
+                                        setShowDiscussionDetailModal(false);
+                                        setSelectedDiscussion(null);
+                                        setDiscussionReplies([]);
+                                    }} 
+                                    className="text-gray-500 hover:text-gray-700"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                            
+                            <div className="prose max-w-none mb-6">
+                                <p className="text-gray-700 whitespace-pre-wrap">{selectedDiscussion.content}</p>
+                            </div>
+                            
+                            <div className="flex items-center gap-4 mb-6 pb-4 border-b">
+                                <button 
+                                    onClick={(e) => handleLikeDiscussion(e, selectedDiscussion._id)}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                                        selectedDiscussion.hasLiked 
+                                            ? 'bg-blue-100 text-blue-700' 
+                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    }`}
+                                >
+                                    <ThumbsUp className={`w-4 h-4 ${selectedDiscussion.hasLiked ? 'fill-blue-600' : ''}`} />
+                                    {selectedDiscussion.stats?.likeCount || 0} Likes
+                                </button>
+                                <span className="flex items-center gap-2 text-gray-500">
+                                    <MessageCircle className="w-4 h-4" />
+                                    {discussionReplies.length} Replies
+                                </span>
+                            </div>
+
+                            {/* Replies */}
+                            <div className="space-y-4 mb-6">
+                                <h3 className="font-semibold text-gray-900">Replies</h3>
+                                {discussionReplies.length === 0 ? (
+                                    <p className="text-gray-500 text-sm">No replies yet. Be the first to reply!</p>
+                                ) : (
+                                    discussionReplies.map(reply => (
+                                        <div key={reply._id} className="bg-gray-50 rounded-lg p-4">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <span className="text-sm font-medium text-gray-900">
+                                                    {reply.isAnonymous ? reply.anonymousName || 'Anonymous' : reply.authorId?.name || 'Unknown'}
+                                                </span>
+                                                <span className="text-xs text-gray-500">
+                                                    {new Date(reply.createdAt).toLocaleDateString()}
+                                                </span>
+                                            </div>
+                                            <p className="text-sm text-gray-700 mb-2 whitespace-pre-wrap">{reply.content}</p>
+                                            <button 
+                                                onClick={() => handleLikeReply(reply._id)}
+                                                className={`flex items-center gap-1 text-sm transition-colors ${
+                                                    reply.hasLiked ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'
+                                                }`}
+                                            >
+                                                <ThumbsUp className={`w-3 h-3 ${reply.hasLiked ? 'fill-blue-600' : ''}`} />
+                                                {reply.stats?.likeCount || 0}
+                                            </button>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+
+                            {/* Reply Form */}
+                            <form onSubmit={handleReplyToDiscussion} className="border-t pt-4">
+                                <h3 className="font-semibold text-gray-900 mb-3">Add a Reply</h3>
+                                <textarea
+                                    value={replyText}
+                                    onChange={(e) => setReplyText(e.target.value)}
+                                    placeholder="Write your reply..."
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 mb-3"
+                                    rows={3}
+                                    required
+                                />
+                                <div className="flex items-center justify-between">
+                                    <label className="flex items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            checked={isAnonymousReply}
+                                            onChange={(e) => setIsAnonymousReply(e.target.checked)}
+                                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                        />
+                                        <span className="text-sm text-gray-700 flex items-center gap-1">
+                                            <EyeOff className="w-4 h-4" />
+                                            Reply anonymously
+                                        </span>
+                                    </label>
+                                    <button
+                                        type="submit"
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                                    >
+                                        <Send className="w-4 h-4" />
+                                        Reply
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
+                {/* Create Challenge Modal */}
+                {showCreateChallengeModal && (
+                    <div className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                        <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-xl font-bold text-gray-900">Create Challenge</h2>
+                                <button onClick={() => setShowCreateChallengeModal(false)} className="text-gray-500 hover:text-gray-700">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                            <form onSubmit={handleCreateChallenge} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Challenge Title</label>
+                                    <input
+                                        type="text"
+                                        value={challengeForm.title}
+                                        onChange={(e) => setChallengeForm({...challengeForm, title: e.target.value})}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        placeholder="e.g., 30-Day Application Sprint"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                    <textarea
+                                        value={challengeForm.description}
+                                        onChange={(e) => setChallengeForm({...challengeForm, description: e.target.value})}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        rows="3"
+                                        placeholder="Describe the challenge and what participants will achieve..."
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Challenge Type</label>
+                                    <select
+                                        value={challengeForm.challengeType}
+                                        onChange={(e) => setChallengeForm({...challengeForm, challengeType: e.target.value})}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="application_sprint">Application Sprint</option>
+                                        <option value="networking">Networking Challenge</option>
+                                        <option value="skill_building">Skill Building</option>
+                                        <option value="interview_prep">Interview Prep</option>
+                                        <option value="accountability">Accountability Partner</option>
+                                    </select>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Target Value</label>
+                                        <input
+                                            type="number"
+                                            value={challengeForm.goals.targetValue}
+                                            onChange={(e) => setChallengeForm({...challengeForm, goals: {...challengeForm.goals, targetValue: parseInt(e.target.value)}})}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                            min="1"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Metric</label>
+                                        <select
+                                            value={challengeForm.goals.metric}
+                                            onChange={(e) => setChallengeForm({...challengeForm, goals: {...challengeForm.goals, metric: e.target.value}})}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            <option value="applications">Applications</option>
+                                            <option value="connections">Connections</option>
+                                            <option value="interviews">Interviews</option>
+                                            <option value="skills">Skills Learned</option>
+                                            <option value="hours">Hours</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                                        <input
+                                            type="date"
+                                            value={challengeForm.startDate}
+                                            onChange={(e) => setChallengeForm({...challengeForm, startDate: e.target.value})}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                                        <input
+                                            type="date"
+                                            value={challengeForm.endDate}
+                                            onChange={(e) => setChallengeForm({...challengeForm, endDate: e.target.value})}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex justify-end gap-2 pt-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowCreateChallengeModal(false)}
+                                        className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                    >
+                                        Create Challenge
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
+                {/* Share Success Story Modal */}
+                {showShareStoryModal && (
+                    <div className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                        <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-xl font-bold text-gray-900">Share Your Success Story</h2>
+                                <button onClick={() => setShowShareStoryModal(false)} className="text-gray-500 hover:text-gray-700">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                            <form onSubmit={handleShareStory} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                                    <input
+                                        type="text"
+                                        value={storyForm.title}
+                                        onChange={(e) => setStoryForm({...storyForm, title: e.target.value})}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        placeholder="e.g., How I landed my dream job at Google"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Story Type</label>
+                                    <select
+                                        value={storyForm.storyType}
+                                        onChange={(e) => setStoryForm({...storyForm, storyType: e.target.value})}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="job_offer">Job Offer</option>
+                                        <option value="interview_success">Interview Success</option>
+                                        <option value="career_transition">Career Transition</option>
+                                        <option value="skill_development">Skill Development</option>
+                                        <option value="networking_win">Networking Win</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Summary</label>
+                                    <textarea
+                                        value={storyForm.summary}
+                                        onChange={(e) => setStoryForm({...storyForm, summary: e.target.value})}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        rows="2"
+                                        placeholder="A brief summary of your success..."
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Story</label>
+                                    <textarea
+                                        value={storyForm.fullStory}
+                                        onChange={(e) => setStoryForm({...storyForm, fullStory: e.target.value})}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        rows="5"
+                                        placeholder="Share the details of your journey..."
+                                        required
+                                    />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={storyForm.isAnonymous}
+                                        onChange={(e) => setStoryForm({...storyForm, isAnonymous: e.target.checked})}
+                                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <label className="text-sm text-gray-700">Share anonymously</label>
+                                </div>
+                                <div className="flex justify-end gap-2 pt-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowShareStoryModal(false)}
+                                        className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                    >
+                                        Share Story
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
+                {/* Share Referral Modal */}
+                {showShareReferralModal && (
+                    <div className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                        <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-xl font-bold text-gray-900">Share Referral Opportunity</h2>
+                                <button onClick={() => setShowShareReferralModal(false)} className="text-gray-500 hover:text-gray-700">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                            <form onSubmit={handleShareReferral} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                                    <input
+                                        type="text"
+                                        value={referralForm.title}
+                                        onChange={(e) => setReferralForm({...referralForm, title: e.target.value})}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        placeholder="e.g., Software Engineer at Tesla"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Company</label>
+                                    <input
+                                        type="text"
+                                        value={referralForm.company}
+                                        onChange={(e) => setReferralForm({...referralForm, company: e.target.value})}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Company name"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Opportunity Type</label>
+                                    <select
+                                        value={referralForm.opportunityType}
+                                        onChange={(e) => setReferralForm({...referralForm, opportunityType: e.target.value})}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="job_opening">Job Opening</option>
+                                        <option value="internship">Internship</option>
+                                        <option value="referral_available">Referral Available</option>
+                                        <option value="networking">Networking Opportunity</option>
+                                        <option value="informational_interview">Informational Interview</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                    <textarea
+                                        value={referralForm.description}
+                                        onChange={(e) => setReferralForm({...referralForm, description: e.target.value})}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        rows="4"
+                                        placeholder="Describe the opportunity, requirements, and how you can help..."
+                                        required
+                                    />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={referralForm.canRefer}
+                                        onChange={(e) => setReferralForm({...referralForm, canRefer: e.target.checked})}
+                                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <label className="text-sm text-gray-700">I can provide a referral for this position</label>
+                                </div>
+                                {referralForm.canRefer && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Number of Referrals Available</label>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            max="50"
+                                            value={referralForm.referralSlots}
+                                            onChange={(e) => setReferralForm({...referralForm, referralSlots: parseInt(e.target.value) || 1})}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                            placeholder="How many people can you refer?"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">Specify how many referrals you can provide for this opportunity</p>
+                                    </div>
+                                )}
+                                <div className="flex justify-end gap-2 pt-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowShareReferralModal(false)}
+                                        className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                    >
+                                        Share Opportunity
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
+                {/* Create Webinar Modal */}
+                {showCreateWebinarModal && (
+                    <div className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                        <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-xl font-bold text-gray-900">Schedule Webinar/Coaching Session</h2>
+                                <button onClick={() => setShowCreateWebinarModal(false)} className="text-gray-500 hover:text-gray-700">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                            <form onSubmit={handleCreateWebinar} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                                    <input
+                                        type="text"
+                                        value={webinarForm.title}
+                                        onChange={(e) => setWebinarForm({...webinarForm, title: e.target.value})}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        placeholder="e.g., Resume Review Workshop"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Session Type</label>
+                                    <select
+                                        value={webinarForm.sessionType}
+                                        onChange={(e) => setWebinarForm({...webinarForm, sessionType: e.target.value})}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="webinar">Webinar</option>
+                                        <option value="group_coaching">Group Coaching</option>
+                                        <option value="workshop">Workshop</option>
+                                        <option value="q_and_a">Q&A Session</option>
+                                        <option value="panel">Panel Discussion</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Topic</label>
+                                    <select
+                                        value={webinarForm.topic}
+                                        onChange={(e) => setWebinarForm({...webinarForm, topic: e.target.value})}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="interview_prep">Interview Preparation</option>
+                                        <option value="resume_review">Resume Review</option>
+                                        <option value="networking">Networking Strategies</option>
+                                        <option value="salary_negotiation">Salary Negotiation</option>
+                                        <option value="career_transition">Career Transition</option>
+                                        <option value="industry_insights">Industry Insights</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                    <textarea
+                                        value={webinarForm.description}
+                                        onChange={(e) => setWebinarForm({...webinarForm, description: e.target.value})}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        rows="3"
+                                        placeholder="What will participants learn..."
+                                        required
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Date & Time</label>
+                                        <input
+                                            type="datetime-local"
+                                            value={webinarForm.scheduledAt}
+                                            onChange={(e) => setWebinarForm({...webinarForm, scheduledAt: e.target.value})}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</label>
+                                        <input
+                                            type="number"
+                                            value={webinarForm.duration}
+                                            onChange={(e) => setWebinarForm({...webinarForm, duration: parseInt(e.target.value)})}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                            min="15"
+                                            max="180"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Max Capacity</label>
+                                    <input
+                                        type="number"
+                                        value={webinarForm.capacity}
+                                        onChange={(e) => setWebinarForm({...webinarForm, capacity: parseInt(e.target.value)})}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        min="2"
+                                        max="500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Meeting Link (Zoom, Google Meet, etc.)</label>
+                                    <input
+                                        type="url"
+                                        value={webinarForm.meetingLink}
+                                        onChange={(e) => setWebinarForm({...webinarForm, meetingLink: e.target.value})}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                        placeholder="https://zoom.us/j/... or https://meet.google.com/..."
+                                    />
+                                </div>
+                                <div className="flex justify-end gap-2 pt-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowCreateWebinarModal(false)}
+                                        className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                    >
+                                        Schedule Session
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
+                {/* Delete Confirmation Modal */}
+                {showDeleteConfirm && (
+                    <div className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                        <div className="bg-white rounded-lg p-6 max-w-md w-full">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="p-2 bg-red-100 rounded-full">
+                                    <AlertCircle className="w-6 h-6 text-red-600" />
+                                </div>
+                                <h2 className="text-xl font-bold text-gray-900">Delete Group</h2>
+                            </div>
+                            <p className="text-gray-600 mb-6">
+                                Are you sure you want to delete "{selectedGroup?.name}"? This action cannot be undone. 
+                                All discussions, challenges, and other content will be permanently deleted.
+                            </p>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={handleDeleteGroup}
+                                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                                >
+                                    Delete Group
+                                </button>
+                                <button
+                                    onClick={() => setShowDeleteConfirm(false)}
+                                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}
