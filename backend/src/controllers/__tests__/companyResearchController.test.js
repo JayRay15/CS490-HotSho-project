@@ -32,8 +32,13 @@ await jest.unstable_mockModule('../../models/Job.js', () => ({
   Job: mockJob
 }));
 
+const mockConductComprehensiveResearch = jest.fn();
+const mockResearchCompany = jest.fn();
+
 await jest.unstable_mockModule('../../utils/companyResearchService.js', () => ({
-  generateCompanyResearchContent: mockGenerateCompanyResearchContent
+  generateCompanyResearchContent: mockGenerateCompanyResearchContent,
+  conductComprehensiveResearch: mockConductComprehensiveResearch,
+  researchCompany: mockResearchCompany
 }));
 
 const {
