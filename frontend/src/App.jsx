@@ -58,11 +58,8 @@ import LinkedInSettings from "./pages/auth/LinkedInSettings.jsx";
 import PerformanceDashboard from "./pages/auth/PerformanceDashboard.jsx";
 import PeerSupportPage from "./pages/PeerSupportPage.jsx";
 import ApplicationSuccessAnalysis from "./pages/auth/ApplicationSuccessAnalysis.jsx";
-<<<<<<< HEAD
 import InterviewPerformance from "./pages/auth/InterviewPerformance.jsx";
-=======
 import CompetitiveAnalysis from "./pages/auth/CompetitiveAnalysis.jsx";
->>>>>>> 7fa08f1ad1e0038e8dc31f9b85672ebb9836b20b
 
 function App() {
   return (
@@ -129,11 +126,8 @@ function App() {
           <Route path="/market-intelligence" element={<ProtectedRoute><MarketIntelligenceDashboard /></ProtectedRoute>} />
           <Route path="/performance-dashboard" element={<ProtectedRoute><PerformanceDashboard /></ProtectedRoute>} />
           <Route path="/application-success" element={<ProtectedRoute><ApplicationSuccessAnalysis /></ProtectedRoute>} />
-<<<<<<< HEAD
           <Route path="/interview-performance" element={<ProtectedRoute><InterviewPerformance /></ProtectedRoute>} />
-=======
           <Route path="/competitive-analysis" element={<ProtectedRoute><CompetitiveAnalysis /></ProtectedRoute>} />
->>>>>>> 7fa08f1ad1e0038e8dc31f9b85672ebb9836b20b
           <Route path="/mentors" element={<ProtectedRoute><MentorDashboard /></ProtectedRoute>} />
           <Route path="/mentors/progress" element={<ProtectedRoute><ProgressSharing /></ProtectedRoute>} />
           <Route path="/mentors/messages" element={<ProtectedRoute><MentorMessaging /></ProtectedRoute>} />
