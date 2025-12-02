@@ -56,6 +56,10 @@ import InterviewAnalytics from "./pages/auth/InterviewAnalytics.jsx";
 import CalendarSettings from "./pages/auth/CalendarSettings.jsx";
 import LinkedInSettings from "./pages/auth/LinkedInSettings.jsx";
 import PerformanceDashboard from "./pages/auth/PerformanceDashboard.jsx";
+import PeerSupportPage from "./pages/PeerSupportPage.jsx";
+import ApplicationSuccessAnalysis from "./pages/auth/ApplicationSuccessAnalysis.jsx";
+import InterviewPerformance from "./pages/auth/InterviewPerformance.jsx";
+import CompetitiveAnalysis from "./pages/auth/CompetitiveAnalysis.jsx";
 
 function App() {
   return (
@@ -121,6 +125,9 @@ function App() {
           <Route path="/reports/shared/:token" element={<SharedReportView />} />
           <Route path="/market-intelligence" element={<ProtectedRoute><MarketIntelligenceDashboard /></ProtectedRoute>} />
           <Route path="/performance-dashboard" element={<ProtectedRoute><PerformanceDashboard /></ProtectedRoute>} />
+          <Route path="/application-success" element={<ProtectedRoute><ApplicationSuccessAnalysis /></ProtectedRoute>} />
+          <Route path="/interview-performance" element={<ProtectedRoute><InterviewPerformance /></ProtectedRoute>} />
+          <Route path="/competitive-analysis" element={<ProtectedRoute><CompetitiveAnalysis /></ProtectedRoute>} />
           <Route path="/mentors" element={<ProtectedRoute><MentorDashboard /></ProtectedRoute>} />
           <Route path="/mentors/progress" element={<ProtectedRoute><ProgressSharing /></ProtectedRoute>} />
           <Route path="/mentors/messages" element={<ProtectedRoute><MentorMessaging /></ProtectedRoute>} />
@@ -129,7 +136,7 @@ function App() {
           <Route path="/teams/:teamId/settings" element={<ProtectedRoute><TeamSettingsPage /></ProtectedRoute>} />
           <Route path="/advisors" element={<ProtectedRoute><AdvisorsPage /></ProtectedRoute>} />
           <Route path="/advisors/messages" element={<ProtectedRoute><AdvisorMessagingPage /></ProtectedRoute>} />
-
+          <Route path="/peer-support" element={<ProtectedRoute><PeerSupportPage /></ProtectedRoute>} />
         </Routes>
       </Router>
     </ErrorBoundary>

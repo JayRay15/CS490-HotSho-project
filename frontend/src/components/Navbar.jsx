@@ -1,5 +1,5 @@
-import { Link, NavLink, useLocation } from "react-router-dom";
-import { SignedIn, SignedOut, UserButton } from "@clerk/clerk-react";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { SignedIn, SignedOut, UserButton, useClerk } from "@clerk/clerk-react";
 import { useEffect, useState } from "react";
 import { useAuth, useUser } from "@clerk/clerk-react";
 import api, { setAuthToken } from "../api/axios";
@@ -8,11 +8,42 @@ import Logo from "./Logo";
 export default function Navbar() {
     const { getToken } = useAuth();
     const { user } = useUser();
+    const { signOut } = useClerk();
+    const navigate = useNavigate();
     const location = useLocation();
     const [profilePicture, setProfilePicture] = useState(null);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [careerDropdownOpen, setCareerDropdownOpen] = useState(false);
     const [dropdownTimeout, setDropdownTimeout] = useState(null);
+
+    // Full sign out - clears all sessions and storage
+    const handleFullSignOut = async () => {
+        try {
+            // Clear all local storage and session storage
+            localStorage.clear();
+            sessionStorage.clear();
+            
+            // Clear all cookies (including OAuth provider cookies)
+            document.cookie.split(";").forEach((c) => {
+                document.cookie = c
+                    .replace(/^ +/, "")
+                    .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+            });
+            
+            // Sign out from Clerk (this revokes the session)
+            await signOut();
+            
+            // Store logout message
+            sessionStorage.setItem("logoutMessage", "You have been signed out successfully. If using a shared computer, please also sign out of LinkedIn/Google directly.");
+            
+            // Navigate to login
+            navigate("/login");
+        } catch (error) {
+            console.error("Sign out error:", error);
+            // Force navigate even on error
+            window.location.href = "/login";
+        }
+    };
 
     // Fetch user's custom profile picture
     useEffect(() => {
@@ -161,6 +192,15 @@ export default function Navbar() {
                                         <NavLink to="/performance-dashboard" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Performance Dashboard" onClick={() => setCareerDropdownOpen(false)}>
                                             📊 Performance Dashboard
                                         </NavLink>
+                                        <NavLink to="/application-success" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Application Success Analysis" onClick={() => setCareerDropdownOpen(false)}>
+                                            🎯 Success Analysis
+                                        </NavLink>
+                                        <NavLink to="/interview-performance" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Interview Performance Analytics" onClick={() => setCareerDropdownOpen(false)}>
+                                            📈 Interview Performance
+                                        </NavLink>
+                                        <NavLink to="/competitive-analysis" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Competitive Analysis" onClick={() => setCareerDropdownOpen(false)}>
+                                            🏆 Competitive Analysis
+                                        </NavLink>
                                         <NavLink to="/market-intelligence" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Market Intelligence" onClick={() => setCareerDropdownOpen(false)}>
                                             Market Intelligence
                                         </NavLink>
@@ -173,6 +213,9 @@ export default function Navbar() {
                                         <NavLink to="/teams" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Teams" onClick={() => setCareerDropdownOpen(false)}>
                                             👥 Teams
                                         </NavLink>
+                                        <NavLink to="/peer-support" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Peer Support Groups" onClick={() => setCareerDropdownOpen(false)}>
+                                            🤝 Peer Support
+                                        </NavLink>
                                         <div className="border-t border-gray-200 my-1"></div>
                                         <NavLink to="/settings/calendar" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Calendar Settings" onClick={() => setCareerDropdownOpen(false)}>
                                             📅 Calendar Settings
@@ -183,7 +226,7 @@ export default function Navbar() {
                                     </div>
                                 )}
                             </div>
-                            <div className="ml-3 custom-user-button">
+                            <div className="ml-3 custom-user-button flex items-center gap-2">
                                 <UserButton
                                     afterSignOutUrl="/login"
                                     appearance={{
@@ -192,7 +235,15 @@ export default function Navbar() {
                                             userButtonAvatarBox: "w-8 h-8"
                                         }
                                     }}
-                                />
+                                >
+                                    <UserButton.MenuItems>
+                                        <UserButton.Action
+                                            label="Full Sign Out"
+                                            labelIcon={<span>🚪</span>}
+                                            onClick={handleFullSignOut}
+                                        />
+                                    </UserButton.MenuItems>
+                                </UserButton>
                                 {profilePicture && (
                                     <style>{`
                                 .custom-user-button [class*="avatarBox"],
@@ -462,6 +513,42 @@ export default function Navbar() {
                             📊 Performance Dashboard
                         </NavLink>
                         <NavLink
+                            to="/application-success"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                }`
+                            }
+                            aria-label="Application Success Analysis"
+                        >
+                            🎯 Success Analysis
+                        </NavLink>
+                        <NavLink
+                            to="/interview-performance"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                }`
+                            }
+                            aria-label="Interview Performance Analytics"
+                        >
+                            📈 Interview Performance
+                        </NavLink>
+                        <NavLink
+                            to="/competitive-analysis"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                }`
+                            }
+                            aria-label="Competitive Analysis"
+                        >
+                            🏆 Competitive Analysis
+                        </NavLink>
+                        <NavLink
                             to="/market-intelligence"
                             className={({ isActive }) =>
                                 `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
@@ -510,6 +597,18 @@ export default function Navbar() {
                             👥 Teams
                         </NavLink>
                         <NavLink
+                            to="/peer-support"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                }`
+                            }
+                            aria-label="Peer Support Groups"
+                        >
+                            🤝 Peer Support
+                        </NavLink>
+                        <NavLink
                             to="/settings/calendar"
                             className={({ isActive }) =>
                                 `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
@@ -544,7 +643,15 @@ export default function Navbar() {
                                             userButtonAvatarBox: "w-8 h-8"
                                         }
                                     }}
-                                />
+                                >
+                                    <UserButton.MenuItems>
+                                        <UserButton.Action
+                                            label="Full Sign Out"
+                                            labelIcon={<span>🚪</span>}
+                                            onClick={handleFullSignOut}
+                                        />
+                                    </UserButton.MenuItems>
+                                </UserButton>
                                 {profilePicture && (
                                     <style>{`
                                         .custom-user-button [class*="avatarBox"],
@@ -631,4 +738,6 @@ function DynamicInterviewPrepLinkMobile() {
         </NavLink>
     );
 }
+
+export { DynamicInterviewPrepLink, DynamicInterviewPrepLinkMobile };
 

@@ -3,6 +3,7 @@ import { Interview } from "../models/Interview.js";
 import { Job } from "../models/Job.js";
 import { successResponse, errorResponse, sendResponse, ERROR_CODES } from "../utils/responseFormat.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
+import { conductComprehensiveResearch, researchCompany } from "../utils/companyResearchService.js";
 
 const getUserId = (req) => {
   const auth = typeof req.auth === 'function' ? req.auth() : req.auth;
@@ -65,21 +66,63 @@ export const generateCompanyResearch = asyncHandler(async (req, res) => {
     });
   }
 
-  // Generate company profile
-  await generateCompanyProfile(research, job);
+  // Use AI-driven comprehensive research where possible
+  try {
+    const jobDescription = job.description || job.jobDescription || '';
+    const aiResearch = await conductComprehensiveResearch(companyName, jobDescription, job.url || job.website || '');
 
-  // Generate leadership research
-  await generateLeadershipInfo(research, companyName);
+    // Map AI research into our CompanyResearch document shape
+    research.companyName = aiResearch.companyName || companyName;
+    research.generatedAt = new Date();
 
-  // Generate competitive analysis
-  await generateCompetitiveAnalysis(research, job);
+    research.profile = research.profile || {};
+    research.profile.overview = aiResearch.summary || aiResearch.basicInfo?.description || aiResearch.basicInfo?.name || research.profile.overview;
+    research.profile.history = aiResearch.basicInfo?.description || research.profile.history;
+    research.profile.industry = aiResearch.basicInfo?.industry || research.profile.industry;
+    research.profile.location = aiResearch.basicInfo?.headquarters || research.profile.location;
+    research.profile.website = aiResearch.basicInfo?.website || research.profile.website || job.url || '';
+    research.profile.mission = aiResearch.missionAndCulture?.mission || research.profile.mission;
+    research.profile.values = aiResearch.missionAndCulture?.values || research.profile.values;
+    research.profile.culture = aiResearch.missionAndCulture?.culture || research.profile.culture;
 
-  // Generate recent news
-  await generateRecentNews(research, companyName);
+    // Leadership
+    research.leadership = (aiResearch.leadership?.executives || aiResearch.leadership?.keyLeaders || aiResearch.leadership || [])
+      .map((l) => {
+        if (typeof l === 'string') return { name: l, title: '' };
+        return { name: l.name || l.fullName || l.title || 'Executive', title: l.title || '', bio: l.background || l.bio || '' };
+      });
 
-  // Generate talking points and questions
-  await generateTalkingPoints(research, job);
-  await generateIntelligentQuestions(research, job);
+    // Competitive
+    research.competitive = research.competitive || {};
+    research.competitive.industry = aiResearch.competitive?.mainCompetitors ? aiResearch.competitive.mainCompetitors.join(', ') : aiResearch.competitive?.marketPosition || research.competitive.industry;
+    research.competitive.marketPosition = aiResearch.competitive?.marketPosition || aiResearch.competitive?.uniqueValue || research.competitive.marketPosition;
+    research.competitive.competitors = aiResearch.competitive?.mainCompetitors || aiResearch.competitive?.competitors || research.competitive.competitors;
+    research.competitive.differentiators = aiResearch.competitive?.uniqueValue ? [aiResearch.competitive.uniqueValue] : research.competitive.differentiators;
+
+    // News
+    const newsItems = [];
+    if (aiResearch.news?.recentNews && aiResearch.news.recentNews.length) {
+      aiResearch.news.recentNews.forEach(n => newsItems.push({ title: typeof n === 'string' ? n : n.title || '', summary: n.summary || '', date: n.date ? new Date(n.date) : new Date(), source: n.source || 'AI' }));
+    }
+    if (aiResearch.news?.pressReleases && aiResearch.news.pressReleases.length) {
+      aiResearch.news.pressReleases.forEach(n => newsItems.push({ title: n.title || '', summary: n.summary || '', date: n.date ? new Date(n.date) : new Date(), source: 'Press Release' }));
+    }
+    research.news = newsItems.length ? newsItems : research.news;
+
+    // Keep generating tailored talking points and intelligent questions based on job and AI summary
+    await generateTalkingPoints(research, job);
+    await generateIntelligentQuestions(research, job);
+
+  } catch (err) {
+    console.warn('[company-research] AI research failed, falling back to local heuristics', err?.message || err);
+    // Fallback to existing local generators
+    await generateCompanyProfile(research, job);
+    await generateLeadershipInfo(research, companyName);
+    await generateCompetitiveAnalysis(research, job);
+    await generateRecentNews(research, companyName);
+    await generateTalkingPoints(research, job);
+    await generateIntelligentQuestions(research, job);
+  }
 
   // Populate potential interviewers from interview data if available
   if (interviewDoc?.interviewer?.name) {
