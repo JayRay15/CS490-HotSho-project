@@ -92,6 +92,37 @@ export const getCodingChallenge = async (req, res) => {
   }
 };
 
+// Delete coding challenge
+export const deleteCodingChallenge = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.auth.userId;
+    
+    const challenge = await CodingChallenge.findById(id);
+    if (!challenge) {
+      return res.status(404).json({ message: 'Challenge not found' });
+    }
+    
+    await CodingChallenge.findByIdAndDelete(id);
+    
+    // Remove from user's bookmarks and submissions
+    await TechnicalPrep.updateMany(
+      {},
+      { 
+        $pull: { 
+          bookmarkedChallenges: { challengeId: id },
+          submissions: { challengeId: id }
+        }
+      }
+    );
+    
+    res.json({ message: 'Challenge deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting coding challenge:', error);
+    res.status(500).json({ message: 'Failed to delete coding challenge' });
+  }
+};
+
 // Submit coding challenge solution
 export const submitCodingSolution = async (req, res) => {
   try {
@@ -252,6 +283,36 @@ export const getSystemDesignQuestion = async (req, res) => {
   }
 };
 
+// Delete system design question
+export const deleteSystemDesignQuestion = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const question = await SystemDesignQuestion.findById(id);
+    if (!question) {
+      return res.status(404).json({ message: 'Question not found' });
+    }
+    
+    await SystemDesignQuestion.findByIdAndDelete(id);
+    
+    // Remove from user's bookmarks and submissions
+    await TechnicalPrep.updateMany(
+      {},
+      { 
+        $pull: { 
+          bookmarkedChallenges: { challengeId: id },
+          submissions: { challengeId: id }
+        }
+      }
+    );
+    
+    res.json({ message: 'Question deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting system design question:', error);
+    res.status(500).json({ message: 'Failed to delete system design question' });
+  }
+};
+
 // Submit system design solution
 export const submitSystemDesignSolution = async (req, res) => {
   try {
@@ -349,6 +410,36 @@ export const getCaseStudy = async (req, res) => {
   } catch (error) {
     console.error('Error fetching case study:', error);
     res.status(500).json({ message: 'Failed to fetch case study' });
+  }
+};
+
+// Delete case study
+export const deleteCaseStudy = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const caseStudy = await CaseStudy.findById(id);
+    if (!caseStudy) {
+      return res.status(404).json({ message: 'Case study not found' });
+    }
+    
+    await CaseStudy.findByIdAndDelete(id);
+    
+    // Remove from user's bookmarks and submissions
+    await TechnicalPrep.updateMany(
+      {},
+      { 
+        $pull: { 
+          bookmarkedChallenges: { challengeId: id },
+          submissions: { challengeId: id }
+        }
+      }
+    );
+    
+    res.json({ message: 'Case study deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting case study:', error);
+    res.status(500).json({ message: 'Failed to delete case study' });
   }
 };
 
@@ -547,52 +638,378 @@ export const getBookmarkedChallenges = async (req, res) => {
   }
 };
 
-// Helper function to run test cases (simplified)
+// Helper function to run test cases
 async function runTestCases(code, language, testCases) {
-  // In production, use a sandboxed code execution service like Judge0, Piston, or AWS Lambda
-  // This is a simplified deterministic placeholder that checks for key logic patterns
-  
   const results = {
     passed: 0,
-    executionTime: Math.random() * 500 + 100, // Mock execution time between 100-600ms
+    executionTime: 0,
     testResults: []
   };
   
-  // Simple deterministic check based on code patterns
-  // This is a placeholder - in production, use proper code execution
-  const codeToCheck = code.toLowerCase().trim();
+  // Support JavaScript, Python, Java, and C++
+  const supportedLanguages = ['javascript', 'python', 'java', 'c++', 'cpp'];
+  if (!supportedLanguages.includes(language.toLowerCase())) {
+    throw new Error('Only JavaScript, Python, Java, and C++ are currently supported');
+  }
   
-  // Check if the code has basic required patterns (very simplified)
-  const hasLoop = /for|while|map|foreach|each/.test(codeToCheck);
-  const hasConditional = /if|switch|case|\?/.test(codeToCheck);
-  const hasReturn = /return/.test(codeToCheck);
-  
-  // Deterministic pass rate based on code structure
-  // If code has loops, conditionals, and return, assume it's likely correct
-  const likelyCorrect = hasLoop && hasConditional && hasReturn;
-  
-  // For each test case, use deterministic logic
   for (let i = 0; i < testCases.length; i++) {
     const testCase = testCases[i];
+    const startTime = Date.now();
     
-    // Simple deterministic approach: 
-    // - If code looks structurally correct, pass all tests
-    // - Otherwise, fail predictably based on test case position
-    const passed = likelyCorrect || (i === 0); // At least pass the first test
-    
-    results.testResults.push({
-      testCase: i + 1,
-      passed,
-      input: testCase.input,
-      expectedOutput: passed ? testCase.expectedOutput : null,
-      actualOutput: passed ? testCase.expectedOutput : 'Error or incorrect output',
-      isHidden: testCase.isHidden
-    });
-    
-    if (passed) results.passed++;
+    try {
+      let actualOutput;
+      let passed = false;
+      
+      if (language.toLowerCase() === 'javascript') {
+        // Execute JavaScript code
+        actualOutput = await executeJavaScript(code, testCase.input);
+      } else if (language.toLowerCase() === 'python') {
+        // Execute Python code
+        actualOutput = await executePython(code, testCase.input);
+      } else if (language.toLowerCase() === 'java') {
+        // Execute Java code
+        actualOutput = await executeJava(code, testCase.input);
+      } else if (language.toLowerCase() === 'c++' || language.toLowerCase() === 'cpp') {
+        // Execute C++ code
+        actualOutput = await executeCpp(code, testCase.input);
+      }
+      
+      // Normalize outputs for comparison
+      const expectedNormalized = normalizeOutput(testCase.expectedOutput);
+      const actualNormalized = normalizeOutput(actualOutput);
+      
+      passed = expectedNormalized === actualNormalized;
+      
+      const executionTime = Date.now() - startTime;
+      results.executionTime += executionTime;
+      
+      results.testResults.push({
+        testCase: i + 1,
+        passed,
+        input: testCase.input,
+        expectedOutput: testCase.expectedOutput,
+        actualOutput: actualOutput,
+        executionTime,
+        isHidden: testCase.isHidden
+      });
+      
+      if (passed) results.passed++;
+    } catch (error) {
+      results.testResults.push({
+        testCase: i + 1,
+        passed: false,
+        input: testCase.input,
+        expectedOutput: testCase.expectedOutput,
+        actualOutput: `Error: ${error.message}`,
+        executionTime: Date.now() - startTime,
+        isHidden: testCase.isHidden
+      });
+    }
   }
   
   return results;
+}
+
+// Execute JavaScript code safely
+async function executeJavaScript(code, input) {
+  const vm = await import('vm');
+  
+  // Create a sandbox with limited access
+  const sandbox = {
+    console: {
+      log: () => {} // Disable console.log in sandbox
+    },
+    result: null
+  };
+  
+  try {
+    // Parse input if it's a JSON string
+    let parsedInput;
+    try {
+      parsedInput = JSON.parse(input);
+    } catch {
+      parsedInput = input;
+    }
+    
+    // Wrap code to capture return value
+    const wrappedCode = `
+      ${code}
+      
+      // Try to find and execute the main function
+      const functionMatch = \`${code}\`.match(/function\\s+(\\w+)|const\\s+(\\w+)\\s*=|let\\s+(\\w+)\\s*=|var\\s+(\\w+)\\s*=/);
+      if (functionMatch) {
+        const funcName = functionMatch[1] || functionMatch[2] || functionMatch[3] || functionMatch[4];
+        if (typeof eval(funcName) === 'function') {
+          result = eval(funcName)(${JSON.stringify(parsedInput)});
+        }
+      }
+    `;
+    
+    // Execute with timeout
+    vm.runInNewContext(wrappedCode, sandbox, {
+      timeout: 5000, // 5 second timeout
+      displayErrors: true
+    });
+    
+    return JSON.stringify(sandbox.result);
+  } catch (error) {
+    throw new Error(`Execution error: ${error.message}`);
+  }
+}
+
+// Execute Python code using child_process
+async function executePython(code, input) {
+  const { spawn } = await import('child_process');
+  
+  return new Promise((resolve, reject) => {
+    // Parse input if it's a JSON string or object
+    let parsedInput;
+    try {
+      parsedInput = typeof input === 'string' ? JSON.parse(input) : input;
+    } catch {
+      parsedInput = input;
+    }
+    
+    // Wrap the user's code to call their function with the input
+    const wrappedCode = `
+import json
+import sys
+
+${code}
+
+# Parse input and call the function
+input_data = json.loads('''${JSON.stringify(parsedInput).replace(/'/g, "\\'").replace(/\\/g, '\\\\')}''')
+
+# Try to find and call the main function
+try:
+    # Look for common function names
+    if 'analyze_diversity' in dir():
+        result = analyze_diversity(input_data)
+    elif 'solution' in dir():
+        result = solution(input_data)
+    elif 'solve' in dir():
+        result = solve(input_data)
+    elif 'main' in dir():
+        result = main(input_data)
+    else:
+        # Try to find any function defined in the code
+        import re
+        func_matches = re.findall(r'def\\s+(\\w+)\\s*\\(', '''${code}''')
+        if func_matches:
+            result = eval(func_matches[0] + '(input_data)')
+        else:
+            result = None
+    
+    print(json.dumps(result) if not isinstance(result, str) else result)
+except Exception as e:
+    print(f"Error: {str(e)}", file=sys.stderr)
+    sys.exit(1)
+`;
+    
+    // Execute Python code
+    const python = spawn('python', ['-c', wrappedCode], {
+      timeout: 5000 // 5 second timeout
+    });
+    
+    let output = '';
+    let error = '';
+    
+    python.stdout.on('data', (data) => {
+      output += data.toString();
+    });
+    
+    python.stderr.on('data', (data) => {
+      error += data.toString();
+    });
+    
+    python.on('close', (code) => {
+      if (code !== 0) {
+        reject(new Error(error || 'Python execution failed'));
+      } else {
+        resolve(output.trim());
+      }
+    });
+    
+    python.on('error', (err) => {
+      reject(new Error(`Failed to start Python: ${err.message}`));
+    });
+  });
+}
+
+// Execute Java code using child_process
+async function executeJava(code, input) {
+  const { spawn, exec } = await import('child_process');
+  const fs = await import('fs');
+  const path = await import('path');
+  const os = await import('os');
+  
+  return new Promise((resolve, reject) => {
+    // Extract class name from code
+    const classMatch = code.match(/public\s+class\s+(\w+)/);
+    if (!classMatch) {
+      return reject(new Error('Java code must contain a public class'));
+    }
+    const className = classMatch[1];
+    
+    // Create temporary directory
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'java-'));
+    const javaFile = path.join(tempDir, `${className}.java`);
+    
+    try {
+      // Write Java code to file
+      fs.writeFileSync(javaFile, code);
+      
+      // Compile Java code
+      exec(`javac "${javaFile}"`, { timeout: 5000 }, (compileError, compileStdout, compileStderr) => {
+        if (compileError) {
+          // Cleanup
+          fs.rmSync(tempDir, { recursive: true, force: true });
+          return reject(new Error(`Compilation error: ${compileStderr || compileError.message}`));
+        }
+        
+        // Execute compiled Java class
+        const java = spawn('java', ['-cp', tempDir, className], {
+          timeout: 5000
+        });
+        
+        let output = '';
+        let error = '';
+        
+        // Send input to stdin (convert to string if needed)
+        if (input) {
+          const inputStr = typeof input === 'object' ? JSON.stringify(input) : String(input);
+          java.stdin.write(inputStr);
+          java.stdin.end();
+        }
+        
+        java.stdout.on('data', (data) => {
+          output += data.toString();
+        });
+        
+        java.stderr.on('data', (data) => {
+          error += data.toString();
+        });
+        
+        java.on('close', (code) => {
+          // Cleanup temp directory
+          fs.rmSync(tempDir, { recursive: true, force: true });
+          
+          if (code !== 0) {
+            reject(new Error(error || 'Java execution failed'));
+          } else {
+            resolve(output.trim());
+          }
+        });
+        
+        java.on('error', (err) => {
+          // Cleanup temp directory
+          fs.rmSync(tempDir, { recursive: true, force: true });
+          reject(new Error(`Failed to execute Java: ${err.message}`));
+        });
+      });
+    } catch (err) {
+      // Cleanup temp directory
+      if (fs.existsSync(tempDir)) {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      }
+      reject(new Error(`Java execution error: ${err.message}`));
+    }
+  });
+}
+
+// Execute C++ code using child_process
+async function executeCpp(code, input) {
+  const { spawn, exec } = await import('child_process');
+  const fs = await import('fs');
+  const path = await import('path');
+  const os = await import('os');
+  
+  return new Promise((resolve, reject) => {
+    // Create temporary directory
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cpp-'));
+    const cppFile = path.join(tempDir, 'solution.cpp');
+    const exeFile = path.join(tempDir, 'solution.exe');
+    
+    try {
+      // Write C++ code to file
+      fs.writeFileSync(cppFile, code);
+      
+      // Compile C++ code (using g++ if available)
+      const compiler = process.platform === 'win32' ? 'g++' : 'g++';
+      exec(`${compiler} "${cppFile}" -o "${exeFile}"`, { timeout: 5000 }, (compileError, compileStdout, compileStderr) => {
+        if (compileError) {
+          // Cleanup
+          fs.rmSync(tempDir, { recursive: true, force: true });
+          return reject(new Error(`Compilation error: ${compileStderr || compileError.message}`));
+        }
+        
+        // Execute compiled C++ program
+        const cpp = spawn(exeFile, [], {
+          timeout: 5000
+        });
+        
+        let output = '';
+        let error = '';
+        
+        // Send input to stdin (convert to string if needed)
+        if (input) {
+          const inputStr = typeof input === 'object' ? JSON.stringify(input) : String(input);
+          cpp.stdin.write(inputStr);
+          cpp.stdin.end();
+        }
+        
+        cpp.stdout.on('data', (data) => {
+          output += data.toString();
+        });
+        
+        cpp.stderr.on('data', (data) => {
+          error += data.toString();
+        });
+        
+        cpp.on('close', (code) => {
+          // Cleanup temp directory
+          fs.rmSync(tempDir, { recursive: true, force: true });
+          
+          if (code !== 0) {
+            reject(new Error(error || 'C++ execution failed'));
+          } else {
+            resolve(output.trim());
+          }
+        });
+        
+        cpp.on('error', (err) => {
+          // Cleanup temp directory
+          fs.rmSync(tempDir, { recursive: true, force: true });
+          reject(new Error(`Failed to execute C++: ${err.message}`));
+        });
+      });
+    } catch (err) {
+      // Cleanup temp directory
+      if (fs.existsSync(tempDir)) {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      }
+      reject(new Error(`C++ execution error: ${err.message}`));
+    }
+  });
+}
+
+// Normalize output for comparison
+function normalizeOutput(output) {
+  if (output === null || output === undefined) return '';
+  
+  // Convert to string and normalize
+  let normalized = String(output).trim();
+  
+  // Remove extra whitespace
+  normalized = normalized.replace(/\s+/g, ' ');
+  
+  // Try to parse as JSON and re-stringify for consistent formatting
+  try {
+    const parsed = JSON.parse(normalized);
+    return JSON.stringify(parsed);
+  } catch {
+    return normalized;
+  }
 }
 
 // Helper function to generate feedback

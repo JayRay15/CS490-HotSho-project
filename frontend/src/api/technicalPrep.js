@@ -41,6 +41,11 @@ export const technicalPrepAPI = {
     return response.data;
   },
 
+  deleteCodingChallenge: async (id) => {
+    const response = await api.delete(`/api/technical-prep/coding-challenges/${id}`);
+    return response.data;
+  },
+
   // System Design Questions
   getSystemDesignQuestions: async (params = {}) => {
     const response = await api.get('/api/technical-prep/system-design', { params });
@@ -57,6 +62,11 @@ export const technicalPrepAPI = {
     return response.data;
   },
 
+  deleteSystemDesignQuestion: async (id) => {
+    const response = await api.delete(`/api/technical-prep/system-design/${id}`);
+    return response.data;
+  },
+
   // Case Studies
   getCaseStudies: async (params = {}) => {
     const response = await api.get('/api/technical-prep/case-studies', { params });
@@ -70,6 +80,11 @@ export const technicalPrepAPI = {
 
   submitCaseStudy: async (caseStudyId, data) => {
     const response = await api.post(`/api/technical-prep/case-studies/${caseStudyId}/submit`, data);
+    return response.data;
+  },
+
+  deleteCaseStudy: async (id) => {
+    const response = await api.delete(`/api/technical-prep/case-studies/${id}`);
     return response.data;
   },
 
