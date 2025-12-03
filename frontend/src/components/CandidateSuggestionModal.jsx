@@ -78,28 +78,37 @@ export default function CandidateSuggestionModal({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
+  // Handler for clicking the backdrop
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+    <div 
+      className="fixed inset-0 flex items-center justify-center z-50 p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.48)' }}
+      onClick={handleBackdropClick}
+    >
+      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden" onClick={e => e.stopPropagation()}>
         {/* Header */}
-        <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-6">
-          <div className="flex justify-between items-start">
-            <div>
-              <h2 className="text-2xl font-bold mb-1">🔍 Find Interview Candidates</h2>
-              <p className="text-purple-100 text-sm">
-                AI-powered suggestions for valuable informational interview targets
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-white hover:text-gray-200 transition"
-              aria-label="Close"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+        <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">🔍 Find Interview Candidates</h2>
+            <p className="text-gray-500 text-sm">
+              AI-powered suggestions for valuable informational interview targets
+            </p>
           </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition"
+            aria-label="Close"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         {/* Content */}
@@ -122,7 +131,7 @@ export default function CandidateSuggestionModal({ isOpen, onClose }) {
                   name="targetRole"
                   value={formData.targetRole}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#777C6D] focus:border-[#777C6D]"
                   placeholder="e.g., Product Manager"
                 />
               </div>
@@ -136,7 +145,7 @@ export default function CandidateSuggestionModal({ isOpen, onClose }) {
                   name="targetCompany"
                   value={formData.targetCompany}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#777C6D] focus:border-[#777C6D]"
                   placeholder="e.g., Google, Meta"
                 />
               </div>
@@ -150,7 +159,7 @@ export default function CandidateSuggestionModal({ isOpen, onClose }) {
                   name="targetIndustry"
                   value={formData.targetIndustry}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#777C6D] focus:border-[#777C6D]"
                   placeholder="e.g., Fintech, Healthcare"
                 />
               </div>
@@ -166,7 +175,7 @@ export default function CandidateSuggestionModal({ isOpen, onClose }) {
                   value={formData.userBackground}
                   onChange={handleChange}
                   rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#777C6D] focus:border-[#777C6D]"
                   placeholder="Brief summary of your experience..."
                 />
               </div>
@@ -180,7 +189,7 @@ export default function CandidateSuggestionModal({ isOpen, onClose }) {
                   value={formData.careerGoals}
                   onChange={handleChange}
                   rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#777C6D] focus:border-[#777C6D]"
                   placeholder="What you hope to learn or achieve..."
                 />
               </div>
@@ -189,7 +198,7 @@ export default function CandidateSuggestionModal({ isOpen, onClose }) {
             <button
               onClick={handleGenerate}
               disabled={generating}
-              className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+              className="w-full px-6 py-3 bg-[#777C6D] text-white rounded-lg hover:bg-[#656A5C] transition disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
               {generating ? (
                 <span className="inline-flex items-center">
@@ -222,7 +231,7 @@ export default function CandidateSuggestionModal({ isOpen, onClose }) {
                       className={`px-3 py-1 rounded text-sm font-medium transition ${
                         suggestion.added
                           ? 'bg-green-100 text-green-700 cursor-default'
-                          : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                          : 'bg-[#E4E6E0] text-[#4F5348] hover:bg-[#d4d6d0]'
                       } disabled:opacity-50`}
                     >
                       {creating === suggestion.jobTitle ? 'Adding...' : suggestion.added ? '✓ Added' : '+ Add to List'}
