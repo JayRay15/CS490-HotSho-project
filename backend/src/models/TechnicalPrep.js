@@ -15,6 +15,7 @@ const codingChallengeSchema = new mongoose.Schema({
     enum: ['Easy', 'Medium', 'Hard', 'Expert'],
     required: true 
   },
+  completedBy: [{ type: String }],
   category: {
     type: String,
     enum: ['Data Structures', 'Algorithms', 'System Design', 'Database', 'API Design', 'Frontend', 'Backend', 'Full Stack'],
@@ -58,6 +59,7 @@ const systemDesignQuestionSchema = new mongoose.Schema({
     enum: ['Junior', 'Mid-Level', 'Senior', 'Staff', 'Principal'],
     required: true
   },
+  completedBy: [{ type: String }],
   scenario: { type: String, required: true },
   requirements: {
     functional: [String],
@@ -94,6 +96,7 @@ const caseStudySchema = new mongoose.Schema({
     enum: ['Business', 'Technical', 'Product', 'Consulting'],
     required: true
   },
+  completedBy: [{ type: String }],
   scenario: { type: String, required: true },
   context: { type: String, required: true },
   data: mongoose.Schema.Types.Mixed,

@@ -41,6 +41,11 @@ export const technicalPrepAPI = {
     return response.data;
   },
 
+  deleteCodingChallenge: async (id) => {
+    const response = await api.delete(`/api/technical-prep/coding-challenges/${id}`);
+    return response.data;
+  },
+
   // System Design Questions
   getSystemDesignQuestions: async (params = {}) => {
     const response = await api.get('/api/technical-prep/system-design', { params });
@@ -54,6 +59,11 @@ export const technicalPrepAPI = {
 
   submitSystemDesignSolution: async (questionId, data) => {
     const response = await api.post(`/api/technical-prep/system-design/${questionId}/submit`, data);
+    return response.data;
+  },
+
+  deleteSystemDesignQuestion: async (id) => {
+    const response = await api.delete(`/api/technical-prep/system-design/${id}`);
     return response.data;
   },
 
@@ -73,6 +83,11 @@ export const technicalPrepAPI = {
     return response.data;
   },
 
+  deleteCaseStudy: async (id) => {
+    const response = await api.delete(`/api/technical-prep/case-studies/${id}`);
+    return response.data;
+  },
+
   // Job-specific challenges
   getJobSpecificChallenges: async (jobId) => {
     const response = await api.get(`/api/technical-prep/job/${jobId}/challenges`);
@@ -86,8 +101,8 @@ export const technicalPrepAPI = {
   },
 
   // Bookmarks
-  bookmarkChallenge: async (challengeId) => {
-    const response = await api.post('/api/technical-prep/bookmark', { challengeId });
+  bookmarkChallenge: async (data) => {
+    const response = await api.post('/api/technical-prep/bookmark', data);
     return response.data;
   },
 

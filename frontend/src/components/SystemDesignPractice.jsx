@@ -4,6 +4,7 @@ import technicalPrepAPI from '../api/technicalPrep';
 import Button from './Button';
 import LoadingSpinner from './LoadingSpinner';
 import ErrorMessage from './ErrorMessage';
+import Whiteboard from './Whiteboard';
 import { 
   ArrowLeftIcon,
   ClockIcon,
@@ -11,7 +12,8 @@ import {
   CheckCircleIcon,
   ServerIcon,
   CircleStackIcon,
-  CloudIcon
+  CloudIcon,
+  PencilSquareIcon
 } from '@heroicons/react/24/outline';
 import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
 
@@ -41,7 +43,8 @@ const SystemDesignPractice = () => {
       components: [],
       dataFlow: '',
       scalingStrategy: '',
-      tradeoffs: []
+      tradeoffs: [],
+      whiteboardDrawing: null
     };
   });
   
@@ -53,6 +56,7 @@ const SystemDesignPractice = () => {
   const [timerRunning, setTimerRunning] = useState(true);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [showSampleSolution, setShowSampleSolution] = useState(false);
+  const [showWhiteboard, setShowWhiteboard] = useState(false);
 
   // Load question when questionId changes
   useEffect(() => {
@@ -127,7 +131,10 @@ const SystemDesignPractice = () => {
     try {
       setSubmitting(true);
       const response = await technicalPrepAPI.submitSystemDesignSolution(questionId, {
-        solution,
+        solution: {
+          ...solution,
+          whiteboardDrawing: solution.whiteboardDrawing
+        },
         timeSpent
       });
       
@@ -143,12 +150,23 @@ const SystemDesignPractice = () => {
     }
   };
 
+  const handleSaveWhiteboard = (drawingDataUrl) => {
+    setSolution({
+      ...solution,
+      whiteboardDrawing: drawingDataUrl
+    });
+    setShowWhiteboard(false);
+  };
+
   const handleBookmark = async () => {
     try {
       if (isBookmarked) {
         await technicalPrepAPI.removeBookmark(questionId);
       } else {
-        await technicalPrepAPI.bookmarkChallenge(questionId);
+        await technicalPrepAPI.bookmarkChallenge({
+          challengeType: 'systemDesign',
+          challengeId: questionId
+        });
       }
       setIsBookmarked(!isBookmarked);
     } catch (err) {
@@ -342,7 +360,33 @@ const SystemDesignPractice = () => {
 
           {/* Right Panel - Solution Design */}
           <div className="bg-white rounded-lg shadow-sm p-6 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
-            <h2 className="text-xl font-semibold mb-4">Your Solution</h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Your Solution</h2>
+              <Button
+                onClick={() => setShowWhiteboard(true)}
+                variant="secondary"
+                size="sm"
+                disabled={evaluation !== null}
+              >
+                {solution.whiteboardDrawing ? 'Edit Diagram' : 'Draw Diagram'}
+              </Button>
+            </div>
+
+            {/* Whiteboard Preview */}
+            {solution.whiteboardDrawing && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Architecture Diagram
+                </label>
+                <div className="border-2 border-gray-300 rounded-lg overflow-hidden">
+                  <img 
+                    src={solution.whiteboardDrawing} 
+                    alt="Architecture Diagram" 
+                    className="w-full h-auto"
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Architecture Overview */}
             <div className="mb-6">
@@ -629,6 +673,30 @@ const SystemDesignPractice = () => {
                     </ul>
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Whiteboard Modal */}
+        {showWhiteboard && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg w-full max-w-7xl max-h-[95vh] overflow-hidden shadow-xl">
+              <div className="flex justify-between items-center p-4 border-b border-gray-200">
+                <h3 className="text-xl font-semibold">System Design Whiteboard</h3>
+                <button
+                  onClick={() => setShowWhiteboard(false)}
+                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div className="overflow-y-auto" style={{ maxHeight: 'calc(95vh - 80px)' }}>
+                <Whiteboard 
+                  onSave={handleSaveWhiteboard}
+                  initialDrawing={solution.whiteboardDrawing}
+                />
               </div>
             </div>
           </div>
