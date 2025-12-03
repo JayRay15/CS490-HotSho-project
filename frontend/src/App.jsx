@@ -64,8 +64,6 @@ import InterviewPerformance from "./pages/auth/InterviewPerformance.jsx";
 import PredictiveAnalytics from "./pages/PredictiveAnalytics.jsx";
 import CompetitiveAnalysis from "./pages/auth/CompetitiveAnalysis.jsx";
 import InformationalInterviewsPage from "./pages/InformationalInterviews.jsx";
-import DocumentManagement from "./pages/DocumentManagement.jsx";
-import AIRecommendationsPage from "./pages/AIRecommendationsPage.jsx";
 
 function App() {
   return (
@@ -131,8 +129,6 @@ function App() {
           <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
           <Route path="/reports/shared/:token" element={<SharedReportView />} />
           <Route path="/market-intelligence" element={<ProtectedRoute><MarketIntelligenceDashboard /></ProtectedRoute>} />
-          <Route path="/documents" element={<ProtectedRoute><DocumentManagement /></ProtectedRoute>} />
-          <Route path="/ai-recommendations" element={<ProtectedRoute><AIRecommendationsPage /></ProtectedRoute>} />
           <Route path="/my-performance" element={<ProtectedRoute><MyPerformancePage /></ProtectedRoute>} />
           <Route path="/performance-dashboard" element={<Navigate to="/my-performance" replace />} />
           <Route path="/application-success" element={<Navigate to="/my-performance?tab=success" replace />} />

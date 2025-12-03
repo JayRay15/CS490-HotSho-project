@@ -50,10 +50,8 @@ import interviewPerformanceRoutes from "./routes/interviewPerformanceRoutes.js";
 import predictiveAnalyticsRoutes from "./routes/predictiveAnalyticsRoutes.js";
 import competitiveAnalysisRoutes from "./routes/competitiveAnalysisRoutes.js";
 import informationalInterviewRoutes from "./routes/informationalInterviewRoutes.js";
-import documentRoutes from "./routes/documentRoutes.js";
 import sharedJobRoutes from "./routes/sharedJobRoutes.js";
 import benchmarkRoutes from "./routes/benchmarkRoutes.js";
-import aiRecommendationsRoutes from "./routes/aiRecommendationsRoutes.js";
 import { getPublicProject } from "./controllers/profileController.js";
 import { viewSharedReport } from "./controllers/reportController.js";
 import { startDeadlineReminderSchedule } from "./utils/deadlineReminders.js";
@@ -147,14 +145,10 @@ app.use("/api/competitive-analysis", competitiveAnalysisRoutes);
 console.log('✅ Competitive Analysis routes registered at /api/competitive-analysis');
 app.use("/api/informational-interviews", informationalInterviewRoutes);
 console.log('✅ Informational Interview routes registered at /api/informational-interviews');
-app.use("/api/documents", documentRoutes);
-console.log('✅ Document Management routes registered at /api/documents');
 app.use("/api/teams", sharedJobRoutes);
 console.log('✅ Shared Job routes registered at /api/teams/:teamId/shared-jobs');
 app.use("/api", benchmarkRoutes);
 console.log('✅ Benchmark routes registered at /api/teams/:teamId/benchmarks');
-app.use("/api/ai-recommendations", aiRecommendationsRoutes);
-console.log('✅ AI Recommendations routes registered at /api/ai-recommendations');
 
 // Mount profile routes under /api/profile (existing) and also under /api/users
 // so frontend requests to /api/users/... (used elsewhere in the app) resolve correctly.
