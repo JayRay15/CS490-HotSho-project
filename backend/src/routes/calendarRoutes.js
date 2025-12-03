@@ -39,7 +39,10 @@ router.get('/google/auth', checkJwt, (req, res) => {
     
     const authUrl = oauth2Client.generateAuthUrl({
       access_type: 'offline', // Get refresh token
-      scope: ['https://www.googleapis.com/auth/calendar.events'],
+      scope: [
+        'https://www.googleapis.com/auth/calendar.events',
+        'https://www.googleapis.com/auth/userinfo.email' // To get user's email
+      ],
       prompt: 'consent', // Force consent screen to get refresh token
       state: req.auth.userId // Pass user ID for verification in callback
     });
@@ -74,10 +77,18 @@ router.get('/google/callback', async (req, res) => {
     // Exchange code for tokens
     const { tokens } = await oauth2Client.getToken(code);
     
-    // Get user info to verify and store email
+    // Set credentials first
     oauth2Client.setCredentials(tokens);
-    const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
-    const userInfo = await oauth2.userinfo.get();
+    
+    // Try to get user email (optional - don't fail if it doesn't work)
+    let userEmail = null;
+    try {
+      const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
+      const userInfo = await oauth2.userinfo.get();
+      userEmail = userInfo.data.email;
+    } catch (userInfoError) {
+      console.warn('Could not fetch user email, continuing without it:', userInfoError.message);
+    }
 
     // Find user by auth0Id (state parameter contains userId)
     const userId = state;
@@ -94,7 +105,7 @@ router.get('/google/callback', async (req, res) => {
       refreshToken: tokens.refresh_token,
       accessToken: tokens.access_token,
       tokenExpiry: new Date(tokens.expiry_date),
-      email: userInfo.data.email
+      email: userEmail // May be null if userinfo call failed
     };
     
     // Set as default calendar if none selected

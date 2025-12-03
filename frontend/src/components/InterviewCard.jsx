@@ -11,6 +11,7 @@ import {
   updatePreparationTask,
   updateInterview,
   downloadInterviewICS,
+  syncInterviewToCalendar,
 } from "../api/interviews";
 
 const STATUS_COLORS = {
@@ -42,6 +43,7 @@ export default function InterviewCard({ interview, onUpdate, onEdit, onDelete, c
   const navigate = useNavigate();
   const [showDetails, setShowDetails] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [showOutcomeForm, setShowOutcomeForm] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
@@ -145,6 +147,23 @@ export default function InterviewCard({ interview, onUpdate, onEdit, onDelete, c
     } catch (err) {
       console.error('ICS download failed', err);
       alert('Failed to download calendar file.');
+    }
+  };
+
+  const handleSyncToCalendar = async () => {
+    try {
+      setSyncing(true);
+      const response = await syncInterviewToCalendar(interview._id);
+      if (response.data?.success) {
+        onUpdate(response.data.data.interview);
+        alert(`✅ ${response.data.message}`);
+      }
+    } catch (err) {
+      console.error('Calendar sync failed', err);
+      const errorMsg = err.response?.data?.message || 'Failed to sync to calendar. Make sure you have connected a calendar in Settings.';
+      alert(errorMsg);
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -409,6 +428,19 @@ export default function InterviewCard({ interview, onUpdate, onEdit, onDelete, c
           {(interview.googleCalendarEventId || interview.outlookCalendarEventId) && (
             <Button onClick={handleDownloadICS} variant="secondary" size="sm" title="Download .ics calendar file">
               📥 ICS
+            </Button>
+          )}
+          {/* Sync to Calendar Button - show if not synced or if sync failed */}
+          {(!interview.calendarSyncStatus || interview.calendarSyncStatus === 'not_synced' || interview.calendarSyncStatus === 'failed') && (
+            <Button 
+              onClick={handleSyncToCalendar} 
+              disabled={syncing}
+              variant="secondary" 
+              size="sm" 
+              title="Sync this interview to your connected calendar (Google/Outlook)"
+              className="whitespace-nowrap"
+            >
+              {syncing ? '⏳ Syncing...' : '📅 Sync to Calendar'}
             </Button>
           )}
           {/* Interview Prep Button: Only show if interview has a jobId */}
