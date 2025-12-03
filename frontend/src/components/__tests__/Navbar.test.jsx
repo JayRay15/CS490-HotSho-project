@@ -10,6 +10,7 @@ vi.mock('@clerk/clerk-react', () => ({
   UserButton: () => <div data-testid="user-button" />,
   useAuth: () => ({ getToken: async () => 'token-123' }),
   useUser: () => ({ user: { id: 'u1' } }),
+  useClerk: () => ({ signOut: vi.fn() }),
 }));
 
 // Mock api/axios

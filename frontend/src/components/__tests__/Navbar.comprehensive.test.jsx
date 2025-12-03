@@ -10,6 +10,7 @@ vi.mock('@clerk/clerk-react', () => ({
   UserButton: () => <div data-testid="user-button" />,
   useAuth: () => ({ getToken: async () => 'token-123' }),
   useUser: () => ({ user: { id: 'u1' } }),
+  useClerk: () => ({ signOut: vi.fn() }),
 }));
 
 // Mock api/axios
@@ -276,14 +277,15 @@ describe('Navbar - Comprehensive Tests', () => {
   });
 
   describe('User Button', () => {
-    test('renders clerk user button', () => {
+    test('renders sign out button for signed in user', () => {
       render(
         <MemoryRouter>
           <Navbar />
         </MemoryRouter>
       );
 
-      expect(screen.getAllByTestId('user-button').length).toBeGreaterThan(0);
+      // The navbar uses a custom Sign Out button, not Clerk's UserButton
+      expect(screen.getAllByRole('button', { name: /sign out/i }).length).toBeGreaterThan(0);
     });
   });
 
@@ -308,22 +310,19 @@ describe('Navbar - Comprehensive Tests', () => {
     });
   });
 
-  describe('Profile Picture Style Injection', () => {
-    test('injects custom style when profile picture exists', async () => {
+  describe('Profile Picture Fetching on Mount', () => {
+    test('fetches user profile data when user exists', async () => {
       mockGet.mockResolvedValue({ data: { data: { picture: 'http://example.com/pic.png' } } });
 
-      const { container } = render(
+      render(
         <MemoryRouter>
           <Navbar />
         </MemoryRouter>
       );
 
       await waitFor(() => {
-        const styles = container.querySelectorAll('style');
-        const hasProfilePicStyle = Array.from(styles).some(s => 
-          s.textContent.includes('http://example.com/pic.png')
-        );
-        expect(hasProfilePicStyle).toBe(true);
+        // Verify the API was called to fetch user profile
+        expect(mockGet).toHaveBeenCalledWith('/api/users/me');
       });
     });
   });

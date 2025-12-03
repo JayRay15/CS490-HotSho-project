@@ -47,7 +47,9 @@ import accountabilityRoutes from "./routes/accountabilityRoutes.js";
 import peerSupportRoutes from "./routes/peerSupportRoutes.js";
 import applicationSuccessRoutes from "./routes/applicationSuccessRoutes.js";
 import interviewPerformanceRoutes from "./routes/interviewPerformanceRoutes.js";
+import predictiveAnalyticsRoutes from "./routes/predictiveAnalyticsRoutes.js";
 import competitiveAnalysisRoutes from "./routes/competitiveAnalysisRoutes.js";
+import informationalInterviewRoutes from "./routes/informationalInterviewRoutes.js";
 import { getPublicProject } from "./controllers/profileController.js";
 import { viewSharedReport } from "./controllers/reportController.js";
 import { startDeadlineReminderSchedule } from "./utils/deadlineReminders.js";
@@ -134,9 +136,13 @@ console.log('✅ Peer Support routes registered at /api/peer-support');
 app.use("/api/application-success", applicationSuccessRoutes);
 console.log(' Application Success routes registered at /api/application-success');
 app.use("/api/interview-performance", interviewPerformanceRoutes);
+app.use("/api/predictive-analytics", predictiveAnalyticsRoutes);
+console.log(" Predictive Analytics routes mounted at /api/predictive-analytics");
 console.log(' Interview Performance routes registered at /api/interview-performance');
 app.use("/api/competitive-analysis", competitiveAnalysisRoutes);
 console.log('✅ Competitive Analysis routes registered at /api/competitive-analysis');
+app.use("/api/informational-interviews", informationalInterviewRoutes);
+console.log('✅ Informational Interview routes registered at /api/informational-interviews');
 
 // Mount profile routes under /api/profile (existing) and also under /api/users
 // so frontend requests to /api/users/... (used elsewhere in the app) resolve correctly.
@@ -193,6 +199,8 @@ app.listen(PORT, () => {
     console.error('Failed to start status automation scheduler:', err?.message || err);
   }
 });
+
+
 
 
 
