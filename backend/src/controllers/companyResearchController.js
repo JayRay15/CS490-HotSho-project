@@ -100,6 +100,15 @@ export const generateCompanyResearch = asyncHandler(async (req, res) => {
     research.profile.mission = aiResearch.missionAndCulture?.mission || research.profile.mission;
     research.profile.values = aiResearch.missionAndCulture?.values || research.profile.values;
     research.profile.culture = aiResearch.missionAndCulture?.culture || research.profile.culture;
+    // Enhanced profile fields (matching Jobs page research)
+    research.profile.size = aiResearch.basicInfo?.size || research.profile.size;
+    research.profile.founded = aiResearch.basicInfo?.founded || research.profile.founded;
+    research.profile.headquarters = aiResearch.basicInfo?.headquarters || research.profile.headquarters;
+    research.profile.companyType = aiResearch.basicInfo?.companyType || research.profile.companyType;
+    research.profile.stockTicker = aiResearch.basicInfo?.stockTicker || research.profile.stockTicker;
+    research.profile.revenue = aiResearch.basicInfo?.revenue || research.profile.revenue;
+    research.profile.description = aiResearch.basicInfo?.description || research.profile.description;
+    research.profile.workEnvironment = aiResearch.missionAndCulture?.workEnvironment || research.profile.workEnvironment;
 
     // Leadership
     research.leadership = (aiResearch.leadership?.executives || aiResearch.leadership?.keyLeaders || aiResearch.leadership || [])
@@ -108,12 +117,26 @@ export const generateCompanyResearch = asyncHandler(async (req, res) => {
         return { name: l.name || l.fullName || l.title || 'Executive', title: l.title || '', bio: l.background || l.bio || '' };
       });
 
-    // Competitive
+    // Competitive (enhanced with industry trends)
     research.competitive = research.competitive || {};
     research.competitive.industry = aiResearch.competitive?.mainCompetitors ? aiResearch.competitive.mainCompetitors.join(', ') : aiResearch.competitive?.marketPosition || research.competitive.industry;
     research.competitive.marketPosition = aiResearch.competitive?.marketPosition || aiResearch.competitive?.uniqueValue || research.competitive.marketPosition;
     research.competitive.competitors = aiResearch.competitive?.mainCompetitors || aiResearch.competitive?.competitors || research.competitive.competitors;
     research.competitive.differentiators = aiResearch.competitive?.uniqueValue ? [aiResearch.competitive.uniqueValue] : research.competitive.differentiators;
+    research.competitive.challenges = aiResearch.competitive?.industryTrends || research.competitive.challenges;
+    research.competitive.opportunities = aiResearch.competitive?.industryTrends || research.competitive.opportunities;
+
+    // Products and Services (matching Jobs page research)
+    research.productsAndServices = research.productsAndServices || {};
+    research.productsAndServices.mainProducts = aiResearch.productsAndServices?.mainProducts || [];
+    research.productsAndServices.services = aiResearch.productsAndServices?.services || [];
+    research.productsAndServices.technologies = aiResearch.productsAndServices?.technologies || [];
+    research.productsAndServices.innovations = aiResearch.productsAndServices?.innovations || [];
+
+    // Social Media (matching Jobs page research)
+    research.socialMedia = research.socialMedia || {};
+    research.socialMedia.platforms = aiResearch.socialMedia?.platforms || {};
+    research.socialMedia.engagement = aiResearch.socialMedia?.engagement || null;
 
     // News
     const newsItems = [];
@@ -122,6 +145,9 @@ export const generateCompanyResearch = asyncHandler(async (req, res) => {
     }
     if (aiResearch.news?.pressReleases && aiResearch.news.pressReleases.length) {
       aiResearch.news.pressReleases.forEach(n => newsItems.push({ title: n.title || '', summary: n.summary || '', date: n.date ? new Date(n.date) : new Date(), source: 'Press Release' }));
+    }
+    if (aiResearch.news?.majorAnnouncements && aiResearch.news.majorAnnouncements.length) {
+      aiResearch.news.majorAnnouncements.forEach(n => newsItems.push({ title: typeof n === 'string' ? n : n.title || '', summary: typeof n === 'string' ? n : n.summary || '', date: new Date(), source: 'Major Announcement', category: 'other' }));
     }
     research.news = newsItems.length ? newsItems : research.news;
 
