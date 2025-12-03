@@ -37,12 +37,21 @@ export const updateTechnicalPrep = async (req, res) => {
 // Get coding challenges
 export const getCodingChallenges = async (req, res) => {
   try {
-    const { difficulty, category, techStack, search, limit = 20, skip = 0 } = req.query;
+    const { difficulty, category, techStack, search, completed, limit = 20, skip = 0 } = req.query;
+    const userId = req.auth?.userId;
     
     const query = {};
     if (difficulty) query.difficulty = difficulty;
     if (category) query.category = category;
     if (techStack) query.techStack = { $in: [techStack] };
+    
+    // Filter by completion status
+    if (completed === 'true' && userId) {
+      query.completedBy = userId;
+    } else if (completed === 'false' && userId) {
+      query.completedBy = { $ne: userId };
+    }
+    
     if (search) {
       query.$or = [
         { title: { $regex: search, $options: 'i' } },
@@ -120,6 +129,14 @@ export const submitCodingSolution = async (req, res) => {
     prep.updatePerformance();
     await prep.save();
     
+    // Mark challenge as completed if all tests passed
+    if (results.passed === challenge.testCases.length) {
+      if (!challenge.completedBy.includes(userId)) {
+        challenge.completedBy.push(userId);
+        await challenge.save();
+      }
+    }
+    
     res.json({
       submission,
       results: {
@@ -184,10 +201,19 @@ export const getSolution = async (req, res) => {
 // Get system design questions
 export const getSystemDesignQuestions = async (req, res) => {
   try {
-    const { level, search, limit = 20, skip = 0 } = req.query;
+    const { level, search, completed, limit = 20, skip = 0 } = req.query;
+    const userId = req.auth?.userId;
     
     const query = {};
     if (level) query.level = level;
+    
+    // Filter by completion status
+    if (completed === 'true' && userId) {
+      query.completedBy = userId;
+    } else if (completed === 'false' && userId) {
+      query.completedBy = { $ne: userId };
+    }
+    
     if (search) {
       query.$or = [
         { title: { $regex: search, $options: 'i' } },
@@ -255,6 +281,14 @@ export const submitSystemDesignSolution = async (req, res) => {
     prep.updatePerformance();
     await prep.save();
     
+    // Mark question as completed if score is above 70%
+    if (evaluation.score >= 70) {
+      if (!question.completedBy.includes(userId)) {
+        question.completedBy.push(userId);
+        await question.save();
+      }
+    }
+    
     res.json({ submission, evaluation });
   } catch (error) {
     console.error('Error submitting system design solution:', error);
@@ -265,11 +299,20 @@ export const submitSystemDesignSolution = async (req, res) => {
 // Get case studies
 export const getCaseStudies = async (req, res) => {
   try {
-    const { type, industry, search, limit = 20, skip = 0 } = req.query;
+    const { type, industry, search, completed, limit = 20, skip = 0 } = req.query;
+    const userId = req.auth?.userId;
     
     const query = {};
     if (type) query.type = type;
     if (industry) query.industry = industry;
+    
+    // Filter by completion status
+    if (completed === 'true' && userId) {
+      query.completedBy = userId;
+    } else if (completed === 'false' && userId) {
+      query.completedBy = { $ne: userId };
+    }
+    
     if (search) {
       query.$or = [
         { title: { $regex: search, $options: 'i' } },
@@ -330,7 +373,13 @@ export const submitCaseStudySolution = async (req, res) => {
     await prep.save();
     
     // Get sample solution after submission
-    const caseStudy = await CaseStudy.findById(caseStudyId).select('sampleSolution');
+    const caseStudy = await CaseStudy.findById(caseStudyId);
+    
+    // Mark case study as completed after submission (since it's manual review)
+    if (!caseStudy.completedBy.includes(userId)) {
+      caseStudy.completedBy.push(userId);
+      await caseStudy.save();
+    }
     
     res.json({ submission, sampleSolution: caseStudy.sampleSolution });
   } catch (error) {
@@ -501,18 +550,35 @@ export const getBookmarkedChallenges = async (req, res) => {
 // Helper function to run test cases (simplified)
 async function runTestCases(code, language, testCases) {
   // In production, use a sandboxed code execution service like Judge0, Piston, or AWS Lambda
-  // This is a simplified placeholder
+  // This is a simplified deterministic placeholder that checks for key logic patterns
   
   const results = {
     passed: 0,
-    executionTime: Math.random() * 1000, // Mock execution time
+    executionTime: Math.random() * 500 + 100, // Mock execution time between 100-600ms
     testResults: []
   };
   
-  // Mock test execution
+  // Simple deterministic check based on code patterns
+  // This is a placeholder - in production, use proper code execution
+  const codeToCheck = code.toLowerCase().trim();
+  
+  // Check if the code has basic required patterns (very simplified)
+  const hasLoop = /for|while|map|foreach|each/.test(codeToCheck);
+  const hasConditional = /if|switch|case|\?/.test(codeToCheck);
+  const hasReturn = /return/.test(codeToCheck);
+  
+  // Deterministic pass rate based on code structure
+  // If code has loops, conditionals, and return, assume it's likely correct
+  const likelyCorrect = hasLoop && hasConditional && hasReturn;
+  
+  // For each test case, use deterministic logic
   for (let i = 0; i < testCases.length; i++) {
     const testCase = testCases[i];
-    const passed = Math.random() > 0.3; // 70% pass rate for demo
+    
+    // Simple deterministic approach: 
+    // - If code looks structurally correct, pass all tests
+    // - Otherwise, fail predictably based on test case position
+    const passed = likelyCorrect || (i === 0); // At least pass the first test
     
     results.testResults.push({
       testCase: i + 1,

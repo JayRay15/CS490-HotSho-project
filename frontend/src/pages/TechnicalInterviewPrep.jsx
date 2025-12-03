@@ -37,6 +37,8 @@ const TechnicalInterviewPrep = () => {
   const [userJobs, setUserJobs] = useState([]);
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [generationResult, setGenerationResult] = useState(null);
   
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,6 +47,7 @@ const TechnicalInterviewPrep = () => {
   const [levelFilter, setLevelFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -61,7 +64,7 @@ const TechnicalInterviewPrep = () => {
     } else if (activeTab === 'bookmarks') {
       loadBookmarks();
     }
-  }, [activeTab, searchQuery, difficultyFilter, categoryFilter, levelFilter, typeFilter]);
+  }, [activeTab, searchQuery, difficultyFilter, categoryFilter, levelFilter, typeFilter, showCompleted]);
 
   const loadData = async () => {
     try {
@@ -81,6 +84,7 @@ const TechnicalInterviewPrep = () => {
         search: searchQuery,
         difficulty: difficultyFilter,
         category: categoryFilter,
+        completed: showCompleted,
         limit: 20
       };
       const data = await technicalPrepAPI.getCodingChallenges(params);
@@ -95,6 +99,7 @@ const TechnicalInterviewPrep = () => {
       const params = {
         search: searchQuery,
         level: levelFilter,
+        completed: showCompleted,
         limit: 20
       };
       const data = await technicalPrepAPI.getSystemDesignQuestions(params);
@@ -109,6 +114,7 @@ const TechnicalInterviewPrep = () => {
       const params = {
         search: searchQuery,
         type: typeFilter,
+        completed: showCompleted,
         limit: 20
       };
       const data = await technicalPrepAPI.getCaseStudies(params);
@@ -162,7 +168,8 @@ const TechnicalInterviewPrep = () => {
       }
       
       setShowGenerateModal(false);
-      alert(`Successfully generated ${data.codingChallenges?.length || 0} coding challenges, ${data.systemDesignQuestions?.length || 0} system design questions, and ${data.caseStudies?.length || 0} case studies for ${data.jobTitle}!`);
+      setGenerationResult(data);
+      setShowSuccessModal(true);
     } catch (err) {
       console.error('Failed to generate challenges:', err);
       setGenerateError(err.response?.data?.message || 'Failed to generate challenges');
@@ -455,6 +462,69 @@ const TechnicalInterviewPrep = () => {
           </Button>
         </div>
 
+        {/* Success Modal */}
+        {showSuccessModal && generationResult && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl">
+              <div className="text-center">
+                <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
+                  <CheckCircleIcon className="h-10 w-10 text-green-600" />
+                </div>
+                
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                  Successfully Generated!
+                </h3>
+                
+                <p className="text-gray-600 mb-6">
+                  Technical prep content for <span className="font-semibold">{generationResult.jobTitle}</span>
+                </p>
+
+                <div className="bg-gray-50 rounded-lg p-4 mb-6 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <CodeBracketIcon className="h-5 w-5 text-blue-600 mr-2" />
+                      <span className="text-gray-700">Coding Challenges</span>
+                    </div>
+                    <span className="text-2xl font-bold text-blue-600">
+                      {generationResult.codingChallenges?.length || 0}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <ServerIcon className="h-5 w-5 text-purple-600 mr-2" />
+                      <span className="text-gray-700">System Design Questions</span>
+                    </div>
+                    <span className="text-2xl font-bold text-purple-600">
+                      {generationResult.systemDesignQuestions?.length || 0}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <DocumentTextIcon className="h-5 w-5 text-green-600 mr-2" />
+                      <span className="text-gray-700">Case Studies</span>
+                    </div>
+                    <span className="text-2xl font-bold text-green-600">
+                      {generationResult.caseStudies?.length || 0}
+                    </span>
+                  </div>
+                </div>
+
+                <Button 
+                  onClick={() => {
+                    setShowSuccessModal(false);
+                    setGenerationResult(null);
+                  }}
+                  className="w-full"
+                >
+                  Start Practicing
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Generate Modal */}
         {showGenerateModal && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -609,18 +679,31 @@ const TechnicalInterviewPrep = () => {
                 </select>
               )}
 
-              <Button
-                onClick={() => {
-                  setDifficultyFilter('');
-                  setCategoryFilter('');
-                  setLevelFilter('');
-                  setTypeFilter('');
-                  setSearchQuery('');
-                }}
-                variant="secondary"
-              >
-                Clear Filters
-              </Button>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showCompleted}
+                    onChange={(e) => setShowCompleted(e.target.checked)}
+                    className="mr-2 h-4 w-4 text-blue-600 rounded"
+                  />
+                  <span className="text-sm text-gray-700">Show Completed</span>
+                </label>
+                
+                <Button
+                  onClick={() => {
+                    setDifficultyFilter('');
+                    setCategoryFilter('');
+                    setLevelFilter('');
+                    setTypeFilter('');
+                    setSearchQuery('');
+                    setShowCompleted(false);
+                  }}
+                  variant="secondary"
+                >
+                  Clear Filters
+                </Button>
+              </div>
             </div>
           )}
         </div>

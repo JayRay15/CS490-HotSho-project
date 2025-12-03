@@ -3,6 +3,54 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 /**
+ * Extract JSON from AI response that may contain markdown or extra text
+ */
+function extractJSON(response) {
+  let cleaned = response.trim();
+  
+  // Remove markdown code blocks
+  cleaned = cleaned.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+  
+  // Try to find JSON object/array in the response
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+  if (jsonMatch) {
+    cleaned = jsonMatch[0];
+  }
+  
+  // Remove any text before the first { or [
+  const firstBrace = Math.min(
+    cleaned.indexOf('{') >= 0 ? cleaned.indexOf('{') : Infinity,
+    cleaned.indexOf('[') >= 0 ? cleaned.indexOf('[') : Infinity
+  );
+  if (firstBrace !== Infinity && firstBrace > 0) {
+    cleaned = cleaned.substring(firstBrace);
+  }
+  
+  // Remove any text after the last } or ]
+  const lastBrace = Math.max(cleaned.lastIndexOf('}'), cleaned.lastIndexOf(']'));
+  if (lastBrace >= 0 && lastBrace < cleaned.length - 1) {
+    cleaned = cleaned.substring(0, lastBrace + 1);
+  }
+  
+  // Fix common control character issues in string values
+  // Replace unescaped newlines, tabs, and other control characters within strings
+  cleaned = cleaned.replace(/(\\"[^"]*")|("[^"]*")/g, (match) => {
+    // Don't process already escaped strings
+    if (match.startsWith('\\"')) return match;
+    
+    // Escape control characters within the string
+    return match
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\r')
+      .replace(/\t/g, '\\t')
+      .replace(/\f/g, '\\f')
+      .replace(/\b/g, '\\b');
+  });
+  
+  return cleaned.trim();
+}
+
+/**
  * Generate coding challenges based on job requirements
  */
 export async function generateCodingChallenges(jobDetails) {
@@ -80,22 +128,13 @@ Return ONLY valid JSON (no markdown formatting, no code blocks, no extra text). 
   const result = await model.generateContent(prompt);
   const response = result.response.text();
   
-  // Clean response - remove markdown code blocks and fix common issues
-  let cleanedResponse = response.trim();
-  if (cleanedResponse.startsWith('```')) {
-    cleanedResponse = cleanedResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-  }
-  
-  // Remove any leading/trailing whitespace and newlines
-  cleanedResponse = cleanedResponse.trim();
-  
-  // Try to fix common escape issues
   try {
+    const cleanedResponse = extractJSON(response);
     const parsed = JSON.parse(cleanedResponse);
-    return parsed.challenges;
+    return parsed.challenges || [];
   } catch (parseError) {
     console.error('JSON parse error:', parseError);
-    console.error('Problematic JSON:', cleanedResponse.substring(0, 500));
+    console.error('Problematic JSON:', response.substring(0, 500));
     throw new Error(`Failed to parse AI response: ${parseError.message}`);
   }
 }
@@ -160,13 +199,15 @@ Return ONLY valid JSON in this exact format (no markdown, no code blocks, no ext
   const result = await model.generateContent(prompt);
   const response = result.response.text();
   
-  let cleanedResponse = response.trim();
-  if (cleanedResponse.startsWith('```')) {
-    cleanedResponse = cleanedResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+  try {
+    const cleanedResponse = extractJSON(response);
+    const parsed = JSON.parse(cleanedResponse);
+    return parsed.questions || [];
+  } catch (error) {
+    console.error('Failed to parse system design response:', error);
+    console.error('Response:', response.substring(0, 500));
+    return [];
   }
-  
-  const parsed = JSON.parse(cleanedResponse);
-  return parsed.questions;
 }
 
 /**
@@ -219,17 +260,13 @@ Return ONLY valid JSON in this exact format (no markdown, no code blocks, no ext
   const result = await model.generateContent(prompt);
   const response = result.response.text();
   
-  let cleanedResponse = response.trim();
-  if (cleanedResponse.startsWith('```')) {
-    cleanedResponse = cleanedResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-  }
-  
   try {
+    const cleanedResponse = extractJSON(response);
     const parsed = JSON.parse(cleanedResponse);
     return parsed.caseStudies || [];
   } catch (error) {
     console.error('Failed to parse case studies response:', error);
-    console.error('Response:', cleanedResponse.substring(0, 500));
+    console.error('Response:', response.substring(0, 500));
     return [];
   }
 }

@@ -247,11 +247,11 @@ const CodingChallenge = () => {
                   <div key={idx} className="bg-gray-50 rounded-lg p-4 mb-4">
                     <div className="mb-2">
                       <span className="font-medium text-gray-700">Input:</span>
-                      <pre className="mt-1 bg-white p-2 rounded border text-sm">{example.input}</pre>
+                      <pre className="mt-1 bg-white p-2 rounded border text-sm overflow-x-auto whitespace-pre-wrap break-words">{example.input}</pre>
                     </div>
                     <div className="mb-2">
                       <span className="font-medium text-gray-700">Output:</span>
-                      <pre className="mt-1 bg-white p-2 rounded border text-sm">{example.output}</pre>
+                      <pre className="mt-1 bg-white p-2 rounded border text-sm overflow-x-auto whitespace-pre-wrap break-words">{example.output}</pre>
                     </div>
                     {example.explanation && (
                       <div>
