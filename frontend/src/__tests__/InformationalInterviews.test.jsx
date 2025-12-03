@@ -232,7 +232,7 @@ describe('InformationalInterviewsPage', () => {
 
     // Wait for the state to update and check the button has the active style
     await waitFor(() => {
-      expect(listButton).toHaveClass('bg-indigo-600');
+      expect(listButton).toHaveClass('bg-[#777C6D]');
     });
   });
 
