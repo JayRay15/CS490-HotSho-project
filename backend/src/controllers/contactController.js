@@ -760,3 +760,253 @@ export const trackDiscoverySuccess = async (req, res) => {
     });
   }
 };
+
+// @desc    Find connection paths to a target contact/company
+// @route   GET /api/contacts/connection-paths
+// @access  Private
+export const findConnectionPaths = async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const { targetCompany, targetPerson, targetRole } = req.query;
+
+    if (!targetCompany && !targetPerson) {
+      return res.status(400).json({
+        success: false,
+        message: 'Target company or person is required'
+      });
+    }
+
+    // Get user's existing contacts
+    const userContacts = await Contact.find({ userId })
+      .lean();
+
+    // Find direct connections (1st degree)
+    const directConnections = userContacts.filter(contact => {
+      if (targetCompany && contact.company?.toLowerCase().includes(targetCompany.toLowerCase())) {
+        return true;
+      }
+      if (targetPerson) {
+        const fullName = `${contact.firstName} ${contact.lastName}`.toLowerCase();
+        if (fullName.includes(targetPerson.toLowerCase())) {
+          return true;
+        }
+      }
+      return false;
+    });
+
+    // Find potential paths through existing contacts
+    const connectionPaths = [];
+
+    // 1. Direct connections
+    for (const contact of directConnections) {
+      connectionPaths.push({
+        pathType: 'direct',
+        degree: 1,
+        strength: 'strong',
+        path: [
+          {
+            type: 'you',
+            name: 'You',
+            relationship: 'self'
+          },
+          {
+            type: 'contact',
+            id: contact._id,
+            name: `${contact.firstName} ${contact.lastName}`,
+            company: contact.company,
+            role: contact.jobTitle,
+            relationship: contact.relationshipType,
+            lastContact: contact.lastContactDate
+          }
+        ],
+        recommendation: `You have a direct connection to ${contact.firstName} at ${contact.company}. This is your strongest path.`,
+        actionItems: [
+          `Reach out to ${contact.firstName} directly`,
+          `Ask for an introduction or insight about ${targetCompany || targetRole || 'the company'}`
+        ]
+      });
+    }
+
+    // 2. Indirect connections through shared companies/industries
+    const potentialBridges = userContacts.filter(contact => {
+      // Find contacts in related industries or with similar roles
+      return contact.industry && !directConnections.find(d => d._id.toString() === contact._id.toString());
+    });
+
+    // Group by company for referral potential
+    const companyGroups = {};
+    for (const contact of userContacts) {
+      if (contact.company) {
+        if (!companyGroups[contact.company]) {
+          companyGroups[contact.company] = [];
+        }
+        companyGroups[contact.company].push(contact);
+      }
+    }
+
+    // Find 2nd degree connections (simulated)
+    // In a real implementation, this would query external networks
+    for (const contact of potentialBridges.slice(0, 5)) {
+      // Check if contact might know someone at target company
+      const hasRelatedIndustry = contact.industry && 
+        targetCompany?.toLowerCase().includes(contact.industry.toLowerCase());
+      
+      if (hasRelatedIndustry || contact.relationshipType === 'Colleague' || contact.relationshipType === 'Mentor') {
+        connectionPaths.push({
+          pathType: 'indirect',
+          degree: 2,
+          strength: contact.relationshipType === 'Mentor' ? 'medium' : 'weak',
+          path: [
+            {
+              type: 'you',
+              name: 'You',
+              relationship: 'self'
+            },
+            {
+              type: 'contact',
+              id: contact._id,
+              name: `${contact.firstName} ${contact.lastName}`,
+              company: contact.company,
+              role: contact.jobTitle,
+              relationship: contact.relationshipType
+            },
+            {
+              type: 'potential',
+              name: 'Potential Connection',
+              company: targetCompany || 'Target Company',
+              role: targetRole || 'Employee',
+              relationship: 'unknown'
+            }
+          ],
+          recommendation: `${contact.firstName} may know someone at ${targetCompany || 'your target company'}. Ask if they have any connections.`,
+          actionItems: [
+            `Check if ${contact.firstName} is connected to anyone at ${targetCompany || 'the target'}`,
+            `Ask ${contact.firstName} for a warm introduction`
+          ],
+          probability: contact.relationshipType === 'Mentor' ? 0.7 : 0.4
+        });
+      }
+    }
+
+    // 3. Mock alumni/industry network paths
+    const mockNetworkPaths = generateMockNetworkPaths(targetCompany, targetPerson, targetRole);
+    
+    // Combine and sort by degree/strength
+    const allPaths = [...connectionPaths, ...mockNetworkPaths]
+      .sort((a, b) => {
+        if (a.degree !== b.degree) return a.degree - b.degree;
+        const strengthOrder = { strong: 0, medium: 1, weak: 2 };
+        return strengthOrder[a.strength] - strengthOrder[b.strength];
+      });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        target: {
+          company: targetCompany,
+          person: targetPerson,
+          role: targetRole
+        },
+        pathsFound: allPaths.length,
+        paths: allPaths,
+        summary: {
+          directConnections: directConnections.length,
+          indirectPaths: allPaths.filter(p => p.degree > 1).length,
+          strongestPath: allPaths[0] || null
+        },
+        recommendations: generateConnectionRecommendations(allPaths, targetCompany)
+      }
+    });
+  } catch (error) {
+    console.error('Error finding connection paths:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to find connection paths',
+      error: error.message
+    });
+  }
+};
+
+// Helper function to generate mock network paths
+function generateMockNetworkPaths(targetCompany, targetPerson, targetRole) {
+  const mockPaths = [];
+  
+  if (targetCompany) {
+    // Alumni network path
+    mockPaths.push({
+      pathType: 'alumni_network',
+      degree: 2,
+      strength: 'medium',
+      path: [
+        { type: 'you', name: 'You', relationship: 'self' },
+        { type: 'network', name: 'Alumni Network', relationship: 'member' },
+        { type: 'potential', name: 'Alumni at Company', company: targetCompany, role: 'Employee', relationship: 'alumni' }
+      ],
+      recommendation: `Check your university alumni network for connections at ${targetCompany}.`,
+      actionItems: [
+        'Search LinkedIn for alumni at the target company',
+        'Reach out through alumni association channels',
+        'Attend virtual networking events'
+      ],
+      probability: 0.5,
+      source: 'alumni_network'
+    });
+
+    // Industry group path
+    mockPaths.push({
+      pathType: 'industry_group',
+      degree: 2,
+      strength: 'weak',
+      path: [
+        { type: 'you', name: 'You', relationship: 'self' },
+        { type: 'network', name: 'Industry Group', relationship: 'member' },
+        { type: 'potential', name: 'Group Member', company: targetCompany, relationship: 'group_member' }
+      ],
+      recommendation: `Join relevant industry groups where ${targetCompany} employees participate.`,
+      actionItems: [
+        'Join relevant LinkedIn groups',
+        'Participate in industry forums',
+        'Attend industry conferences or webinars'
+      ],
+      probability: 0.3,
+      source: 'industry_network'
+    });
+  }
+
+  return mockPaths;
+}
+
+// Helper function to generate recommendations
+function generateConnectionRecommendations(paths, targetCompany) {
+  const recommendations = [];
+
+  if (paths.some(p => p.degree === 1)) {
+    recommendations.push({
+      priority: 'high',
+      type: 'direct_outreach',
+      title: 'Leverage Your Direct Connection',
+      description: `You have direct connections to ${targetCompany || 'your target'}. Start there!`,
+      icon: '🎯'
+    });
+  }
+
+  if (paths.some(p => p.pathType === 'alumni_network')) {
+    recommendations.push({
+      priority: 'medium',
+      type: 'alumni_network',
+      title: 'Tap Into Your Alumni Network',
+      description: 'Alumni are often willing to help fellow graduates. Check your school\'s network.',
+      icon: '🎓'
+    });
+  }
+
+  recommendations.push({
+    priority: 'low',
+    type: 'cold_outreach',
+    title: 'Consider Thoughtful Cold Outreach',
+    description: 'If other paths aren\'t available, a well-crafted cold message can still work.',
+    icon: '💌'
+  });
+
+  return recommendations;
+}

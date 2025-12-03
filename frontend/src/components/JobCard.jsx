@@ -1,6 +1,7 @@
 import { useState } from "react";
 import PropTypes from "prop-types";
 import { useNavigate } from "react-router-dom";
+import ShareJobButton from "./team/ShareJobButton";
 
 // Stage color mapping for visual clarity
 const STAGE_COLORS = {
@@ -326,6 +327,10 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
             >
               ✨ Generate Cover Letter
             </button>
+          )}
+          {/* Share with Team */}
+          {!job.archived && (
+            <ShareJobButton job={job} variant="button" />
           )}
           {/* Status Tracking Actions */}
           {onOpenStatusModal && !job.archived && (

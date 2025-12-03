@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Search, Filter, Users, Building2, MapPin, GraduationCap, Sparkles, 
          ExternalLink, UserPlus, ChevronDown, ChevronUp, Star, Briefcase,
-         Globe, Award, TrendingUp, RefreshCw, CheckCircle, X, BookOpen, Database } from 'lucide-react';
+         Globe, Award, TrendingUp, RefreshCw, CheckCircle, X, BookOpen, Database, Network } from 'lucide-react';
 import { discoverContacts, getDiscoveryFilters, getSuggestedContacts, createContact, trackDiscoveryAction } from '../../api/contactApi';
 import { toast } from 'react-hot-toast';
 import Button from '../Button';
+import ConnectionPathFinder from '../contacts/ConnectionPathFinder';
 
 const ConnectionTypeBadge = ({ type }) => {
   const colors = {
@@ -642,6 +643,9 @@ export default function ContactDiscoveryTab({ onContactAdded }) {
           )}
         </>
       )}
+
+      {/* Connection Path Finder */}
+      <ConnectionPathFinder />
 
       {/* Tips Section */}
       <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6">

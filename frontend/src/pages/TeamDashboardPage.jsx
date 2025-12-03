@@ -11,6 +11,8 @@ import {
     removeMember
 } from '../api/teams';
 import * as accountabilityApi from '../api/accountability';
+import SharedJobsTab from '../components/team/SharedJobsTab';
+import BenchmarkingTab from '../components/team/BenchmarkingTab';
 import {
     Users,
     UserPlus,
@@ -512,6 +514,28 @@ const TeamDashboardPage = () => {
                         <Share2 className="w-5 h-5" />
                         Progress Sharing
                     </button>
+                    <button
+                        onClick={() => setActiveTab('shared-jobs')}
+                        className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                            activeTab === 'shared-jobs'
+                                ? 'border-blue-500 text-blue-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        }`}
+                    >
+                        <Briefcase className="w-5 h-5" />
+                        Shared Jobs
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('benchmarking')}
+                        className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                            activeTab === 'benchmarking'
+                                ? 'border-blue-500 text-blue-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        }`}
+                    >
+                        <BarChart3 className="w-5 h-5" />
+                        Benchmarking
+                    </button>
                 </nav>
             </div>
 
@@ -987,6 +1011,20 @@ const TeamDashboardPage = () => {
                             </div>
                         </>
                     )}
+                </div>
+            )}
+
+            {/* Shared Jobs Tab Content */}
+            {activeTab === 'shared-jobs' && (
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <SharedJobsTab teamId={teamId} />
+                </div>
+            )}
+
+            {/* Benchmarking Tab Content */}
+            {activeTab === 'benchmarking' && (
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <BenchmarkingTab teamId={teamId} />
                 </div>
             )}
 

@@ -16,7 +16,8 @@ import {
   discoverExternalContactsController,
   getDiscoveryFiltersController,
   getSuggestedContactsController,
-  trackDiscoverySuccess
+  trackDiscoverySuccess,
+  findConnectionPaths
 } from '../controllers/contactController.js';
 
 const router = express.Router();
@@ -45,6 +46,9 @@ router.get('/discover/suggestions', getSuggestedContactsController);
 
 // POST /api/contacts/discover/track - Track discovery actions
 router.post('/discover/track', trackDiscoverySuccess);
+
+// GET /api/contacts/connection-paths - Find connection paths to a target
+router.get('/connection-paths', findConnectionPaths);
 
 // GET /api/contacts - Get all contacts
 router.get('/', getContacts);

@@ -18,6 +18,11 @@ export default function CalendarSettings() {
     reminderMinutes: [1440, 120],
   });
   const [message, setMessage] = useState({ type: "", text: "" });
+  const [syncStatus, setSyncStatus] = useState({
+    google: { status: 'unknown', lastSync: null, error: null },
+    outlook: { status: 'unknown', lastSync: null, error: null }
+  });
+  const [retrying, setRetrying] = useState({ google: false, outlook: false });
 
   // Get Google account from Clerk if user signed in with Google
   const googleAccount = user?.externalAccounts?.find(
@@ -38,11 +43,45 @@ export default function CalendarSettings() {
       if (data.preferences) {
         setPreferences(data.preferences);
       }
+      // Update sync status from API response
+      if (data.syncStatus) {
+        setSyncStatus(data.syncStatus);
+      } else {
+        // Set status based on connection state
+        setSyncStatus({
+          google: {
+            status: hasGoogleConnected ? 'connected' : 'not_connected',
+            lastSync: data.google?.lastSync || null,
+            error: null
+          },
+          outlook: {
+            status: data.outlook?.connected ? 'connected' : 'not_connected',
+            lastSync: data.outlook?.lastSync || null,
+            error: null
+          }
+        });
+      }
     } catch (error) {
       console.error("Error loading calendar status:", error);
-      // Don't show error - just use defaults
+      // Show sync failure status
+      setSyncStatus({
+        google: { status: 'error', lastSync: null, error: 'Failed to check sync status' },
+        outlook: { status: 'error', lastSync: null, error: 'Failed to check sync status' }
+      });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRetrySync = async (provider) => {
+    setRetrying(prev => ({ ...prev, [provider]: true }));
+    try {
+      await loadStatus();
+      setMessage({ type: "success", text: `${provider === 'google' ? 'Google' : 'Outlook'} Calendar status refreshed` });
+    } catch (error) {
+      setMessage({ type: "error", text: `Failed to refresh ${provider} calendar status` });
+    } finally {
+      setRetrying(prev => ({ ...prev, [provider]: false }));
     }
   };
 
@@ -58,6 +97,61 @@ export default function CalendarSettings() {
     } finally {
       setSaving(false);
     }
+  };
+
+  // Helper function to render sync status badge
+  const renderSyncStatusBadge = (provider) => {
+    const providerStatus = syncStatus[provider];
+    
+    if (provider === 'google' && hasGoogleConnected) {
+      return (
+        <div className="flex flex-col items-end">
+          <span className="px-3 py-1.5 bg-green-100 text-green-800 text-sm font-medium rounded-full">
+            ✓ Connected
+          </span>
+          {providerStatus.lastSync && (
+            <span className="text-xs text-gray-500 mt-1">
+              Last sync: {new Date(providerStatus.lastSync).toLocaleDateString()}
+            </span>
+          )}
+        </div>
+      );
+    }
+    
+    if (providerStatus.status === 'error') {
+      return (
+        <div className="flex flex-col items-end">
+          <span className="px-3 py-1.5 bg-red-100 text-red-800 text-sm font-medium rounded-full flex items-center gap-1">
+            ⚠ Sync Issue
+          </span>
+          <button
+            onClick={() => handleRetrySync(provider)}
+            disabled={retrying[provider]}
+            className="text-xs text-blue-600 hover:text-blue-800 mt-1 underline"
+          >
+            {retrying[provider] ? 'Retrying...' : 'Retry'}
+          </button>
+        </div>
+      );
+    }
+    
+    if (providerStatus.status === 'syncing') {
+      return (
+        <span className="px-3 py-1.5 bg-yellow-100 text-yellow-800 text-sm font-medium rounded-full flex items-center gap-1">
+          <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+          </svg>
+          Syncing...
+        </span>
+      );
+    }
+    
+    return (
+      <span className="px-3 py-1.5 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
+        Use .ics Export
+      </span>
+    );
   };
 
   if (loading || !userLoaded) {
@@ -84,6 +178,35 @@ export default function CalendarSettings() {
           }`}
         >
           {message.text}
+        </div>
+      )}
+
+      {/* Sync Failure Alert Banner */}
+      {(syncStatus.google.status === 'error' || syncStatus.outlook.status === 'error') && (
+        <div className="mb-6 p-4 rounded-lg bg-amber-50 border border-amber-200">
+          <div className="flex items-start space-x-3">
+            <div className="text-xl">⚠️</div>
+            <div className="flex-1">
+              <h4 className="font-medium text-amber-900">Calendar Sync Issue Detected</h4>
+              <p className="text-sm text-amber-800 mt-1">
+                We're having trouble syncing with your calendar. Your interviews are safe and you can still use manual .ics export as a fallback.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  onClick={() => loadStatus()}
+                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md bg-amber-100 text-amber-800 hover:bg-amber-200 transition-colors"
+                >
+                  🔄 Refresh Status
+                </button>
+                <a
+                  href="#ics-info"
+                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md bg-white text-amber-800 border border-amber-300 hover:bg-amber-50 transition-colors"
+                >
+                  📥 Use Manual Export Instead
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -139,18 +262,15 @@ export default function CalendarSettings() {
                   ✓ Signed in as: {googleEmail}
                 </p>
               )}
+              {syncStatus.google.error && (
+                <p className="text-xs text-red-600 mt-1">
+                  ⚠ {syncStatus.google.error}
+                </p>
+              )}
             </div>
           </div>
           <div>
-            {hasGoogleConnected ? (
-              <span className="px-3 py-1.5 bg-green-100 text-green-800 text-sm font-medium rounded-full">
-                ✓ Connected
-              </span>
-            ) : (
-              <span className="px-3 py-1.5 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
-                Use .ics Export
-              </span>
-            )}
+            {renderSyncStatusBadge('google')}
           </div>
         </div>
       </Card>
@@ -170,25 +290,37 @@ export default function CalendarSettings() {
               <p className="text-sm text-gray-500">
                 Download .ics files to add interviews to Outlook
               </p>
+              {syncStatus.outlook.error && (
+                <p className="text-xs text-red-600 mt-1">
+                  ⚠ {syncStatus.outlook.error}
+                </p>
+              )}
             </div>
           </div>
           <div>
-            <span className="px-3 py-1.5 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
-              Use .ics Export
-            </span>
+            {renderSyncStatusBadge('outlook')}
           </div>
         </div>
       </Card>
 
       {/* ICS Download Info */}
-      <div className="mb-6 p-4 rounded-lg bg-gray-50 border border-gray-200">
+      <div id="ics-info" className="mb-6 p-4 rounded-lg bg-gray-50 border border-gray-200">
         <div className="flex items-start space-x-3">
           <div className="text-xl">📥</div>
           <div>
-            <h4 className="font-medium text-gray-900">Manual Calendar Import</h4>
+            <h4 className="font-medium text-gray-900">Manual Calendar Import (Fallback Option)</h4>
             <p className="text-sm text-gray-600 mt-1">
-              Don't want to connect your calendar? Download .ics files from any interview card and import them directly into any calendar app (Apple Calendar, Google Calendar, Outlook, etc.)
+              Having sync issues? Download .ics files from any interview card and import them directly into any calendar app (Apple Calendar, Google Calendar, Outlook, etc.)
             </p>
+            <div className="mt-3 p-3 bg-white rounded border border-gray-200">
+              <h5 className="text-sm font-medium text-gray-800 mb-2">How to use .ics files:</h5>
+              <ol className="text-xs text-gray-600 space-y-1 list-decimal list-inside">
+                <li>Go to any scheduled interview in your applications</li>
+                <li>Click the "Download .ics" button</li>
+                <li>Open the downloaded file - it will automatically open in your default calendar app</li>
+                <li>Click "Add" or "Save" to add the event to your calendar</li>
+              </ol>
+            </div>
           </div>
         </div>
       </div>
