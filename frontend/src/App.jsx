@@ -32,6 +32,8 @@ import WritingPracticePage from "./pages/WritingPracticePage";
 import { MentorDashboard, ProgressSharing, MentorMessaging } from "./components/mentors";
 import AdvisorsPage from "./pages/AdvisorsPage";
 import AdvisorMessagingPage from "./pages/AdvisorMessagingPage";
+import MentorsAdvisorsPage from "./pages/MentorsAdvisorsPage";
+import MyPerformancePage from "./pages/MyPerformancePage";
 import GoalsPage from "./pages/GoalsPage";
 import NewGoalPage from "./pages/NewGoalPage";
 import TeamsPage from "./pages/TeamsPage";
@@ -127,18 +129,20 @@ function App() {
           <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
           <Route path="/reports/shared/:token" element={<SharedReportView />} />
           <Route path="/market-intelligence" element={<ProtectedRoute><MarketIntelligenceDashboard /></ProtectedRoute>} />
-          <Route path="/performance-dashboard" element={<ProtectedRoute><PerformanceDashboard /></ProtectedRoute>} />
-          <Route path="/application-success" element={<ProtectedRoute><ApplicationSuccessAnalysis /></ProtectedRoute>} />
-          <Route path="/interview-performance" element={<ProtectedRoute><InterviewPerformance /></ProtectedRoute>} />
+          <Route path="/my-performance" element={<ProtectedRoute><MyPerformancePage /></ProtectedRoute>} />
+          <Route path="/performance-dashboard" element={<Navigate to="/my-performance" replace />} />
+          <Route path="/application-success" element={<Navigate to="/my-performance?tab=success" replace />} />
+          <Route path="/interview-performance" element={<Navigate to="/interviews?tab=performance" replace />} />
           <Route path="/predictive-analytics" element={<ProtectedRoute><PredictiveAnalytics /></ProtectedRoute>} />
           <Route path="/competitive-analysis" element={<ProtectedRoute><CompetitiveAnalysis /></ProtectedRoute>} />
-          <Route path="/mentors" element={<ProtectedRoute><MentorDashboard /></ProtectedRoute>} />
+          <Route path="/mentors-advisors" element={<ProtectedRoute><MentorsAdvisorsPage /></ProtectedRoute>} />
+          <Route path="/mentors" element={<Navigate to="/mentors-advisors" replace />} />
           <Route path="/mentors/progress" element={<ProtectedRoute><ProgressSharing /></ProtectedRoute>} />
           <Route path="/mentors/messages" element={<ProtectedRoute><MentorMessaging /></ProtectedRoute>} />
           <Route path="/teams" element={<ProtectedRoute><TeamsPage /></ProtectedRoute>} />
           <Route path="/teams/:teamId" element={<ProtectedRoute><TeamDashboardPage /></ProtectedRoute>} />
           <Route path="/teams/:teamId/settings" element={<ProtectedRoute><TeamSettingsPage /></ProtectedRoute>} />
-          <Route path="/advisors" element={<ProtectedRoute><AdvisorsPage /></ProtectedRoute>} />
+          <Route path="/advisors" element={<Navigate to="/mentors-advisors?tab=advisors" replace />} />
           <Route path="/advisors/messages" element={<ProtectedRoute><AdvisorMessagingPage /></ProtectedRoute>} />
           <Route path="/peer-support" element={<ProtectedRoute><PeerSupportPage /></ProtectedRoute>} />
         </Routes>
