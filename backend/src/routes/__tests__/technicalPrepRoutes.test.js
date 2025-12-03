@@ -8,14 +8,17 @@ const mockUpdateTechnicalPrep = jest.fn((req, res) => res.json({ success: true, 
 const mockGetCodingChallenges = jest.fn((req, res) => res.json({ success: true, data: [] }));
 const mockGetCodingChallenge = jest.fn((req, res) => res.json({ success: true, data: {} }));
 const mockSubmitCodingSolution = jest.fn((req, res) => res.json({ success: true, data: {} }));
+const mockDeleteCodingChallenge = jest.fn((req, res) => res.json({ success: true, message: 'Deleted' }));
 const mockGetHint = jest.fn((req, res) => res.json({ success: true, hint: 'hint' }));
 const mockGetSolution = jest.fn((req, res) => res.json({ success: true, solution: 'solution' }));
 const mockGetSystemDesignQuestions = jest.fn((req, res) => res.json({ success: true, data: [] }));
 const mockGetSystemDesignQuestion = jest.fn((req, res) => res.json({ success: true, data: {} }));
 const mockSubmitSystemDesignSolution = jest.fn((req, res) => res.json({ success: true, data: {} }));
+const mockDeleteSystemDesignQuestion = jest.fn((req, res) => res.json({ success: true, message: 'Deleted' }));
 const mockGetCaseStudies = jest.fn((req, res) => res.json({ success: true, data: [] }));
 const mockGetCaseStudy = jest.fn((req, res) => res.json({ success: true, data: {} }));
 const mockSubmitCaseStudySolution = jest.fn((req, res) => res.json({ success: true, data: {} }));
+const mockDeleteCaseStudy = jest.fn((req, res) => res.json({ success: true, message: 'Deleted' }));
 const mockGenerateJobSpecificChallenges = jest.fn((req, res) => res.json({ success: true, data: [] }));
 const mockGetPerformanceAnalytics = jest.fn((req, res) => res.json({ success: true, data: {} }));
 const mockBookmarkChallenge = jest.fn((req, res) => res.json({ success: true, message: 'Bookmarked' }));
@@ -27,14 +30,17 @@ jest.unstable_mockModule('../../controllers/technicalPrepController.js', () => (
     getCodingChallenges: mockGetCodingChallenges,
     getCodingChallenge: mockGetCodingChallenge,
     submitCodingSolution: mockSubmitCodingSolution,
+    deleteCodingChallenge: mockDeleteCodingChallenge,
     getHint: mockGetHint,
     getSolution: mockGetSolution,
     getSystemDesignQuestions: mockGetSystemDesignQuestions,
     getSystemDesignQuestion: mockGetSystemDesignQuestion,
     submitSystemDesignSolution: mockSubmitSystemDesignSolution,
+    deleteSystemDesignQuestion: mockDeleteSystemDesignQuestion,
     getCaseStudies: mockGetCaseStudies,
     getCaseStudy: mockGetCaseStudy,
     submitCaseStudySolution: mockSubmitCaseStudySolution,
+    deleteCaseStudy: mockDeleteCaseStudy,
     generateJobSpecificChallenges: mockGenerateJobSpecificChallenges,
     getPerformanceAnalytics: mockGetPerformanceAnalytics,
     bookmarkChallenge: mockBookmarkChallenge,

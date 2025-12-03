@@ -778,7 +778,7 @@ import sys
 ${code}
 
 # Parse input and call the function
-input_data = json.loads('''${JSON.stringify(parsedInput).replace(/'/g, "\\'").replace(/\\/g, '\\\\')}''')
+input_data = json.loads('''${JSON.stringify(parsedInput).replace(/'/g, "\\'")}''')
 
 # Try to find and call the main function
 try:
@@ -794,7 +794,7 @@ try:
     else:
         # Try to find any function defined in the code
         import re
-        func_matches = re.findall(r'def\\s+(\\w+)\\s*\\(', '''${code}''')
+        func_matches = re.findall(r'def\\\\s+(\\\\w+)\\\\s*\\\\(', '''${code.replace(/'/g, "\\'")}''')
         if func_matches:
             result = eval(func_matches[0] + '(input_data)')
         else:
