@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import PropTypes from "prop-types";
 import Card from "./Card";
 import Button from "./Button";
+import FollowUpTemplates from "./FollowUpTemplates";
 import { 
   rescheduleInterview, 
   cancelInterview, 
@@ -53,6 +54,8 @@ export default function InterviewCard({ interview, onUpdate, onEdit, onDelete, c
     feedback: "",
     rating: 3,
   });
+  // Follow-Up modal state
+  const [showFollowUpModal, setShowFollowUpModal] = useState(false);
 
   const interviewDate = new Date(interview.scheduledDate);
   const now = new Date();
@@ -496,29 +499,32 @@ export default function InterviewCard({ interview, onUpdate, onEdit, onDelete, c
             </Button>
           )}
 
-          {interview.status === "Completed" && !interview.thankYouNote?.sent && (
+          {interview.status === "Completed" && (
             <Button
-              onClick={async () => {
-                try {
-                  const response = await updateInterview(interview._id, {
-                    thankYouNote: { sent: true, sentAt: new Date() }
-                  });
-                  if (response.data?.success) {
-                    onUpdate(response.data.data.interview);
-                  }
-                } catch (err) {
-                  console.error("Error marking thank-you as sent:", err);
-                  alert("Failed to update thank-you status");
-                }
-              }}
+              onClick={() => setShowFollowUpModal(true)}
               variant="secondary"
               size="sm"
               className="whitespace-nowrap"
-              title="Mark thank-you note as sent"
+              title="Send interview follow-up"
             >
-              ✉️ Thanks
+              ✉️ Follow-Up
             </Button>
           )}
+                  {/* Follow-Up Modal */}
+                  {showFollowUpModal && interview.jobId && (
+                    <div
+                      className="fixed inset-0 flex items-center justify-center z-50"
+                      style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+                      onClick={() => setShowFollowUpModal(false)}
+                    >
+                      <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 shadow-2xl mx-4" onClick={(e) => e.stopPropagation()}>
+                        <FollowUpTemplates
+                          job={typeof interview.jobId === 'object' ? interview.jobId : { _id: interview.jobId, title: interview.title, company: interview.company, location: interview.location }}
+                          onClose={() => setShowFollowUpModal(false)}
+                        />
+                      </div>
+                    </div>
+                  )}
           
           {interview.status !== "Completed" && !showOutcomeForm && (
             <Button onClick={() => setShowOutcomeForm(true)} variant="secondary" size="sm" className="whitespace-nowrap">

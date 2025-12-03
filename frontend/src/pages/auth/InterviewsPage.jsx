@@ -158,12 +158,10 @@ export default function InterviewsPage() {
 
   const upcomingCount = interviews.filter((i) => new Date(i.scheduledDate) >= new Date()).length;
   const completedCount = interviews.filter((i) => i.status === "Completed").length;
-  const avgRating =
-    completedCount > 0
-      ? interviews
-          .filter((i) => i.outcome?.rating)
-          .reduce((sum, i) => sum + i.outcome.rating, 0) / completedCount
-      : 0;
+  const ratedInterviews = interviews.filter((i) => i.outcome?.rating);
+  const avgRating = ratedInterviews.length > 0
+    ? ratedInterviews.reduce((sum, i) => sum + i.outcome.rating, 0) / ratedInterviews.length
+    : 0;
 
   return (
     <div className="container mx-auto px-4 py-8">
