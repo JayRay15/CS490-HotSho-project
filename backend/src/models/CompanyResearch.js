@@ -36,6 +36,27 @@ const companyResearchSchema = new mongoose.Schema(
       founded: String,
       headquarters: String,
       website: String,
+      // Enhanced fields matching Jobs page research
+      companyType: String,
+      stockTicker: String,
+      revenue: String,
+      description: String,
+      workEnvironment: String,
+    },
+    // Products and Services (matching Jobs page research)
+    productsAndServices: {
+      mainProducts: [String],
+      services: [String],
+      technologies: [String],
+      innovations: [String],
+    },
+    // Social Media Presence (matching Jobs page research)
+    socialMedia: {
+      platforms: {
+        type: Map,
+        of: String,
+      },
+      engagement: String,
     },
     // Leadership Team
     leadership: [

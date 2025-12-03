@@ -52,28 +52,37 @@ export default function InsightsPanel({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
+  // Handler for clicking the backdrop
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+    <div 
+      className="fixed inset-0 flex items-center justify-center z-50 p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.48)' }}
+      onClick={handleBackdropClick}
+    >
+      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden" onClick={e => e.stopPropagation()}>
         {/* Header */}
-        <div className="bg-gradient-to-r from-amber-500 to-orange-600 text-white p-6">
-          <div className="flex justify-between items-start">
-            <div>
-              <h2 className="text-2xl font-bold mb-1">💡 Industry Insights</h2>
-              <p className="text-amber-100 text-sm">
-                AI-generated intelligence from your completed informational interviews
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-white hover:text-gray-200 transition"
-              aria-label="Close"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+        <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">💡 Industry Insights</h2>
+            <p className="text-gray-500 text-sm">
+              AI-generated intelligence from your completed informational interviews
+            </p>
           </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition"
+            aria-label="Close"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         {/* Content */}
@@ -110,11 +119,11 @@ export default function InsightsPanel({ isOpen, onClose }) {
           {!loading && insights && (
             <div className="space-y-6">
               {/* Summary */}
-              <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
-                <p className="text-amber-800 text-sm">
+              <div className="bg-[#E4E6E0] rounded-lg p-4 border border-[#d4d6d0]">
+                <p className="text-[#4F5348] text-sm">
                   ✨ Insights based on <strong>{insights.basedOnInterviews || 0}</strong> completed interviews
                   {insights.generatedAt && (
-                    <span className="ml-2 text-amber-600">
+                    <span className="ml-2 text-[#656A5C]">
                       (Generated: {new Date(insights.generatedAt).toLocaleDateString()})
                     </span>
                   )}
@@ -228,7 +237,7 @@ export default function InsightsPanel({ isOpen, onClose }) {
               <div className="text-center pt-4">
                 <button
                   onClick={loadInsights}
-                  className="px-4 py-2 text-amber-600 hover:text-amber-800 font-medium"
+                  className="px-4 py-2 text-[#656A5C] hover:text-[#4F5348] font-medium"
                 >
                   🔄 Regenerate Insights
                 </button>

@@ -74,3 +74,7 @@ export const downloadInterviewICS = async (interviewId) => {
   window.URL.revokeObjectURL(url);
   return true;
 };
+
+// Sync interview to connected calendar (Google/Outlook)
+export const syncInterviewToCalendar = (interviewId) =>
+  retryRequest(() => api.post(`/api/interviews/${interviewId}/sync-calendar`));

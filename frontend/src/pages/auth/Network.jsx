@@ -22,6 +22,7 @@ import RelationshipReminderCard from '../../components/network/RelationshipRemin
 import RelationshipActivityCard from '../../components/network/RelationshipActivityCard';
 import CreateReminderModal from '../../components/network/CreateReminderModal';
 import LogActivityModal from '../../components/network/LogActivityModal';
+import InformationalInterviewsTab from '../../components/network/InformationalInterviewsTab';
 
 export default function Network() {
   const { getToken } = useAuth();
@@ -293,8 +294,8 @@ export default function Network() {
 
           {/* Tab Navigation */}
           <div className="mb-6">
-            <div className="border-b border-gray-200">
-              <nav className="-mb-px flex space-x-8">
+            <div className="border-b border-gray-200 overflow-x-auto">
+              <nav className="-mb-px flex space-x-6 min-w-max pb-px">
                 <button
                   onClick={() => setActiveTab('contacts')}
                   className={`${activeTab === 'contacts'
@@ -302,7 +303,16 @@ export default function Network() {
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                     } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
                 >
-                  My Contacts
+                  Contacts
+                </button>
+                <button
+                  onClick={() => setActiveTab('informational-interviews')}
+                  className={`${activeTab === 'informational-interviews'
+                      ? 'border-[#777C6D] text-[#777C6D]'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+                >
+                  Informational Interviews
                 </button>
                 <button
                   onClick={() => setActiveTab('references')}
@@ -495,6 +505,8 @@ export default function Network() {
           )}
 
           {activeTab === 'references' && <ReferencesTab />}
+
+          {activeTab === 'informational-interviews' && <InformationalInterviewsTab />}
 
           {activeTab === 'referrals' && (
             <div className="mt-6">

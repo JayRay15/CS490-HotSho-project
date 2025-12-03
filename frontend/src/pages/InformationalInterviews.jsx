@@ -147,19 +147,19 @@ export default function InformationalInterviewsPage() {
             <div className="flex flex-col sm:flex-row gap-2">
               <button
                 onClick={() => setShowSuggestionModal(true)}
-                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition shadow-md font-medium text-sm"
+                className="px-4 py-2 bg-[#777C6D] hover:bg-[#656A5C] text-white rounded-lg transition shadow-md font-medium text-sm"
               >
                 🔍 Find Candidates
               </button>
               <button
                 onClick={() => setShowInsightsPanel(true)}
-                className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-lg hover:from-amber-600 hover:to-orange-700 transition shadow-md font-medium text-sm"
+                className="px-4 py-2 bg-[#777C6D] hover:bg-[#656A5C] text-white rounded-lg transition shadow-md font-medium text-sm"
               >
                 💡 View Insights
               </button>
               <button
                 onClick={() => setShowRequestModal(true)}
-                className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition shadow-md font-medium text-sm"
+                className="px-4 py-2 bg-[#777C6D] hover:bg-[#656A5C] text-white rounded-lg transition shadow-md font-medium text-sm"
               >
                 + Request Interview
               </button>
@@ -170,7 +170,7 @@ export default function InformationalInterviewsPage() {
           {analytics && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <Card variant="elevated" className="text-center">
-                <div className="text-3xl font-bold text-indigo-600">{analytics.total}</div>
+                <div className="text-3xl font-bold" style={{ color: '#4F5348' }}>{analytics.total}</div>
                 <div className="text-sm text-gray-600 mt-1">Total Interviews</div>
               </Card>
               <Card variant="elevated" className="text-center">
@@ -178,11 +178,11 @@ export default function InformationalInterviewsPage() {
                 <div className="text-sm text-gray-600 mt-1">Completed</div>
               </Card>
               <Card variant="elevated" className="text-center">
-                <div className="text-3xl font-bold text-purple-600">{analytics.referralsObtained}</div>
+                <div className="text-3xl font-bold" style={{ color: '#656A5C' }}>{analytics.referralsObtained}</div>
                 <div className="text-sm text-gray-600 mt-1">Referrals</div>
               </Card>
               <Card variant="elevated" className="text-center">
-                <div className="text-3xl font-bold text-yellow-600">
+                <div className="text-3xl font-bold" style={{ color: '#777C6D' }}>
                   {analytics.averageImpactScore.toFixed(1)}
                 </div>
                 <div className="text-sm text-gray-600 mt-1">Avg Impact</div>
@@ -196,7 +196,7 @@ export default function InformationalInterviewsPage() {
               onClick={() => setViewMode('kanban')}
               className={`px-4 py-2 rounded-lg transition ${
                 viewMode === 'kanban'
-                  ? 'bg-indigo-600 text-white'
+                  ? 'bg-[#777C6D] text-white'
                   : 'bg-white text-gray-700 hover:bg-gray-50'
               }`}
             >
@@ -206,7 +206,7 @@ export default function InformationalInterviewsPage() {
               onClick={() => setViewMode('list')}
               className={`px-4 py-2 rounded-lg transition ${
                 viewMode === 'list'
-                  ? 'bg-indigo-600 text-white'
+                  ? 'bg-[#777C6D] text-white'
                   : 'bg-white text-gray-700 hover:bg-gray-50'
               }`}
             >
@@ -262,7 +262,7 @@ export default function InformationalInterviewsPage() {
                 <p className="text-gray-600 mb-4">No informational interviews yet</p>
                 <button
                   onClick={() => setShowRequestModal(true)}
-                  className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+                  className="px-6 py-2 bg-[#777C6D] hover:bg-[#656A5C] text-white rounded-lg transition"
                 >
                   Request Your First Interview
                 </button>

@@ -17,6 +17,7 @@ import {
   checkConflicts,
   deleteInterview,
   downloadInterviewICS,
+  syncToCalendar,
 } from "../controllers/interviewController.js";
 import {
   getInterviewPerformanceAnalytics,
@@ -50,6 +51,9 @@ router.get("/:interviewId", checkJwt, getInterview);
 
 // GET /api/interviews/:interviewId/ics - Download ICS file for interview
 router.get("/:interviewId/ics", checkJwt, downloadInterviewICS);
+
+// POST /api/interviews/:interviewId/sync-calendar - Manually sync interview to calendar
+router.post("/:interviewId/sync-calendar", checkJwt, syncToCalendar);
 
 // POST /api/interviews - Schedule a new interview
 router.post("/", checkJwt, scheduleInterview);

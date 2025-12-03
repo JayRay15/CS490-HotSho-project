@@ -87,28 +87,37 @@ export default function RequestInterviewModal({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
+  // Handler for clicking the backdrop
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden">
+    <div 
+      className="fixed inset-0 flex items-center justify-center z-50 p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.48)' }}
+      onClick={handleBackdropClick}
+    >
+      <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden" onClick={e => e.stopPropagation()}>
         {/* Header */}
-        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6">
-          <div className="flex justify-between items-start">
-            <div>
-              <h2 className="text-2xl font-bold mb-1">Request Informational Interview</h2>
-              <p className="text-indigo-100 text-sm">
-                Identify a candidate and generate a professional outreach email
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-white hover:text-gray-200 transition"
-              aria-label="Close"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+        <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Request Informational Interview</h2>
+            <p className="text-gray-500 text-sm">
+              Identify a candidate and generate a professional outreach email
+            </p>
           </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition"
+            aria-label="Close"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         {/* Content */}
@@ -132,7 +141,7 @@ export default function RequestInterviewModal({ isOpen, onClose }) {
                 name="candidateName"
                 value={formData.candidateName}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#777C6D] focus:border-[#777C6D]"
                 placeholder="John Doe"
                 required
               />
@@ -148,7 +157,7 @@ export default function RequestInterviewModal({ isOpen, onClose }) {
                   name="targetRole"
                   value={formData.targetRole}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#777C6D] focus:border-[#777C6D]"
                   placeholder="Senior Software Engineer"
                   required
                 />
@@ -163,7 +172,7 @@ export default function RequestInterviewModal({ isOpen, onClose }) {
                   name="targetCompany"
                   value={formData.targetCompany}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#777C6D] focus:border-[#777C6D]"
                   placeholder="Tech Corp"
                   required
                 />
@@ -180,7 +189,7 @@ export default function RequestInterviewModal({ isOpen, onClose }) {
                   name="candidateEmail"
                   value={formData.candidateEmail}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#777C6D] focus:border-[#777C6D]"
                   placeholder="john@example.com"
                 />
               </div>
@@ -194,7 +203,7 @@ export default function RequestInterviewModal({ isOpen, onClose }) {
                   name="candidateLinkedIn"
                   value={formData.candidateLinkedIn}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#777C6D] focus:border-[#777C6D]"
                   placeholder="https://linkedin.com/in/..."
                 />
               </div>
@@ -214,7 +223,7 @@ export default function RequestInterviewModal({ isOpen, onClose }) {
                 value={formData.userBackground}
                 onChange={handleChange}
                 rows={2}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#777C6D] focus:border-[#777C6D]"
                 placeholder="Recent graduate in Computer Science, interested in web development..."
               />
             </div>
@@ -228,7 +237,7 @@ export default function RequestInterviewModal({ isOpen, onClose }) {
                 value={formData.userGoal}
                 onChange={handleChange}
                 rows={2}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#777C6D] focus:border-[#777C6D]"
                 placeholder="Learn about career path in software engineering, understand day-to-day work..."
               />
             </div>
@@ -237,7 +246,7 @@ export default function RequestInterviewModal({ isOpen, onClose }) {
               type="button"
               onClick={handleGenerateOutreach}
               disabled={generating || !formData.candidateName || !formData.targetRole || !formData.targetCompany}
-              className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              className="w-full px-4 py-2 bg-[#777C6D] text-white rounded-lg hover:bg-[#656A5C] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
               {generating ? (
                 <>
@@ -262,7 +271,7 @@ export default function RequestInterviewModal({ isOpen, onClose }) {
                 value={outreachContent}
                 onChange={(e) => setOutreachContent(e.target.value)}
                 rows={10}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#777C6D] focus:border-[#777C6D] font-mono text-sm"
                 placeholder="Generated email will appear here..."
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -284,7 +293,7 @@ export default function RequestInterviewModal({ isOpen, onClose }) {
           <button
             onClick={handleSubmit}
             disabled={saving || !formData.candidateName || !formData.targetRole || !formData.targetCompany}
-            className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 bg-[#777C6D] text-white rounded-lg hover:bg-[#656A5C] transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? 'Saving...' : 'Save Interview'}
           </button>

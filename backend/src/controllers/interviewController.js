@@ -989,3 +989,115 @@ export const downloadInterviewICS = asyncHandler(async (req, res) => {
     return sendResponse(res, response, statusCode);
   }
 });
+
+// POST /api/interviews/:interviewId/sync-calendar - Manually sync interview to calendar
+export const syncToCalendar = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { interviewId } = req.params;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const interview = await Interview.findOne({ _id: interviewId, userId });
+  if (!interview) {
+    const { response, statusCode } = errorResponse(
+      "Interview not found or you don't have permission to sync it",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const user = await User.findOne({ auth0Id: userId }).select('calendarSettings');
+  if (!user) {
+    const { response, statusCode } = errorResponse(
+      "User not found",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Check if user has a calendar connected
+  const googleConnected = user.calendarSettings?.google?.connected;
+  const outlookConnected = user.calendarSettings?.outlook?.connected;
+
+  if (!googleConnected && !outlookConnected) {
+    const { response, statusCode } = errorResponse(
+      "No calendar connected. Please connect Google Calendar or Outlook in Settings.",
+      400,
+      ERROR_CODES.VALIDATION_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  try {
+    interview.calendarSyncStatus = 'pending';
+    await interview.save();
+
+    let eventId;
+    let calendarType;
+
+    // Try Google Calendar first if connected
+    if (googleConnected) {
+      try {
+        if (interview.googleCalendarEventId) {
+          // Update existing event
+          eventId = await updateGoogleCalendarEvent(interview.googleCalendarEventId, interview, user);
+        } else {
+          // Create new event
+          eventId = await createGoogleCalendarEvent(interview, user);
+        }
+        interview.googleCalendarEventId = eventId;
+        calendarType = 'Google Calendar';
+      } catch (googleErr) {
+        console.error('Google Calendar sync failed:', googleErr.message);
+        // If Google fails and Outlook is available, try Outlook
+        if (!outlookConnected) throw googleErr;
+      }
+    }
+
+    // Try Outlook if Google didn't work or not connected
+    if (!eventId && outlookConnected) {
+      if (interview.outlookCalendarEventId) {
+        eventId = await updateOutlookCalendarEvent(interview.outlookCalendarEventId, interview, user);
+      } else {
+        eventId = await createOutlookCalendarEvent(interview, user);
+      }
+      interview.outlookCalendarEventId = eventId;
+      calendarType = 'Outlook';
+    }
+
+    if (eventId) {
+      interview.calendarSyncStatus = 'synced';
+      interview.lastSyncedAt = new Date();
+      interview.calendarSyncError = null;
+      await interview.save();
+
+      const { response, statusCode } = successResponse(
+        `Interview synced to ${calendarType} successfully`,
+        { interview, calendarType }
+      );
+      return sendResponse(res, response, statusCode);
+    } else {
+      throw new Error('Failed to sync to any calendar');
+    }
+  } catch (syncErr) {
+    interview.calendarSyncStatus = 'failed';
+    interview.calendarSyncError = syncErr.message;
+    await interview.save();
+
+    const { response, statusCode } = errorResponse(
+      `Failed to sync to calendar: ${syncErr.message}`,
+      500,
+      ERROR_CODES.INTERNAL_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+});

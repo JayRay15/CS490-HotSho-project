@@ -1,14 +1,18 @@
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/clerk-react";
+import { useSearchParams } from "react-router-dom";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import {
   getCalendarStatus,
   updateCalendarPreferences,
+  initiateGoogleAuth,
+  disconnectCalendar,
 } from "../../api/calendar";
 
 export default function CalendarSettings() {
   const { user, isLoaded: userLoaded } = useUser();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState(null);
@@ -23,12 +27,36 @@ export default function CalendarSettings() {
   const googleAccount = user?.externalAccounts?.find(
     (account) => account.provider === "google" || account.provider === "oauth_google"
   );
-  const hasGoogleConnected = !!googleAccount;
+  const hasGoogleClerkAccount = !!googleAccount;
   const googleEmail = googleAccount?.emailAddress || user?.primaryEmailAddress?.emailAddress;
+  
+  // Check if Google Calendar is actually connected (not just Clerk sign-in)
+  const isGoogleCalendarConnected = status?.google?.connected || false;
+  const connectedGoogleEmail = status?.google?.email || googleEmail;
 
   useEffect(() => {
     loadStatus();
-  }, []);
+    
+    // Handle OAuth callback URL params
+    const calendarConnected = searchParams.get("calendar_connected");
+    const calendarError = searchParams.get("calendar_error");
+    
+    if (calendarConnected) {
+      setMessage({ 
+        type: "success", 
+        text: `${calendarConnected.charAt(0).toUpperCase() + calendarConnected.slice(1)} Calendar connected successfully! Your interviews will now sync automatically.` 
+      });
+      // Clear URL params
+      setSearchParams({});
+    } else if (calendarError) {
+      setMessage({ 
+        type: "error", 
+        text: `Failed to connect calendar: ${calendarError.replace(/_/g, " ")}` 
+      });
+      // Clear URL params
+      setSearchParams({});
+    }
+  }, [searchParams]);
 
   const loadStatus = async () => {
     try {
@@ -57,6 +85,32 @@ export default function CalendarSettings() {
       setMessage({ type: "error", text: "Failed to save preferences" });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleConnectGoogle = async () => {
+    try {
+      setMessage({ type: "", text: "" });
+      const data = await initiateGoogleAuth();
+      if (data.authUrl) {
+        // Redirect to Google OAuth
+        window.location.href = data.authUrl;
+      }
+    } catch (error) {
+      console.error("Error connecting Google Calendar:", error);
+      setMessage({ type: "error", text: "Failed to initiate Google Calendar connection" });
+    }
+  };
+
+  const handleDisconnectGoogle = async () => {
+    try {
+      setMessage({ type: "", text: "" });
+      await disconnectCalendar("google");
+      setMessage({ type: "success", text: "Google Calendar disconnected successfully" });
+      await loadStatus();
+    } catch (error) {
+      console.error("Error disconnecting Google Calendar:", error);
+      setMessage({ type: "error", text: "Failed to disconnect Google Calendar" });
     }
   };
 
@@ -128,31 +182,63 @@ export default function CalendarSettings() {
             </div>
             <div>
               <h3 className="text-lg font-semibold text-gray-900">Google Calendar</h3>
-              <p className="text-sm text-gray-500">
-                {hasGoogleConnected 
-                  ? "Your Google account is connected via Clerk"
-                  : "Download .ics files to add interviews to Google Calendar"
-                }
-              </p>
-              {hasGoogleConnected && googleEmail && (
-                <p className="text-xs text-green-600 mt-1 font-medium">
-                  ✓ Signed in as: {googleEmail}
+              {isGoogleCalendarConnected ? (
+                <>
+                  <p className="text-sm text-gray-500">
+                    Calendar sync is active
+                  </p>
+                  <p className="text-xs text-green-600 mt-1 font-medium">
+                    ✓ Connected: {connectedGoogleEmail}
+                  </p>
+                </>
+              ) : hasGoogleClerkAccount ? (
+                <>
+                  <p className="text-sm text-gray-500">
+                    Signed in with Google, but calendar sync needs to be enabled
+                  </p>
+                  <p className="text-xs text-amber-600 mt-1 font-medium">
+                    ⚠ Calendar permissions required for auto-sync
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-gray-500">
+                  Connect to automatically sync interviews to Google Calendar
                 </p>
               )}
             </div>
           </div>
           <div>
-            {hasGoogleConnected ? (
-              <span className="px-3 py-1.5 bg-green-100 text-green-800 text-sm font-medium rounded-full">
-                ✓ Connected
-              </span>
+            {isGoogleCalendarConnected ? (
+              <div className="flex items-center space-x-2">
+                <span className="px-3 py-1.5 bg-green-100 text-green-800 text-sm font-medium rounded-full">
+                  ✓ Syncing
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDisconnectGoogle}
+                >
+                  Disconnect
+                </Button>
+              </div>
             ) : (
-              <span className="px-3 py-1.5 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
-                Use .ics Export
-              </span>
+              <Button
+                onClick={handleConnectGoogle}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                Connect Calendar
+              </Button>
             )}
           </div>
         </div>
+        {!isGoogleCalendarConnected && hasGoogleClerkAccount && (
+          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-sm text-amber-800">
+              <strong>Note:</strong> Signing in with Google is different from granting calendar access. 
+              Click "Connect Calendar" to allow the app to create events in your Google Calendar when you schedule interviews.
+            </p>
+          </div>
+        )}
       </Card>
 
       {/* Outlook Calendar */}
