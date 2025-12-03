@@ -40,6 +40,13 @@ const followUpSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
+  emailSent: {
+    type: Boolean,
+    default: false
+  },
+  emailError: {
+    type: String
+  },
   responseReceived: {
     type: Boolean,
     default: false

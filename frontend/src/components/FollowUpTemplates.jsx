@@ -31,7 +31,7 @@ function generateTemplate(type, job, interviewDetails = {}, userName = "[Your Na
   
   const templates = {
     "thank-you": {
-      subject: `Thank you for the ${role} interview`,
+      subject: `Thank You - ${role} Interview`,
       body: `Dear ${interviewerName},
 
 Thank you for taking the time to speak with me ${interviewDate ? `on ${new Date(interviewDate + 'T12:00:00').toLocaleDateString()}` : 'recently'} about the ${role} position at ${company}. I truly enjoyed our conversation and learning more about ${companyProjects.length > 0 ? companyProjects[0] : 'the team\'s work'}.
@@ -47,7 +47,7 @@ Best regards,
 ${userName}`,
     },
     "status-inquiry": {
-      subject: `Following up on ${role} application`,
+      subject: `Follow-up Regarding ${role} Application`,
       body: `Dear ${interviewerName},
 
 I hope this email finds you well. I wanted to follow up on my application for the ${role} position at ${company}${interviewDate ? `, which we discussed on ${new Date(interviewDate).toLocaleDateString()}` : ''}.
@@ -62,7 +62,7 @@ Best regards,
 ${userName}`,
     },
     "feedback-request": {
-      subject: `Request for interview feedback - ${role}`,
+      subject: `Interview Feedback Request - ${role}`,
       body: `Dear ${interviewerName},
 
 Thank you again for the opportunity to interview for the ${role} position at ${company}. While I'm disappointed not to be moving forward, I greatly appreciated the experience.
@@ -77,7 +77,7 @@ Best regards,
 ${userName}`,
     },
     "networking": {
-      subject: `Staying connected - ${company}`,
+      subject: `Staying Connected - ${company}`,
       body: `Dear ${interviewerName},
 
 Thank you for taking the time to speak with me about the ${role} position at ${company}. While I understand the position has moved in a different direction, I truly valued our conversation${specificTopics.length > 0 ? `, especially discussing ${specificTopics[0]}` : ''}.
@@ -199,12 +199,21 @@ export default function FollowUpTemplates({ job, onClose }) {
   };
 
   const handleSendFollowUp = async () => {
+    // Check if interviewer email is provided
+    if (!interviewDetails.interviewer?.email) {
+      const proceed = window.confirm(
+        "No interviewer email address provided. The follow-up will be recorded but no email will be sent.\n\n" +
+        "Would you like to continue? You can still copy the template and send it manually."
+      );
+      if (!proceed) return;
+    }
+
     try {
       setLoading(true);
       const token = await getToken();
       setAuthToken(token);
       
-      await api.post("/api/follow-ups", {
+      const response = await api.post("/api/follow-ups", {
         jobId: job._id,
         templateType,
         subject: template.subject,
@@ -212,13 +221,25 @@ export default function FollowUpTemplates({ job, onClose }) {
         interviewDetails,
       });
 
-      setSendSuccess(true);
-      setTimeout(() => setSendSuccess(false), 3000);
+      const emailSent = response.data?.data?.emailSent;
+      const emailError = response.data?.data?.emailError;
+      
+      if (emailSent) {
+        setSendSuccess(true);
+        setTimeout(() => setSendSuccess(false), 5000);
+      } else if (emailError) {
+        alert(`Follow-up recorded but email failed to send: ${emailError}\n\nYou can copy the template and send it manually.`);
+      } else if (!interviewDetails.interviewer?.email) {
+        alert("Follow-up recorded. No email was sent because no interviewer email was provided.\n\nYou can copy the template and send it manually.");
+      } else {
+        alert("Follow-up recorded. Email sending is not configured.\n\nYou can copy the template and send it manually.");
+      }
+
       await loadFollowUps();
       await loadStatistics();
     } catch (error) {
       console.error("Failed to send follow-up:", error);
-      alert(error.response?.data?.message || "Failed to record follow-up");
+      alert(error.response?.data?.message || "Failed to send follow-up");
     } finally {
       setLoading(false);
     }
@@ -241,47 +262,51 @@ export default function FollowUpTemplates({ job, onClose }) {
 
   return (
     <div className="follow-up-templates">
-      {/* Sticky Header */}
-      <div className="sticky top-0 bg-white z-20 py-4 -mx-6 px-6 border-b border-gray-100 flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Interview Follow-Up Templates</h2>
-        <button
-          onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
-        >
-          ×
-        </button>
+      {/* Header - matches Add Job modal style */}
+      <div className="bg-gray-50 border-b px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-heading font-semibold text-gray-900">Interview Follow-Up Templates</h3>
+            <p className="text-sm text-gray-600 mt-1">{job.title} at {job.company}{job.location && ` • ${job.location}`}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition"
+            aria-label="Close"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
 
-      {/* Job Info Banner */}
-      <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg p-4 mb-6 mt-4">
-        <div className="text-xl font-bold">{job.title}</div>
-        <div className="text-lg">{job.company}</div>
-        {job.location && <div className="text-sm mt-1">📍 {job.location}</div>}
-      </div>
+      {/* Content area with padding */}
+      <div className="p-6">
 
       {/* Statistics */}
-      <div className="bg-gray-50 rounded-lg p-4 mb-6 grid grid-cols-3 gap-4">
+      <div className="bg-gray-50 rounded-lg p-4 mb-6 grid grid-cols-3 gap-4 border border-gray-200">
         <div className="text-center">
-          <div className="text-2xl font-bold text-blue-600">{statistics.sent}</div>
+          <div className="text-2xl font-bold text-gray-800">{statistics.sent}</div>
           <div className="text-sm text-gray-600">Sent</div>
         </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-green-600">{statistics.responded}</div>
+        <div className="text-center border-l border-r border-gray-200">
+          <div className="text-2xl font-bold text-gray-800">{statistics.responded}</div>
           <div className="text-sm text-gray-600">Responded</div>
         </div>
         <div className="text-center">
-          <div className="text-2xl font-bold text-purple-600">{statistics.responseRate}%</div>
+          <div className="text-2xl font-bold text-gray-800">{statistics.responseRate}%</div>
           <div className="text-sm text-gray-600">Response Rate</div>
         </div>
       </div>
 
       {/* Template Type Selection */}
       <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">Template Type</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Template Type</label>
         <select
           value={templateType}
           onChange={(e) => setTemplateType(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value={TEMPLATE_TYPES.THANK_YOU}>Thank You Email</option>
           <option value={TEMPLATE_TYPES.STATUS_INQUIRY}>Status Inquiry</option>
@@ -293,9 +318,9 @@ export default function FollowUpTemplates({ job, onClose }) {
         
         {/* Timing Suggestion */}
         {timingSuggestion && (
-          <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start">
-            <span className="text-blue-600 mr-2">⏰</span>
-            <div className="text-sm text-blue-800">
+          <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg flex items-start">
+            <span className="text-gray-600 mr-2">⏰</span>
+            <div className="text-sm text-gray-700">
               <strong>Timing Suggestion:</strong> {timingSuggestion.description}
             </div>
           </div>
@@ -304,7 +329,7 @@ export default function FollowUpTemplates({ job, onClose }) {
 
       {/* Interview Details */}
       <div className="mb-6 space-y-4">
-        <h3 className="text-lg font-semibold text-gray-800">Personalization Details</h3>
+        <h3 className="text-sm font-medium text-gray-800">Personalization Details</h3>
         
         {/* Interviewer Name */}
         <div>
@@ -317,8 +342,28 @@ export default function FollowUpTemplates({ job, onClose }) {
               interviewer: { ...prev.interviewer, name: e.target.value }
             }))}
             placeholder="e.g., Sarah Johnson"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+        </div>
+
+        {/* Interviewer Email */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Interviewer Email <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="email"
+            value={interviewDetails.interviewer.email || ''}
+            onChange={(e) => setInterviewDetails(prev => ({
+              ...prev,
+              interviewer: { ...prev.interviewer, email: e.target.value }
+            }))}
+            placeholder="e.g., sarah.johnson@company.com"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Required to send email. For demo purposes, you can use a test email address.
+          </p>
         </div>
 
         {/* Interview Date */}
@@ -331,7 +376,7 @@ export default function FollowUpTemplates({ job, onClose }) {
               ...prev,
               interviewDate: e.target.value
             }))}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
@@ -345,11 +390,11 @@ export default function FollowUpTemplates({ job, onClose }) {
               onChange={(e) => setTopicInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleAddTopic()}
               placeholder="e.g., microservices architecture"
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <button
               onClick={handleAddTopic}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
             >
               Add
             </button>
@@ -358,12 +403,12 @@ export default function FollowUpTemplates({ job, onClose }) {
             {interviewDetails.specificTopics.map((topic, index) => (
               <span
                 key={index}
-                className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                className="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm border border-gray-200"
               >
                 {topic}
                 <button
                   onClick={() => handleRemoveTopic(index)}
-                  className="ml-2 text-blue-600 hover:text-blue-800"
+                  className="ml-2 text-gray-500 hover:text-gray-700"
                 >
                   ×
                 </button>
@@ -382,11 +427,11 @@ export default function FollowUpTemplates({ job, onClose }) {
               onChange={(e) => setProjectInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleAddProject()}
               placeholder="e.g., new payment system"
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <button
               onClick={handleAddProject}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
             >
               Add
             </button>
@@ -395,12 +440,12 @@ export default function FollowUpTemplates({ job, onClose }) {
             {interviewDetails.companyProjects.map((project, index) => (
               <span
                 key={index}
-                className="inline-flex items-center px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm"
+                className="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm border border-gray-200"
               >
                 {project}
                 <button
                   onClick={() => handleRemoveProject(index)}
-                  className="ml-2 text-purple-600 hover:text-purple-800"
+                  className="ml-2 text-gray-500 hover:text-gray-700"
                 >
                   ×
                 </button>
@@ -420,14 +465,14 @@ export default function FollowUpTemplates({ job, onClose }) {
             }))}
             placeholder="Add any additional context or points you want to include..."
             rows="3"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
       </div>
 
       {/* Generated Template */}
       <div className="mb-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-3">Generated Template</h3>
+        <h3 className="text-sm font-medium text-gray-800 mb-3">Generated Template</h3>
         
         {/* Subject */}
         <div className="mb-3">
@@ -436,7 +481,7 @@ export default function FollowUpTemplates({ job, onClose }) {
             type="text"
             value={template.subject}
             onChange={(e) => setTemplate(prev => ({ ...prev, subject: e.target.value }))}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
@@ -446,33 +491,33 @@ export default function FollowUpTemplates({ job, onClose }) {
           <textarea
             value={template.body}
             onChange={(e) => setTemplate(prev => ({ ...prev, body: e.target.value }))}
-            rows="15"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+            rows="12"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
           />
         </div>
       </div>
 
       {/* Actions */}
-      <div className="flex gap-3 mb-6">
+      <div className="flex gap-3 mb-6 pt-4 border-t border-gray-200">
         <button
           onClick={handleCopyToClipboard}
-          className="flex-1 px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-medium"
+          className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition border border-gray-300"
         >
           {copySuccess ? "✓ Copied!" : "Copy to Clipboard"}
         </button>
         <button
           onClick={handleSendFollowUp}
           disabled={loading}
-          className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50"
+          className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition disabled:opacity-50"
         >
-          {loading ? "Recording..." : sendSuccess ? "✓ Recorded!" : "Record Follow-Up Sent"}
+          {loading ? "Sending..." : sendSuccess ? "✓ Email Sent!" : "Send Follow-Up Email"}
         </button>
       </div>
 
       {/* Follow-Up History */}
       {followUps.length > 0 && (
-        <div>
-          <h3 className="text-lg font-semibold text-gray-800 mb-3">Follow-Up History</h3>
+        <div className="pt-4 border-t border-gray-200">
+          <h3 className="text-sm font-medium text-gray-800 mb-3">Follow-Up History</h3>
           <div className="space-y-3">
             {followUps.map((followUp) => (
               <div
@@ -489,6 +534,15 @@ export default function FollowUpTemplates({ job, onClose }) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    {followUp.emailSent !== undefined && (
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        followUp.emailSent
+                          ? "bg-blue-100 text-blue-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`} title={followUp.emailError ? `Email error: ${followUp.emailError}` : ''}>
+                        {followUp.emailSent ? "📧 Sent" : "📝 Recorded"}
+                      </span>
+                    )}
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                       followUp.responseReceived
                         ? "bg-green-100 text-green-800"
@@ -520,12 +574,35 @@ export default function FollowUpTemplates({ job, onClose }) {
                           <div className="text-sm font-medium text-gray-700 mb-2">Interview Details:</div>
                           <div className="text-sm text-gray-600">
                             <div>Interviewer: {followUp.interviewDetails.interviewer.name}</div>
+                            {followUp.interviewDetails.interviewer.email && (
+                              <div>Email: {followUp.interviewDetails.interviewer.email}</div>
+                            )}
                             {followUp.interviewDetails.interviewDate && (
                               <div>Date: {new Date(followUp.interviewDetails.interviewDate).toLocaleDateString()}</div>
                             )}
                             {followUp.interviewDetails.specificTopics?.length > 0 && (
                               <div>Topics: {followUp.interviewDetails.specificTopics.join(', ')}</div>
                             )}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {followUp.emailError && (
+                        <div className="mt-4 pt-4 border-t border-red-200">
+                          <div className="text-sm font-medium text-red-700 mb-2">⚠️ Email Error:</div>
+                          <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                            {followUp.emailError}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-2">
+                            The follow-up was recorded but the email could not be sent. You can copy the template above and send it manually.
+                          </div>
+                        </div>
+                      )}
+                      
+                      {followUp.emailSent === false && !followUp.emailError && (
+                        <div className="mt-4 pt-4 border-t border-gray-200">
+                          <div className="text-xs text-gray-500">
+                            ℹ️ Email was not sent (SMTP not configured or no interviewer email provided). You can copy the template above and send it manually.
                           </div>
                         </div>
                       )}
@@ -561,6 +638,7 @@ export default function FollowUpTemplates({ job, onClose }) {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

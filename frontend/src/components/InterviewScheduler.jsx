@@ -198,22 +198,29 @@ export default function InterviewScheduler({ job, interview, onClose, onSuccess 
   };
 
   return (
-    <div className="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] flex flex-col">
-        <div className="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center rounded-t-lg">
-          <h2 className="text-2xl font-bold text-gray-900">
-            {isEdit ? "Edit Interview" : "Schedule Interview"}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl"
-          >
-            ×
-          </button>
+    <div
+      className="fixed inset-0 flex items-center justify-center z-50 p-4"
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+      onClick={onClose}
+    >
+      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="bg-gray-50 border-b px-6 py-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-heading font-semibold text-gray-900">
+              {isEdit ? "Edit Interview" : "Schedule Interview"}
+            </h3>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 transition"
+              aria-label="Close"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
         
-        <div className="overflow-y-auto flex-1">
-
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
@@ -542,7 +549,6 @@ export default function InterviewScheduler({ job, interview, onClose, onSuccess 
             </Button>
           </div>
         </form>
-        </div>
       </div>
     </div>
   );
