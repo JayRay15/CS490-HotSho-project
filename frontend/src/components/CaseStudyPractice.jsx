@@ -103,7 +103,10 @@ const CaseStudyPractice = () => {
       if (isBookmarked) {
         await technicalPrepAPI.removeBookmark(caseStudyId);
       } else {
-        await technicalPrepAPI.bookmarkChallenge(caseStudyId);
+        await technicalPrepAPI.bookmarkChallenge({
+          challengeType: 'caseStudy',
+          challengeId: caseStudyId
+        });
       }
       setIsBookmarked(!isBookmarked);
     } catch (err) {

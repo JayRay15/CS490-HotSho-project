@@ -247,11 +247,11 @@ const CodingChallenge = () => {
                   <div key={idx} className="bg-gray-50 rounded-lg p-4 mb-4">
                     <div className="mb-2">
                       <span className="font-medium text-gray-700">Input:</span>
-                      <pre className="mt-1 bg-white p-2 rounded border text-sm overflow-x-auto whitespace-pre-wrap break-words">{example.input}</pre>
+                      <pre className="mt-1 bg-white p-2 rounded border text-sm overflow-x-auto whitespace-pre-wrap wrap-break-word">{example.input}</pre>
                     </div>
                     <div className="mb-2">
                       <span className="font-medium text-gray-700">Output:</span>
-                      <pre className="mt-1 bg-white p-2 rounded border text-sm overflow-x-auto whitespace-pre-wrap break-words">{example.output}</pre>
+                      <pre className="mt-1 bg-white p-2 rounded border text-sm overflow-x-auto whitespace-pre-wrap wrap-break-word">{example.output}</pre>
                     </div>
                     {example.explanation && (
                       <div>
@@ -329,7 +329,6 @@ const CodingChallenge = () => {
                   variant="secondary"
                   disabled={hintsUsed.length >= (challenge.hints?.length || 0)}
                 >
-                  <LightBulbIcon className="h-5 w-5 mr-2" />
                   Get Hint ({hintsUsed.length}/{challenge.hints?.length || 0})
                 </Button>
               </div>
@@ -345,10 +344,7 @@ const CodingChallenge = () => {
                     <span className="ml-2">Running Tests...</span>
                   </>
                 ) : (
-                  <>
-                    <PlayIcon className="h-5 w-5 mr-2" />
-                    Submit Solution
-                  </>
+                  <>Submit Solution</>
                 )}
               </Button>
             </div>

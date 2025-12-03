@@ -582,13 +582,18 @@ export const bookmarkChallenge = async (req, res) => {
     const userId = req.auth.userId;
     const { challengeType, challengeId } = req.body;
     
+    // Validate input
+    if (!challengeType || !challengeId) {
+      return res.status(400).json({ message: 'Challenge type and ID are required' });
+    }
+    
     let prep = await TechnicalPrep.findOne({ userId });
     if (!prep) {
       prep = new TechnicalPrep({ userId });
     }
     
     const existingIndex = prep.bookmarkedChallenges.findIndex(
-      b => b.challengeId.toString() === challengeId && b.challengeType === challengeType
+      b => b.challengeId && b.challengeId.toString() === challengeId.toString() && b.challengeType === challengeType
     );
     
     if (existingIndex > -1) {
