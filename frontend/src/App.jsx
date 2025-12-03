@@ -114,6 +114,7 @@ function App() {
           <Route path="/interviews/analytics" element={<Navigate to="/interviews?tab=analytics" replace />} />
           <Route path="/interview-predictions" element={<Navigate to="/interviews?tab=predictions" replace />} />
           <Route path="/interviews/:interviewId/company-research" element={<ProtectedRoute><CompanyResearch /></ProtectedRoute>} />
+          <Route path="/settings" element={<Navigate to="/settings/calendar" replace />} />
           <Route path="/settings/calendar" element={<ProtectedRoute><CalendarSettings /></ProtectedRoute>} />
           <Route path="/settings/linkedin" element={<ProtectedRoute><LinkedInSettings /></ProtectedRoute>} />
           <Route path="/mock-interviews" element={<ProtectedRoute><MockInterviewHistory /></ProtectedRoute>} />
