@@ -1,14 +1,13 @@
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { SignedIn, SignedOut, useClerk } from "@clerk/clerk-react";
+import { SignedIn, SignedOut, useAuth } from "@clerk/clerk-react";
 import { useEffect, useState } from "react";
-import { useAuth, useUser } from "@clerk/clerk-react";
+import { useUser } from "@clerk/clerk-react";
 import api, { setAuthToken } from "../api/axios";
 import Logo from "./Logo";
 
 export default function Navbar() {
-    const { getToken } = useAuth();
+    const { getToken, signOut } = useAuth();
     const { user } = useUser();
-    const { signOut } = useClerk();
     const navigate = useNavigate();
     const location = useLocation();
     const [profilePicture, setProfilePicture] = useState(null);
@@ -19,27 +18,24 @@ export default function Navbar() {
     // Full sign out - clears all sessions and storage
     const handleFullSignOut = async () => {
         try {
-            // Clear all local storage
-            localStorage.clear();
+            // Store logout message first
+            sessionStorage.setItem("logoutMessage", "You have been signed out successfully.");
             
-            // Clear all cookies (including OAuth provider cookies)
+            // Sign out from Clerk first (this needs Clerk's session data intact)
+            await signOut();
+            
+            // Clear storage after signOut completes
+            localStorage.clear();
+            sessionStorage.setItem("logoutMessage", "You have been signed out successfully.");
+            
+            // Clear cookies
             document.cookie.split(";").forEach((c) => {
                 document.cookie = c
                     .replace(/^ +/, "")
                     .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
             });
             
-            // Store logout message BEFORE clearing session storage
-            const logoutMsg = "You have been signed out successfully. If using a shared computer, please also sign out of LinkedIn/Google directly.";
-            
-            // Clear session storage but immediately set the message
-            sessionStorage.clear();
-            sessionStorage.setItem("logoutMessage", logoutMsg);
-            
-            // Sign out from Clerk
-            await signOut();
-            
-            // Force redirect to login page after signOut completes
+            // Redirect to login page
             window.location.href = "/login";
         } catch (error) {
             console.error("Sign out error:", error);
@@ -194,13 +190,13 @@ export default function Navbar() {
                                             Productivity Analysis
                                         </NavLink>
                                         <NavLink to="/my-performance" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="My Performance" onClick={() => setCareerDropdownOpen(false)}>
-                                            📊 My Performance
+                                            My Performance
                                         </NavLink>
                                         <NavLink to="/predictive-analytics" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Predictive Analytics" onClick={() => setCareerDropdownOpen(false)}>
-                                            🔮 Predictive Analytics
+                                            Predictive Analytics
                                         </NavLink>
                                         <NavLink to="/competitive-analysis" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Competitive Analysis" onClick={() => setCareerDropdownOpen(false)}>
-                                            🏆 Competitive Analysis
+                                            Competitive Analysis
                                         </NavLink>
                                         <NavLink to="/market-intelligence" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Market Intelligence" onClick={() => setCareerDropdownOpen(false)}>
                                             Market Intelligence
@@ -208,11 +204,11 @@ export default function Navbar() {
                                         <NavLink to="/mentors-advisors" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Mentors & Advisors" onClick={() => setCareerDropdownOpen(false)}>
                                             Mentors & Advisors
                                         </NavLink>
+                                        <NavLink to="/peer-support" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Peer Support Groups" onClick={() => setCareerDropdownOpen(false)}>
+                                            Peer Support
+                                        </NavLink>
                                         <NavLink to="/teams" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Teams" onClick={() => setCareerDropdownOpen(false)}>
                                             👥 Teams
-                                        </NavLink>
-                                        <NavLink to="/peer-support" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Peer Support Groups" onClick={() => setCareerDropdownOpen(false)}>
-                                            🤝 Peer Support
                                         </NavLink>
                                         <div className="border-t border-gray-200 my-1"></div>
                                         <NavLink to="/settings/calendar" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Calendar Settings" onClick={() => setCareerDropdownOpen(false)}>
@@ -479,7 +475,7 @@ export default function Navbar() {
                             }
                             aria-label="My Performance"
                         >
-                            📊 My Performance
+                            My Performance
                         </NavLink>
                         <NavLink
                             to="/predictive-analytics"
@@ -491,7 +487,7 @@ export default function Navbar() {
                             }
                             aria-label="Predictive Analytics"
                         >
-                            🔮 Predictive Analytics
+                            Predictive Analytics
                         </NavLink>
                         <NavLink
                             to="/competitive-analysis"
@@ -503,7 +499,7 @@ export default function Navbar() {
                             }
                             aria-label="Competitive Analysis"
                         >
-                            🏆 Competitive Analysis
+                            Competitive Analysis
                         </NavLink>
                         <NavLink
                             to="/market-intelligence"
@@ -551,7 +547,7 @@ export default function Navbar() {
                             }
                             aria-label="Peer Support Groups"
                         >
-                            🤝 Peer Support
+                            Peer Support
                         </NavLink>
                         <NavLink
                             to="/settings/calendar"

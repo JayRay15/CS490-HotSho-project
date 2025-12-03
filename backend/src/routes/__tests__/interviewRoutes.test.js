@@ -19,6 +19,7 @@ const mockGetUpcomingInterviews = jest.fn((req, res) => res.json({ success: true
 const mockCheckConflicts = jest.fn((req, res) => res.json({ success: true }));
 const mockDeleteInterview = jest.fn((req, res) => res.json({ success: true }));
 const mockDownloadInterviewICS = jest.fn((req, res) => res.json({ success: true }));
+const mockSyncToCalendar = jest.fn((req, res) => res.json({ success: true }));
 
 jest.unstable_mockModule('../../controllers/interviewController.js', () => ({
   getInterviews: mockGetInterviews,
@@ -37,6 +38,7 @@ jest.unstable_mockModule('../../controllers/interviewController.js', () => ({
   checkConflicts: mockCheckConflicts,
   deleteInterview: mockDeleteInterview,
   downloadInterviewICS: mockDownloadInterviewICS,
+  syncToCalendar: mockSyncToCalendar,
 }));
 
 // Mock the middleware
