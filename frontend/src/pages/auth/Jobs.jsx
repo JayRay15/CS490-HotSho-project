@@ -3772,25 +3772,24 @@ export default function Jobs() {
 
       {/* Follow-Up Templates Modal */}
       {showFollowUpTemplates && selectedJobForFollowUp && (
-        <>
-          {/* Full-screen backdrop providing blur without a dark overlay. */}
-          <div className="fixed inset-0 z-40 pointer-events-none backdrop-blur-sm bg-white/5" />
-
-          {/* Floating card (clickable) above the blurred backdrop */}
-          <div className="fixed top-16 left-1/2 transform -translate-x-1/2 z-50 p-4 pointer-events-auto">
-            <div className="bg-white rounded-lg max-w-5xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-              <div className="p-6">
-                <FollowUpTemplates 
-                  job={selectedJobForFollowUp}
-                  onClose={() => {
-                    setShowFollowUpTemplates(false);
-                    setSelectedJobForFollowUp(null);
-                  }}
-                />
-              </div>
-            </div>
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={() => {
+            setShowFollowUpTemplates(false);
+            setSelectedJobForFollowUp(null);
+          }}
+        >
+          <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 shadow-2xl mx-4" onClick={(e) => e.stopPropagation()}>
+            <FollowUpTemplates 
+              job={selectedJobForFollowUp}
+              onClose={() => {
+                setShowFollowUpTemplates(false);
+                setSelectedJobForFollowUp(null);
+              }}
+            />
           </div>
-        </>
+        </div>
       )}
     </div>
   );

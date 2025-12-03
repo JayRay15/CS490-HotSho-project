@@ -1,8 +1,24 @@
 import FollowUp from '../models/FollowUp.js';
 import { Job } from '../models/Job.js';
+import { User } from '../models/User.js';
+import nodemailer from 'nodemailer';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+// Create email transporter
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587,
+  secure: process.env.SMTP_SECURE === 'true',
+  auth: process.env.SMTP_USER ? {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
+  } : undefined
+});
 
 /**
- * Create a new follow-up record
+ * Create a new follow-up record and send email
  */
 export const createFollowUp = async (req, res) => {
   try {
@@ -10,7 +26,6 @@ export const createFollowUp = async (req, res) => {
     const { jobId, templateType, subject, body, interviewDetails } = req.body;
 
     console.log('Creating follow-up:', { userId, jobId, templateType });
-    console.log('req.auth:', req.auth);
 
     if (!userId) {
       return res.status(401).json({
@@ -29,7 +44,16 @@ export const createFollowUp = async (req, res) => {
       });
     }
 
-    // Create follow-up record
+    // Get user information for email
+    const user = await User.findOne({ auth0Id: userId });
+    const userEmail = user?.email;
+    const userName = user?.name || user?.firstName || 'Candidate';
+
+    // Get interviewer email from interviewDetails
+    const interviewerEmail = interviewDetails?.interviewer?.email;
+    const interviewerName = interviewDetails?.interviewer?.name || 'Hiring Manager';
+
+    // Create follow-up record (will update emailSent after sending)
     const followUp = new FollowUp({
       userId,
       jobId,
@@ -37,15 +61,100 @@ export const createFollowUp = async (req, res) => {
       subject,
       body,
       interviewDetails,
-      sentAt: new Date()
+      sentAt: new Date(),
+      emailSent: false
     });
 
+    // Save the follow-up record first
     await followUp.save();
+
+    // Send email if SMTP is configured and interviewer email is provided
+    let emailSent = false;
+    let emailError = null;
+
+    if (process.env.SMTP_USER && interviewerEmail) {
+      try {
+        // Convert plain text body to HTML format
+        const htmlBody = body.replace(/\n/g, '<br>');
+
+        const emailContent = `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background-color: #777C6D; color: white; padding: 16px; text-align: center; border-radius: 8px 8px 0 0; }
+                .content { background-color: #ffffff; padding: 24px; border: 1px solid #ddd; border-radius: 0 0 8px 8px; }
+                .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #777; }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <div class="header">
+                  <h2>Interview Follow-Up</h2>
+                </div>
+                <div class="content">
+                  ${htmlBody}
+                </div>
+                <div class="footer">
+                  <p>This email was sent from HotSho Application Tracker</p>
+                </div>
+              </div>
+            </body>
+          </html>
+        `;
+
+        const mailOptions = {
+          from: (userEmail ? `${userName} <${userEmail}>` : process.env.SMTP_USER),
+          to: interviewerEmail,
+          subject: subject,
+          text: body,
+          html: emailContent,
+          replyTo: userEmail || process.env.SMTP_USER
+        };
+
+        const info = await transporter.sendMail(mailOptions);
+        emailSent = true;
+        followUp.emailSent = true;
+        followUp.emailError = null;
+        await followUp.save();
+        console.log('✅ Follow-up email sent successfully:', {
+          to: interviewerEmail,
+          subject: subject,
+          messageId: info.messageId
+        });
+      } catch (emailErr) {
+        emailError = emailErr.message;
+        followUp.emailSent = false;
+        followUp.emailError = emailErr.message;
+        await followUp.save();
+        console.error('❌ Failed to send follow-up email:', emailErr.message);
+        // Continue even if email fails - the record is still saved
+      }
+    } else {
+      if (!process.env.SMTP_USER) {
+        console.log('⚠️  SMTP not configured, follow-up email not sent');
+      }
+      if (!interviewerEmail) {
+        console.log('⚠️  Interviewer email not provided, follow-up email not sent');
+      }
+    }
 
     res.status(201).json({
       success: true,
-      message: 'Follow-up recorded successfully',
-      data: followUp
+      message: emailSent 
+        ? 'Follow-up sent successfully' 
+        : emailError 
+          ? 'Follow-up recorded but email failed to send' 
+          : interviewerEmail 
+            ? 'Follow-up recorded (SMTP not configured)' 
+            : 'Follow-up recorded (no interviewer email)',
+      data: {
+        ...followUp.toObject(),
+        emailSent,
+        emailError: emailError || undefined
+      }
     });
   } catch (error) {
     console.error('Error creating follow-up:', error);
