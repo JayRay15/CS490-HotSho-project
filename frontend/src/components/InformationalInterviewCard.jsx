@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { useAuth } from '@clerk/clerk-react';
 import { updateInformationalInterview } from '../api/informationalInterviews';
+import { setAuthToken } from '../api/axios';
 
 const STATUS_OPTIONS = ['Identified', 'Outreach Sent', 'Scheduled', 'Completed', 'Follow-up Sent'];
 
@@ -11,6 +13,7 @@ export default function InformationalInterviewCard({
   onRefresh,
   viewMode = 'kanban'
 }) {
+  const { getToken } = useAuth();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -35,6 +38,8 @@ export default function InformationalInterviewCard({
   const handleStatusChange = async (newStatus) => {
     try {
       setIsUpdating(true);
+      const token = await getToken();
+      setAuthToken(token);
       const updates = { status: newStatus };
       
       // Auto-set dates based on status
@@ -114,7 +119,17 @@ export default function InformationalInterviewCard({
 
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-1 mt-2">
-        {interview.status === 'Scheduled' && (
+        {interview.outreachContent && (
+          <button
+            onClick={() => setIsExpanded(true)}
+            className="flex-1 text-xs px-2 py-1 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded transition"
+            title="View outreach email"
+          >
+            📧 Email
+          </button>
+        )}
+        
+        {(interview.status === 'Scheduled' || interview.status === 'Outreach Sent' || interview.status === 'Identified') && (
           <button
             onClick={() => onPrepare(interview)}
             className="flex-1 text-xs px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded transition"
@@ -168,6 +183,21 @@ export default function InformationalInterviewCard({
             </div>
           )}
           
+          {interview.outreachContent && (
+            <div>
+              <span className="font-medium text-gray-700">Outreach Email: </span>
+              <div className="mt-1 bg-white border border-gray-200 rounded p-2 max-h-32 overflow-y-auto">
+                <pre className="text-gray-600 whitespace-pre-wrap text-xs font-sans">{interview.outreachContent}</pre>
+              </div>
+              <button
+                onClick={() => navigator.clipboard.writeText(interview.outreachContent)}
+                className="mt-1 text-xs text-indigo-600 hover:text-indigo-800"
+              >
+                📋 Copy to clipboard
+              </button>
+            </div>
+          )}
+
           {interview.outcomes?.keyLearnings && (
             <div>
               <span className="font-medium text-gray-700">Key Learnings: </span>

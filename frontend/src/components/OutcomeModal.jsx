@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '@clerk/clerk-react';
 import { updateInformationalInterview, generateFollowUpEmail } from '../api/informationalInterviews';
+import { setAuthToken } from '../api/axios';
 import LoadingSpinner from './LoadingSpinner';
 
 export default function OutcomeModal({ isOpen, interview, onClose }) {
+  const { getToken } = useAuth();
   const [outcomes, setOutcomes] = useState({
     keyLearnings: '',
     industryInsights: '',
@@ -41,6 +44,8 @@ export default function OutcomeModal({ isOpen, interview, onClose }) {
     setError(null);
 
     try {
+      const token = await getToken();
+      setAuthToken(token);
       const response = await generateFollowUpEmail({
         candidateName: interview.candidateName,
         targetRole: interview.targetRole,
@@ -62,6 +67,8 @@ export default function OutcomeModal({ isOpen, interview, onClose }) {
     setError(null);
 
     try {
+      const token = await getToken();
+      setAuthToken(token);
       // Calculate impact score based on outcomes
       const updates = {
         outcomes,

@@ -47,6 +47,9 @@ const informationalInterviewSchema = new mongoose.Schema({
     researchTopics: [{
       type: String
     }],
+    conversationTips: [{
+      type: String
+    }],
     userNotes: {
       type: String,
       default: ''

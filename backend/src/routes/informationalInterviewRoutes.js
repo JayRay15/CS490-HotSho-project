@@ -9,7 +9,10 @@ import {
   generateOutreach,
   generatePreparation,
   generateFollowUp,
-  getAnalytics
+  getAnalytics,
+  suggestCandidates,
+  generateInsights,
+  connectToOpportunities
 } from '../controllers/informationalInterviewController.js';
 
 const router = express.Router();
@@ -24,6 +27,8 @@ router.get('/analytics', getAnalytics);
 router.post('/generate-outreach', generateOutreach);
 router.post('/generate-preparation', generatePreparation);
 router.post('/generate-follow-up', generateFollowUp);
+router.post('/suggest-candidates', suggestCandidates);
+router.get('/insights', generateInsights);
 
 // CRUD routes
 router.get('/', getInterviews);
@@ -31,5 +36,8 @@ router.post('/', createInterview);
 router.get('/:id', getInterviewById);
 router.put('/:id', updateInterview);
 router.delete('/:id', deleteInterview);
+
+// Opportunity connector
+router.post('/:interviewId/connect-opportunity', connectToOpportunities);
 
 export default router;

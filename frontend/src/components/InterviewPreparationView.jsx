@@ -1,8 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@clerk/clerk-react';
 import { updateInformationalInterview, generatePreparationFramework } from '../api/informationalInterviews';
+import { setAuthToken } from '../api/axios';
 import LoadingSpinner from './LoadingSpinner';
 
 export default function InterviewPreparationView({ isOpen, interview, onClose }) {
+  const { getToken } = useAuth();
   const [preparation, setPreparation] = useState({
     questions: [],
     researchTopics: [],
@@ -18,7 +21,7 @@ export default function InterviewPreparationView({ isOpen, interview, onClose })
       setPreparation({
         questions: interview.preparationNotes.questions || [],
         researchTopics: interview.preparationNotes.researchTopics || [],
-        conversationTips: []
+        conversationTips: interview.preparationNotes.conversationTips || []
       });
     }
   }, [interview]);
@@ -28,6 +31,8 @@ export default function InterviewPreparationView({ isOpen, interview, onClose })
     setError(null);
 
     try {
+      const token = await getToken();
+      setAuthToken(token);
       const response = await generatePreparationFramework({
         targetRole: interview.targetRole,
         targetCompany: interview.targetCompany,
@@ -49,10 +54,13 @@ export default function InterviewPreparationView({ isOpen, interview, onClose })
     setError(null);
 
     try {
+      const token = await getToken();
+      setAuthToken(token);
       await updateInformationalInterview(interview._id, {
         preparationNotes: {
           questions: preparation.questions,
           researchTopics: preparation.researchTopics,
+          conversationTips: preparation.conversationTips,
           userNotes
         }
       });
@@ -138,14 +146,21 @@ export default function InterviewPreparationView({ isOpen, interview, onClose })
                 </button>
               </div>
               <div className="space-y-2">
-                {preparation.questions.map((question, idx) => (
-                  <div key={idx} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                    <div className="flex items-start">
-                      <span className="text-indigo-600 font-bold mr-2">{idx + 1}.</span>
-                      <p className="text-gray-800">{question}</p>
+                {preparation.questions.map((question, idx) => {
+                  const questionText = typeof question === 'string' ? question : (question.question || question.text || JSON.stringify(question));
+                  const category = typeof question === 'object' ? question.category : null;
+                  return (
+                    <div key={idx} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                      <div className="flex items-start">
+                        <span className="text-indigo-600 font-bold mr-2">{idx + 1}.</span>
+                        <div>
+                          {category && <span className="text-xs text-indigo-500 font-medium">[{category}] </span>}
+                          <p className="text-gray-800 inline">{questionText}</p>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -155,15 +170,18 @@ export default function InterviewPreparationView({ isOpen, interview, onClose })
             <div className="mb-6">
               <h3 className="font-semibold text-gray-900 mb-3">🔍 Research Checklist</h3>
               <div className="space-y-2">
-                {preparation.researchTopics.map((topic, idx) => (
-                  <div key={idx} className="flex items-start bg-yellow-50 rounded-lg p-3 border border-yellow-200">
-                    <input
-                      type="checkbox"
-                      className="mt-1 mr-3 h-4 w-4 text-indigo-600 rounded"
-                    />
-                    <p className="text-gray-800">{topic}</p>
-                  </div>
-                ))}
+                {preparation.researchTopics.map((topic, idx) => {
+                  const topicText = typeof topic === 'string' ? topic : (topic.topic || topic.text || topic.item || JSON.stringify(topic));
+                  return (
+                    <div key={idx} className="flex items-start bg-yellow-50 rounded-lg p-3 border border-yellow-200">
+                      <input
+                        type="checkbox"
+                        className="mt-1 mr-3 h-4 w-4 text-indigo-600 rounded"
+                      />
+                      <p className="text-gray-800">{topicText}</p>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -173,11 +191,14 @@ export default function InterviewPreparationView({ isOpen, interview, onClose })
             <div className="mb-6">
               <h3 className="font-semibold text-gray-900 mb-3">💡 Conversation Tips</h3>
               <div className="space-y-2">
-                {preparation.conversationTips.map((tip, idx) => (
-                  <div key={idx} className="bg-green-50 rounded-lg p-3 border border-green-200">
-                    <p className="text-gray-800">{tip}</p>
-                  </div>
-                ))}
+                {preparation.conversationTips.map((tip, idx) => {
+                  const tipText = typeof tip === 'string' ? tip : (tip.tip || tip.text || tip.advice || JSON.stringify(tip));
+                  return (
+                    <div key={idx} className="bg-green-50 rounded-lg p-3 border border-green-200">
+                      <p className="text-gray-800">{tipText}</p>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

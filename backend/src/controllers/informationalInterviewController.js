@@ -1,6 +1,7 @@
 import InformationalInterview from '../models/InformationalInterview.js';
 import { errorResponse, successResponse, sendResponse, ERROR_CODES } from '../utils/responseFormat.js';
 import { generateText } from '../utils/geminiService.js';
+import { Job } from '../models/Job.js';
 
 const getUserId = (req) => {
   const auth = typeof req.auth === 'function' ? req.auth() : req.auth;
@@ -314,6 +315,249 @@ Body: [Email content]`;
   } catch (err) {
     console.error('Failed to generate follow-up email:', err);
     const { response, statusCode } = errorResponse('Failed to generate follow-up email', 500, ERROR_CODES.AI_SERVICE_ERROR);
+    return sendResponse(res, response, statusCode);
+  }
+};
+
+/**
+ * Generate candidate suggestions for informational interviews
+ */
+export const suggestCandidates = async (req, res) => {
+  try {
+    const { targetRole, targetCompany, targetIndustry, userBackground, careerGoals } = req.body;
+    
+    if (!targetRole && !targetCompany && !targetIndustry) {
+      const { response, statusCode } = errorResponse('At least one of targetRole, targetCompany, or targetIndustry is required', 400, ERROR_CODES.VALIDATION_ERROR);
+      return sendResponse(res, response, statusCode);
+    }
+    
+    const prompt = `Generate 5 specific types of professionals to target for informational interviews.
+
+Context:
+- Target Role: ${targetRole || 'Not specified'}
+- Target Company: ${targetCompany || 'Not specified'}  
+- Target Industry: ${targetIndustry || 'Not specified'}
+- User Background: ${userBackground || 'Job seeker looking to transition into this field'}
+- Career Goals: ${careerGoals || 'Learn about the industry and explore opportunities'}
+
+For each candidate type, provide:
+1. Job Title - specific role to look for
+2. Why This Person - why they'd be valuable to talk to
+3. Key Questions - 2-3 specific questions to ask them
+4. Where to Find - platforms/methods to find this type of person
+5. Outreach Tip - one specific tip for reaching out
+
+Format as JSON array with 5 objects containing: jobTitle, whyThisPerson, keyQuestions (array), whereToFind, outreachTip`;
+
+    const generatedContent = await generateText(prompt);
+    
+    // Parse the JSON response
+    let suggestions;
+    try {
+      const jsonMatch = generatedContent.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        suggestions = JSON.parse(jsonMatch[0]);
+      } else {
+        suggestions = [{
+          jobTitle: `${targetRole || 'Professional'} at ${targetCompany || 'target company'}`,
+          whyThisPerson: 'Direct experience in your target role',
+          keyQuestions: ['What does a typical day look like?', 'What skills are most important?'],
+          whereToFind: 'LinkedIn search, company website',
+          outreachTip: 'Reference shared connections or interests'
+        }];
+      }
+    } catch (parseErr) {
+      suggestions = [{
+        jobTitle: `${targetRole || 'Professional'} at ${targetCompany || 'target company'}`,
+        whyThisPerson: 'Direct experience in your target role',
+        keyQuestions: ['What does a typical day look like?', 'What skills are most important?'],
+        whereToFind: 'LinkedIn search, company website',
+        outreachTip: 'Reference shared connections or interests',
+        rawContent: generatedContent
+      }];
+    }
+    
+    const { response, statusCode } = successResponse('Candidate suggestions generated successfully', { suggestions });
+    return sendResponse(res, response, statusCode);
+  } catch (err) {
+    console.error('Failed to generate candidate suggestions:', err);
+    const { response, statusCode } = errorResponse('Failed to generate candidate suggestions', 500, ERROR_CODES.AI_SERVICE_ERROR);
+    return sendResponse(res, response, statusCode);
+  }
+};
+
+/**
+ * Generate aggregated insights from completed informational interviews
+ */
+export const generateInsights = async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    
+    // Get all completed interviews with outcomes
+    const completedInterviews = await InformationalInterview.find({
+      userId,
+      status: { $in: ['Completed', 'Follow-up Sent'] },
+      'outcomes.keyLearnings': { $ne: '' }
+    }).lean();
+    
+    if (completedInterviews.length === 0) {
+      const { response, statusCode } = successResponse('No completed interviews with insights found', { 
+        insights: null,
+        message: 'Complete some informational interviews and record outcomes to generate insights'
+      });
+      return sendResponse(res, response, statusCode);
+    }
+    
+    // Aggregate data for the prompt
+    const interviewSummaries = completedInterviews.map(i => ({
+      role: i.targetRole,
+      company: i.targetCompany,
+      keyLearnings: i.outcomes.keyLearnings,
+      industryInsights: i.outcomes.industryInsights || '',
+      futureOpportunities: i.outcomes.futureOpportunities || ''
+    }));
+    
+    const prompt = `Analyze these informational interview insights and generate actionable intelligence.
+
+Interview Data:
+${JSON.stringify(interviewSummaries, null, 2)}
+
+Generate comprehensive insights including:
+
+1. INDUSTRY TRENDS (3-5 key trends)
+   - What patterns emerge across conversations?
+   - What direction is the industry heading?
+
+2. SKILL PRIORITIES (ranked list)
+   - What skills are most valued?
+   - Any emerging skills mentioned?
+
+3. COMPANY CULTURE PATTERNS
+   - What do these companies value?
+   - Common challenges mentioned?
+
+4. CAREER PATH INSIGHTS
+   - Common paths into these roles?
+   - Advice patterns from professionals?
+
+5. ACTIONABLE RECOMMENDATIONS (3-5 specific actions)
+   - Based on insights, what should the job seeker do next?
+
+6. NETWORKING OPPORTUNITIES
+   - Any mentioned connections to pursue?
+   - Events or communities to join?
+
+Format as JSON with keys: industryTrends (array), skillPriorities (array), culturalPatterns (array), careerPaths (array), recommendations (array), networkingOpportunities (array)`;
+
+    const generatedContent = await generateText(prompt);
+    
+    let insights;
+    try {
+      const jsonMatch = generatedContent.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        insights = JSON.parse(jsonMatch[0]);
+      } else {
+        insights = {
+          industryTrends: ['Analyze more interviews for trend insights'],
+          skillPriorities: ['Continue conducting interviews to identify skill patterns'],
+          culturalPatterns: [],
+          careerPaths: [],
+          recommendations: ['Record detailed outcomes from your interviews'],
+          networkingOpportunities: []
+        };
+      }
+    } catch (parseErr) {
+      insights = {
+        industryTrends: [],
+        skillPriorities: [],
+        culturalPatterns: [],
+        careerPaths: [],
+        recommendations: [],
+        networkingOpportunities: [],
+        rawContent: generatedContent
+      };
+    }
+    
+    insights.basedOnInterviews = completedInterviews.length;
+    insights.generatedAt = new Date();
+    
+    const { response, statusCode } = successResponse('Insights generated successfully', { insights });
+    return sendResponse(res, response, statusCode);
+  } catch (err) {
+    console.error('Failed to generate insights:', err);
+    const { response, statusCode } = errorResponse('Failed to generate insights', 500, ERROR_CODES.AI_SERVICE_ERROR);
+    return sendResponse(res, response, statusCode);
+  }
+};
+
+/**
+ * Connect informational interviews to job opportunities
+ */
+export const connectToOpportunities = async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { interviewId } = req.params;
+    const { jobId } = req.body;
+    
+    // Get the interview
+    const interview = await InformationalInterview.findOne({ _id: interviewId, userId });
+    
+    if (!interview) {
+      const { response, statusCode } = errorResponse('Informational interview not found', 404, ERROR_CODES.NOT_FOUND);
+      return sendResponse(res, response, statusCode);
+    }
+    
+    // If jobId provided, link to specific job
+    if (jobId) {
+      const job = await Job.findOne({ _id: jobId, userId });
+      if (!job) {
+        const { response, statusCode } = errorResponse('Job not found', 404, ERROR_CODES.NOT_FOUND);
+        return sendResponse(res, response, statusCode);
+      }
+      
+      // Add reference to interview in job notes if not already there
+      const interviewNote = `Connected from informational interview with ${interview.candidateName} (${interview.targetRole} at ${interview.targetCompany})`;
+      if (!job.notes?.includes(interviewNote)) {
+        job.notes = job.notes ? `${job.notes}\n\n${interviewNote}` : interviewNote;
+        await job.save();
+      }
+      
+      // Store the connection in the interview
+      if (!interview.outcomes.futureOpportunities) {
+        interview.outcomes.futureOpportunities = '';
+      }
+      interview.outcomes.futureOpportunities += `\nLinked to job: ${job.company} - ${job.title}`;
+      await interview.save();
+      
+      const { response, statusCode } = successResponse('Interview connected to job', { 
+        interview,
+        job: { _id: job._id, company: job.company, title: job.title }
+      });
+      return sendResponse(res, response, statusCode);
+    }
+    
+    // Otherwise, find potential matching opportunities
+    const potentialMatches = await Job.find({
+      userId,
+      $or: [
+        { company: { $regex: interview.targetCompany, $options: 'i' } },
+        { title: { $regex: interview.targetRole, $options: 'i' } }
+      ]
+    }).select('company title status createdAt').limit(10).lean();
+    
+    const { response, statusCode } = successResponse('Potential opportunities found', { 
+      interview: { 
+        _id: interview._id, 
+        candidateName: interview.candidateName,
+        targetCompany: interview.targetCompany,
+        targetRole: interview.targetRole
+      },
+      potentialMatches
+    });
+    return sendResponse(res, response, statusCode);
+  } catch (err) {
+    console.error('Failed to connect to opportunities:', err);
+    const { response, statusCode } = errorResponse('Failed to connect to opportunities', 500, ERROR_CODES.DATABASE_ERROR);
     return sendResponse(res, response, statusCode);
   }
 };

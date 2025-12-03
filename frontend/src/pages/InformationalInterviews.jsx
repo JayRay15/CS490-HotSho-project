@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '@clerk/clerk-react';
 import {
   getInformationalInterviews,
   deleteInformationalInterview,
   getInformationalInterviewAnalytics
 } from '../api/informationalInterviews';
+import { setAuthToken } from '../api/axios';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Card from '../components/Card';
 import Container from '../components/Container';
@@ -12,6 +14,8 @@ import RequestInterviewModal from '../components/RequestInterviewModal';
 import InterviewPreparationView from '../components/InterviewPreparationView';
 import OutcomeModal from '../components/OutcomeModal';
 import InformationalInterviewCard from '../components/InformationalInterviewCard';
+import CandidateSuggestionModal from '../components/CandidateSuggestionModal';
+import InsightsPanel from '../components/InsightsPanel';
 
 const STATUS_COLUMNS = [
   { key: 'Identified', label: 'Identified', color: 'bg-gray-100' },
@@ -21,6 +25,7 @@ const STATUS_COLUMNS = [
 ];
 
 export default function InformationalInterviewsPage() {
+  const { getToken } = useAuth();
   const [interviews, setInterviews] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -31,32 +36,49 @@ export default function InformationalInterviewsPage() {
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showPreparationView, setShowPreparationView] = useState(false);
   const [showOutcomeModal, setShowOutcomeModal] = useState(false);
+  const [showSuggestionModal, setShowSuggestionModal] = useState(false);
+  const [showInsightsPanel, setShowInsightsPanel] = useState(false);
   const [selectedInterview, setSelectedInterview] = useState(null);
 
   useEffect(() => {
-    loadInterviews();
-    loadAnalytics();
-  }, []);
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const token = await getToken();
+        setAuthToken(token);
+        
+        const [interviewsRes, analyticsRes] = await Promise.all([
+          getInformationalInterviews({ archived: false }),
+          getInformationalInterviewAnalytics()
+        ]);
+        
+        setInterviews(interviewsRes.data.data.interviews || []);
+        setAnalytics(analyticsRes.data.data.analytics);
+      } catch (err) {
+        console.error('Failed to load data:', err);
+        setError('Failed to load informational interviews');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const loadInterviews = async () => {
-    try {
-      setLoading(true);
-      const response = await getInformationalInterviews({ archived: false });
-      setInterviews(response.data.data.interviews || []);
-    } catch (err) {
-      console.error('Failed to load interviews:', err);
-      setError('Failed to load informational interviews');
-    } finally {
-      setLoading(false);
-    }
-  };
+    loadData();
+  }, []); // Empty deps - only run once on mount
 
-  const loadAnalytics = async () => {
+  const refreshData = async () => {
     try {
-      const response = await getInformationalInterviewAnalytics();
-      setAnalytics(response.data.data.analytics);
+      const token = await getToken();
+      setAuthToken(token);
+      
+      const [interviewsRes, analyticsRes] = await Promise.all([
+        getInformationalInterviews({ archived: false }),
+        getInformationalInterviewAnalytics()
+      ]);
+      
+      setInterviews(interviewsRes.data.data.interviews || []);
+      setAnalytics(analyticsRes.data.data.analytics);
     } catch (err) {
-      console.error('Failed to load analytics:', err);
+      console.error('Failed to refresh data:', err);
     }
   };
 
@@ -66,9 +88,10 @@ export default function InformationalInterviewsPage() {
     }
     
     try {
+      const token = await getToken();
+      setAuthToken(token);
       await deleteInformationalInterview(id);
-      await loadInterviews();
-      await loadAnalytics();
+      await refreshData();
     } catch (err) {
       console.error('Failed to delete interview:', err);
       alert('Failed to delete interview');
@@ -89,9 +112,10 @@ export default function InformationalInterviewsPage() {
     setShowRequestModal(false);
     setShowPreparationView(false);
     setShowOutcomeModal(false);
+    setShowSuggestionModal(false);
+    setShowInsightsPanel(false);
     setSelectedInterview(null);
-    loadInterviews();
-    loadAnalytics();
+    refreshData();
   };
 
   const getInterviewsByStatus = (status) => {
@@ -120,12 +144,26 @@ export default function InformationalInterviewsPage() {
                 Build relationships and gain industry insights
               </p>
             </div>
-            <button
-              onClick={() => setShowRequestModal(true)}
-              className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition shadow-md font-medium"
-            >
-              + Request Interview
-            </button>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button
+                onClick={() => setShowSuggestionModal(true)}
+                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition shadow-md font-medium text-sm"
+              >
+                🔍 Find Candidates
+              </button>
+              <button
+                onClick={() => setShowInsightsPanel(true)}
+                className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-lg hover:from-amber-600 hover:to-orange-700 transition shadow-md font-medium text-sm"
+              >
+                💡 View Insights
+              </button>
+              <button
+                onClick={() => setShowRequestModal(true)}
+                className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition shadow-md font-medium text-sm"
+              >
+                + Request Interview
+              </button>
+            </div>
           </div>
 
           {/* Analytics Cards */}
@@ -204,7 +242,7 @@ export default function InformationalInterviewsPage() {
                       onDelete={handleDelete}
                       onPrepare={handlePrepare}
                       onRecordOutcome={handleRecordOutcome}
-                      onRefresh={loadInterviews}
+                      onRefresh={refreshData}
                     />
                   ))}
                   {getInterviewsByStatus(column.key).length === 0 && (
@@ -237,7 +275,7 @@ export default function InformationalInterviewsPage() {
                   onDelete={handleDelete}
                   onPrepare={handlePrepare}
                   onRecordOutcome={handleRecordOutcome}
-                  onRefresh={loadInterviews}
+                  onRefresh={refreshData}
                   viewMode="list"
                 />
               ))
@@ -266,6 +304,20 @@ export default function InformationalInterviewsPage() {
         <OutcomeModal
           isOpen={showOutcomeModal}
           interview={selectedInterview}
+          onClose={handleModalClose}
+        />
+      )}
+
+      {showSuggestionModal && (
+        <CandidateSuggestionModal
+          isOpen={showSuggestionModal}
+          onClose={handleModalClose}
+        />
+      )}
+
+      {showInsightsPanel && (
+        <InsightsPanel
+          isOpen={showInsightsPanel}
           onClose={handleModalClose}
         />
       )}

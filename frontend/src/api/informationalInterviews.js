@@ -26,6 +26,19 @@ export const generatePreparationFramework = (data) =>
 export const generateFollowUpEmail = (data) =>
   retryRequest(() => api.post('/api/informational-interviews/generate-follow-up', data));
 
-// Analytics
+export const suggestCandidates = (data) =>
+  retryRequest(() => api.post('/api/informational-interviews/suggest-candidates', data));
+
+// Analytics and Insights
 export const getInformationalInterviewAnalytics = () =>
   retryRequest(() => api.get('/api/informational-interviews/analytics'));
+
+export const generateInsights = () =>
+  retryRequest(() => api.get('/api/informational-interviews/insights'));
+
+// Opportunity connector
+export const connectInterviewToOpportunity = (interviewId, jobId) =>
+  retryRequest(() => api.post(`/api/informational-interviews/${interviewId}/connect-opportunity`, { jobId }));
+
+export const getRelatedOpportunities = (interviewId) =>
+  retryRequest(() => api.post(`/api/informational-interviews/${interviewId}/connect-opportunity`, {}));

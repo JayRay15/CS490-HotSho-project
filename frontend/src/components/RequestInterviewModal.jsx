@@ -1,8 +1,11 @@
 import { useState } from 'react';
+import { useAuth } from '@clerk/clerk-react';
 import { createInformationalInterview, generateOutreachEmail } from '../api/informationalInterviews';
+import { setAuthToken } from '../api/axios';
 import LoadingSpinner from './LoadingSpinner';
 
 export default function RequestInterviewModal({ isOpen, onClose }) {
+  const { getToken } = useAuth();
   const [formData, setFormData] = useState({
     candidateName: '',
     targetRole: '',
@@ -33,6 +36,8 @@ export default function RequestInterviewModal({ isOpen, onClose }) {
     setError(null);
 
     try {
+      const token = await getToken();
+      setAuthToken(token);
       const response = await generateOutreachEmail({
         candidateName: formData.candidateName,
         targetRole: formData.targetRole,
@@ -62,6 +67,8 @@ export default function RequestInterviewModal({ isOpen, onClose }) {
     setError(null);
 
     try {
+      const token = await getToken();
+      setAuthToken(token);
       const dataToSubmit = {
         ...formData,
         outreachContent,
