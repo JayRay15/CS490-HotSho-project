@@ -98,8 +98,8 @@ export default function MessagingModal({ relationshipId, recipientName, recipien
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg w-full max-w-2xl h-[600px] flex flex-col">
+        <div className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg w-full max-w-2xl h-[600px] flex flex-col shadow-xl">
                 {/* Header */}
                 <div className="p-4 border-b border-gray-200 flex items-center justify-between">
                     <h2 className="text-xl font-bold" style={{ color: "#4F5348" }}>
@@ -138,17 +138,15 @@ export default function MessagingModal({ relationshipId, recipientName, recipien
                                     className={`flex ${isCurrentUser ? "justify-end" : "justify-start"}`}
                                 >
                                     <div
-                                        className={`max-w-[70%] rounded-lg p-3 ${
-                                            isCurrentUser
+                                        className={`max-w-[70%] rounded-lg p-3 ${isCurrentUser
                                                 ? "bg-[#777C6D] text-white"
                                                 : "bg-gray-100 text-gray-800"
-                                        }`}
+                                            }`}
                                     >
                                         <p className="text-sm break-words">{message.content}</p>
                                         <p
-                                            className={`text-xs mt-1 ${
-                                                isCurrentUser ? "text-gray-200" : "text-gray-500"
-                                            }`}
+                                            className={`text-xs mt-1 ${isCurrentUser ? "text-gray-200" : "text-gray-500"
+                                                }`}
                                         >
                                             {formatTime(message.createdAt)}
                                         </p>

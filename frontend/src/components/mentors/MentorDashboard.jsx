@@ -14,11 +14,47 @@ export default function MentorDashboard() {
     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
     const [activeTab, setActiveTab] = useState("mentors"); // 'mentors', 'mentees', 'feedback', 'recommendations'
     const [userRole, setUserRole] = useState(null); // 'mentee' or 'mentor' or both
+    const [tokenAcceptMessage, setTokenAcceptMessage] = useState("");
 
     const [mentorDashboardData, setMentorDashboardData] = useState(null);
     const [selectedMenteeId, setSelectedMenteeId] = useState(null);
     const [pendingInvitations, setPendingInvitations] = useState({ sent: [], received: [] });
     const [messagingModal, setMessagingModal] = useState({ isOpen: false, relationshipId: null, recipientName: "", recipientId: null });
+
+    // Handle pending mentor token from signup
+    useEffect(() => {
+        const pendingToken = localStorage.getItem("pendingMentorToken");
+        if (pendingToken) {
+            acceptInvitationByToken(pendingToken);
+            localStorage.removeItem("pendingMentorToken");
+        }
+    }, []);
+
+    const acceptInvitationByToken = async (token) => {
+        try {
+            const authToken = localStorage.getItem("token");
+            const res = await fetch(`/api/mentors/accept-token/${token}`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+                },
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setTokenAcceptMessage("🎉 Mentor invitation accepted successfully! You are now connected.");
+                setActiveTab("mentees");
+                fetchDashboardData();
+            } else {
+                setTokenAcceptMessage(data.message || "Could not accept invitation automatically. Please check your pending invitations.");
+                setActiveTab("pending");
+            }
+        } catch (e) {
+            console.error("Token accept error:", e);
+            setTokenAcceptMessage("Could not accept invitation automatically. Please check your pending invitations.");
+            setActiveTab("pending");
+        }
+    };
 
     useEffect(() => {
         fetchDashboardData();
@@ -100,7 +136,7 @@ export default function MentorDashboard() {
             setMentees(Array.isArray(menteeData.data) ? menteeData.data : []);
             setFeedback(Array.isArray(feedbackData.data) ? feedbackData.data : []);
             setRecommendations(Array.isArray(recommendationsData.data) ? recommendationsData.data : []);
-            
+
             const pendingInvitationsData = pendingData.data || { sent: [], received: [] };
             setPendingInvitations(pendingInvitationsData);
 
@@ -113,7 +149,7 @@ export default function MentorDashboard() {
             if (Array.isArray(mentorData.data) && mentorData.data?.length > 0) setUserRole("mentee");
             if (Array.isArray(menteeData.data) && menteeData.data?.length > 0) {
                 setUserRole((prev) => (prev ? "both" : "mentor"));
-                
+
                 // Fetch specialized mentor dashboard data if user is a mentor
                 fetchMentorDashboard(headers);
             }
@@ -141,7 +177,7 @@ export default function MentorDashboard() {
         try {
             const token = localStorage.getItem("token");
             const headers = token ? { Authorization: `Bearer ${token}` } : {};
-            
+
             const response = await fetch(`/api/mentors/accept/${relationshipId}`, {
                 method: "POST",
                 headers,
@@ -164,7 +200,7 @@ export default function MentorDashboard() {
         try {
             const token = localStorage.getItem("token");
             const headers = token ? { Authorization: `Bearer ${token}` } : {};
-            
+
             const response = await fetch(`/api/mentors/reject/${relationshipId}`, {
                 method: "POST",
                 headers,
@@ -265,6 +301,22 @@ export default function MentorDashboard() {
                     </button>
                 </div>
 
+                {/* Token acceptance message */}
+                {tokenAcceptMessage && (
+                    <div className={`mb-4 p-4 rounded-lg flex items-center justify-between ${tokenAcceptMessage.includes("successfully")
+                            ? "bg-green-50 border border-green-200 text-green-700"
+                            : "bg-yellow-50 border border-yellow-200 text-yellow-700"
+                        }`}>
+                        <span>{tokenAcceptMessage}</span>
+                        <button
+                            onClick={() => setTokenAcceptMessage("")}
+                            className="ml-2 font-bold hover:opacity-70"
+                        >
+                            ×
+                        </button>
+                    </div>
+                )}
+
                 {error && (
                     <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
                         {error}
@@ -301,8 +353,8 @@ export default function MentorDashboard() {
                             <button
                                 onClick={() => setActiveTab("mentors")}
                                 className={`${activeTab === "mentors"
-                                        ? "border-[#777C6D] text-[#777C6D]"
-                                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                    ? "border-[#777C6D] text-[#777C6D]"
+                                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                                     } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
                             >
                                 My Mentors ({mentors.length})
@@ -311,8 +363,8 @@ export default function MentorDashboard() {
                                 <button
                                     onClick={() => setActiveTab("pending")}
                                     className={`${activeTab === "pending"
-                                            ? "border-[#777C6D] text-[#777C6D]"
-                                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                        ? "border-[#777C6D] text-[#777C6D]"
+                                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                                         } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors relative`}
                                 >
                                     Pending Invitations ({pendingInvitations.received.length})
@@ -325,8 +377,8 @@ export default function MentorDashboard() {
                                 <button
                                     onClick={() => setActiveTab("mentees")}
                                     className={`${activeTab === "mentees"
-                                            ? "border-[#777C6D] text-[#777C6D]"
-                                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                        ? "border-[#777C6D] text-[#777C6D]"
+                                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                                         } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
                                 >
                                     My Mentees ({mentees.length})
@@ -336,8 +388,8 @@ export default function MentorDashboard() {
                                 <button
                                     onClick={() => setActiveTab("feedback")}
                                     className={`${activeTab === "feedback"
-                                            ? "border-[#777C6D] text-[#777C6D]"
-                                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                        ? "border-[#777C6D] text-[#777C6D]"
+                                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                                         } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
                                 >
                                     Feedback ({feedback.length})
@@ -347,8 +399,8 @@ export default function MentorDashboard() {
                                 <button
                                     onClick={() => setActiveTab("recommendations")}
                                     className={`${activeTab === "recommendations"
-                                            ? "border-[#777C6D] text-[#777C6D]"
-                                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                        ? "border-[#777C6D] text-[#777C6D]"
+                                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                                         } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
                                 >
                                     Recommendations ({recommendations.length})
@@ -381,10 +433,10 @@ export default function MentorDashboard() {
                             ) : (
                                 <div className="grid gap-4">
                                     {mentors.map((mentor) => (
-                                        <MentorCard 
-                                            key={mentor._id} 
+                                        <MentorCard
+                                            key={mentor._id}
                                             mentor={mentor}
-                                            onMessage={(relationshipId, recipientName, recipientId) => 
+                                            onMessage={(relationshipId, recipientName, recipientId) =>
                                                 setMessagingModal({ isOpen: true, relationshipId, recipientName, recipientId })
                                             }
                                         />
@@ -404,8 +456,8 @@ export default function MentorDashboard() {
                             ) : (
                                 <div className="grid gap-4">
                                     {pendingInvitations.received.map((invitation) => (
-                                        <PendingInvitationCard 
-                                            key={invitation._id} 
+                                        <PendingInvitationCard
+                                            key={invitation._id}
                                             invitation={invitation}
                                             onAccept={handleAcceptInvitation}
                                             onDecline={handleDeclineInvitation}
@@ -508,11 +560,11 @@ export default function MentorDashboard() {
                             ) : (
                                 <div className="grid gap-4">
                                     {mentees.map((mentee) => (
-                                        <MenteeCard 
-                                            key={mentee._id} 
+                                        <MenteeCard
+                                            key={mentee._id}
                                             mentee={mentee}
                                             onViewDetails={(menteeId) => setSelectedMenteeId(menteeId)}
-                                            onMessage={(relationshipId, recipientName, recipientId) => 
+                                            onMessage={(relationshipId, recipientName, recipientId) =>
                                                 setMessagingModal({ isOpen: true, relationshipId, recipientName, recipientId })
                                             }
                                         />
@@ -638,8 +690,8 @@ function MentorCard({ mentor, onMessage }) {
                     <button
                         onClick={() => onMessage(
                             mentor._id,
-                            mentor.mentorId?.firstName && mentor.mentorId?.lastName 
-                                ? `${mentor.mentorId.firstName} ${mentor.mentorId.lastName}` 
+                            mentor.mentorId?.firstName && mentor.mentorId?.lastName
+                                ? `${mentor.mentorId.firstName} ${mentor.mentorId.lastName}`
                                 : mentor.mentorId?.email || "Your Mentor",
                             mentor.mentorId?._id
                         )}
@@ -711,8 +763,8 @@ function MenteeCard({ mentee, onViewDetails, onMessage }) {
                     <button
                         onClick={() => onMessage(
                             mentee._id,
-                            mentee.menteeId?.firstName && mentee.menteeId?.lastName 
-                                ? `${mentee.menteeId.firstName} ${mentee.menteeId.lastName}` 
+                            mentee.menteeId?.firstName && mentee.menteeId?.lastName
+                                ? `${mentee.menteeId.firstName} ${mentee.menteeId.lastName}`
                                 : mentee.menteeId?.email || "Your Mentee",
                             mentee.menteeId?._id
                         )}
@@ -909,7 +961,7 @@ function PendingInvitationCard({ invitation, onAccept, onDecline }) {
                     </p>
                 </div>
             </div>
-            
+
             <div className="flex gap-3">
                 <button
                     onClick={handleAccept}
