@@ -6,7 +6,7 @@ import Button from '../Button';
 import ContactCard from './ContactCard';
 import LoadingSpinner from '../LoadingSpinner';
 import ErrorMessage from '../ErrorMessage';
-import ReferenceRequestModal from './ReferenceRequestModal';
+import ReferralRequestModal from './ReferralRequestModal';
 import ReferencePortfolio from './ReferencePortfolio';
 import ReferenceFeedbackModal from './ReferenceFeedbackModal';
 import ReferenceHistoryModal from './ReferenceHistoryModal';
@@ -19,7 +19,7 @@ export default function ReferencesTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [showReferralModal, setShowReferralModal] = useState(false);
   const [selectedReference, setSelectedReference] = useState(null);
   const [showPortfolio, setShowPortfolio] = useState(false);
   const [selectedForPortfolio, setSelectedForPortfolio] = useState([]);
@@ -98,7 +98,7 @@ export default function ReferencesTab() {
 
   const handleRequestReference = (reference) => {
     setSelectedReference(reference);
-    setShowRequestModal(true);
+    setShowReferralModal(true);
   };
 
   const handleTogglePortfolioSelection = (referenceId) => {
@@ -391,14 +391,14 @@ export default function ReferencesTab() {
       )}
 
       {/* Reference Request Modal */}
-      {showRequestModal && selectedReference && (
-        <ReferenceRequestModal
-          isOpen={showRequestModal}
+      {showReferralModal && selectedReference && (
+        <ReferralRequestModal
+          isOpen={showReferralModal}
           onClose={() => {
-            setShowRequestModal(false);
+            setShowReferralModal(false);
             setSelectedReference(null);
           }}
-          reference={selectedReference}
+          contact={selectedReference}
           onSuccess={fetchReferences}
         />
       )}

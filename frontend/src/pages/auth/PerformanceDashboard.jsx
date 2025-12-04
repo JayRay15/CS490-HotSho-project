@@ -189,7 +189,7 @@ export default function PerformanceDashboard() {
 
       {/* Tab Navigation */}
       <div className="mb-6 border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8 overflow-x-auto">
+        <nav className="-mb-px flex flex-wrap gap-1 sm:gap-4 overflow-x-auto pb-1">
           {[
             { id: "overview", label: "Overview", icon: "📊" },
             { id: "funnel", label: "Conversion Funnel", icon: "🔄" },
@@ -201,13 +201,15 @@ export default function PerformanceDashboard() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
+              className={`py-2 sm:py-4 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap transition-colors ${
                 activeTab === tab.id
                   ? "border-blue-600 text-blue-600"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
               }`}
             >
-              {tab.icon} {tab.label}
+              <span className="mr-1">{tab.icon}</span>
+              <span className="hidden sm:inline">{tab.label}</span>
+              <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
             </button>
           ))}
         </nav>

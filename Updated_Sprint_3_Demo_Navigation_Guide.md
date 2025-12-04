@@ -659,47 +659,52 @@ This guide provides step-by-step navigation instructions for each Demo Action in
 ### Demo Action 5.1.1: View document management system, organize application materials, verify version control
 
 **Navigation Steps:**
-1. Navigate to **Resumes** page at `/resumes` (Resume Templates/Management page)
-2. View document management system showing:
-   - All your resumes listed
-   - Each resume shows:
+1. Navigate to **Document Management** page at `/documents`
+2. View the unified document management dashboard showing:
+   - Quick stats: total resumes, cover letters, certificates, and linked applications
+   - Tabs for different document types:
+     - **Resumes**: View all resumes with default highlighted
+     - **Cover Letters**: View all cover letters
+     - **Certificates**: (Coming soon placeholder)
+     - **Linked to Jobs**: See which documents are linked to which applications
+3. For detailed resume management:
+   - Click **"Open Resume Manager"** button to go to `/resumes`
+   - View all your resumes listed with:
      - Name
      - Template used
      - Last modified date
      - Version information
-     - Linked jobs (if any)
-3. For cover letters:
-   - Navigate to a job application at `/jobs`
-   - View cover letters associated with that job
-   - Or access through cover letter management in job details
-4. To organize materials:
+     - Default/Archived status
+4. To demonstrate version control:
+   - In the Resumes tab, view the "Version Control Features" section showing:
+     - Clone & Duplicate capability
+     - Compare Versions feature
+     - Archive & Restore functionality
+   - Click into Resume Manager to show actual clone/compare/archive actions
+5. To organize materials:
    - Create new resumes/cover letters
    - Tag documents
    - Link documents to specific jobs
    - Mark default resume
    - Archive old versions
-5. Check version control:
-   - View document history
-   - See which version was used for which application
-   - Verify version tracking is accurate
 6. To export comprehensive report:
-   - Navigate to **Reports** page at `/reports`
+   - In Document Management page, scroll to **"Export & Reports"** section
+   - Click **"Generate Report"** to navigate to `/reports`
    - View available report options
    - Click **"Generate Report"** or use report builder
    - Select report type: **"Comprehensive Job Search Report"**
-   - Choose format (PDF, Excel - if multiple options available)
-   - Select date range (if applicable)
+   - Choose format (PDF, Excel)
    - Click **"Generate Report"** or **"Export"**
    - Download the report file
 7. Verify:
-   - Documents are properly organized
-   - Version control is functional
-   - Materials can be linked to applications
-   - Report contains all analytics data and insights
+   - Documents are properly organized by type
+   - Version control features are displayed
+   - Materials can be linked to applications (Linked to Jobs tab)
+   - Report export works correctly
 
-**Status:** ✅ **IMPLEMENTED** - Document management (resumes/cover letters) and report export are implemented
+**Status:** ✅ **IMPLEMENTED** - Document management page at `/documents` with unified view of all documents and export features
 
-**Note:** Document management is primarily handled through the Resume Templates page at `/resumes`. There is no separate `/documents` route in the current codebase.
+**Note:** The `/documents` route provides a centralized view of all application materials. For detailed management, use the Resume Manager at `/resumes` or Reports page at `/reports`.
 
 ---
 
@@ -878,7 +883,8 @@ This guide provides step-by-step navigation instructions for each Demo Action in
 - **Goals**: `/goals`, `/goals/new`, `/goals/:id`, `/goals/:id/edit`
 - **Teams**: `/teams` and `/teams/:teamId`
 - **Mentors/Advisors**: `/mentors-advisors`
-- **Resumes**: `/resumes` (document management)
+- **Document Management**: `/documents` (unified view of all documents)
+- **Resumes**: `/resumes` (detailed resume/cover letter management)
 - **Reports**: `/reports`
 - **AI Recommendations**: `/predictive-analytics` (click "Recommendations" tab)
 - **Predictive Analytics**: `/predictive-analytics`

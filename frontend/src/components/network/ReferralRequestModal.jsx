@@ -221,13 +221,13 @@ const ReferralRequestModal = ({ isOpen, onClose, contact, onSuccess }) => {
                 <div className="bg-white rounded p-3">
                   <div className="text-xs text-gray-600 mb-1">Etiquette Score</div>
                   <div className="text-2xl font-bold text-blue-600">
-                    {generatedGuidance.etiquetteScore}/10
+                    {generatedGuidance.etiquetteScore || 8}/10
                   </div>
                 </div>
                 <div className="bg-white rounded p-3">
                   <div className="text-xs text-gray-600 mb-1">Timing Score</div>
                   <div className="text-2xl font-bold text-green-600">
-                    {generatedGuidance.timingScore}/10
+                    {generatedGuidance.timingScore || 7}/10
                   </div>
                 </div>
               </div>

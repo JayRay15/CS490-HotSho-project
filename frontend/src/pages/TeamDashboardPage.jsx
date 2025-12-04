@@ -8,7 +8,11 @@ import {
     getTeamMembers,
     inviteMember,
     updateMemberRole,
-    removeMember
+    removeMember,
+    getSharedJobs,
+    addSharedJobComment,
+    addSharedJobReaction,
+    getTeamBenchmarking
 } from '../api/teams';
 import * as accountabilityApi from '../api/accountability';
 import {
@@ -124,6 +128,15 @@ const TeamDashboardPage = () => {
         newMilestone: ''
     });
 
+    // Shared Jobs State
+    const [sharedJobs, setSharedJobs] = useState([]);
+    const [sharedJobsLoading, setSharedJobsLoading] = useState(false);
+    const [newComment, setNewComment] = useState({});
+
+    // Benchmarking State
+    const [benchmarking, setBenchmarking] = useState(null);
+    const [benchmarkingLoading, setBenchmarkingLoading] = useState(false);
+
     useEffect(() => {
         fetchTeamData();
     }, [teamId]);
@@ -150,6 +163,73 @@ const TeamDashboardPage = () => {
             setLoading(false);
         }
     };
+
+    // Fetch shared jobs when tab changes
+    const fetchSharedJobs = async () => {
+        setSharedJobsLoading(true);
+        try {
+            const token = await getToken();
+            setAuthToken(token);
+            const response = await getSharedJobs(teamId);
+            setSharedJobs(response.data || []);
+        } catch (err) {
+            console.error('Error fetching shared jobs:', err);
+        } finally {
+            setSharedJobsLoading(false);
+        }
+    };
+
+    // Fetch benchmarking data
+    const fetchBenchmarking = async () => {
+        setBenchmarkingLoading(true);
+        try {
+            const token = await getToken();
+            setAuthToken(token);
+            const response = await getTeamBenchmarking(teamId);
+            setBenchmarking(response.data);
+        } catch (err) {
+            console.error('Error fetching benchmarking:', err);
+        } finally {
+            setBenchmarkingLoading(false);
+        }
+    };
+
+    // Handle adding a comment to shared job
+    const handleAddComment = async (sharedJobId) => {
+        const content = newComment[sharedJobId];
+        if (!content?.trim()) return;
+
+        try {
+            const token = await getToken();
+            setAuthToken(token);
+            await addSharedJobComment(teamId, sharedJobId, content);
+            setNewComment({ ...newComment, [sharedJobId]: '' });
+            fetchSharedJobs();
+        } catch (err) {
+            console.error('Error adding comment:', err);
+        }
+    };
+
+    // Handle adding a reaction to shared job
+    const handleAddReaction = async (sharedJobId, type) => {
+        try {
+            const token = await getToken();
+            setAuthToken(token);
+            await addSharedJobReaction(teamId, sharedJobId, type);
+            fetchSharedJobs();
+        } catch (err) {
+            console.error('Error adding reaction:', err);
+        }
+    };
+
+    // Fetch data when tab changes
+    useEffect(() => {
+        if (activeTab === 'shared-jobs') {
+            fetchSharedJobs();
+        } else if (activeTab === 'benchmarking') {
+            fetchBenchmarking();
+        }
+    }, [activeTab, teamId]);
 
     const handleInviteMember = async (e) => {
         e.preventDefault();
@@ -489,28 +569,53 @@ const TeamDashboardPage = () => {
 
             {/* Tab Navigation */}
             <div className="border-b border-gray-200 mb-8">
-                <nav className="flex space-x-8">
+                <nav className="flex flex-wrap gap-1 sm:gap-4 overflow-x-auto pb-1">
                     <button
                         onClick={() => setActiveTab('dashboard')}
-                        className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                        className={`py-2 sm:py-4 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm flex items-center gap-1 sm:gap-2 whitespace-nowrap ${
                             activeTab === 'dashboard'
                                 ? 'border-blue-500 text-blue-600'
                                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                         }`}
                     >
-                        <Activity className="w-5 h-5" />
+                        <Activity className="w-4 h-4 sm:w-5 sm:h-5" />
                         Dashboard
                     </button>
                     <button
                         onClick={() => setActiveTab('progress')}
-                        className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                        className={`py-2 sm:py-4 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm flex items-center gap-1 sm:gap-2 whitespace-nowrap ${
                             activeTab === 'progress'
                                 ? 'border-blue-500 text-blue-600'
                                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                         }`}
                     >
-                        <Share2 className="w-5 h-5" />
-                        Progress Sharing
+                        <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <span className="hidden sm:inline">Progress Sharing</span>
+                        <span className="sm:hidden">Progress</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('shared-jobs')}
+                        className={`py-2 sm:py-4 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm flex items-center gap-1 sm:gap-2 whitespace-nowrap ${
+                            activeTab === 'shared-jobs'
+                                ? 'border-blue-500 text-blue-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        }`}
+                    >
+                        <Briefcase className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <span className="hidden sm:inline">Shared Jobs</span>
+                        <span className="sm:hidden">Jobs</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('benchmarking')}
+                        className={`py-2 sm:py-4 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm flex items-center gap-1 sm:gap-2 whitespace-nowrap ${
+                            activeTab === 'benchmarking'
+                                ? 'border-blue-500 text-blue-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        }`}
+                    >
+                        <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <span className="hidden sm:inline">Benchmarking</span>
+                        <span className="sm:hidden">Stats</span>
                     </button>
                 </nav>
             </div>
@@ -985,6 +1090,305 @@ const TeamDashboardPage = () => {
                                     </div>
                                 </div>
                             </div>
+                        </>
+                    )}
+                </div>
+            )}
+
+            {/* Shared Jobs Tab Content */}
+            {activeTab === 'shared-jobs' && (
+                <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                            <Briefcase className="w-5 h-5" />
+                            Shared Job Postings
+                        </h2>
+                        <button
+                            onClick={fetchSharedJobs}
+                            className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                        >
+                            <RefreshCw className="w-4 h-4" />
+                            Refresh
+                        </button>
+                    </div>
+
+                    {sharedJobsLoading ? (
+                        <div className="flex items-center justify-center py-12">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                        </div>
+                    ) : sharedJobs.length === 0 ? (
+                        <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+                            <Briefcase className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                            <h3 className="text-lg font-medium text-gray-900">No shared jobs yet</h3>
+                            <p className="text-gray-600 mt-2">
+                                Team members can share job postings from their Jobs page to collaborate.
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {sharedJobs.map((sharedJob) => (
+                                <div key={sharedJob._id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                                    {/* Job Header */}
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div>
+                                            <h3 className="text-lg font-semibold text-gray-900">
+                                                {sharedJob.jobSnapshot?.title}
+                                            </h3>
+                                            <p className="text-gray-600">{sharedJob.jobSnapshot?.company}</p>
+                                            {sharedJob.jobSnapshot?.location && (
+                                                <p className="text-sm text-gray-500">{sharedJob.jobSnapshot.location}</p>
+                                            )}
+                                        </div>
+                                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                            sharedJob.jobSnapshot?.status === 'Applied' ? 'bg-blue-100 text-blue-700' :
+                                            sharedJob.jobSnapshot?.status === 'Interview' ? 'bg-purple-100 text-purple-700' :
+                                            sharedJob.jobSnapshot?.status === 'Offer' ? 'bg-green-100 text-green-700' :
+                                            'bg-gray-100 text-gray-700'
+                                        }`}>
+                                            {sharedJob.sharedBy?.userName || 'Member'}'s Status: {sharedJob.jobSnapshot?.status || 'Interested'}
+                                        </span>
+                                    </div>
+
+                                    {/* Shared by */}
+                                    <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
+                                        <Share2 className="w-4 h-4" />
+                                        Shared by {sharedJob.sharedBy?.userName} • {new Date(sharedJob.createdAt).toLocaleDateString()}
+                                    </div>
+
+                                    {/* Share Message */}
+                                    {sharedJob.shareMessage && (
+                                        <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                                            <p className="text-gray-700 italic">"{sharedJob.shareMessage}"</p>
+                                        </div>
+                                    )}
+
+                                    {/* Reactions */}
+                                    <div className="flex items-center gap-2 mb-4">
+                                        {['interested', 'recommended', 'applied'].map((type) => {
+                                            const count = sharedJob.reactions?.filter(r => r.type === type).length || 0;
+                                            const emoji = type === 'interested' ? '👀' : type === 'recommended' ? '👍' : '✅';
+                                            return (
+                                                <button
+                                                    key={type}
+                                                    onClick={() => handleAddReaction(sharedJob._id, type)}
+                                                    className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm border transition-colors ${
+                                                        count > 0 ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                                                    }`}
+                                                >
+                                                    {emoji} {type.charAt(0).toUpperCase() + type.slice(1)} {count > 0 && `(${count})`}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* Comments */}
+                                    {sharedJob.comments?.length > 0 && (
+                                        <div className="border-t border-gray-200 pt-4 mb-4">
+                                            <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
+                                                <MessageCircle className="w-4 h-4" />
+                                                Comments ({sharedJob.comments.length})
+                                            </h4>
+                                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                                                {sharedJob.comments.map((comment) => (
+                                                    <div key={comment._id} className="bg-gray-50 rounded-lg p-3">
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <span className="text-sm font-medium text-gray-900">
+                                                                {comment.userName}
+                                                            </span>
+                                                            <span className="text-xs text-gray-500">
+                                                                {new Date(comment.createdAt).toLocaleDateString()}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-sm text-gray-700">{comment.content}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Add Comment */}
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={newComment[sharedJob._id] || ''}
+                                            onChange={(e) => setNewComment({ ...newComment, [sharedJob._id]: e.target.value })}
+                                            placeholder="Add a comment..."
+                                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                            onKeyPress={(e) => e.key === 'Enter' && handleAddComment(sharedJob._id)}
+                                        />
+                                        <button
+                                            onClick={() => handleAddComment(sharedJob._id)}
+                                            disabled={!newComment[sharedJob._id]?.trim()}
+                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                        >
+                                            <Send className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Benchmarking Tab Content */}
+            {activeTab === 'benchmarking' && (
+                <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                            <BarChart3 className="w-5 h-5" />
+                            Team Performance Benchmarking
+                        </h2>
+                        <button
+                            onClick={fetchBenchmarking}
+                            className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                        >
+                            <RefreshCw className="w-4 h-4" />
+                            Refresh
+                        </button>
+                    </div>
+
+                    {benchmarkingLoading ? (
+                        <div className="flex items-center justify-center py-12">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                        </div>
+                    ) : !benchmarking ? (
+                        <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+                            <BarChart3 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                            <h3 className="text-lg font-medium text-gray-900">No benchmarking data yet</h3>
+                            <p className="text-gray-600 mt-2">
+                                Start tracking applications to see how you compare with your team.
+                            </p>
+                        </div>
+                    ) : (
+                        <>
+                            {/* Team Overview */}
+                            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                                <h3 className="text-lg font-semibold text-gray-900 mb-4">Team Overview</h3>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div className="text-center p-4 bg-blue-50 rounded-lg">
+                                        <p className="text-3xl font-bold text-blue-600">{benchmarking.teamSize}</p>
+                                        <p className="text-sm text-gray-600">Team Members</p>
+                                    </div>
+                                    <div className="text-center p-4 bg-green-50 rounded-lg">
+                                        <p className="text-3xl font-bold text-green-600">{benchmarking.teamAverages?.avgApplied || 0}</p>
+                                        <p className="text-sm text-gray-600">Avg Applications</p>
+                                    </div>
+                                    <div className="text-center p-4 bg-purple-50 rounded-lg">
+                                        <p className="text-3xl font-bold text-purple-600">{benchmarking.teamAverages?.avgConversionRate || 0}%</p>
+                                        <p className="text-sm text-gray-600">Avg Conversion Rate</p>
+                                    </div>
+                                    <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                                        <p className="text-3xl font-bold text-yellow-600">{benchmarking.teamAverages?.avgOffers || 0}</p>
+                                        <p className="text-sm text-gray-600">Avg Offers</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Your Position */}
+                            {benchmarking.userStats && (
+                                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Position (Anonymized)</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <h4 className="text-sm font-medium text-gray-600 mb-3">Your Stats</h4>
+                                            <div className="space-y-3">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-gray-700">Applications</span>
+                                                    <span className="font-semibold">{benchmarking.userStats.applied}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-gray-700">Interviews</span>
+                                                    <span className="font-semibold">{benchmarking.userStats.interviewing}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-gray-700">Offers</span>
+                                                    <span className="font-semibold">{benchmarking.userStats.offers}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-gray-700">Conversion Rate</span>
+                                                    <span className="font-semibold">{benchmarking.userStats.conversionRate}%</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <h4 className="text-sm font-medium text-gray-600 mb-3">Your Percentile Rankings</h4>
+                                            {benchmarking.userPercentiles && (
+                                                <div className="space-y-3">
+                                                    {[
+                                                        { label: 'Applications', value: benchmarking.userPercentiles.appliedPercentile },
+                                                        { label: 'Conversion Rate', value: benchmarking.userPercentiles.conversionPercentile },
+                                                        { label: 'Success Rate', value: benchmarking.userPercentiles.successPercentile },
+                                                    ].map((item) => (
+                                                        <div key={item.label}>
+                                                            <div className="flex justify-between text-sm mb-1">
+                                                                <span className="text-gray-600">{item.label}</span>
+                                                                <span className="font-medium">{item.value}th percentile</span>
+                                                            </div>
+                                                            <div className="h-2 bg-gray-200 rounded-full">
+                                                                <div 
+                                                                    className={`h-full rounded-full ${
+                                                                        item.value >= 75 ? 'bg-green-500' : 
+                                                                        item.value >= 50 ? 'bg-blue-500' : 
+                                                                        item.value >= 25 ? 'bg-yellow-500' : 'bg-red-500'
+                                                                    }`}
+                                                                    style={{ width: `${item.value}%` }}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Top Performers (Anonymized) */}
+                            {benchmarking.topPerformers && (
+                                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                                        <Trophy className="w-5 h-5 text-yellow-500" />
+                                        Top Performers (Anonymized)
+                                    </h3>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <div className="text-center p-4 border border-gray-200 rounded-lg">
+                                            <p className="text-2xl font-bold text-gray-900">{benchmarking.topPerformers.mostApplications}</p>
+                                            <p className="text-sm text-gray-500">Most Applications</p>
+                                        </div>
+                                        <div className="text-center p-4 border border-gray-200 rounded-lg">
+                                            <p className="text-2xl font-bold text-gray-900">{benchmarking.topPerformers.mostInterviews}</p>
+                                            <p className="text-sm text-gray-500">Most Interviews</p>
+                                        </div>
+                                        <div className="text-center p-4 border border-gray-200 rounded-lg">
+                                            <p className="text-2xl font-bold text-gray-900">{benchmarking.topPerformers.mostOffers}</p>
+                                            <p className="text-sm text-gray-500">Most Offers</p>
+                                        </div>
+                                        <div className="text-center p-4 border border-gray-200 rounded-lg">
+                                            <p className="text-2xl font-bold text-gray-900">{benchmarking.topPerformers.highestConversion}%</p>
+                                            <p className="text-sm text-gray-500">Best Conversion</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Insights */}
+                            {benchmarking.insights && benchmarking.insights.length > 0 && (
+                                <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200 p-6">
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                                        <Sparkles className="w-5 h-5 text-blue-500" />
+                                        Personalized Insights
+                                    </h3>
+                                    <div className="space-y-2">
+                                        {benchmarking.insights.map((insight, idx) => (
+                                            <div key={idx} className="flex items-start gap-2 text-gray-700">
+                                                <span className="text-lg">{insight.charAt(0)}</span>
+                                                <p>{insight.substring(2)}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </>
                     )}
                 </div>

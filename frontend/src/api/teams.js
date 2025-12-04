@@ -160,6 +160,66 @@ export const getMyInvitations = async () => {
     return response.data;
 };
 
+// ===== SHARED JOBS =====
+
+/**
+ * Share a job with the team
+ */
+export const shareJobWithTeam = async (teamId, jobData) => {
+    const response = await api.post(`/api/teams/${teamId}/shared-jobs`, jobData);
+    return response.data;
+};
+
+/**
+ * Get shared jobs for a team
+ */
+export const getSharedJobs = async (teamId, params = {}) => {
+    const response = await api.get(`/api/teams/${teamId}/shared-jobs`, { params });
+    return response.data;
+};
+
+/**
+ * Add comment to shared job
+ */
+export const addSharedJobComment = async (teamId, sharedJobId, content) => {
+    const response = await api.post(`/api/teams/${teamId}/shared-jobs/${sharedJobId}/comments`, { content });
+    return response.data;
+};
+
+/**
+ * Delete comment from shared job
+ */
+export const deleteSharedJobComment = async (teamId, sharedJobId, commentId) => {
+    const response = await api.delete(`/api/teams/${teamId}/shared-jobs/${sharedJobId}/comments/${commentId}`);
+    return response.data;
+};
+
+/**
+ * Add reaction to shared job
+ */
+export const addSharedJobReaction = async (teamId, sharedJobId, type) => {
+    const response = await api.post(`/api/teams/${teamId}/shared-jobs/${sharedJobId}/reactions`, { type });
+    return response.data;
+};
+
+/**
+ * Update shared job status
+ */
+export const updateSharedJobStatus = async (teamId, sharedJobId, status) => {
+    const response = await api.put(`/api/teams/${teamId}/shared-jobs/${sharedJobId}/status`, { status });
+    return response.data;
+};
+
+// ===== TEAM BENCHMARKING =====
+
+/**
+ * Get team benchmarking data
+ */
+export const getTeamBenchmarking = async (teamId) => {
+    const response = await api.get(`/api/teams/${teamId}/benchmarking`);
+    return response.data;
+};
+
 export default {
     createTeam,
     getMyTeams,
@@ -179,4 +239,11 @@ export default {
     cancelSubscription,
     getSubscriptionUsage,
     applyCoupon,
+    shareJobWithTeam,
+    getSharedJobs,
+    addSharedJobComment,
+    deleteSharedJobComment,
+    addSharedJobReaction,
+    updateSharedJobStatus,
+    getTeamBenchmarking,
 };

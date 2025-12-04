@@ -24,6 +24,15 @@ import {
     applyCoupon,
 } from "../controllers/teamSubscriptionController.js";
 import {
+    shareJobWithTeam,
+    getSharedJobs,
+    addComment,
+    deleteComment,
+    addReaction,
+    getTeamBenchmarking,
+    updateSharedJobStatus,
+} from "../controllers/sharedJobController.js";
+import {
     verifyTeamMembership,
     requirePermission,
     requireTeamOwner,
@@ -170,6 +179,66 @@ router.post(
     verifyTeamMembership,
     requireTeamOwner,
     applyCoupon
+);
+
+// ===== SHARED JOBS ROUTES =====
+
+// Share a job with the team
+router.post(
+    "/:teamId/shared-jobs",
+    verifyTeamMembership,
+    verifyTeamActive,
+    shareJobWithTeam
+);
+
+// Get all shared jobs for a team
+router.get(
+    "/:teamId/shared-jobs",
+    verifyTeamMembership,
+    verifyTeamActive,
+    getSharedJobs
+);
+
+// Add comment to shared job
+router.post(
+    "/:teamId/shared-jobs/:sharedJobId/comments",
+    verifyTeamMembership,
+    verifyTeamActive,
+    addComment
+);
+
+// Delete comment from shared job
+router.delete(
+    "/:teamId/shared-jobs/:sharedJobId/comments/:commentId",
+    verifyTeamMembership,
+    verifyTeamActive,
+    deleteComment
+);
+
+// Add reaction to shared job
+router.post(
+    "/:teamId/shared-jobs/:sharedJobId/reactions",
+    verifyTeamMembership,
+    verifyTeamActive,
+    addReaction
+);
+
+// Update shared job status
+router.put(
+    "/:teamId/shared-jobs/:sharedJobId/status",
+    verifyTeamMembership,
+    verifyTeamActive,
+    updateSharedJobStatus
+);
+
+// ===== TEAM BENCHMARKING ROUTES =====
+
+// Get team benchmarking/comparison data
+router.get(
+    "/:teamId/benchmarking",
+    verifyTeamMembership,
+    verifyTeamActive,
+    getTeamBenchmarking
 );
 
 export default router;

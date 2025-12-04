@@ -29,6 +29,7 @@ import BulkStatusUpdate from "../../components/BulkStatusUpdate";
 import CoverLetterGeneratorModal from "../../components/CoverLetterGeneratorModal";
 import InterviewChecklist from "../../components/InterviewChecklist";
 import FollowUpTemplates from "../../components/FollowUpTemplates";
+import ShareJobModal from "../../components/ShareJobModal";
 import * as interviewsAPI from "../../api/interviews";
 import * as statusAPI from "../../api/applicationStatus";
 
@@ -123,6 +124,10 @@ export default function Jobs() {
   // Follow-Up Templates state
   const [showFollowUpTemplates, setShowFollowUpTemplates] = useState(false);
   const [selectedJobForFollowUp, setSelectedJobForFollowUp] = useState(null);
+
+  // Share Job with Team state
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [selectedJobForShare, setSelectedJobForShare] = useState(null);
 
   // Form state for adding/editing jobs
   const [formData, setFormData] = useState({
@@ -3115,6 +3120,17 @@ export default function Jobs() {
                 >
                   🎯 Interview Insights
                 </Button>
+                {/* Share with Team Button */}
+                <Button
+                  onClick={() => {
+                    setSelectedJobForShare(viewingJob);
+                    setShowShareModal(true);
+                  }}
+                  variant="secondary"
+                  className="bg-teal-100 hover:bg-teal-200 text-teal-700"
+                >
+                  👥 Share with Team
+                </Button>
                 {viewingJob.archived ? (
                   <Button
                     onClick={() => {
@@ -3790,6 +3806,21 @@ export default function Jobs() {
             />
           </div>
         </div>
+      )}
+
+      {/* Share Job with Team Modal */}
+      {showShareModal && selectedJobForShare && (
+        <ShareJobModal
+          job={selectedJobForShare}
+          onClose={() => {
+            setShowShareModal(false);
+            setSelectedJobForShare(null);
+          }}
+          onSuccess={() => {
+            setSuccessMessage("Job shared with team successfully!");
+            setTimeout(() => setSuccessMessage(null), 3000);
+          }}
+        />
       )}
     </div>
   );

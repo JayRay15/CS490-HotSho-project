@@ -221,10 +221,10 @@ export default function InterviewCoaching() {
             </div>
 
             {/* Tab Navigation */}
-            <div className="flex space-x-1 mb-6 border-b border-gray-200">
+            <div className="flex flex-wrap gap-1 sm:gap-2 mb-6 border-b border-gray-200 overflow-x-auto">
                 <button
                     onClick={() => setActiveTab('practice')}
-                    className={`px-4 py-2 font-medium transition-colors ${activeTab === 'practice'
+                    className={`px-3 sm:px-4 py-2 font-medium text-sm sm:text-base transition-colors whitespace-nowrap ${activeTab === 'practice'
                             ? 'border-b-2 border-blue-600 text-blue-600'
                             : 'text-gray-600 hover:text-gray-900'
                         }`}
@@ -233,7 +233,7 @@ export default function InterviewCoaching() {
                 </button>
                 <button
                     onClick={() => setActiveTab('history')}
-                    className={`px-4 py-2 font-medium transition-colors ${activeTab === 'history'
+                    className={`px-3 sm:px-4 py-2 font-medium text-sm sm:text-base transition-colors whitespace-nowrap ${activeTab === 'history'
                             ? 'border-b-2 border-blue-600 text-blue-600'
                             : 'text-gray-600 hover:text-gray-900'
                         }`}
@@ -242,7 +242,7 @@ export default function InterviewCoaching() {
                 </button>
                 <button
                     onClick={() => setActiveTab('progress')}
-                    className={`px-4 py-2 font-medium transition-colors ${activeTab === 'progress'
+                    className={`px-3 sm:px-4 py-2 font-medium text-sm sm:text-base transition-colors whitespace-nowrap ${activeTab === 'progress'
                             ? 'border-b-2 border-blue-600 text-blue-600'
                             : 'text-gray-600 hover:text-gray-900'
                         }`}

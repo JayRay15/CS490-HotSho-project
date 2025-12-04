@@ -865,58 +865,62 @@ const TechnicalInterviewPrep = () => {
 
         {/* Tabs */}
         <div className="mb-6 border-b border-gray-200">
-          <nav className="flex space-x-8">
+          <nav className="flex flex-wrap gap-1 sm:gap-4 overflow-x-auto pb-1">
             <button
               onClick={() => setActiveTab('coding')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${
+              className={`py-2 sm:py-4 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm flex items-center whitespace-nowrap ${
                 activeTab === 'coding'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              <CodeBracketIcon className="h-5 w-5 mr-2" />
-              Coding Challenges
+              <CodeBracketIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Coding Challenges</span>
+              <span className="sm:hidden">Coding</span>
             </button>
             
             <button
               onClick={() => setActiveTab('system-design')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${
+              className={`py-2 sm:py-4 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm flex items-center whitespace-nowrap ${
                 activeTab === 'system-design'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              <ServerIcon className="h-5 w-5 mr-2" />
-              System Design
+              <ServerIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">System Design</span>
+              <span className="sm:hidden">System</span>
             </button>
             
             <button
               onClick={() => setActiveTab('case-studies')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${
+              className={`py-2 sm:py-4 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm flex items-center whitespace-nowrap ${
                 activeTab === 'case-studies'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              <DocumentTextIcon className="h-5 w-5 mr-2" />
-              Case Studies
+              <DocumentTextIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Case Studies</span>
+              <span className="sm:hidden">Cases</span>
             </button>
             
             <button
               onClick={() => setActiveTab('bookmarks')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${
+              className={`py-2 sm:py-4 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm flex items-center whitespace-nowrap ${
                 activeTab === 'bookmarks'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              <BookmarkIcon className="h-5 w-5 mr-2" />
-              Bookmarked
+              <BookmarkIcon className="h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2" />
+              <span className="hidden sm:inline">Bookmarked</span>
+              <span className="sm:hidden">Saved</span>
             </button>
             
             <button
               onClick={() => navigate('/prep/performance')}
-              className="py-4 px-1 border-b-2 border-transparent font-medium text-sm flex items-center text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              className="py-2 sm:py-4 px-2 sm:px-3 border-b-2 border-transparent font-medium text-xs sm:text-sm flex items-center text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap"
             >
               <ChartBarIcon className="h-5 w-5 mr-2" />
               Performance
