@@ -884,15 +884,33 @@ function analyzeMockToRealImpact(mockInterviews, realInterviews) {
 function calculateOverallImprovement(quarterlyPerformance) {
   if (quarterlyPerformance.length < 2) return 0;
   
-  const first = parseFloat(quarterlyPerformance[0].realSuccessRate) || 0;
-  const last = parseFloat(quarterlyPerformance[quarterlyPerformance.length - 1].realSuccessRate) || 0;
+  // Find first quarter with actual interviews for more meaningful comparison
+  let firstIndex = 0;
+  for (let i = 0; i < quarterlyPerformance.length; i++) {
+    if (quarterlyPerformance[i].realInterviews > 0) {
+      firstIndex = i;
+      break;
+    }
+  }
   
-  // If both are 0, return 0 improvement
-  if (first === 0 && last === 0) return 0;
-  // If first is 0 but last is positive, show the positive percentage
-  if (first === 0) return last;
+  // Find last quarter with actual interviews
+  let lastIndex = quarterlyPerformance.length - 1;
+  for (let i = quarterlyPerformance.length - 1; i >= 0; i--) {
+    if (quarterlyPerformance[i].realInterviews > 0) {
+      lastIndex = i;
+      break;
+    }
+  }
   
-  return ((last - first) / first * 100).toFixed(1);
+  // If same quarter or no interviews at all, return 0
+  if (firstIndex >= lastIndex) return 0;
+  
+  const first = parseFloat(quarterlyPerformance[firstIndex].realSuccessRate) || 0;
+  const last = parseFloat(quarterlyPerformance[lastIndex].realSuccessRate) || 0;
+  
+  // Return percentage points difference (more intuitive for success rate improvement)
+  // e.g., going from 50% to 60% shows as +10, not +20%
+  return (last - first).toFixed(1);
 }
 
 function identifyStrengthAreas(interviews, mockInterviews) {

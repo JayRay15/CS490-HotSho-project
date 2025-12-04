@@ -313,11 +313,24 @@ async function trackImprovement(userId, completedInterviews) {
   const recentAvgRating = calculateAverageRating(recent);
   const olderAvgRating = calculateAverageRating(older);
 
-  // Calculate trend
+  // Calculate trend and improvement score
+  // Only calculate meaningful improvement when we have data in both periods
   let trend = 'stable';
-  if (recent.length >= 2 && older.length >= 2) {
-    if (recentSuccess > olderSuccess + 10) trend = 'improving';
-    else if (recentSuccess < olderSuccess - 10) trend = 'declining';
+  let improvementScore = 0;
+  
+  if (recent.length > 0 && older.length > 0) {
+    // Both periods have data - calculate actual improvement
+    improvementScore = recentSuccess - olderSuccess;
+    if (improvementScore > 10) trend = 'improving';
+    else if (improvementScore < -10) trend = 'declining';
+  } else if (recent.length > 0 && older.length === 0) {
+    // Only recent data - use recent success rate as the baseline
+    improvementScore = 0; // No comparison baseline, show 0 instead of misleading value
+    trend = 'stable';
+  } else if (recent.length === 0 && older.length > 0) {
+    // Only older data - no recent activity
+    improvementScore = 0;
+    trend = 'stable';
   }
 
   return {
@@ -335,7 +348,7 @@ async function trackImprovement(userId, completedInterviews) {
       period: '3-6 months ago',
     },
     trend,
-    improvementScore: recentSuccess - olderSuccess,
+    improvementScore,
     practiceImpact: mockSessions.length > 0 ? 
       `Completed ${mockSessions.length} mock interview${mockSessions.length > 1 ? 's' : ''}` : 
       'No mock interviews completed',
