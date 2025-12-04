@@ -285,14 +285,15 @@ export const discoverContacts = async (searchParams = {}) => {
   // Simulate API delay
   await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 400));
 
-  // Generate a pool of contacts
+  // Generate a pool of contacts - DON'T pass company filter to generateMockContact
+  // so we get a variety of companies to filter from
   const totalContacts = 48; // Simulated total
   const contacts = [];
 
   for (let i = 0; i < totalContacts; i++) {
     const contact = generateMockContact({
       industry,
-      company,
+      // Don't pass company here - we'll filter after
       role,
       location,
       connectionType,
@@ -311,6 +312,14 @@ export const discoverContacts = async (searchParams = {}) => {
       contact.jobTitle.toLowerCase().includes(searchLower) ||
       contact.industry.toLowerCase().includes(searchLower) ||
       contact.interests.some(interest => interest.toLowerCase().includes(searchLower))
+    );
+  }
+
+  // Filter by company if provided (case-insensitive partial match)
+  if (company) {
+    const companyLower = company.toLowerCase();
+    filteredContacts = filteredContacts.filter(contact =>
+      contact.company.toLowerCase().includes(companyLower)
     );
   }
 

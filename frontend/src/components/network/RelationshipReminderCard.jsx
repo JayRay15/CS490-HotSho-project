@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Card from '../Card';
 import Button from '../Button';
+import { Copy, CheckCircle, Mail } from 'lucide-react';
 
 const priorityColors = {
   High: 'bg-red-100 text-red-800',
@@ -30,9 +31,11 @@ export default function RelationshipReminderCard({
 }) {
   const [showDetails, setShowDetails] = useState(false);
   const [showCompleteForm, setShowCompleteForm] = useState(false);
+  const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [notes, setNotes] = useState('');
   const [logActivity, setLogActivity] = useState(true);
   const [showSnoozeOptions, setShowSnoozeOptions] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const formatDate = (date) => {
     const d = new Date(date);
@@ -126,8 +129,142 @@ export default function RelationshipReminderCard({
       {/* Suggested Message */}
       {reminder.suggestedMessage && showDetails && (
         <div className="mb-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-          <div className="text-xs font-medium text-blue-900 mb-2">Suggested Message</div>
-          <p className="text-sm text-gray-700">{reminder.suggestedMessage}</p>
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-xs font-medium text-blue-900">Suggested Check-in Message</div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(reminder.suggestedMessage);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+                className="flex items-center gap-1 text-xs text-blue-700 hover:text-blue-900 transition"
+              >
+                {copied ? <CheckCircle size={14} /> : <Copy size={14} />}
+                {copied ? 'Copied!' : 'Copy'}
+              </button>
+              {contact?.email && (
+                <button
+                  onClick={() => {
+                    const subject = `Checking in - ${reminder.reminderType}`;
+                    const mailtoLink = `mailto:${contact.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(reminder.suggestedMessage)}`;
+                    window.open(mailtoLink, '_blank');
+                  }}
+                  className="flex items-center gap-1 text-xs text-blue-700 hover:text-blue-900 transition"
+                >
+                  <Mail size={14} />
+                  Send Email
+                </button>
+              )}
+            </div>
+          </div>
+          <p className="text-sm text-gray-700 whitespace-pre-wrap">{reminder.suggestedMessage}</p>
+        </div>
+      )}
+
+      {/* Send Check-in Modal */}
+      {showCheckInModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Send Check-in to {contact ? `${contact.firstName} ${contact.lastName}` : 'Contact'}
+                </h3>
+                <button
+                  onClick={() => setShowCheckInModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-2xl">{icon}</span>
+                  <span className="text-sm font-medium text-gray-700">{reminder.reminderType}</span>
+                </div>
+                {contact?.email && (
+                  <div className="text-sm text-gray-600">
+                    <span className="font-medium">Email:</span> {contact.email}
+                  </div>
+                )}
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Personalized Message
+                </label>
+                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                    {reminder.suggestedMessage || `Hi ${contact?.firstName || 'there'},\n\nI hope this message finds you well! I wanted to reach out and check in to see how things are going.\n\nWould love to catch up sometime soon.\n\nBest regards`}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                {/* Primary Actions */}
+                <div className="flex gap-2">
+                  <Button
+                    className="flex-1"
+                    onClick={() => {
+                      const message = reminder.suggestedMessage || `Hi ${contact?.firstName || 'there'},\n\nI hope this message finds you well! I wanted to reach out and check in to see how things are going.\n\nWould love to catch up sometime soon.\n\nBest regards`;
+                      navigator.clipboard.writeText(message);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }}
+                  >
+                    {copied ? '✓ Copied to Clipboard!' : 'Copy Message'}
+                  </Button>
+                  {contact?.email && (
+                    <Button
+                      className="flex-1"
+                      variant="secondary"
+                      onClick={() => {
+                        const message = reminder.suggestedMessage || `Hi ${contact?.firstName || 'there'},\n\nI hope this message finds you well! I wanted to reach out and check in to see how things are going.\n\nWould love to catch up sometime soon.\n\nBest regards`;
+                        const subject = reminder.reminderType === 'Birthday' 
+                          ? `Happy Birthday, ${contact.firstName}!`
+                          : reminder.reminderType === 'Congratulations'
+                          ? `Congratulations, ${contact.firstName}!`
+                          : `Checking in - Hope you're doing well!`;
+                        const mailtoLink = `mailto:${contact.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
+                        window.open(mailtoLink, '_blank');
+                      }}
+                    >
+                      <Mail size={16} className="mr-2" />
+                      Open in Email
+                    </Button>
+                  )}
+                </div>
+
+                {/* LinkedIn Option */}
+                {contact?.linkedinUrl && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      window.open(contact.linkedinUrl, '_blank');
+                    }}
+                  >
+                    Open LinkedIn Profile
+                  </Button>
+                )}
+
+                {/* Mark as Complete */}
+                <div className="border-t pt-3 mt-2">
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      setShowCheckInModal(false);
+                      setShowCompleteForm(true);
+                    }}
+                  >
+                    Mark Check-in as Complete
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -196,6 +333,13 @@ export default function RelationshipReminderCard({
       {/* Actions */}
       {reminder.status === 'Pending' && (
         <div className="flex flex-wrap gap-2">
+          <Button 
+            size="sm" 
+            onClick={() => setShowCheckInModal(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            Send Check-in
+          </Button>
           <Button 
             size="sm" 
             onClick={() => setShowCompleteForm(true)}

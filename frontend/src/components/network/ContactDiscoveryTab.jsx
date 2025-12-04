@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Search, Filter, Users, Building2, MapPin, GraduationCap, Sparkles, 
          ExternalLink, UserPlus, ChevronDown, ChevronUp, Star, Briefcase,
-         Globe, Award, TrendingUp, RefreshCw, CheckCircle, X, BookOpen, Database } from 'lucide-react';
+         Globe, Award, TrendingUp, RefreshCw, CheckCircle, X, BookOpen, Database, MessageCircle } from 'lucide-react';
 import { discoverContacts, getDiscoveryFilters, getSuggestedContacts, createContact, trackDiscoveryAction } from '../../api/contactApi';
 import { toast } from 'react-hot-toast';
 import Button from '../Button';
+import OutreachModal from './OutreachModal';
 
 const ConnectionTypeBadge = ({ type }) => {
   const colors = {
@@ -42,7 +43,7 @@ const SourceBadge = ({ source }) => {
   );
 };
 
-const DiscoveredContactCard = ({ contact, onAddToNetwork, isAdding }) => {
+const DiscoveredContactCard = ({ contact, onAddToNetwork, onInitiateOutreach, isAdding }) => {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -208,13 +209,23 @@ const DiscoveredContactCard = ({ contact, onAddToNetwork, isAdding }) => {
             </a>
           )}
           <Button
+            onClick={() => onInitiateOutreach(contact)}
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-1 px-3 py-2 whitespace-nowrap"
+            title="Initiate Outreach"
+          >
+            <MessageCircle size={16} />
+            <span className="hidden sm:inline">Outreach</span>
+          </Button>
+          <Button
             onClick={() => onAddToNetwork(contact)}
             disabled={isAdding}
             size="sm"
             className="flex items-center gap-2 px-4 py-2 whitespace-nowrap"
           >
             <UserPlus size={16} />
-            <span className="truncate">Add to Network</span>
+            <span className="truncate">Add</span>
           </Button>
         </div>
       </div>
@@ -231,12 +242,17 @@ export default function ContactDiscoveryTab({ onContactAdded }) {
   const [addingContact, setAddingContact] = useState(null);
   const [successBanner, setSuccessBanner] = useState(null);
   
+  // Outreach Modal state
+  const [showOutreachModal, setShowOutreachModal] = useState(false);
+  const [selectedContactForOutreach, setSelectedContactForOutreach] = useState(null);
+  
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIndustry, setSelectedIndustry] = useState('');
   const [selectedConnectionType, setSelectedConnectionType] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
   const [selectedUniversity, setSelectedUniversity] = useState('');
+  const [selectedCompany, setSelectedCompany] = useState('');
   const [selectedSource, setSelectedSource] = useState('all'); // 'all', 'mock', 'external'
   const [showFilters, setShowFilters] = useState(false);
   const [externalSources, setExternalSources] = useState([]); // Track which external APIs returned data
@@ -289,6 +305,7 @@ export default function ContactDiscoveryTab({ onContactAdded }) {
       if (selectedConnectionType) params.connectionType = selectedConnectionType;
       if (selectedLocation) params.location = selectedLocation;
       if (selectedUniversity) params.university = selectedUniversity;
+      if (selectedCompany) params.company = selectedCompany;
 
       const response = await discoverContacts(params);
       setContacts(response.data?.data || []);
@@ -365,12 +382,18 @@ export default function ContactDiscoveryTab({ onContactAdded }) {
     handleSearch(false);
   };
 
+  const handleInitiateOutreach = (contact) => {
+    setSelectedContactForOutreach(contact);
+    setShowOutreachModal(true);
+  };
+
   const clearFilters = () => {
     setSearchQuery('');
     setSelectedIndustry('');
     setSelectedConnectionType('');
     setSelectedLocation('');
     setSelectedUniversity('');
+    setSelectedCompany('');
     setSelectedSource('all');
     setExternalSources([]);
     setViewMode('suggestions');
@@ -448,9 +471,9 @@ export default function ContactDiscoveryTab({ onContactAdded }) {
             >
               <Filter size={18} />
               Filters
-              {(selectedIndustry || selectedConnectionType || selectedLocation || selectedUniversity) && (
+              {(selectedIndustry || selectedConnectionType || selectedLocation || selectedUniversity || selectedCompany) && (
                 <span className="ml-1 w-5 h-5 bg-primary-600 text-white text-xs rounded-full flex items-center justify-center">
-                  {[selectedIndustry, selectedConnectionType, selectedLocation, selectedUniversity].filter(Boolean).length}
+                  {[selectedIndustry, selectedConnectionType, selectedLocation, selectedUniversity, selectedCompany].filter(Boolean).length}
                 </span>
               )}
             </button>
@@ -463,6 +486,17 @@ export default function ContactDiscoveryTab({ onContactAdded }) {
         {/* Expanded Filters */}
         {showFilters && filters && (
           <div className="mt-4 pt-4 border-t grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Company</label>
+              <input
+                type="text"
+                placeholder="Type company name..."
+                value={selectedCompany}
+                onChange={(e) => setSelectedCompany(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
               <select
@@ -627,6 +661,7 @@ export default function ContactDiscoveryTab({ onContactAdded }) {
                 key={contact.id}
                 contact={contact}
                 onAddToNetwork={handleAddToNetwork}
+                onInitiateOutreach={handleInitiateOutreach}
                 isAdding={addingContact === contact.id}
               />
             ))}
@@ -664,6 +699,18 @@ export default function ContactDiscoveryTab({ onContactAdded }) {
           </div>
         </div>
       </div>
+
+      {/* Outreach Modal */}
+      {showOutreachModal && selectedContactForOutreach && (
+        <OutreachModal
+          isOpen={showOutreachModal}
+          onClose={() => {
+            setShowOutreachModal(false);
+            setSelectedContactForOutreach(null);
+          }}
+          contact={selectedContactForOutreach}
+        />
+      )}
     </div>
   );
 }
