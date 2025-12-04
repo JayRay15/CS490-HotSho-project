@@ -52,6 +52,7 @@ import InterviewPredictionDetail from "./pages/InterviewPredictionDetail.jsx";
 import ReportsPage from "./pages/ReportsPage.jsx";
 import SharedReportView from "./pages/SharedReportView.jsx";
 import MarketIntelligenceDashboard from "./components/MarketIntelligenceDashboard.jsx";
+import DocumentManagementPage from "./pages/DocumentManagementPage.jsx";
 
 import InterviewsPage from "./pages/auth/InterviewsPage.jsx";
 import InterviewAnalytics from "./pages/auth/InterviewAnalytics.jsx";
@@ -128,6 +129,7 @@ function App() {
           <Route path="/interview-predictions/:interviewId" element={<ProtectedRoute><InterviewPredictionDetail /></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
           <Route path="/reports/shared/:token" element={<SharedReportView />} />
+          <Route path="/documents" element={<ProtectedRoute><DocumentManagementPage /></ProtectedRoute>} />
           <Route path="/market-intelligence" element={<ProtectedRoute><MarketIntelligenceDashboard /></ProtectedRoute>} />
           <Route path="/my-performance" element={<ProtectedRoute><MyPerformancePage /></ProtectedRoute>} />
           <Route path="/performance-dashboard" element={<Navigate to="/my-performance" replace />} />
