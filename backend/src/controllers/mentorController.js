@@ -251,6 +251,77 @@ export const rejectMentorInvitation = async (req, res) => {
 };
 
 /**
+ * Accept mentor invitation by token (for new users who signed up via invitation link)
+ * POST /api/mentors/accept-token/:token
+ */
+export const acceptMentorInvitationByToken = async (req, res) => {
+  try {
+    const clerkUserId = req.auth.userId;
+    const { token } = req.params;
+
+    // Get MongoDB user by auth0Id
+    const currentUser = await User.findOne({ auth0Id: clerkUserId });
+    if (!currentUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User profile not found",
+      });
+    }
+
+    // Find relationship by invitation token
+    const relationship = await MentorRelationship.findOne({ invitationToken: token });
+
+    if (!relationship) {
+      return res.status(404).json({
+        success: false,
+        message: "Invitation not found or already used",
+      });
+    }
+
+    if (relationship.status !== "pending") {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot accept invitation with status: ${relationship.status}`,
+      });
+    }
+
+    // Verify the accepting user's email matches the invitation
+    if (currentUser.email.toLowerCase() !== relationship.mentorEmail.toLowerCase()) {
+      return res.status(403).json({
+        success: false,
+        message: "This invitation was sent to a different email address",
+      });
+    }
+
+    // Update relationship
+    relationship.mentorId = currentUser._id;
+    relationship.status = "accepted";
+    relationship.acceptedAt = new Date();
+    relationship.invitationToken = null; // Clear token after use
+    await relationship.save();
+
+    // Send confirmation email to mentee
+    const menteeUser = await User.findById(relationship.menteeId);
+    if (menteeUser) {
+      await sendMentorAcceptedEmail(menteeUser.email, currentUser._id);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Mentor invitation accepted successfully",
+      data: relationship,
+    });
+  } catch (error) {
+    console.error("Error accepting mentor invitation by token:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to accept mentor invitation",
+      error: error.message,
+    });
+  }
+};
+
+/**
  * Get all mentors for a mentee
  * GET /api/mentors/my-mentors
  */

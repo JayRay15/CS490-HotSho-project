@@ -14,11 +14,47 @@ export default function MentorDashboard() {
     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
     const [activeTab, setActiveTab] = useState("mentors"); // 'mentors', 'mentees', 'feedback', 'recommendations'
     const [userRole, setUserRole] = useState(null); // 'mentee' or 'mentor' or both
+    const [tokenAcceptMessage, setTokenAcceptMessage] = useState("");
 
     const [mentorDashboardData, setMentorDashboardData] = useState(null);
     const [selectedMenteeId, setSelectedMenteeId] = useState(null);
     const [pendingInvitations, setPendingInvitations] = useState({ sent: [], received: [] });
     const [messagingModal, setMessagingModal] = useState({ isOpen: false, relationshipId: null, recipientName: "", recipientId: null });
+
+    // Handle pending mentor token from signup
+    useEffect(() => {
+        const pendingToken = localStorage.getItem("pendingMentorToken");
+        if (pendingToken) {
+            acceptInvitationByToken(pendingToken);
+            localStorage.removeItem("pendingMentorToken");
+        }
+    }, []);
+
+    const acceptInvitationByToken = async (token) => {
+        try {
+            const authToken = localStorage.getItem("token");
+            const res = await fetch(`/api/mentors/accept-token/${token}`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+                },
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setTokenAcceptMessage("🎉 Mentor invitation accepted successfully! You are now connected.");
+                setActiveTab("mentees");
+                fetchDashboardData();
+            } else {
+                setTokenAcceptMessage(data.message || "Could not accept invitation automatically. Please check your pending invitations.");
+                setActiveTab("pending");
+            }
+        } catch (e) {
+            console.error("Token accept error:", e);
+            setTokenAcceptMessage("Could not accept invitation automatically. Please check your pending invitations.");
+            setActiveTab("pending");
+        }
+    };
 
     useEffect(() => {
         fetchDashboardData();
@@ -264,6 +300,23 @@ export default function MentorDashboard() {
                         + Invite Mentor
                     </button>
                 </div>
+
+                {/* Token acceptance message */}
+                {tokenAcceptMessage && (
+                    <div className={`mb-4 p-4 rounded-lg flex items-center justify-between ${
+                        tokenAcceptMessage.includes("successfully") 
+                            ? "bg-green-50 border border-green-200 text-green-700" 
+                            : "bg-yellow-50 border border-yellow-200 text-yellow-700"
+                    }`}>
+                        <span>{tokenAcceptMessage}</span>
+                        <button
+                            onClick={() => setTokenAcceptMessage("")}
+                            className="ml-2 font-bold hover:opacity-70"
+                        >
+                            ×
+                        </button>
+                    </div>
+                )}
 
                 {error && (
                     <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
