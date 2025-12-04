@@ -486,17 +486,26 @@ This guide provides step-by-step navigation instructions for each Demo Action in
 ### Demo Action 3.4.1: View salary analytics and progression tracking, verify market comparison and growth visualization
 
 **Navigation Steps:**
-1. Navigate to **Salary Benchmarks** page at `/salary-benchmarks`
-2. View salary analytics dashboard showing:
-   - Salary progression over time (if you have multiple offers/applications)
-   - Market salary comparisons for roles
-   - Compensation trends
-   - Location-based salary data
-3. For a specific job, navigate to `/salary-research/:jobId` to see:
-   - Detailed salary research for that role
-   - Market comparisons
-   - Negotiation data
-4. For goal tracking:
+1. For salary research and analytics for a specific job:
+   - Navigate to a **Job Application** at `/jobs`
+   - Click on a job to open details
+   - Look for **"Salary Research"** button or navigate directly to `/salary-research/:jobId`
+   - View detailed salary research for that role showing:
+     - Market salary comparisons for the role
+     - Location-based salary data
+     - Compensation trends
+     - Market comparisons
+     - Negotiation data
+2. For salary negotiation preparation (which includes market data):
+   - Navigate to a job with an offer at `/jobs`
+   - Click on the job to open details
+   - Navigate to `/salary-negotiation/:jobId`
+   - View salary negotiation prep showing:
+     - Market salary data for role and location
+     - Salary range comparison
+     - Negotiation talking points
+     - Total compensation evaluation framework
+3. For goal tracking:
    - Navigate to **Goals** page at `/goals`
    - View goal tracking dashboard showing:
      - All goals (active, completed, archived)
@@ -509,13 +518,15 @@ This guide provides step-by-step navigation instructions for each Demo Action in
      - Goal completion rates
      - Progress bars or visual indicators
      - Milestone achievements
-5. Check:
+4. Check:
    - Data accuracy
    - Market data sources are cited
    - Visualizations are clear and informative
-6. Verify growth visualization shows progression clearly
+5. Verify growth visualization shows progression clearly
 
-**Status:** ✅ **IMPLEMENTED** - Salary analytics and goal tracking are implemented
+**Status:** ✅ **IMPLEMENTED** - Salary research and negotiation prep are implemented. Salary analytics are accessed through individual job salary research pages.
+
+**Note:** General salary benchmarks page (`/salary-benchmarks`) may not be accessible. Use `/salary-research/:jobId` for specific job salary data and `/salary-negotiation/:jobId` for negotiation preparation with market data.
 
 ---
 
@@ -695,19 +706,30 @@ This guide provides step-by-step navigation instructions for each Demo Action in
 ### Demo Action 5.2.1: View AI recommendations for next actions, verify personalized suggestions and priority ranking
 
 **Navigation Steps:**
-1. Navigate to **AI Recommendations** page at `/ai-recommendations`
-2. View AI recommendation dashboard showing:
-   - Personalized next action suggestions
-   - Priority rankings (high, medium, low)
-   - Recommended actions (apply to job, follow up, network, etc.)
-3. Check personalization:
+1. Navigate to **Predictive Analytics** page at `/predictive-analytics`
+2. Click on the **"Recommendations"** tab (one of the tabs at the top of the page)
+3. View AI recommendation dashboard showing:
+   - Overall assessment of your job search performance
+   - Potential improvement percentage if recommendations are followed
+   - Personalized next action suggestions with:
+     - Priority rankings (High, Medium priority)
+     - Category tags (e.g., Application Strategy, Interview Prep, Networking)
+     - Timeframe for each recommendation
+     - Current state vs. expected improvement
+     - Detailed action steps for each recommendation
+4. Check personalization:
    - Recommendations are relevant to user's goals
    - Suggestions are based on user's data
    - Priority makes sense
-4. Click on a recommendation to see details or take action
-5. Verify recommendations update based on user activity
+5. Review recommendation details:
+   - Each recommendation shows current state
+   - Expected improvement is clearly stated
+   - Action items are provided as numbered steps
+6. Verify recommendations update based on user activity
 
-**Status:** ✅ **IMPLEMENTED** - AI recommendation engine is implemented
+**Status:** ✅ **IMPLEMENTED** - AI recommendation engine is implemented as part of Predictive Analytics
+
+**Note:** AI recommendations are accessed through the "Recommendations" tab in the Predictive Analytics page (`/predictive-analytics`), not a separate `/ai-recommendations` route.
 
 ---
 
@@ -814,7 +836,7 @@ This guide provides step-by-step navigation instructions for each Demo Action in
 26. Mentor/coach collaboration features
 27. Document management (resumes/cover letters)
 28. Comprehensive report export
-29. AI recommendations engine
+29. AI recommendations engine (in Predictive Analytics)
 30. Predictive analytics
 
 ### ⚠️ Features Requiring Verification:
@@ -852,11 +874,11 @@ This guide provides step-by-step navigation instructions for each Demo Action in
 - **My Performance**: `/my-performance` (with tabs: dashboard, success)
 - **Skill Trends**: `/skill-trends`
 - **Productivity**: `/productivity` or `/productivity/analysis`
-- **Salary Benchmarks**: `/salary-benchmarks`
+- **Salary Research**: `/salary-research/:jobId` (for specific job)
 - **Goals**: `/goals`, `/goals/new`, `/goals/:id`, `/goals/:id/edit`
 - **Teams**: `/teams` and `/teams/:teamId`
 - **Mentors/Advisors**: `/mentors-advisors`
 - **Resumes**: `/resumes` (document management)
 - **Reports**: `/reports`
-- **AI Recommendations**: `/ai-recommendations`
+- **AI Recommendations**: `/predictive-analytics` (click "Recommendations" tab)
 - **Predictive Analytics**: `/predictive-analytics`
