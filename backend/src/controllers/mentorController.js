@@ -1670,8 +1670,8 @@ export const getMenteeProgress = async (req, res) => {
       createdAt: { $gte: startDate },
     });
 
-    kpis.engagement.lastActive = recentMessages.length > 0 
-      ? recentMessages[recentMessages.length - 1].createdAt 
+    kpis.engagement.lastActive = recentMessages.length > 0
+      ? recentMessages[recentMessages.length - 1].createdAt
       : null;
     kpis.engagement.activityScore = recentMessages.length;
 
@@ -1834,8 +1834,8 @@ export const getMenteeInsights = async (req, res) => {
     const interviewCount = applications.filter((app) =>
       interviewStages.includes(app.status)
     ).length;
-    const conversionRate = applications.length > 0 
-      ? (interviewCount / applications.length) * 100 
+    const conversionRate = applications.length > 0
+      ? (interviewCount / applications.length) * 100
       : 0;
 
     if (conversionRate >= 15) {
@@ -1869,8 +1869,8 @@ export const getMenteeInsights = async (req, res) => {
       insights.achievementPatterns.push({
         pattern: "Goal Completion Time",
         description: `Average time to complete goals: ${avgTimeToComplete.toFixed(0)} days`,
-        insight: avgTimeToComplete < 30 
-          ? "Quick achiever - setting and completing goals efficiently" 
+        insight: avgTimeToComplete < 30
+          ? "Quick achiever - setting and completing goals efficiently"
           : "Consider setting shorter-term goals for more frequent wins",
       });
     }
@@ -1937,8 +1937,8 @@ export const getMenteeEngagement = async (req, res) => {
     });
 
     const acknowledgedFeedback = feedbackSent.filter((f) => f.acknowledged);
-    const acknowledgmentRate = feedbackSent.length > 0 
-      ? (acknowledgedFeedback.length / feedbackSent.length) * 100 
+    const acknowledgmentRate = feedbackSent.length > 0
+      ? (acknowledgedFeedback.length / feedbackSent.length) * 100
       : 0;
 
     // Recommendation completion
@@ -1949,8 +1949,8 @@ export const getMenteeEngagement = async (req, res) => {
     const completedRecommendations = recommendations.filter(
       (r) => r.status === "completed"
     );
-    const recommendationCompletionRate = recommendations.length > 0 
-      ? (completedRecommendations.length / recommendations.length) * 100 
+    const recommendationCompletionRate = recommendations.length > 0
+      ? (completedRecommendations.length / recommendations.length) * 100
       : 0;
 
     // Recent activity timeline
@@ -2007,9 +2007,9 @@ function calculateEngagementScore({ messages, acknowledgmentRate, recommendation
   const messageScore = Math.min((messages / 10) * 40, 40); // Max 40 points for messages
   const acknowledgmentScore = (acknowledgmentRate / 100) * 30; // Max 30 points
   const completionScore = (recommendationCompletionRate / 100) * 30; // Max 30 points
-  
+
   const totalScore = messageScore + acknowledgmentScore + completionScore;
-  
+
   return {
     score: Math.round(totalScore),
     rating: totalScore >= 80 ? "Excellent" : totalScore >= 60 ? "Good" : totalScore >= 40 ? "Fair" : "Needs Attention",

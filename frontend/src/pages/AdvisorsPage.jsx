@@ -217,8 +217,8 @@ export default function AdvisorsPage() {
             {/* Token acceptance message */}
             {tokenAcceptMessage && (
                 <div className={`mb-4 p-4 rounded-lg flex items-center justify-between ${tokenAcceptMessage.includes("🎉")
-                        ? "bg-green-50 border border-green-200 text-green-700"
-                        : "bg-yellow-50 border border-yellow-200 text-yellow-700"
+                    ? "bg-green-50 border border-green-200 text-green-700"
+                    : "bg-yellow-50 border border-yellow-200 text-yellow-700"
                     }`}>
                     <span>{tokenAcceptMessage}</span>
                     <button
@@ -259,8 +259,8 @@ export default function AdvisorsPage() {
                     <button
                         onClick={() => setActiveTab("advisors")}
                         className={`pb-4 px-1 border-b-2 font-medium text-sm ${activeTab === "advisors"
-                                ? "border-indigo-500 text-indigo-600"
-                                : "border-transparent text-gray-500 hover:text-gray-700"
+                            ? "border-indigo-500 text-indigo-600"
+                            : "border-transparent text-gray-500 hover:text-gray-700"
                             }`}
                     >
                         My Advisors ({advisors.filter(a => a.status === "accepted").length})
@@ -268,8 +268,8 @@ export default function AdvisorsPage() {
                     <button
                         onClick={() => setActiveTab("clients")}
                         className={`pb-4 px-1 border-b-2 font-medium text-sm ${activeTab === "clients"
-                                ? "border-indigo-500 text-indigo-600"
-                                : "border-transparent text-gray-500 hover:text-gray-700"
+                            ? "border-indigo-500 text-indigo-600"
+                            : "border-transparent text-gray-500 hover:text-gray-700"
                             }`}
                     >
                         My Clients ({clients.filter(c => c.status === "accepted").length})
@@ -277,8 +277,8 @@ export default function AdvisorsPage() {
                     <button
                         onClick={() => setActiveTab("pending")}
                         className={`pb-4 px-1 border-b-2 font-medium text-sm relative ${activeTab === "pending"
-                                ? "border-indigo-500 text-indigo-600"
-                                : "border-transparent text-gray-500 hover:text-gray-700"
+                            ? "border-indigo-500 text-indigo-600"
+                            : "border-transparent text-gray-500 hover:text-gray-700"
                             }`}
                     >
                         Pending
@@ -579,7 +579,7 @@ export default function AdvisorsPage() {
 
             {/* Messaging Modal */}
             {showMessaging && selectedRelationship && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/30 backdrop-blur-sm">
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
                         <AdvisorMessaging
                             relationship={selectedRelationship}
@@ -592,7 +592,7 @@ export default function AdvisorsPage() {
 
             {/* Sessions Modal */}
             {showSessions && selectedRelationship && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/30 backdrop-blur-sm">
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-auto">
                         <div className="flex items-center justify-between p-4 border-b">
                             <h2 className="text-xl font-semibold">📅 Sessions</h2>
@@ -605,7 +605,7 @@ export default function AdvisorsPage() {
 
             {/* Billing Modal */}
             {showBilling && selectedRelationship && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/30 backdrop-blur-sm">
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-auto">
                         <div className="flex items-center justify-between p-4 border-b">
                             <h2 className="text-xl font-semibold">💳 Billing & Payments</h2>
@@ -618,7 +618,7 @@ export default function AdvisorsPage() {
 
             {/* Impact Tracker Modal */}
             {showImpact && selectedRelationship && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/30 backdrop-blur-sm">
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-auto">
                         <div className="flex items-center justify-between p-4 border-b">
                             <h2 className="text-xl font-semibold">📈 Impact Metrics</h2>
@@ -631,7 +631,7 @@ export default function AdvisorsPage() {
 
             {/* Evaluation Modal */}
             {showEvaluation && selectedRelationship && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/30 backdrop-blur-sm">
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-auto">
                         <div className="flex items-center justify-between p-4 border-b">
                             <h2 className="text-xl font-semibold">⭐ Rate Advisor</h2>
