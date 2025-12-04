@@ -489,28 +489,29 @@ const TeamDashboardPage = () => {
 
             {/* Tab Navigation */}
             <div className="border-b border-gray-200 mb-8">
-                <nav className="flex space-x-8">
+                <nav className="flex flex-wrap gap-1 sm:gap-4 overflow-x-auto pb-1">
                     <button
                         onClick={() => setActiveTab('dashboard')}
-                        className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                        className={`py-2 sm:py-4 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm flex items-center gap-1 sm:gap-2 whitespace-nowrap ${
                             activeTab === 'dashboard'
                                 ? 'border-blue-500 text-blue-600'
                                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                         }`}
                     >
-                        <Activity className="w-5 h-5" />
+                        <Activity className="w-4 h-4 sm:w-5 sm:h-5" />
                         Dashboard
                     </button>
                     <button
                         onClick={() => setActiveTab('progress')}
-                        className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 ${
+                        className={`py-2 sm:py-4 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm flex items-center gap-1 sm:gap-2 whitespace-nowrap ${
                             activeTab === 'progress'
                                 ? 'border-blue-500 text-blue-600'
                                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                         }`}
                     >
-                        <Share2 className="w-5 h-5" />
-                        Progress Sharing
+                        <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <span className="hidden sm:inline">Progress Sharing</span>
+                        <span className="sm:hidden">Progress</span>
                     </button>
                 </nav>
             </div>

@@ -294,14 +294,14 @@ export default function Network() {
 
           {/* Tab Navigation */}
           <div className="mb-6">
-            <div className="border-b border-gray-200 overflow-x-auto">
-              <nav className="-mb-px flex space-x-6 min-w-max pb-px">
+            <div className="border-b border-gray-200 overflow-x-auto scrollbar-hide">
+              <nav className="-mb-px flex gap-1 sm:gap-2 pb-px">
                 <button
                   onClick={() => setActiveTab('contacts')}
                   className={`${activeTab === 'contacts'
                       ? 'border-[#777C6D] text-[#777C6D]'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+                    } whitespace-nowrap py-2 sm:py-4 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm transition-colors`}
                 >
                   Contacts
                 </button>
@@ -310,16 +310,17 @@ export default function Network() {
                   className={`${activeTab === 'informational-interviews'
                       ? 'border-[#777C6D] text-[#777C6D]'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+                    } whitespace-nowrap py-2 sm:py-4 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm transition-colors`}
                 >
-                  Informational Interviews
+                  <span className="hidden sm:inline">Informational Interviews</span>
+                  <span className="sm:hidden">Interviews</span>
                 </button>
                 <button
                   onClick={() => setActiveTab('references')}
                   className={`${activeTab === 'references'
                       ? 'border-[#777C6D] text-[#777C6D]'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+                    } whitespace-nowrap py-2 sm:py-4 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm transition-colors`}
                 >
                   References
                 </button>
@@ -328,7 +329,7 @@ export default function Network() {
                   className={`${activeTab === 'referrals'
                       ? 'border-[#777C6D] text-[#777C6D]'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+                    } whitespace-nowrap py-2 sm:py-4 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm transition-colors`}
                 >
                   Referrals
                 </button>
@@ -337,7 +338,7 @@ export default function Network() {
                   className={`${activeTab === 'events'
                       ? 'border-[#777C6D] text-[#777C6D]'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+                    } whitespace-nowrap py-2 sm:py-4 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm transition-colors`}
                 >
                   Events
                 </button>
@@ -346,7 +347,7 @@ export default function Network() {
                   className={`${activeTab === 'discover'
                       ? 'border-[#777C6D] text-[#777C6D]'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+                    } whitespace-nowrap py-2 sm:py-4 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm transition-colors`}
                 >
                   Discover
                 </button>
@@ -355,25 +356,27 @@ export default function Network() {
                   className={`${activeTab === 'activities'
                       ? 'border-[#777C6D] text-[#777C6D]'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+                    } whitespace-nowrap py-2 sm:py-4 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm transition-colors`}
                 >
-                  Activity Log
+                  <span className="hidden sm:inline">Activity Log</span>
+                  <span className="sm:hidden">Activity</span>
                 </button>
                 <button
                   onClick={() => setActiveTab('reminders')}
                   className={`${activeTab === 'reminders'
                       ? 'border-[#777C6D] text-[#777C6D]'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+                    } whitespace-nowrap py-2 sm:py-4 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm transition-colors`}
                 >
-                  Maintenance Reminders
+                  <span className="hidden sm:inline">Maintenance Reminders</span>
+                  <span className="sm:hidden">Reminders</span>
                 </button>
                 <button
                   onClick={() => setActiveTab('campaigns')}
                   className={`${activeTab === 'campaigns'
                       ? 'border-[#777C6D] text-[#777C6D]'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+                    } whitespace-nowrap py-2 sm:py-4 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm transition-colors`}
                 >
                   Campaigns
                 </button>
@@ -382,7 +385,7 @@ export default function Network() {
                   className={`${activeTab === 'analytics'
                       ? 'border-[#777C6D] text-[#777C6D]'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+                    } whitespace-nowrap py-2 sm:py-4 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm transition-colors`}
                 >
                   Analytics
                 </button>
