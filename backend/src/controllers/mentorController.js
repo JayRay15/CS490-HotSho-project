@@ -251,6 +251,77 @@ export const rejectMentorInvitation = async (req, res) => {
 };
 
 /**
+ * Accept mentor invitation by token (for new users who signed up via invitation link)
+ * POST /api/mentors/accept-token/:token
+ */
+export const acceptMentorInvitationByToken = async (req, res) => {
+  try {
+    const clerkUserId = req.auth.userId;
+    const { token } = req.params;
+
+    // Get MongoDB user by auth0Id
+    const currentUser = await User.findOne({ auth0Id: clerkUserId });
+    if (!currentUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User profile not found",
+      });
+    }
+
+    // Find relationship by invitation token
+    const relationship = await MentorRelationship.findOne({ invitationToken: token });
+
+    if (!relationship) {
+      return res.status(404).json({
+        success: false,
+        message: "Invitation not found or already used",
+      });
+    }
+
+    if (relationship.status !== "pending") {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot accept invitation with status: ${relationship.status}`,
+      });
+    }
+
+    // Verify the accepting user's email matches the invitation
+    if (currentUser.email.toLowerCase() !== relationship.mentorEmail.toLowerCase()) {
+      return res.status(403).json({
+        success: false,
+        message: "This invitation was sent to a different email address",
+      });
+    }
+
+    // Update relationship
+    relationship.mentorId = currentUser._id;
+    relationship.status = "accepted";
+    relationship.acceptedAt = new Date();
+    relationship.invitationToken = null; // Clear token after use
+    await relationship.save();
+
+    // Send confirmation email to mentee
+    const menteeUser = await User.findById(relationship.menteeId);
+    if (menteeUser) {
+      await sendMentorAcceptedEmail(menteeUser.email, currentUser._id);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Mentor invitation accepted successfully",
+      data: relationship,
+    });
+  } catch (error) {
+    console.error("Error accepting mentor invitation by token:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to accept mentor invitation",
+      error: error.message,
+    });
+  }
+};
+
+/**
  * Get all mentors for a mentee
  * GET /api/mentors/my-mentors
  */
@@ -1599,8 +1670,8 @@ export const getMenteeProgress = async (req, res) => {
       createdAt: { $gte: startDate },
     });
 
-    kpis.engagement.lastActive = recentMessages.length > 0 
-      ? recentMessages[recentMessages.length - 1].createdAt 
+    kpis.engagement.lastActive = recentMessages.length > 0
+      ? recentMessages[recentMessages.length - 1].createdAt
       : null;
     kpis.engagement.activityScore = recentMessages.length;
 
@@ -1763,8 +1834,8 @@ export const getMenteeInsights = async (req, res) => {
     const interviewCount = applications.filter((app) =>
       interviewStages.includes(app.status)
     ).length;
-    const conversionRate = applications.length > 0 
-      ? (interviewCount / applications.length) * 100 
+    const conversionRate = applications.length > 0
+      ? (interviewCount / applications.length) * 100
       : 0;
 
     if (conversionRate >= 15) {
@@ -1798,8 +1869,8 @@ export const getMenteeInsights = async (req, res) => {
       insights.achievementPatterns.push({
         pattern: "Goal Completion Time",
         description: `Average time to complete goals: ${avgTimeToComplete.toFixed(0)} days`,
-        insight: avgTimeToComplete < 30 
-          ? "Quick achiever - setting and completing goals efficiently" 
+        insight: avgTimeToComplete < 30
+          ? "Quick achiever - setting and completing goals efficiently"
           : "Consider setting shorter-term goals for more frequent wins",
       });
     }
@@ -1866,8 +1937,8 @@ export const getMenteeEngagement = async (req, res) => {
     });
 
     const acknowledgedFeedback = feedbackSent.filter((f) => f.acknowledged);
-    const acknowledgmentRate = feedbackSent.length > 0 
-      ? (acknowledgedFeedback.length / feedbackSent.length) * 100 
+    const acknowledgmentRate = feedbackSent.length > 0
+      ? (acknowledgedFeedback.length / feedbackSent.length) * 100
       : 0;
 
     // Recommendation completion
@@ -1878,8 +1949,8 @@ export const getMenteeEngagement = async (req, res) => {
     const completedRecommendations = recommendations.filter(
       (r) => r.status === "completed"
     );
-    const recommendationCompletionRate = recommendations.length > 0 
-      ? (completedRecommendations.length / recommendations.length) * 100 
+    const recommendationCompletionRate = recommendations.length > 0
+      ? (completedRecommendations.length / recommendations.length) * 100
       : 0;
 
     // Recent activity timeline
@@ -1936,9 +2007,9 @@ function calculateEngagementScore({ messages, acknowledgmentRate, recommendation
   const messageScore = Math.min((messages / 10) * 40, 40); // Max 40 points for messages
   const acknowledgmentScore = (acknowledgmentRate / 100) * 30; // Max 30 points
   const completionScore = (recommendationCompletionRate / 100) * 30; // Max 30 points
-  
+
   const totalScore = messageScore + acknowledgmentScore + completionScore;
-  
+
   return {
     score: Math.round(totalScore),
     rating: totalScore >= 80 ? "Excellent" : totalScore >= 60 ? "Good" : totalScore >= 40 ? "Fair" : "Needs Attention",

@@ -6,13 +6,18 @@ export default function Register() {
   const [logoutMessage, setLogoutMessage] = useState(null);
   const [searchParams] = useSearchParams();
   const advisorToken = searchParams.get("advisorToken");
+  const mentorInviteToken = searchParams.get("mentor-invite");
 
   useEffect(() => {
     // Store advisor token for after signup
     if (advisorToken) {
       localStorage.setItem("pendingAdvisorToken", advisorToken);
     }
-  }, [advisorToken]);
+    // Store mentor invite token for after signup
+    if (mentorInviteToken) {
+      localStorage.setItem("pendingMentorToken", mentorInviteToken);
+    }
+  }, [advisorToken, mentorInviteToken]);
 
   useEffect(() => {
     // Check for logout success message
@@ -30,6 +35,13 @@ export default function Register() {
     }
   }, []);
 
+  // Determine redirect URL after signup
+  const getAfterSignUpUrl = () => {
+    if (advisorToken) return "/advisors";
+    if (mentorInviteToken) return "/mentors-advisors";
+    return "/dashboard";
+  };
+
   return (
     <div className="flex flex-col justify-center items-center min-h-screen bg-background py-8">
       {/* Advisor invitation notice */}
@@ -37,6 +49,14 @@ export default function Register() {
         <div className="mb-4 p-4 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-lg max-w-md w-full mx-auto">
           <p className="font-medium">🎉 You&apos;ve been invited to be a Career Advisor!</p>
           <p className="text-sm mt-1">Sign up to accept the invitation and start helping.</p>
+        </div>
+      )}
+
+      {/* Mentor invitation notice */}
+      {mentorInviteToken && (
+        <div className="mb-4 p-4 bg-purple-50 border border-purple-200 text-purple-700 rounded-lg max-w-md w-full mx-auto">
+          <p className="font-medium">🌟 You&apos;ve been invited to be a Mentor!</p>
+          <p className="text-sm mt-1">Sign up to accept the invitation and start mentoring.</p>
         </div>
       )}
 
@@ -56,7 +76,7 @@ export default function Register() {
       <SignUp
         routing="virtual"
         signInUrl="/login"
-        afterSignUpUrl={advisorToken ? "/advisors" : "/dashboard"}
+        afterSignUpUrl={getAfterSignUpUrl()}
         appearance={{
           elements: {
             rootBox: "mx-auto",

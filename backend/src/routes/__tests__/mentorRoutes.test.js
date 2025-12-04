@@ -2,10 +2,11 @@ import { jest } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
 
-// Mock all 16 mentor controller functions
+// Mock all mentor controller functions
 const mocks = {
     inviteMentor: jest.fn((req, res) => res.json({ success: true })),
     acceptMentorInvitation: jest.fn((req, res) => res.json({ success: true })),
+    acceptMentorInvitationByToken: jest.fn((req, res) => res.json({ success: true })),
     rejectMentorInvitation: jest.fn((req, res) => res.json({ success: true })),
     getMyMentors: jest.fn((req, res) => res.json({ success: true, data: [] })),
     getMyMentees: jest.fn((req, res) => res.json({ success: true, data: [] })),

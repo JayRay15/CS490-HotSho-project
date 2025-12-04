@@ -3,6 +3,7 @@ import { checkJwt } from "../middleware/checkJwt.js";
 import {
     inviteMentor,
     acceptMentorInvitation,
+    acceptMentorInvitationByToken,
     rejectMentorInvitation,
     getMyMentors,
     getMyMentees,
@@ -34,6 +35,9 @@ router.post("/invite", checkJwt, inviteMentor);
 
 // Accept mentor invitation
 router.post("/accept/:relationshipId", checkJwt, acceptMentorInvitation);
+
+// Accept mentor invitation by token (for new users)
+router.post("/accept-token/:token", checkJwt, acceptMentorInvitationByToken);
 
 // Reject mentor invitation
 router.post("/reject/:relationshipId", checkJwt, rejectMentorInvitation);
