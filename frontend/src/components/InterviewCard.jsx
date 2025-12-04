@@ -40,7 +40,7 @@ const TYPE_ICONS = {
   "Case Study": "📊",
 };
 
-export default function InterviewCard({ interview, onUpdate, onEdit, onDelete, compact = false }) {
+export default function InterviewCard({ interview, onUpdate, onEdit, onDelete, onOpenInterviewChecklist, compact = false }) {
   const navigate = useNavigate();
   const [showDetails, setShowDetails] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -467,6 +467,17 @@ export default function InterviewCard({ interview, onUpdate, onEdit, onDelete, c
               🎤 Prep
             </Button>
           )}
+          {/* Interview Checklist Button */}
+          {onOpenInterviewChecklist && (
+            <Button
+              onClick={() => onOpenInterviewChecklist(interview)}
+              size="sm"
+              className="bg-green-600 hover:bg-green-700 text-white whitespace-nowrap"
+              title="Open interview preparation checklist"
+            >
+              ✅ Checklist
+            </Button>
+          )}
           {/* Company Research Button */}
           <Button
             onClick={() => navigate(`/interviews/${interview._id}/company-research`)}
@@ -597,5 +608,6 @@ InterviewCard.propTypes = {
   onUpdate: PropTypes.func.isRequired,
   onEdit: PropTypes.func.isRequired,
   onDelete: PropTypes.func,
+  onOpenInterviewChecklist: PropTypes.func,
   compact: PropTypes.bool,
 };

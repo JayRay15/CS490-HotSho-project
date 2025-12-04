@@ -4,6 +4,7 @@ import { useAuth } from "@clerk/clerk-react";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import InterviewCard from "../../components/InterviewCard";
+import InterviewChecklist from "../../components/InterviewChecklist";
 import { getInterviews } from "../../api/interviews";
 import { setAuthToken } from "../../api/axios";
 import InterviewAnalyticsTab from "../../components/interviews/InterviewAnalyticsTab";
@@ -28,6 +29,8 @@ export default function InterviewsPage() {
     dateRange: "all",
     search: "",
   });
+  const [showInterviewChecklist, setShowInterviewChecklist] = useState(false);
+  const [selectedInterviewForChecklist, setSelectedInterviewForChecklist] = useState(null);
 
   // Tab definitions
   const tabs = [
@@ -154,6 +157,11 @@ export default function InterviewsPage() {
       const jobId = typeof interview.jobId === 'object' ? interview.jobId._id : interview.jobId;
       navigate(`/jobs?reschedule=${interview._id}`);
     }
+  };
+
+  const handleOpenInterviewChecklist = (interview) => {
+    setSelectedInterviewForChecklist(interview);
+    setShowInterviewChecklist(true);
   };
 
   const upcomingCount = interviews.filter((i) => new Date(i.scheduledDate) >= new Date()).length;
@@ -335,6 +343,7 @@ export default function InterviewsPage() {
                       onUpdate={handleUpdate}
                       onEdit={handleEdit}
                       onDelete={() => handleDelete(interview._id)}
+                      onOpenInterviewChecklist={handleOpenInterviewChecklist}
                     />
                   ))}
                 </div>
@@ -349,6 +358,42 @@ export default function InterviewsPage() {
       {activeTab === "predictions" && <InterviewPredictionsTab />}
 
       {activeTab === "performance" && <InterviewPerformanceTab />}
+
+      {/* Interview Checklist Modal */}
+      {showInterviewChecklist && selectedInterviewForChecklist && (
+        <>
+          {/* Full-screen backdrop providing blur without a dark overlay. */}
+          <div className="fixed inset-0 z-40 pointer-events-none backdrop-blur-sm bg-white/5" />
+
+          {/* Floating card (clickable) above the blurred backdrop */}
+          <div className="fixed top-16 left-1/2 transform -translate-x-1/2 z-50 p-4 pointer-events-auto">
+            <div className="bg-white rounded-lg max-w-5xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+              <div className="p-6">
+                <InterviewChecklist 
+                  job={
+                    // If interview has a populated jobId object, use it
+                    typeof selectedInterviewForChecklist.jobId === 'object' && selectedInterviewForChecklist.jobId
+                      ? selectedInterviewForChecklist.jobId
+                      // Otherwise, create a job-like object from interview data
+                      : {
+                          _id: typeof selectedInterviewForChecklist.jobId === 'string' 
+                            ? selectedInterviewForChecklist.jobId 
+                            : null,
+                          title: selectedInterviewForChecklist.title || "",
+                          company: selectedInterviewForChecklist.company || "",
+                          description: "",
+                        }
+                  }
+                  onClose={() => {
+                    setShowInterviewChecklist(false);
+                    setSelectedInterviewForChecklist(null);
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
