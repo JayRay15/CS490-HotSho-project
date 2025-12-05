@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@clerk/clerk-react";
 import api, { setAuthToken } from "../../api/axios";
 import LoadingSpinner from "../../components/LoadingSpinner";
@@ -36,6 +37,7 @@ import * as statusAPI from "../../api/applicationStatus";
 const PIPELINE_STAGES = ["Interested", "Applied", "Phone Screen", "Interview", "Offer", "Rejected"];
 
 export default function Jobs() {
+  const navigate = useNavigate();
   const { getToken } = useAuth();
   const [jobs, setJobs] = useState([]);
   const [filteredJobs, setFilteredJobs] = useState([]);
@@ -3131,6 +3133,19 @@ export default function Jobs() {
                 >
                   👥 Share with Team
                 </Button>
+                {/* View on Map Button */}
+                {viewingJob.location && (
+                  <Button
+                    onClick={() => {
+                      setShowDetailModal(false);
+                      navigate('/job-map');
+                    }}
+                    variant="secondary"
+                    className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700"
+                  >
+                    📍 View on Map
+                  </Button>
+                )}
                 {viewingJob.archived ? (
                   <Button
                     onClick={() => {

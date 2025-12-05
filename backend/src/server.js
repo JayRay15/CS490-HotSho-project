@@ -50,6 +50,7 @@ import interviewPerformanceRoutes from "./routes/interviewPerformanceRoutes.js";
 import predictiveAnalyticsRoutes from "./routes/predictiveAnalyticsRoutes.js";
 import competitiveAnalysisRoutes from "./routes/competitiveAnalysisRoutes.js";
 import informationalInterviewRoutes from "./routes/informationalInterviewRoutes.js";
+import jobLocationRoutes from "./routes/jobLocationRoutes.js";
 import { getPublicProject } from "./controllers/profileController.js";
 import { viewSharedReport } from "./controllers/reportController.js";
 import { startDeadlineReminderSchedule } from "./utils/deadlineReminders.js";
@@ -143,6 +144,8 @@ app.use("/api/competitive-analysis", competitiveAnalysisRoutes);
 console.log('✅ Competitive Analysis routes registered at /api/competitive-analysis');
 app.use("/api/informational-interviews", informationalInterviewRoutes);
 console.log('✅ Informational Interview routes registered at /api/informational-interviews');
+app.use("/api/job-locations", jobLocationRoutes);
+console.log('✅ Job Location Map routes registered at /api/job-locations');
 
 // Mount profile routes under /api/profile (existing) and also under /api/users
 // so frontend requests to /api/users/... (used elsewhere in the app) resolve correctly.

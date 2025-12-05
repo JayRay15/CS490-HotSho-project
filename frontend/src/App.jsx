@@ -65,6 +65,7 @@ import InterviewPerformance from "./pages/auth/InterviewPerformance.jsx";
 import PredictiveAnalytics from "./pages/PredictiveAnalytics.jsx";
 import CompetitiveAnalysis from "./pages/auth/CompetitiveAnalysis.jsx";
 import InformationalInterviewsPage from "./pages/InformationalInterviews.jsx";
+import JobMapPage from "./pages/JobMapPage.jsx";
 
 function App() {
   return (
@@ -147,6 +148,7 @@ function App() {
           <Route path="/advisors" element={<Navigate to="/mentors-advisors?tab=advisors" replace />} />
           <Route path="/advisors/messages" element={<ProtectedRoute><AdvisorMessagingPage /></ProtectedRoute>} />
           <Route path="/peer-support" element={<ProtectedRoute><PeerSupportPage /></ProtectedRoute>} />
+          <Route path="/job-map" element={<ProtectedRoute><JobMapPage /></ProtectedRoute>} />
         </Routes>
       </Router>
     </ErrorBoundary>

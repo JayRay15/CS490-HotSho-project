@@ -104,6 +104,24 @@ const jobSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    // Geocoded coordinates for map display and commute calculations
+    coordinates: {
+      lat: { type: Number },
+      lng: { type: Number },
+    },
+    // Full geocoded address details
+    geocodedLocation: {
+      displayName: { type: String },
+      city: { type: String },
+      state: { type: String },
+      country: { type: String },
+      postalCode: { type: String },
+      timezone: {
+        name: { type: String },
+        offset: { type: Number },
+      },
+      geocodedAt: { type: Date },
+    },
     salary: {
       min: Number,
       max: Number,

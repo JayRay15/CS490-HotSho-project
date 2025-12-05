@@ -210,6 +210,9 @@ export default function Navbar() {
                                         <NavLink to="/peer-support" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Peer Support Groups" onClick={() => setCareerDropdownOpen(false)}>
                                             Peer Support
                                         </NavLink>
+                                        <NavLink to="/job-map" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Job Location Map" onClick={() => setCareerDropdownOpen(false)}>
+                                            📍 Job Map
+                                        </NavLink>
                                         <NavLink to="/teams" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Teams" onClick={() => setCareerDropdownOpen(false)}>
                                             👥 Teams
                                         </NavLink>
@@ -564,6 +567,18 @@ export default function Navbar() {
                             aria-label="Peer Support Groups"
                         >
                             Peer Support
+                        </NavLink>
+                        <NavLink
+                            to="/job-map"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                }`
+                            }
+                            aria-label="Job Location Map"
+                        >
+                            📍 Job Map
                         </NavLink>
                         <NavLink
                             to="/settings/calendar"
