@@ -10,6 +10,7 @@ import Projects from "./Projects";
 import ProjectGrid from "../../components/projects/ProjectGrid";
 import ProjectDetail from "../../components/projects/ProjectDetail";
 import ProjectFilters from "../../components/projects/ProjectFilters";
+import PortfolioModal from "../../components/projects/PortfolioModal";
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import Card from "../../components/Card";
 import Container from "../../components/Container";
@@ -40,7 +41,7 @@ const EXPERIENCE_LEVELS = ['Entry', 'Mid', 'Senior', 'Executive'];
 export default function ProfilePage() {
   const { isLoaded, isSignedIn, getToken, signOut } = useAuth();
   const { user } = useUser();
-  
+
   const [userData, setUserData] = useState(null);
   const [accountStatus, setAccountStatus] = useState(null); // Track if account is deleted
   const [formData, setFormData] = useState({
@@ -93,13 +94,13 @@ export default function ProfilePage() {
     'Languages': true,
     'Industry-Specific': true
   });
-  
-    // Skill handlers
-    const handleEditSkill = (skill) => {
-      setEditingSkill(skill);
-      setShowSkillModal(true);
-    };
-  
+
+  // Skill handlers
+  const handleEditSkill = (skill) => {
+    setEditingSkill(skill);
+    setShowSkillModal(true);
+  };
+
   const handleDeleteSkillClick = (skill) => {
     setDeletingSkill(skill);
     setShowSkillDeleteModal(true);
@@ -132,27 +133,27 @@ export default function ProfilePage() {
   };
 
   const handleDeleteSkill = async () => {
-      if (!deletingSkill) return;
-      setIsDeleting(true);
-      setError(null);
-      try {
-        const token = await getToken();
-        setAuthToken(token);
-        // attempt backend delete
-        await api.delete(`/api/profile/skills/${deletingSkill._id}`);
-        // update local list
-        setSkillList(prev => prev.filter(s => s._id !== deletingSkill._id));
-        setSkillSuccessMessage(`Skill "${deletingSkill.name}" deleted successfully.`);
-        setTimeout(() => setSkillSuccessMessage(null), 4000);
-      } catch (err) {
-        console.error('Failed to delete skill:', err);
-        setError(err);
-      } finally {
-        setIsDeleting(false);
-        setShowSkillDeleteModal(false);
-        setDeletingSkill(null);
-      }
-    };
+    if (!deletingSkill) return;
+    setIsDeleting(true);
+    setError(null);
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      // attempt backend delete
+      await api.delete(`/api/profile/skills/${deletingSkill._id}`);
+      // update local list
+      setSkillList(prev => prev.filter(s => s._id !== deletingSkill._id));
+      setSkillSuccessMessage(`Skill "${deletingSkill.name}" deleted successfully.`);
+      setTimeout(() => setSkillSuccessMessage(null), 4000);
+    } catch (err) {
+      console.error('Failed to delete skill:', err);
+      setError(err);
+    } finally {
+      setIsDeleting(false);
+      setShowSkillDeleteModal(false);
+      setDeletingSkill(null);
+    }
+  };
 
   // Skills organization helpers
   const groupSkillsByCategory = (skills) => {
@@ -287,8 +288,8 @@ export default function ProfilePage() {
       const token = await getToken();
       setAuthToken(token);
       await api.put(`/api/profile/skills/${skill._id}`, { ...skill, category: newCategory });
-      
-      setSkillList(prev => prev.map(s => 
+
+      setSkillList(prev => prev.map(s =>
         s._id === skill._id ? { ...s, category: newCategory } : s
       ));
       setSkillSuccessMessage(`Skill moved to ${newCategory}`);
@@ -324,6 +325,7 @@ export default function ProfilePage() {
   const navigate = useNavigate();
 
   const [projectFilters, setProjectFilters] = useState({ techs: [], industries: [], query: '', sort: 'dateDesc' });
+  const [showPortfolioModal, setShowPortfolioModal] = useState(false);
 
   const techOptions = projectList && Array.isArray(projectList) ? Array.from(new Set(projectList.flatMap(p => Array.isArray(p.technologies) ? p.technologies : (p.technologies || '').split?.(',') || []).map(t => t && t.trim()).filter(Boolean))).sort() : [];
   const industryOptions = projectList && Array.isArray(projectList) ? Array.from(new Set(projectList.map(p => p.industry).filter(Boolean))).sort() : [];
@@ -339,7 +341,7 @@ export default function ProfilePage() {
       try {
         const token = await getToken();
         setAuthToken(token);
-        
+
         // Try to get user profile
         let response;
         try {
@@ -352,7 +354,7 @@ export default function ProfilePage() {
             await signOut();
             return;
           }
-          
+
           // If user not found (404), redirect to dashboard to handle registration
           if (err.response?.status === 404 || err.customError?.errorCode === 3001) {
             console.log("User not found in database, redirecting to dashboard...");
@@ -362,7 +364,7 @@ export default function ProfilePage() {
             throw err;
           }
         }
-        
+
         const data = response.data.data;
 
         // Set account as active since we got here
@@ -405,15 +407,15 @@ export default function ProfilePage() {
             }
           }
         }
-  setEmploymentList(data.employment || []);
-  setEducationList(data.education || []);
-  // Populate skills if present on the profile response. Support either top-level `skills` or nested `profile.skills` shapes.
-  try {
-    const serverSkills = data.skills || (data.profile && data.profile.skills) || [];
-    setSkillList(Array.isArray(serverSkills) ? serverSkills : []);
-  } catch (e) {
-    setSkillList([]);
-  }
+        setEmploymentList(data.employment || []);
+        setEducationList(data.education || []);
+        // Populate skills if present on the profile response. Support either top-level `skills` or nested `profile.skills` shapes.
+        try {
+          const serverSkills = data.skills || (data.profile && data.profile.skills) || [];
+          setSkillList(Array.isArray(serverSkills) ? serverSkills : []);
+        } catch (e) {
+          setSkillList([]);
+        }
       } catch (err) {
         console.error("Error loading profile:", err);
         setError(err);
@@ -439,11 +441,11 @@ export default function ProfilePage() {
       else if (open === 'skill') { setEditingSkill(null); setShowSkillModal(true); }
       else if (open === 'project') { setEditingProject(null); setShowProjectModal(true); }
 
-  // remove the open param so refreshing doesn't reopen it
-  qs.delete('open');
-  const newSearch = qs.toString();
-  const newPath = `${location.pathname}${newSearch ? `?${newSearch}` : ''}`;
-  navigate(newPath, { replace: true });
+      // remove the open param so refreshing doesn't reopen it
+      qs.delete('open');
+      const newSearch = qs.toString();
+      const newPath = `${location.pathname}${newSearch ? `?${newSearch}` : ''}`;
+      navigate(newPath, { replace: true });
     } catch (e) {
       // ignore
     }
@@ -471,7 +473,7 @@ export default function ProfilePage() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    
+
     // Handle bio character limit
     if (name === 'bio') {
       if (value.length > 500) return;
@@ -553,12 +555,12 @@ export default function ProfilePage() {
       setAuthToken(token);
 
       const response = await api.put('/api/users/me', formData);
-      
+
       setUserData(response.data.data);
       setOriginalData(formData);
       setSuccessMessage('Profile updated successfully!');
       setShowEditModal(false);
-      
+
       // Clear success message after 3 seconds
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
@@ -597,14 +599,14 @@ export default function ProfilePage() {
       // Close modal immediately
       setShowDeleteModal(false);
       setDeletePassword("");
-      
+
       // Store message for after logout
       sessionStorage.setItem("logoutMessage", "Your account has been permanently deleted. You have been logged out.");
-      
+
       // Sign out from Clerk - this will redirect to login page
       // Important: await this to ensure Clerk session is cleared before any redirects
       await signOut();
-      
+
     } catch (err) {
       console.error('Account deletion error:', err);
       setError(err);
@@ -650,14 +652,14 @@ export default function ProfilePage() {
       setAuthToken(token);
 
       await api.delete(`/api/users/employment/${deletingEmployment._id}`);
-      
+
       // Update employment list by removing the deleted entry
       setEmploymentList(prev => prev.filter(job => job._id !== deletingEmployment._id));
-      
+
       // Show success message in employment section
       setEmploymentSuccessMessage(`Employment entry for ${deletingEmployment.jobTitle} at ${deletingEmployment.company} deleted successfully!`);
       setTimeout(() => setEmploymentSuccessMessage(null), 5000);
-      
+
       // Close modal and reset state
       setShowEmploymentDeleteModal(false);
       setDeletingEmployment(null);
@@ -684,7 +686,7 @@ export default function ProfilePage() {
       const token = await getToken();
       setAuthToken(token);
 
-        await api.delete(`/api/profile/education/${deletingEducation._id}`);
+      await api.delete(`/api/profile/education/${deletingEducation._id}`);
 
       // Update education list by removing the deleted entry
       setEducationList(prev => prev.filter(e => e._id !== deletingEducation._id));
@@ -712,11 +714,11 @@ export default function ProfilePage() {
   // Show loading while checking account status
   if (isLoading && accountStatus === null) {
     return (
-      <LoadingSpinner 
-        fullScreen={true} 
+      <LoadingSpinner
+        fullScreen={true}
         size="lg"
-        text="Loading your profile..." 
-        variant="logo" 
+        text="Loading your profile..."
+        variant="logo"
       />
     );
   }
@@ -724,11 +726,11 @@ export default function ProfilePage() {
   // Show redirecting message if account is deleted
   if (accountStatus === 'deleted') {
     return (
-      <LoadingSpinner 
-        fullScreen={true} 
+      <LoadingSpinner
+        fullScreen={true}
         size="md"
-        text="Redirecting..." 
-        variant="spinner" 
+        text="Redirecting..."
+        variant="spinner"
       />
     );
   }
@@ -736,11 +738,11 @@ export default function ProfilePage() {
   // Only render profile if account is active
   if (accountStatus !== 'active') {
     return (
-      <LoadingSpinner 
-        fullScreen={true} 
+      <LoadingSpinner
+        fullScreen={true}
         size="lg"
-        text="Loading..." 
-        variant="logo" 
+        text="Loading..."
+        variant="logo"
       />
     );
   }
@@ -756,7 +758,7 @@ export default function ProfilePage() {
                 <h1 className="text-3xl font-heading font-bold mb-2" style={{ color: '#4F5348' }}>My Profile</h1>
                 <p style={{ color: '#656A5C' }}>View and manage your professional profile</p>
               </div>
-              
+
               {/* Profile Picture Upload */}
               <ProfilePictureUpload
                 currentPicture={profilePicture}
@@ -806,7 +808,7 @@ export default function ProfilePage() {
                       <span>Edit Profile</span>
                     </button>
                   </div>
-                  
+
                   <div className="space-y-6">
                     {/* Contact Information */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -833,7 +835,7 @@ export default function ProfilePage() {
                       <p className="text-sm font-medium mb-1" style={{ color: '#656A5C' }}>Professional Headline</p>
                       <p className="text-lg" style={{ color: '#4F5348' }}>{userData?.headline || '—'}</p>
                     </div>
-                    
+
                     {/* Professional Details */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
@@ -887,12 +889,12 @@ export default function ProfilePage() {
                           // Current positions first
                           if (a.isCurrentPosition && !b.isCurrentPosition) return -1;
                           if (!a.isCurrentPosition && b.isCurrentPosition) return 1;
-                          
+
                           // For current positions, sort by start date (most recent first)
                           if (a.isCurrentPosition && b.isCurrentPosition) {
                             return new Date(b.startDate) - new Date(a.startDate);
                           }
-                          
+
                           // For past positions, sort by end date (most recent first)
                           return new Date(b.endDate) - new Date(a.endDate);
                         })
@@ -906,7 +908,7 @@ export default function ProfilePage() {
                                 </span>
                               </div>
                             )}
-                            
+
                             <div className="flex flex-col">
                               {/* Job Details */}
                               <div className="flex-1 pr-32">
@@ -927,14 +929,14 @@ export default function ProfilePage() {
                                       return `${startMonth}/${startYear}`;
                                     })()}
                                     {' - '}
-                                    {job.isCurrentPosition 
-                                      ? 'Present' 
+                                    {job.isCurrentPosition
+                                      ? 'Present'
                                       : (() => {
-                                          const endDate = new Date(job.endDate);
-                                          const endMonth = String(endDate.getMonth() + 1).padStart(2, '0');
-                                          const endYear = endDate.getFullYear();
-                                          return `${endMonth}/${endYear}`;
-                                        })()
+                                        const endDate = new Date(job.endDate);
+                                        const endMonth = String(endDate.getMonth() + 1).padStart(2, '0');
+                                        const endYear = endDate.getFullYear();
+                                        return `${endMonth}/${endYear}`;
+                                      })()
                                     }
                                   </span>
                                 </div>
@@ -942,7 +944,7 @@ export default function ProfilePage() {
                                   <p className="mt-2 whitespace-pre-wrap" style={{ color: '#4F5348' }}>{job.description}</p>
                                 )}
                               </div>
-                              
+
                               {/* Action Buttons - Bottom Right */}
                               <div className="flex justify-end mt-3 space-x-2">
                                 <button
@@ -963,7 +965,7 @@ export default function ProfilePage() {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                   </svg>
                                 </button>
-                                
+
                                 {/* Hide delete button if only 1 entry */}
                                 {employmentList.length > 1 && (
                                   <button
@@ -1049,7 +1051,7 @@ export default function ProfilePage() {
                                       const startMonth = String(startDate.getMonth() + 1).padStart(2, '0');
                                       const startYear = startDate.getFullYear();
                                       const startStr = `${startMonth}/${startYear}`;
-                                      const endStr = edu.current ? 'Present' : (() => { const d = new Date(edu.endDate); return `${String(d.getMonth() + 1).padStart(2,'0')}/${d.getFullYear()}`; })();
+                                      const endStr = edu.current ? 'Present' : (() => { const d = new Date(edu.endDate); return `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`; })();
                                       return `${startStr} — ${endStr}`;
                                     })()}
                                   </div>
@@ -1200,7 +1202,7 @@ export default function ProfilePage() {
                       {Object.entries(groupSkillsByCategory(filteredSkills)).map(([category, skills]) => (
                         <div key={category} className="mb-6 last:mb-0">
                           {/* Category Header */}
-                          <div 
+                          <div
                             className="flex items-center justify-between p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg mb-3 cursor-pointer hover:from-gray-100 hover:to-gray-150 transition"
                             onClick={() => toggleCategory(category)}
                           >
@@ -1218,12 +1220,11 @@ export default function ProfilePage() {
                                   <div className="flex items-center space-x-2 text-xs">
                                     {Object.entries(getSkillLevelSummary(skills)).map(([level, count]) => (
                                       count > 0 && (
-                                        <span key={level} className={`px-2 py-0.5 rounded ${
-                                          level === 'Beginner' ? 'bg-gray-200 text-gray-800' :
-                                          level === 'Intermediate' ? 'bg-yellow-100 text-yellow-800' :
-                                          level === 'Advanced' ? 'bg-indigo-100 text-indigo-800' :
-                                          'bg-green-100 text-green-800'
-                                        }`}>
+                                        <span key={level} className={`px-2 py-0.5 rounded ${level === 'Beginner' ? 'bg-gray-200 text-gray-800' :
+                                            level === 'Intermediate' ? 'bg-yellow-100 text-yellow-800' :
+                                              level === 'Advanced' ? 'bg-indigo-100 text-indigo-800' :
+                                                'bg-green-100 text-green-800'
+                                          }`}>
                                           {count} {level}
                                         </span>
                                       )
@@ -1266,10 +1267,24 @@ export default function ProfilePage() {
 
                 {/* Projects Section */}
                 <Card variant="default" title="Projects">
-                  <div className="flex justify-end items-center mb-4">
+                  <div className="flex justify-end items-center mb-4 gap-2">
+                    {projectList && projectList.length > 0 && (
+                      <button
+                        onClick={() => setShowPortfolioModal(true)}
+                        className="px-4 py-2 border rounded-lg transition flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                        style={{ borderColor: '#777C6D', color: '#777C6D' }}
+                        onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#F5F6F4'; }}
+                        onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span>View Portfolio</span>
+                      </button>
+                    )}
                     <button
                       onClick={() => setShowProjectModal(true)}
-                      className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 ml-auto focus:outline-none focus:ring-2 focus:ring-offset-2"
+                      className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
                       style={{ backgroundColor: '#777C6D' }}
                       onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
                       onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
@@ -1281,40 +1296,47 @@ export default function ProfilePage() {
                     </button>
                   </div>
 
-                      {projectSuccessMessage && (
-                        <div className="mb-4 p-4 border rounded-lg flex items-center" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', color: '#166534' }}>
-                          <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
-                          </svg>
-                          {projectSuccessMessage}
-                        </div>
-                      )}
+                  {projectSuccessMessage && (
+                    <div className="mb-4 p-4 border rounded-lg flex items-center" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', color: '#166534' }}>
+                      <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      {projectSuccessMessage}
+                    </div>
+                  )}
 
-                      {projectList && projectList.length > 0 ? (
-                        <>
-                          <div className="mb-4">
-                            <ProjectFilters
-                              techOptions={techOptions}
-                              industryOptions={industryOptions}
-                              filters={projectFilters}
-                              onChange={setProjectFilters}
-                            />
-                          </div>
+                  {projectList && projectList.length > 0 ? (
+                    <>
+                      <div className="mb-4">
+                        <ProjectFilters
+                          techOptions={techOptions}
+                          industryOptions={industryOptions}
+                          filters={projectFilters}
+                          onChange={setProjectFilters}
+                        />
+                      </div>
 
-                          <ProjectGrid
-                            projects={projectList}
-                            filters={projectFilters}
-                            onOpenDetail={(p) => setSelectedProject(p)}
-                            onEdit={(p) => handleEditProject(p)}
-                            onDelete={(p) => handleDeleteProject(p)}
-                          />
-                        </>
-                      ) : (
-                        <p className="italic" style={{ color: '#9CA3AF' }}>No projects added yet.</p>
-                      )}
-                      {selectedProject && (
-                        <ProjectDetail project={selectedProject} onClose={() => setSelectedProject(null)} />
-                      )}
+                      <ProjectGrid
+                        projects={projectList}
+                        filters={projectFilters}
+                        onOpenDetail={(p) => setSelectedProject(p)}
+                        onEdit={(p) => handleEditProject(p)}
+                        onDelete={(p) => handleDeleteProject(p)}
+                      />
+                    </>
+                  ) : (
+                    <p className="italic" style={{ color: '#9CA3AF' }}>No projects added yet.</p>
+                  )}
+                  {selectedProject && (
+                    <ProjectDetail project={selectedProject} onClose={() => setSelectedProject(null)} />
+                  )}
+                  {showPortfolioModal && (
+                    <PortfolioModal
+                      projects={projectList}
+                      onClose={() => setShowPortfolioModal(false)}
+                      userName={userData?.name || ''}
+                    />
+                  )}
                 </Card>
 
                 {/* Certifications Section */}
@@ -1327,262 +1349,262 @@ export default function ProfilePage() {
                       onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
                       onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
                     >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                          </svg>
-                          <span>Add Certification</span>
-                        </button>
-                      </div>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      <span>Add Certification</span>
+                    </button>
+                  </div>
 
-                      {certificationSuccessMessage && (
-                        <div className="mb-4 p-4 border rounded-lg flex items-center" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', color: '#166534' }}>
-                          <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
-                          </svg>
-                          {certificationSuccessMessage}
-                        </div>
-                      )}
+                  {certificationSuccessMessage && (
+                    <div className="mb-4 p-4 border rounded-lg flex items-center" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', color: '#166534' }}>
+                      <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      {certificationSuccessMessage}
+                    </div>
+                  )}
 
-                      {/* Compact certifications list */}
-                      {certList && certList.length > 0 ? (
-                        <div className="space-y-4">
-                          {certList.map((c, index) => {
-                            const days = (() => {
-                              if (c.doesNotExpire) return null;
-                              if (!c.expirationDate) return null;
-                              const d = new Date(c.expirationDate);
-                              if (isNaN(d.getTime())) return null; // Invalid date
-                              const now = new Date();
-                              return Math.ceil((d - now) / (1000 * 60 * 60 * 24));
-                            })();
-                            const expiringSoon = days !== null && days <= (c.reminderDays || 30) && days >= 0;
-                            const expired = days !== null && days < 0;
-                            
-                            // Format dates for display
-                            const formatDate = (dateStr) => {
-                              if (!dateStr) return '—';
-                              const d = new Date(dateStr);
-                              if (isNaN(d.getTime())) return '—';
-                              return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
-                            };
+                  {/* Compact certifications list */}
+                  {certList && certList.length > 0 ? (
+                    <div className="space-y-4">
+                      {certList.map((c, index) => {
+                        const days = (() => {
+                          if (c.doesNotExpire) return null;
+                          if (!c.expirationDate) return null;
+                          const d = new Date(c.expirationDate);
+                          if (isNaN(d.getTime())) return null; // Invalid date
+                          const now = new Date();
+                          return Math.ceil((d - now) / (1000 * 60 * 60 * 24));
+                        })();
+                        const expiringSoon = days !== null && days <= (c.reminderDays || 30) && days >= 0;
+                        const expired = days !== null && days < 0;
 
-                            return (
-                              <div key={c._id || c.id || index} className="border rounded-lg p-4 hover:shadow-md transition relative">
-                                <div className="flex justify-between">
-                                  <div>
-                                    <h3 className="text-lg font-heading font-semibold" style={{ color: '#4F5348' }}>{c.name}</h3>
-                                    <p className="font-medium" style={{ color: '#656A5C' }}>{c.organization}</p>
-                                    <div className="flex items-center text-sm mt-1 space-x-2" style={{ color: '#9CA3AF' }}>
-                                      {c.certId && <span>ID: {c.certId}</span>}
-                                      <span>•</span>
-                                      <span>{c.industry || '—'}</span>
-                                    </div>
-                                    <div className="text-sm mt-2" style={{ color: '#656A5C' }}>Earned: {formatDate(c.dateEarned)} · {c.doesNotExpire ? 'Does not expire' : formatDate(c.expirationDate)}</div>
-                                    <div className="text-sm mt-1" style={{ color: '#656A5C' }}>Verification: <strong className={`ml-2 ${c.verification === 'Verified' ? 'text-green-600' : c.verification === 'Pending' ? 'text-yellow-600' : 'text-gray-600'}`}>{c.verification}</strong></div>
-                                    {c.document && <div className="mt-2"><a className="text-sm underline" style={{ color: '#777C6D' }} href={c.document.data} target="_blank" rel="noreferrer">View document ({c.document.name})</a></div>}
-                                    <div className="mt-2 text-sm">
-                                      {expired && <span className="text-red-600">Expired</span>}
-                                      {expiringSoon && <span className="text-yellow-600">Expires in {days} day(s)</span>}
-                                    </div>
-                                  </div>
+                        // Format dates for display
+                        const formatDate = (dateStr) => {
+                          if (!dateStr) return '—';
+                          const d = new Date(dateStr);
+                          if (isNaN(d.getTime())) return '—';
+                          return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+                        };
 
-                                  <div className="flex items-start gap-2">
-                                    <button
-                                      onClick={() => {
-                                        setEditingCertification(c);
-                                        setShowCertModal(true);
-                                      }}
-                                      className="p-2 rounded-lg transition"
-                                      style={{ color: '#6B7280' }}
-                                      onMouseOver={(e) => {
-                                        e.currentTarget.style.color = '#777C6D';
-                                        e.currentTarget.style.backgroundColor = '#F5F6F4';
-                                      }}
-                                      onMouseOut={(e) => {
-                                        e.currentTarget.style.color = '#6B7280';
-                                        e.currentTarget.style.backgroundColor = 'transparent';
-                                      }}
-                                      title="Edit certification"
-                                    >
-                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                      </svg>
-                                    </button>
-                                    <button
-                                      onClick={async () => {
-                                        if (!confirm('Delete this certification?')) return;
-                                        try {
-                                          const token = await getToken();
-                                          setAuthToken(token);
-                                          await api.delete(`/api/profile/certifications/${c._id}`);
-                                          const me = await api.get('/api/users/me');
-                                          setCertList(me?.data?.data?.certifications || []);
-                                          setCertificationSuccessMessage(`Certification "${c.name}" deleted successfully!`);
-                                          setTimeout(() => setCertificationSuccessMessage(null), 5000);
-                                        } catch (e) {
-                                          console.error(e);
-                                          alert('Failed to delete certification. Please try again.');
-                                        }
-                                      }}
-                                      className="p-2 rounded-lg transition"
-                                      style={{ color: '#6B7280' }}
-                                      onMouseOver={(e) => {
-                                        e.currentTarget.style.color = '#EF4444';
-                                        e.currentTarget.style.backgroundColor = '#FEF2F2';
-                                      }}
-                                      onMouseOut={(e) => {
-                                        e.currentTarget.style.color = '#6B7280';
-                                        e.currentTarget.style.backgroundColor = 'transparent';
-                                      }}
-                                      title="Delete certification"
-                                    >
-                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                      </svg>
-                                    </button>
-                                  </div>
+                        return (
+                          <div key={c._id || c.id || index} className="border rounded-lg p-4 hover:shadow-md transition relative">
+                            <div className="flex justify-between">
+                              <div>
+                                <h3 className="text-lg font-heading font-semibold" style={{ color: '#4F5348' }}>{c.name}</h3>
+                                <p className="font-medium" style={{ color: '#656A5C' }}>{c.organization}</p>
+                                <div className="flex items-center text-sm mt-1 space-x-2" style={{ color: '#9CA3AF' }}>
+                                  {c.certId && <span>ID: {c.certId}</span>}
+                                  <span>•</span>
+                                  <span>{c.industry || '—'}</span>
+                                </div>
+                                <div className="text-sm mt-2" style={{ color: '#656A5C' }}>Earned: {formatDate(c.dateEarned)} · {c.doesNotExpire ? 'Does not expire' : formatDate(c.expirationDate)}</div>
+                                <div className="text-sm mt-1" style={{ color: '#656A5C' }}>Verification: <strong className={`ml-2 ${c.verification === 'Verified' ? 'text-green-600' : c.verification === 'Pending' ? 'text-yellow-600' : 'text-gray-600'}`}>{c.verification}</strong></div>
+                                {c.document && <div className="mt-2"><a className="text-sm underline" style={{ color: '#777C6D' }} href={c.document.data} target="_blank" rel="noreferrer">View document ({c.document.name})</a></div>}
+                                <div className="mt-2 text-sm">
+                                  {expired && <span className="text-red-600">Expired</span>}
+                                  {expiringSoon && <span className="text-yellow-600">Expires in {days} day(s)</span>}
                                 </div>
                               </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <p className="italic" style={{ color: '#9CA3AF' }}>No certifications added yet.</p>
-                      )}
+
+                              <div className="flex items-start gap-2">
+                                <button
+                                  onClick={() => {
+                                    setEditingCertification(c);
+                                    setShowCertModal(true);
+                                  }}
+                                  className="p-2 rounded-lg transition"
+                                  style={{ color: '#6B7280' }}
+                                  onMouseOver={(e) => {
+                                    e.currentTarget.style.color = '#777C6D';
+                                    e.currentTarget.style.backgroundColor = '#F5F6F4';
+                                  }}
+                                  onMouseOut={(e) => {
+                                    e.currentTarget.style.color = '#6B7280';
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                  }}
+                                  title="Edit certification"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    if (!confirm('Delete this certification?')) return;
+                                    try {
+                                      const token = await getToken();
+                                      setAuthToken(token);
+                                      await api.delete(`/api/profile/certifications/${c._id}`);
+                                      const me = await api.get('/api/users/me');
+                                      setCertList(me?.data?.data?.certifications || []);
+                                      setCertificationSuccessMessage(`Certification "${c.name}" deleted successfully!`);
+                                      setTimeout(() => setCertificationSuccessMessage(null), 5000);
+                                    } catch (e) {
+                                      console.error(e);
+                                      alert('Failed to delete certification. Please try again.');
+                                    }
+                                  }}
+                                  className="p-2 rounded-lg transition"
+                                  style={{ color: '#6B7280' }}
+                                  onMouseOver={(e) => {
+                                    e.currentTarget.style.color = '#EF4444';
+                                    e.currentTarget.style.backgroundColor = '#FEF2F2';
+                                  }}
+                                  onMouseOut={(e) => {
+                                    e.currentTarget.style.color = '#6B7280';
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                  }}
+                                  title="Delete certification"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="italic" style={{ color: '#9CA3AF' }}>No certifications added yet.</p>
+                  )}
                 </Card>
 
                 {/* Upcoming Reminders Section */}
                 <Card variant="info" title="Upcoming Reminders">
                   {(() => {
-                          const now = new Date();
-                          const items = (certList || []).filter((c) => {
-                            if (c.doesNotExpire) return false;
-                            if (!c.expirationDate) return false;
-                            if (c.reminderDismissed) return false;
-                            if (c.reminderSnoozedUntil) {
-                              const snoozed = new Date(c.reminderSnoozedUntil);
-                              if (snoozed > now) return false;
-                            }
-                            const d = (() => {
-                              const dt = new Date(c.expirationDate);
-                              return Math.ceil((dt - now) / (1000 * 60 * 60 * 24));
-                            })();
-                            return d !== null && d <= (c.reminderDays || 30) && d >= 0;
-                          });
+                    const now = new Date();
+                    const items = (certList || []).filter((c) => {
+                      if (c.doesNotExpire) return false;
+                      if (!c.expirationDate) return false;
+                      if (c.reminderDismissed) return false;
+                      if (c.reminderSnoozedUntil) {
+                        const snoozed = new Date(c.reminderSnoozedUntil);
+                        if (snoozed > now) return false;
+                      }
+                      const d = (() => {
+                        const dt = new Date(c.expirationDate);
+                        return Math.ceil((dt - now) / (1000 * 60 * 60 * 24));
+                      })();
+                      return d !== null && d <= (c.reminderDays || 30) && d >= 0;
+                    });
 
-                          if (!items || items.length === 0) return <div className="text-sm text-gray-600">No upcoming reminders.</div>;
+                    if (!items || items.length === 0) return <div className="text-sm text-gray-600">No upcoming reminders.</div>;
 
+                    return (
+                      <div className="space-y-2">
+                        {items.map((c) => {
+                          const days = Math.ceil((new Date(c.expirationDate) - new Date()) / (1000 * 60 * 60 * 24));
                           return (
-                            <div className="space-y-2">
-                              {items.map((c) => {
-                                const days = Math.ceil((new Date(c.expirationDate) - new Date()) / (1000 * 60 * 60 * 24));
-                                return (
-                                  <div key={c._id || c.id} className="flex items-center justify-between">
-                                    <div className="text-sm">
-                                      <strong>{c.name}</strong> — {c.organization} · Expires in {days} day(s)
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <button className="text-sm text-gray-600 hover:text-gray-800" onClick={async () => {
-                                        try {
-                                          const token = await getToken();
-                                          setAuthToken(token);
-                                          await api.put(`/api/profile/certifications/${c._id}`, { reminderSnoozedUntil: new Date(Date.now() + 7*24*60*60*1000).toISOString() });
-                                          const me = await api.get('/api/users/me');
-                                          setCertList(me?.data?.data?.certifications || []);
-                                        } catch (e) { 
-                                          console.error(e);
-                                          alert('Failed to snooze reminder. Please try again.');
-                                        }
-                                      }}>Snooze 7d</button>
-                                      <button className="text-sm text-gray-600 hover:text-gray-800" onClick={async () => {
-                                        try {
-                                          const token = await getToken();
-                                          setAuthToken(token);
-                                          await api.put(`/api/profile/certifications/${c._id}`, { reminderDismissed: true });
-                                          const me = await api.get('/api/users/me');
-                                          setCertList(me?.data?.data?.certifications || []);
-                                        } catch (e) { 
-                                          console.error(e);
-                                          alert('Failed to dismiss reminder. Please try again.');
-                                        }
-                                      }}>Dismiss</button>
-                                    </div>
-                                  </div>
-                                );
-                              })}
+                            <div key={c._id || c.id} className="flex items-center justify-between">
+                              <div className="text-sm">
+                                <strong>{c.name}</strong> — {c.organization} · Expires in {days} day(s)
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button className="text-sm text-gray-600 hover:text-gray-800" onClick={async () => {
+                                  try {
+                                    const token = await getToken();
+                                    setAuthToken(token);
+                                    await api.put(`/api/profile/certifications/${c._id}`, { reminderSnoozedUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() });
+                                    const me = await api.get('/api/users/me');
+                                    setCertList(me?.data?.data?.certifications || []);
+                                  } catch (e) {
+                                    console.error(e);
+                                    alert('Failed to snooze reminder. Please try again.');
+                                  }
+                                }}>Snooze 7d</button>
+                                <button className="text-sm text-gray-600 hover:text-gray-800" onClick={async () => {
+                                  try {
+                                    const token = await getToken();
+                                    setAuthToken(token);
+                                    await api.put(`/api/profile/certifications/${c._id}`, { reminderDismissed: true });
+                                    const me = await api.get('/api/users/me');
+                                    setCertList(me?.data?.data?.certifications || []);
+                                  } catch (e) {
+                                    console.error(e);
+                                    alert('Failed to dismiss reminder. Please try again.');
+                                  }
+                                }}>Dismiss</button>
+                              </div>
                             </div>
                           );
-                        })()}
+                        })}
+                      </div>
+                    );
+                  })()}
                 </Card>
 
-                    {/* Certifications modal - renders full Certifications UI */}
-                    {showCertModal && (
-                      <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={() => { setShowCertModal(false); setEditingCertification(null); }}>
-                        <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-                          {/* Modal Header */}
-                          <div className="flex justify-between items-center p-6 border-b sticky top-0 bg-white z-10">
-                            <h3 className="text-xl font-heading font-semibold text-gray-900">Certifications</h3>
-                            <button 
-                              onClick={() => { setShowCertModal(false); setEditingCertification(null); }} 
-                              className="text-gray-400 hover:text-gray-600 transition"
-                            >
-                              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </button>
-                          </div>
-                          
-                          {/* Modal Content */}
-                          <div className="flex-1 overflow-y-auto p-6">
-                            <Certifications 
-                              getToken={getToken} 
-                              onListUpdate={(updated) => setCertList(updated)} 
-                              editingCertification={editingCertification}
-                              onSuccess={(updated, message) => {
-                                setCertList(updated);
-                                setShowCertModal(false);
-                                setEditingCertification(null);
-                                setCertificationSuccessMessage(message);
-                                setTimeout(() => setCertificationSuccessMessage(null), 5000);
-                              }}
-                            />
-                          </div>
-                          
-                          {/* Modal Footer */}
-                          <div className="flex justify-end space-x-4 p-6 border-t sticky bottom-0 bg-white">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setShowCertModal(false);
-                                setEditingCertification(null);
-                              }}
-                              className="px-6 py-2 border rounded-lg transition"
-                              style={{ borderColor: '#D1D5DB', color: '#374151' }}
-                              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#F9FAFB'}
-                              onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                            >
-                              Close
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                // Trigger form submit
-                                const form = document.getElementById('cert-form');
-                                if (form) form.requestSubmit();
-                              }}
-                              className="px-6 py-2 text-white rounded-lg transition"
-                              style={{ backgroundColor: '#777C6D' }}
-                              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-                            >
-                              Save Certification
-                            </button>
-                          </div>
-                        </div>
+                {/* Certifications modal - renders full Certifications UI */}
+                {showCertModal && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={() => { setShowCertModal(false); setEditingCertification(null); }}>
+                    <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+                      {/* Modal Header */}
+                      <div className="flex justify-between items-center p-6 border-b sticky top-0 bg-white z-10">
+                        <h3 className="text-xl font-heading font-semibold text-gray-900">Certifications</h3>
+                        <button
+                          onClick={() => { setShowCertModal(false); setEditingCertification(null); }}
+                          className="text-gray-400 hover:text-gray-600 transition"
+                        >
+                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
                       </div>
-                    )}
 
-                    
+                      {/* Modal Content */}
+                      <div className="flex-1 overflow-y-auto p-6">
+                        <Certifications
+                          getToken={getToken}
+                          onListUpdate={(updated) => setCertList(updated)}
+                          editingCertification={editingCertification}
+                          onSuccess={(updated, message) => {
+                            setCertList(updated);
+                            setShowCertModal(false);
+                            setEditingCertification(null);
+                            setCertificationSuccessMessage(message);
+                            setTimeout(() => setCertificationSuccessMessage(null), 5000);
+                          }}
+                        />
+                      </div>
+
+                      {/* Modal Footer */}
+                      <div className="flex justify-end space-x-4 p-6 border-t sticky bottom-0 bg-white">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowCertModal(false);
+                            setEditingCertification(null);
+                          }}
+                          className="px-6 py-2 border rounded-lg transition"
+                          style={{ borderColor: '#D1D5DB', color: '#374151' }}
+                          onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#F9FAFB'}
+                          onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                          Close
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // Trigger form submit
+                            const form = document.getElementById('cert-form');
+                            if (form) form.requestSubmit();
+                          }}
+                          className="px-6 py-2 text-white rounded-lg transition"
+                          style={{ backgroundColor: '#777C6D' }}
+                          onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                          onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                        >
+                          Save Certification
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+
 
                 {/* Additional Information */}
                 {(userData?.website || userData?.linkedin || userData?.github) && (
@@ -1592,10 +1614,10 @@ export default function ProfilePage() {
                       {userData?.website && (
                         <div>
                           <p className="text-sm font-medium mb-1" style={{ color: '#4B5563' }}>Website</p>
-                          <a 
-                            href={userData.website} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
+                          <a
+                            href={userData.website}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="hover:underline transition-colors"
                             style={{ color: '#777C6D' }}
                             onMouseOver={(e) => e.currentTarget.style.color = '#656A5C'}
@@ -1608,10 +1630,10 @@ export default function ProfilePage() {
                       {userData?.linkedin && (
                         <div>
                           <p className="text-sm font-medium mb-1" style={{ color: '#4B5563' }}>LinkedIn</p>
-                          <a 
-                            href={userData.linkedin} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
+                          <a
+                            href={userData.linkedin}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="hover:underline transition-colors"
                             style={{ color: '#777C6D' }}
                             onMouseOver={(e) => e.currentTarget.style.color = '#656A5C'}
@@ -1624,10 +1646,10 @@ export default function ProfilePage() {
                       {userData?.github && (
                         <div>
                           <p className="text-sm font-medium mb-1" style={{ color: '#4B5563' }}>GitHub</p>
-                          <a 
-                            href={userData.github} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
+                          <a
+                            href={userData.github}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="hover:underline transition-colors"
                             style={{ color: '#777C6D' }}
                             onMouseOver={(e) => e.currentTarget.style.color = '#656A5C'}
@@ -1648,7 +1670,7 @@ export default function ProfilePage() {
           <Card variant="outlined" className="mt-6 border-2" style={{ borderColor: '#FCA5A5', backgroundColor: '#FEF2F2' }}>
             <h2 className="text-xl font-semibold mb-2" style={{ color: '#DC2626' }}>Danger Zone</h2>
             <p className="text-sm mb-4" style={{ color: '#111827' }}>
-              <strong>Warning:</strong> Deleting your account will <strong>immediately and permanently</strong> remove all your personal data. 
+              <strong>Warning:</strong> Deleting your account will <strong>immediately and permanently</strong> remove all your personal data.
               This action cannot be undone. You will be logged out immediately and your account will no longer exist.
             </p>
             <div className="flex justify-end">
@@ -1668,17 +1690,17 @@ export default function ProfilePage() {
 
       {/* Delete confirmation modal */}
       {showDeleteModal && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-50" 
-          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} 
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
           onClick={() => {
             setShowDeleteModal(false);
             setDeletePassword("");
             setError(null);
           }}
         >
-          <div 
-            className="rounded-lg shadow-2xl max-w-md w-full p-6 mx-4 border" 
+          <div
+            className="rounded-lg shadow-2xl max-w-md w-full p-6 mx-4 border"
             style={{ backgroundColor: '#EEEEEE', borderColor: '#E5E7EB' }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1691,7 +1713,7 @@ export default function ProfilePage() {
               <div className="ml-3 flex-1">
                 <h3 className="text-lg font-heading font-semibold mb-2" style={{ color: '#111827' }}>Confirm Account Deletion</h3>
                 <p className="text-sm mb-4" style={{ color: '#111827' }}>
-                  <strong>Warning:</strong> This will <strong>immediately and permanently delete</strong> your account and all associated data. 
+                  <strong>Warning:</strong> This will <strong>immediately and permanently delete</strong> your account and all associated data.
                   This action cannot be undone and you will be logged out immediately.
                 </p>
                 <p className="text-sm mb-4" style={{ color: '#4B5563' }}>
@@ -1722,12 +1744,12 @@ export default function ProfilePage() {
             />
 
             <div className="flex justify-end space-x-3 mt-6">
-              <button 
+              <button
                 onClick={() => {
                   setShowDeleteModal(false);
                   setDeletePassword("");
                   setError(null);
-                }} 
+                }}
                 disabled={deleting}
                 className="px-4 py-2 rounded-lg transition disabled:opacity-50 focus:outline-none focus:ring-2"
                 style={{ backgroundColor: '#F3F4F6', color: '#111827' }}
@@ -1736,9 +1758,9 @@ export default function ProfilePage() {
               >
                 Cancel
               </button>
-              <button 
-                onClick={handleDeleteAccount} 
-                disabled={deleting || !deletePassword.trim()} 
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleting || !deletePassword.trim()}
                 className="px-6 py-2 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed font-medium focus:outline-none focus:ring-2 focus:ring-offset-2"
                 style={{ backgroundColor: '#EF4444' }}
                 onMouseOver={(e) => !deleting && (e.currentTarget.style.backgroundColor = '#DC2626')}
@@ -1750,11 +1772,11 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
-      
+
       {/* Delete Confirmation Modal - Education */}
       {showEducationDeleteModal && deletingEducation && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-50" 
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
           onClick={(e) => {
             if (!isDeleting) {
@@ -1762,8 +1784,8 @@ export default function ProfilePage() {
             }
           }}
         >
-          <div 
-            className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 border border-gray-200" 
+          <div
+            className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 border border-gray-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -1842,8 +1864,8 @@ export default function ProfilePage() {
 
       {/* Delete Confirmation Modal - Skill */}
       {showSkillDeleteModal && deletingSkill && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-50" 
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
           onClick={(e) => {
             if (!isDeleting) {
@@ -1851,8 +1873,8 @@ export default function ProfilePage() {
             }
           }}
         >
-          <div 
-            className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 border border-gray-200" 
+          <div
+            className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 border border-gray-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -1875,12 +1897,11 @@ export default function ProfilePage() {
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
                 <p className="font-semibold text-gray-900">{deletingSkill.name}</p>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className={`text-sm px-2 py-0.5 rounded ${
-                    deletingSkill.level === 'Beginner' ? 'bg-gray-200 text-gray-800' :
-                    deletingSkill.level === 'Intermediate' ? 'bg-yellow-100 text-yellow-800' :
-                    deletingSkill.level === 'Advanced' ? 'bg-indigo-100 text-indigo-800' :
-                    'bg-green-100 text-green-800'
-                  }`}>
+                  <span className={`text-sm px-2 py-0.5 rounded ${deletingSkill.level === 'Beginner' ? 'bg-gray-200 text-gray-800' :
+                      deletingSkill.level === 'Intermediate' ? 'bg-yellow-100 text-yellow-800' :
+                        deletingSkill.level === 'Advanced' ? 'bg-indigo-100 text-indigo-800' :
+                          'bg-green-100 text-green-800'
+                    }`}>
                     {deletingSkill.level}
                   </span>
                   <span className="text-sm text-gray-600">{deletingSkill.category}</span>
@@ -1941,9 +1962,9 @@ export default function ProfilePage() {
 
       {/* Edit Profile Modal */}
       {showEditModal && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-50" 
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }} 
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
           onClick={(e) => {
             // Allow closing modal by clicking backdrop even if there's an error
             if (!isSaving) {
@@ -1951,8 +1972,8 @@ export default function ProfilePage() {
             }
           }}
         >
-          <div 
-            className="rounded-lg shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto relative border" 
+          <div
+            className="rounded-lg shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto relative border"
             style={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB' }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -2018,7 +2039,7 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                
+
 
                 {/* Phone and Location Row */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -2241,8 +2262,8 @@ export default function ProfilePage() {
 
       {/* Delete Confirmation Modal */}
       {showEmploymentDeleteModal && deletingEmployment && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center z-50" 
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
           onClick={(e) => {
             if (!isDeleting) {
@@ -2250,8 +2271,8 @@ export default function ProfilePage() {
             }
           }}
         >
-          <div 
-            className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 border border-gray-200" 
+          <div
+            className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 border border-gray-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -2623,7 +2644,7 @@ function EducationModal({ isOpen, onClose, onSuccess, getToken, editingEducation
 
       payload.startDate = parseMMYYYY(formData.startDate);
       payload.endDate = formData.current ? null : parseMMYYYY(formData.endDate);
-      
+
       // Handle optional fields
       if (payload.gpa === '') {
         delete payload.gpa;
@@ -2641,26 +2662,26 @@ function EducationModal({ isOpen, onClose, onSuccess, getToken, editingEducation
         // Add new education
         response = await api.post('/api/profile/education', payload);
       }
-      
-      const successMsg = isEditMode 
-        ? 'Education entry updated successfully!' 
+
+      const successMsg = isEditMode
+        ? 'Education entry updated successfully!'
         : 'Education entry added successfully!';
-      
+
       // Call success callback with updated education list and message
       onSuccess(response.data.data.education || response.data.data || [], successMsg);
-      
+
       // For add mode only: clear form and show inline success message
       if (!isEditMode) {
         setFormData({
-          institution: '', 
-          degree: '', 
-          fieldOfStudy: '', 
-          location: '', 
-          startDate: '', 
-          endDate: '', 
-          current: false, 
-          gpa: '', 
-          gpaPrivate: true, 
+          institution: '',
+          degree: '',
+          fieldOfStudy: '',
+          location: '',
+          startDate: '',
+          endDate: '',
+          current: false,
+          gpa: '',
+          gpaPrivate: true,
           achievements: ''
         });
         setError(null);
@@ -2768,10 +2789,10 @@ function EducationModal({ isOpen, onClose, onSuccess, getToken, editingEducation
             </div>
 
             <div className="flex justify-end space-x-4 pt-6 border-t sticky bottom-0 bg-white">
-              <button 
-                type="button" 
-                onClick={handleClose} 
-                disabled={isSaving} 
+              <button
+                type="button"
+                onClick={handleClose}
+                disabled={isSaving}
                 className="px-6 py-2 border rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ borderColor: '#D1D5DB', color: '#374151' }}
                 onMouseOver={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#F9FAFB')}
@@ -2779,9 +2800,9 @@ function EducationModal({ isOpen, onClose, onSuccess, getToken, editingEducation
               >
                 Close
               </button>
-              <button 
-                type="submit" 
-                disabled={isSaving} 
+              <button
+                type="submit"
+                disabled={isSaving}
                 className="px-6 py-2 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ backgroundColor: '#777C6D' }}
                 onMouseOver={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#656A5C')}
@@ -2796,7 +2817,7 @@ function EducationModal({ isOpen, onClose, onSuccess, getToken, editingEducation
     </div>
   );
 }
- 
+
 // Skill Modal Component
 function SkillModal({ isOpen, onClose, onSuccess, getToken, editingSkill, skillList = [] }) {
   const isEditMode = !!editingSkill;
@@ -2805,9 +2826,9 @@ function SkillModal({ isOpen, onClose, onSuccess, getToken, editingSkill, skillL
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
 
-  const SUGGESTIONS = ['JavaScript','Python','React','Node.js','TypeScript','Communication','Leadership','Project Management','Spanish','French'];
-  const CATEGORIES = ['Technical','Soft Skills','Languages','Industry-Specific'];
-  const LEVELS = ['Beginner','Intermediate','Advanced','Expert'];
+  const SUGGESTIONS = ['JavaScript', 'Python', 'React', 'Node.js', 'TypeScript', 'Communication', 'Leadership', 'Project Management', 'Spanish', 'French'];
+  const CATEGORIES = ['Technical', 'Soft Skills', 'Languages', 'Industry-Specific'];
+  const LEVELS = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
 
   useEffect(() => {
     if (editingSkill) {
@@ -2936,9 +2957,9 @@ function SkillModal({ isOpen, onClose, onSuccess, getToken, editingSkill, skillL
           </div>
 
           <div className="flex justify-end space-x-4 pt-6 border-t sticky bottom-0 bg-white">
-            <button 
-              type="button" 
-              onClick={handleClose} 
+            <button
+              type="button"
+              onClick={handleClose}
               disabled={isSaving}
               className="px-6 py-2 border rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ borderColor: '#D1D5DB', color: '#374151' }}
@@ -2947,9 +2968,9 @@ function SkillModal({ isOpen, onClose, onSuccess, getToken, editingSkill, skillL
             >
               Close
             </button>
-            <button 
-              type="submit" 
-              disabled={isSaving} 
+            <button
+              type="submit"
+              disabled={isSaving}
               className="px-6 py-2 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: '#777C6D' }}
               onMouseOver={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#656A5C')}
@@ -2967,7 +2988,7 @@ function SkillModal({ isOpen, onClose, onSuccess, getToken, editingSkill, skillL
 // Employment Modal Component
 function EmploymentModal({ isOpen, onClose, onSuccess, getToken, editingJob }) {
   const isEditMode = !!editingJob;
-  
+
   const [formData, setFormData] = useState({
     jobTitle: '',
     company: '',
@@ -3030,7 +3051,7 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken, editingJob }) {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    
+
     // Handle description character limit
     if (name === 'description') {
       if (value.length > 1000) return;
@@ -3041,18 +3062,18 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken, editingJob }) {
     if (name === 'startDate' || name === 'endDate') {
       // Remove any non-digit characters
       let cleaned = value.replace(/\D/g, '');
-      
+
       // Limit to 6 digits (MMYYYY)
       if (cleaned.length > 6) {
         cleaned = cleaned.substring(0, 6);
       }
-      
+
       // Format as MM/YYYY
       let formatted = cleaned;
       if (cleaned.length >= 3) {
         formatted = cleaned.substring(0, 2) + '/' + cleaned.substring(2);
       }
-      
+
       setFormData(prev => ({
         ...prev,
         [name]: formatted
@@ -3104,7 +3125,7 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken, editingJob }) {
         } else {
           const [endMonth, endYear] = formData.endDate.split('/');
           const endDateObj = new Date(endYear, endMonth - 1, 1);
-          
+
           if (isNaN(endDateObj.getTime())) {
             errors.push({ field: 'endDate', message: 'Invalid end date' });
           } else if (formData.startDate) {
@@ -3112,7 +3133,7 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken, editingJob }) {
             if (startDatePattern.test(formData.startDate)) {
               const [startMonth, startYear] = formData.startDate.split('/');
               const startDateObj = new Date(startYear, startMonth - 1, 1);
-              
+
               if (!isNaN(startDateObj.getTime()) && startDateObj >= endDateObj) {
                 errors.push({ field: 'endDate', message: 'End date must be after the start date' });
               }
@@ -3170,14 +3191,14 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken, editingJob }) {
         // Add new employment
         response = await api.post('/api/users/employment', apiData);
       }
-      
-      const successMsg = isEditMode 
-        ? 'Employment entry updated successfully!' 
+
+      const successMsg = isEditMode
+        ? 'Employment entry updated successfully!'
         : 'Employment entry added successfully!';
-      
+
       // Call success callback with updated employment list and message
       onSuccess(response.data.data.employment || response.data.data, successMsg);
-      
+
       // For add mode only: clear form and show inline success message
       if (!isEditMode) {
         setFormData({
@@ -3193,7 +3214,7 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken, editingJob }) {
         setDescCharCount(0);
         setError(null);
         setSuccessMessage(successMsg);
-        
+
         // Auto-dismiss inline success message after 3 seconds
         setTimeout(() => setSuccessMessage(null), 3000);
       }
@@ -3225,13 +3246,13 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken, editingJob }) {
   if (!isOpen) return null;
 
   return (
-    <div 
-      className="fixed inset-0 flex items-center justify-center z-50" 
-      style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }} 
+    <div
+      className="fixed inset-0 flex items-center justify-center z-50"
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
       onClick={handleClose}
     >
-      <div 
-        className="bg-white rounded-lg shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto relative border border-gray-200" 
+      <div
+        className="bg-white rounded-lg shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto relative border border-gray-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
@@ -3432,8 +3453,8 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken, editingJob }) {
                 onMouseOver={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#656A5C')}
                 onMouseOut={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#777C6D')}
               >
-                {isSaving 
-                  ? (isEditMode ? 'Updating...' : 'Saving...') 
+                {isSaving
+                  ? (isEditMode ? 'Updating...' : 'Saving...')
                   : (isEditMode ? 'Update Employment' : 'Save Employment')}
               </button>
             </div>
