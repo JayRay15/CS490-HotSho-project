@@ -105,7 +105,7 @@ function ResumeTile({ resume, template, onView, onDelete, onRename, onShare, val
             <p className="text-xs text-gray-500">Modified {new Date(resume.updatedAt).toLocaleDateString()}</p>
             {/* UC-52: Job usage badge */}
             {resume.linkedJobCount > 0 && (
-              <p className="text-xs text-blue-600 font-medium">
+              <p className="text-[10px] text-blue-600 font-medium">
                 Used in {resume.linkedJobCount} application{resume.linkedJobCount !== 1 ? 's' : ''}
               </p>
             )}

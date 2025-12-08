@@ -18,6 +18,7 @@ export const getJobs = asyncHandler(async (req, res) => {
 
   // Support filtering by status and archived state
   const { status, archived, search } = req.query;
+  console.log("GET JOBS - Query Params:", req.query);
   const filter = { userId };
 
   if (status) {
@@ -35,6 +36,15 @@ export const getJobs = asyncHandler(async (req, res) => {
       { company: { $regex: search, $options: "i" } },
       { location: { $regex: search, $options: "i" } },
     ];
+  }
+
+  // Filter by linked documents
+  if (req.query.resumeId) {
+    filter.linkedResumeId = req.query.resumeId;
+  }
+
+  if (req.query.coverLetterId) {
+    filter.linkedCoverLetterId = req.query.coverLetterId;
   }
 
   const jobs = await Job.find(filter).sort({ createdAt: -1 });
