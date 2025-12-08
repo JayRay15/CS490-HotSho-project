@@ -502,7 +502,7 @@ export default function DocumentManagementPage() {
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold">Job Packages</h2>
               <Button variant="outline" onClick={() => navigate('/jobs')}>
-                📋 View All Jobs
+                View All Jobs
               </Button>
             </div>
 
@@ -594,9 +594,9 @@ export default function DocumentManagementPage() {
                             {/* Manage Documents Button */}
                             <button
                               onClick={() => navigate(`/jobs/${job._id}/materials?from=documents`)}
-                              className="w-full p-2 mt-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-100 flex items-center justify-center gap-2"
+                              className="w-full p-2 mt-2 bg-primary-50 text-primary-500 rounded-lg text-sm font-medium hover:bg-primary-100 hover:shadow-lg shadow-sm transition-shadow flex items-center justify-center gap-2"
                             >
-                              <span>📁</span> Manage Documents
+                              <span></span> Manage Documents
                             </button>
                           </div>
                         )}
