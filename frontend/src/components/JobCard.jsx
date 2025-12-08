@@ -178,10 +178,10 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
               };
               return statusMap[status] || { label: status, color: 'bg-gray-100 text-gray-700' };
             };
-            
+
             const badge = getStatusBadge(applicationStatus.currentStatus);
             const daysSinceUpdate = Math.floor((new Date() - new Date(applicationStatus.lastStatusChange)) / (1000 * 60 * 60 * 24));
-            
+
             return (
               <div className="flex items-center gap-2 text-xs">
                 <span className={`px-2 py-1 rounded-full font-medium ${badge.color}`}>
@@ -287,6 +287,16 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
               className="text-xs px-2 py-1 rounded bg-gray-200 hover:bg-gray-300 text-gray-700"
             >
               Edit
+            </button>
+          )}
+          {/* UC-042: View Materials button */}
+          {!job.archived && (
+            <button
+              onClick={() => navigate(`/jobs/${job._id}/materials`)}
+              className="text-xs px-2 py-1 rounded bg-amber-100 hover:bg-amber-200 text-amber-700 font-medium"
+              title="View and link resumes and cover letters for this job"
+            >
+              📁 View Materials
             </button>
           )}
           {onScheduleInterview && !job.archived && (job.status === "Interview" || job.status === "Phone Screen") && (

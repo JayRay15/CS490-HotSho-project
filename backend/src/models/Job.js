@@ -223,6 +223,31 @@ const jobSchema = new mongoose.Schema(
       ref: 'Resume',
       default: null,
     },
+    // UC-042: Link cover letter to job application
+    linkedCoverLetterId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'CoverLetter',
+      default: null,
+    },
+    // Additional documents for application package
+    linkedAdditionalDocuments: [{
+      name: {
+        type: String,
+        required: true,
+      },
+      documentType: {
+        type: String,
+        enum: ['certificate', 'portfolio', 'reference', 'transcript', 'other'],
+        default: 'other',
+      },
+      fileName: String,
+      fileData: String, // Base64 data URL
+      notes: String,
+      addedAt: {
+        type: Date,
+        default: Date.now,
+      },
+    }],
     // Status tracking fields
     nextAction: {
       type: String,
