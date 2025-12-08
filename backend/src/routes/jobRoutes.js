@@ -12,6 +12,7 @@ import {
   getJobStats,
   getJobAnalytics,
   linkResumeToJob,
+  linkCoverLetterToJob,
   archiveJob,
   restoreJob,
   bulkArchiveJobs,
@@ -77,6 +78,9 @@ router.put("/:jobId/status", checkJwt, updateJobStatus);
 
 // UC-52: PUT /api/jobs/:jobId/link-resume - Link resume to job
 router.put("/:jobId/link-resume", checkJwt, linkResumeToJob);
+
+// UC-042: PUT /api/jobs/:jobId/link-cover-letter - Link cover letter to job
+router.put("/:jobId/link-cover-letter", checkJwt, linkCoverLetterToJob);
 
 // DELETE /api/jobs/:jobId - Delete a job
 router.delete("/:jobId", checkJwt, deleteJob);

@@ -223,6 +223,12 @@ const jobSchema = new mongoose.Schema(
       ref: 'Resume',
       default: null,
     },
+    // UC-042: Link cover letter to job application
+    linkedCoverLetterId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'CoverLetter',
+      default: null,
+    },
     // Status tracking fields
     nextAction: {
       type: String,

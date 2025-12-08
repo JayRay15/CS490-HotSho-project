@@ -66,6 +66,7 @@ import PredictiveAnalytics from "./pages/PredictiveAnalytics.jsx";
 import CompetitiveAnalysis from "./pages/auth/CompetitiveAnalysis.jsx";
 import InformationalInterviewsPage from "./pages/InformationalInterviews.jsx";
 import JobMapPage from "./pages/JobMapPage.jsx";
+import JobMaterialsPage from "./pages/auth/JobMaterialsPage.jsx";
 
 function App() {
   return (
@@ -81,6 +82,7 @@ function App() {
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
           <Route path="/jobs" element={<ProtectedRoute><Jobs /></ProtectedRoute>} />
+          <Route path="/jobs/:jobId/materials" element={<ProtectedRoute><JobMaterialsPage /></ProtectedRoute>} />
           <Route path="/profile/project/:id" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
           <Route path="/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
           <Route path="/portfolio" element={<ProtectedRoute><Portfolio /></ProtectedRoute>} />
