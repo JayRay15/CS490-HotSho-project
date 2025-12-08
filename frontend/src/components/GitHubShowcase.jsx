@@ -332,13 +332,19 @@ export default function GitHubShowcase() {
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed text-sm"
+              className="px-6 py-2 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: '#777C6D', marginRight: '0.5rem' }}
+              onMouseOver={e => !isRefreshing && (e.currentTarget.style.backgroundColor = '#656A5C')}
+              onMouseOut={e => !isRefreshing && (e.currentTarget.style.backgroundColor = '#777C6D')}
             >
               {isRefreshing ? "Refreshing..." : "Refresh Data"}
             </button>
             <button
               onClick={handleDisconnect}
-              className="px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 text-sm"
+              className="px-6 py-2 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: '#B91C1C' }}
+              onMouseOver={e => (e.currentTarget.style.backgroundColor = '#991B1B')}
+              onMouseOut={e => (e.currentTarget.style.backgroundColor = '#B91C1C')}
             >
               Disconnect
             </button>
@@ -415,7 +421,10 @@ export default function GitHubShowcase() {
           <h3 className="text-xl font-bold">Featured Repositories</h3>
           <button
             onClick={() => setShowRepoSelector(!showRepoSelector)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+            className="px-6 py-2 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ backgroundColor: '#777C6D' }}
+            onMouseOver={e => (e.currentTarget.style.backgroundColor = '#656A5C')}
+            onMouseOut={e => (e.currentTarget.style.backgroundColor = '#777C6D')}
           >
             {showRepoSelector ? "Cancel" : "Edit Featured"}
           </button>
@@ -517,14 +526,20 @@ export default function GitHubShowcase() {
             <div className="flex justify-end gap-2 pt-4 border-t">
               <button
                 onClick={() => setShowRepoSelector(false)}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                className="px-6 py-2 border rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ borderColor: '#D1D5DB', color: '#374151', backgroundColor: '#fff', marginRight: '0.5rem' }}
+                onMouseOver={e => (e.currentTarget.style.backgroundColor = '#F9FAFB')}
+                onMouseOut={e => (e.currentTarget.style.backgroundColor = '#fff')}
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveFeatured}
                 disabled={isSavingFeatured || selectedRepos.length === 0}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                className="px-6 py-2 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ backgroundColor: '#777C6D' }}
+                onMouseOver={e => !isSavingFeatured && (e.currentTarget.style.backgroundColor = '#656A5C')}
+                onMouseOut={e => !isSavingFeatured && (e.currentTarget.style.backgroundColor = '#777C6D')}
               >
                 {isSavingFeatured ? "Saving..." : `Save Featured (${selectedRepos.length})`}
               </button>
