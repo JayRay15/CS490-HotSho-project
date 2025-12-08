@@ -240,7 +240,8 @@ const jobSchema = new mongoose.Schema(
         enum: ['certificate', 'portfolio', 'reference', 'transcript', 'other'],
         default: 'other',
       },
-      url: String,
+      fileName: String,
+      fileData: String, // Base64 data URL
       notes: String,
       addedAt: {
         type: Date,

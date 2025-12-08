@@ -1298,7 +1298,7 @@ export const autoArchiveJobs = asyncHandler(async (req, res) => {
 export const addAdditionalDocument = asyncHandler(async (req, res) => {
   const userId = req.auth?.userId || req.auth?.payload?.sub;
   const { jobId } = req.params;
-  const { name, documentType, notes } = req.body;
+  const { name, documentType, notes, fileName, fileData } = req.body;
 
   if (!userId) {
     const { response, statusCode } = errorResponse(
@@ -1333,18 +1333,12 @@ export const addAdditionalDocument = asyncHandler(async (req, res) => {
     job.linkedAdditionalDocuments = [];
   }
 
-  // Construct file URL if a file was uploaded
-  let fileUrl = null;
-  if (req.file) {
-    // File was uploaded, construct the URL
-    fileUrl = `/uploads/${req.file.filename}`;
-  }
-
   // Add new document
   job.linkedAdditionalDocuments.push({
     name,
     documentType: documentType || 'other',
-    url: fileUrl,
+    fileName,
+    fileData,
     notes,
     addedAt: new Date()
   });

@@ -40,13 +40,9 @@ export const autoArchiveJobs = (daysInactive, statuses) =>
 export const getInterviewInsights = (jobId) =>
   retryRequest(() => api.get(`/api/jobs/${jobId}/interview-insights`));
 
-// Add additional document to job package (accepts FormData for file upload)
-export const addAdditionalDocument = (jobId, formData) =>
-  retryRequest(() => api.post(`/api/jobs/${jobId}/additional-documents`, formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
-  }));
+// Add additional document to job package
+export const addAdditionalDocument = (jobId, document) =>
+  retryRequest(() => api.post(`/api/jobs/${jobId}/additional-documents`, document));
 
 // Remove additional document from job package
 export const removeAdditionalDocument = (jobId, docIndex) =>

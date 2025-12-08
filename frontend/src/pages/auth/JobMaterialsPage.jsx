@@ -105,6 +105,7 @@ export default function JobMaterialsPage() {
     const [newDocForm, setNewDocForm] = useState({ name: '', documentType: 'other', notes: '' });
     const [selectedFile, setSelectedFile] = useState(null);
     const [addingDoc, setAddingDoc] = useState(false);
+    const [deleteConfirm, setDeleteConfirm] = useState({ show: false, docIndex: null, docName: '' });
 
     useEffect(() => {
         loadData();
@@ -239,16 +240,38 @@ export default function JobMaterialsPage() {
             setAddingDoc(true);
             await authWrap();
 
-            // Create FormData for file upload
-            const formData = new FormData();
-            formData.append('name', newDocForm.name);
-            formData.append('documentType', newDocForm.documentType);
-            formData.append('notes', newDocForm.notes || '');
-            if (selectedFile) {
-                formData.append('file', selectedFile);
-            }
+            const payload = {
+                ...newDocForm,
+                fileName: selectedFile ? selectedFile.name : null,
+                fileData: null
+            };
 
-            await addAdditionalDocument(jobId, formData);
+            if (selectedFile) {
+                // Convert file to Base64
+                const reader = new FileReader();
+                reader.readAsDataURL(selectedFile);
+                reader.onload = async () => {
+                    payload.fileData = reader.result;
+                    await submitDocument(payload);
+                };
+                reader.onerror = (error) => {
+                    console.error("Error reading file:", error);
+                    alert("Failed to read file. Please try again.");
+                    setAddingDoc(false);
+                };
+            } else {
+                await submitDocument(payload);
+            }
+        } catch (error) {
+            console.error("Error adding document:", error);
+            alert("Failed to add document. Please try again.");
+            setAddingDoc(false);
+        }
+    };
+
+    const submitDocument = async (payload) => {
+        try {
+            await addAdditionalDocument(jobId, payload);
             setShowAddDocModal(false);
             setNewDocForm({ name: '', documentType: 'other', notes: '' });
             setSelectedFile(null);
@@ -257,14 +280,12 @@ export default function JobMaterialsPage() {
             // Reload job data
             await loadData();
         } catch (error) {
-            console.error("Error adding document:", error);
+            console.error("Error submitting document:", error);
             alert("Failed to add document. Please try again.");
         } finally {
             setAddingDoc(false);
         }
     };
-
-    // Handle removing additional document
     const handleRemoveDocument = async (docIndex) => {
         try {
             await authWrap();
@@ -624,12 +645,23 @@ export default function JobMaterialsPage() {
                                                 {doc.notes && <p className="text-xs text-gray-500 mt-1">{doc.notes}</p>}
                                             </div>
                                         </div>
-                                        <button
-                                            onClick={() => handleRemoveDocument(idx)}
-                                            className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
-                                        >
-                                            Remove
-                                        </button>
+                                        <div className="flex items-center gap-2">
+                                            {doc.fileData && (
+                                                <a
+                                                    href={doc.fileData}
+                                                    download={doc.fileName || doc.name}
+                                                    className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                                                >
+                                                    Download
+                                                </a>
+                                            )}
+                                            <button
+                                                onClick={() => setDeleteConfirm({ show: true, docIndex: idx, docName: doc.name })}
+                                                className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
+                                            >
+                                                Remove
+                                            </button>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -1011,6 +1043,47 @@ export default function JobMaterialsPage() {
                                     Close
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {deleteConfirm.show && (
+                <div
+                    className="fixed inset-0 flex items-center justify-center z-50"
+                    style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+                    onClick={() => setDeleteConfirm({ show: false, docIndex: null, docName: '' })}
+                >
+                    <div
+                        className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="p-4 border-b">
+                            <h3 className="text-lg font-semibold text-gray-900">Confirm Delete</h3>
+                        </div>
+                        <div className="p-4">
+                            <p className="text-gray-700">
+                                Are you sure you want to remove <strong>{deleteConfirm.docName}</strong> from this job package?
+                            </p>
+                            <p className="text-sm text-gray-500 mt-2">This action cannot be undone.</p>
+                        </div>
+                        <div className="p-4 border-t flex justify-end gap-2">
+                            <button
+                                onClick={() => setDeleteConfirm({ show: false, docIndex: null, docName: '' })}
+                                className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    await handleRemoveDocument(deleteConfirm.docIndex);
+                                    setDeleteConfirm({ show: false, docIndex: null, docName: '' });
+                                }}
+                                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                            >
+                                Delete
+                            </button>
                         </div>
                     </div>
                 </div>
