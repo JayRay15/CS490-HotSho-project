@@ -44,7 +44,7 @@ export default function ProjectFilters({ techOptions = [], industryOptions = [],
             <button
               key={t}
               onClick={() => toggleTech(t)}
-              className={`text-sm px-2 py-1 rounded border ${ (filters.techs || []).includes(t) ? 'bg-slate-700 text-white' : 'bg-white text-gray-700' }`}
+              className={`text-sm px-2 py-1 rounded border ${ (filters.techs || []).includes(t) ? 'bg-[#656A5C] text-white' : 'bg-white text-gray-700' }`}
             >{t}</button>
           )) : <div className="text-xs text-gray-500">No techs</div>}
         </div>
