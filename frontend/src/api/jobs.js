@@ -39,3 +39,15 @@ export const autoArchiveJobs = (daysInactive, statuses) =>
 // UC-68: Get interview insights for a company
 export const getInterviewInsights = (jobId) =>
   retryRequest(() => api.get(`/api/jobs/${jobId}/interview-insights`));
+
+// Add additional document to job package (accepts FormData for file upload)
+export const addAdditionalDocument = (jobId, formData) =>
+  retryRequest(() => api.post(`/api/jobs/${jobId}/additional-documents`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  }));
+
+// Remove additional document from job package
+export const removeAdditionalDocument = (jobId, docIndex) =>
+  retryRequest(() => api.delete(`/api/jobs/${jobId}/additional-documents/${docIndex}`));

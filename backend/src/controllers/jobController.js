@@ -234,6 +234,7 @@ export const updateJob = asyncHandler(async (req, res) => {
     "companyInfo", // UC-062: Company information
     "nextAction",
     "nextActionDate",
+    "linkedAdditionalDocuments", // Application package documents
   ];
 
   console.log("UPDATE JOB - Received data:", req.body);
@@ -1290,5 +1291,108 @@ export const autoArchiveJobs = asyncHandler(async (req, res) => {
       criteria: { daysInactive: daysThreshold, statuses: targetStatuses }
     }
   );
+  return sendResponse(res, response, statusCode);
+});
+
+// POST /api/jobs/:jobId/additional-documents - Add an additional document to job package
+export const addAdditionalDocument = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { jobId } = req.params;
+  const { name, documentType, notes } = req.body;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  if (!name) {
+    const { response, statusCode } = errorResponse(
+      "Document name is required",
+      400,
+      ERROR_CODES.VALIDATION_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const job = await Job.findOne({ _id: jobId, userId });
+  if (!job) {
+    const { response, statusCode } = errorResponse(
+      "Job not found or you don't have permission to update it",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Initialize array if undefined
+  if (!job.linkedAdditionalDocuments) {
+    job.linkedAdditionalDocuments = [];
+  }
+
+  // Construct file URL if a file was uploaded
+  let fileUrl = null;
+  if (req.file) {
+    // File was uploaded, construct the URL
+    fileUrl = `/uploads/${req.file.filename}`;
+  }
+
+  // Add new document
+  job.linkedAdditionalDocuments.push({
+    name,
+    documentType: documentType || 'other',
+    url: fileUrl,
+    notes,
+    addedAt: new Date()
+  });
+
+  await job.save();
+
+  const { response, statusCode } = successResponse("Document added to job package", { job });
+  return sendResponse(res, response, statusCode);
+});
+
+// DELETE /api/jobs/:jobId/additional-documents/:docIndex - Remove an additional document from job package
+export const removeAdditionalDocument = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { jobId, docIndex } = req.params;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const job = await Job.findOne({ _id: jobId, userId });
+  if (!job) {
+    const { response, statusCode } = errorResponse(
+      "Job not found or you don't have permission to update it",
+      404,
+      ERROR_CODES.NOT_FOUND
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const index = parseInt(docIndex, 10);
+  if (isNaN(index) || index < 0 || !job.linkedAdditionalDocuments || index >= job.linkedAdditionalDocuments.length) {
+    const { response, statusCode } = errorResponse(
+      "Invalid document index",
+      400,
+      ERROR_CODES.VALIDATION_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Remove document at index
+  job.linkedAdditionalDocuments.splice(index, 1);
+  await job.save();
+
+  const { response, statusCode } = successResponse("Document removed from job package", { job });
   return sendResponse(res, response, statusCode);
 });

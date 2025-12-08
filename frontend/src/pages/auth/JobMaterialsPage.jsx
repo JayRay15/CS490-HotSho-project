@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@clerk/clerk-react";
 import Container from "../../components/Container";
 import Card from "../../components/Card";
@@ -7,7 +7,7 @@ import Button from "../../components/Button";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import ResumeSectionsDisplay from "../../components/resume/ResumeSectionsDisplay";
 import { setAuthToken } from "../../api/axios";
-import { getJob, linkResumeToJob, linkCoverLetterToJob } from "../../api/jobs";
+import { getJob, linkResumeToJob, linkCoverLetterToJob, addAdditionalDocument, removeAdditionalDocument } from "../../api/jobs";
 import { fetchResumes } from "../../api/resumes";
 import { fetchCoverLetters } from "../../api/coverLetters";
 import { fetchTemplates } from "../../api/resumeTemplates";
@@ -80,7 +80,11 @@ const formatCoverLetterContent = (content) => {
 export default function JobMaterialsPage() {
     const { jobId } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const { getToken } = useAuth();
+
+    // Check if user came from documents page
+    const fromDocuments = new URLSearchParams(location.search).get('from') === 'documents';
 
     const [loading, setLoading] = useState(true);
     const [job, setJob] = useState(null);
@@ -95,6 +99,12 @@ export default function JobMaterialsPage() {
     const [showCoverLetterSelector, setShowCoverLetterSelector] = useState(false);
     const [showResumePreview, setShowResumePreview] = useState(false);
     const [showCoverLetterPreview, setShowCoverLetterPreview] = useState(false);
+
+    // Additional documents state
+    const [showAddDocModal, setShowAddDocModal] = useState(false);
+    const [newDocForm, setNewDocForm] = useState({ name: '', documentType: 'other', notes: '' });
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [addingDoc, setAddingDoc] = useState(false);
 
     useEffect(() => {
         loadData();
@@ -222,6 +232,53 @@ export default function JobMaterialsPage() {
         return templates.find(t => t._id === linkedResume.templateId) || {};
     };
 
+    // Handle adding additional document
+    const handleAddDocument = async () => {
+        if (!newDocForm.name.trim()) return;
+        try {
+            setAddingDoc(true);
+            await authWrap();
+
+            // Create FormData for file upload
+            const formData = new FormData();
+            formData.append('name', newDocForm.name);
+            formData.append('documentType', newDocForm.documentType);
+            formData.append('notes', newDocForm.notes || '');
+            if (selectedFile) {
+                formData.append('file', selectedFile);
+            }
+
+            await addAdditionalDocument(jobId, formData);
+            setShowAddDocModal(false);
+            setNewDocForm({ name: '', documentType: 'other', notes: '' });
+            setSelectedFile(null);
+            setSuccessMessage("Document added successfully!");
+            setTimeout(() => setSuccessMessage(null), 3000);
+            // Reload job data
+            await loadData();
+        } catch (error) {
+            console.error("Error adding document:", error);
+            alert("Failed to add document. Please try again.");
+        } finally {
+            setAddingDoc(false);
+        }
+    };
+
+    // Handle removing additional document
+    const handleRemoveDocument = async (docIndex) => {
+        try {
+            await authWrap();
+            await removeAdditionalDocument(jobId, docIndex);
+            setSuccessMessage("Document removed successfully!");
+            setTimeout(() => setSuccessMessage(null), 3000);
+            // Reload job data
+            await loadData();
+        } catch (error) {
+            console.error("Error removing document:", error);
+            alert("Failed to remove document. Please try again.");
+        }
+    };
+
     if (loading) {
         return (
             <Container>
@@ -267,10 +324,10 @@ export default function JobMaterialsPage() {
                 {/* Back Button */}
                 <Button
                     variant="ghost"
-                    onClick={() => navigate("/jobs")}
+                    onClick={() => fromDocuments ? navigate("/documents?tab=packages") : navigate("/jobs")}
                     className="mb-6 text-gray-600 hover:text-gray-800"
                 >
-                    ← Back to Jobs
+                    ← {fromDocuments ? "Back to Documents" : "Back to Jobs"}
                 </Button>
 
                 {/* Page Header */}
@@ -540,7 +597,140 @@ export default function JobMaterialsPage() {
                         )}
                     </div>
                 </div>
+
+                {/* Additional Documents Section */}
+                <div className="mt-8">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xl font-semibold text-gray-900">📎 Additional Documents</h2>
+                        <Button
+                            variant="outline"
+                            size="small"
+                            onClick={() => setShowAddDocModal(true)}
+                        >
+                            + Add Document
+                        </Button>
+                    </div>
+
+                    <Card>
+                        {job.linkedAdditionalDocuments && job.linkedAdditionalDocuments.length > 0 ? (
+                            <div className="space-y-2">
+                                {job.linkedAdditionalDocuments.map((doc, idx) => (
+                                    <div key={idx} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+                                        <div className="flex items-center gap-3">
+                                            <span>📎</span>
+                                            <div>
+                                                <p className="font-medium text-orange-800">{doc.name}</p>
+                                                <p className="text-xs text-orange-600">{doc.documentType}</p>
+                                                {doc.notes && <p className="text-xs text-gray-500 mt-1">{doc.notes}</p>}
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => handleRemoveDocument(idx)}
+                                            className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
+                                        >
+                                            Remove
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-8">
+                                <div className="text-4xl mb-3">📎</div>
+                                <p className="text-gray-500 mb-4">No additional documents yet</p>
+                                <Button variant="primary" onClick={() => setShowAddDocModal(true)}>
+                                    Add Your First Document
+                                </Button>
+                            </div>
+                        )}
+                    </Card>
+                </div>
             </div>
+
+            {/* Add Document Modal */}
+            {showAddDocModal && (
+                <div
+                    className="fixed inset-0 flex items-center justify-center z-50"
+                    style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+                    onClick={() => setShowAddDocModal(false)}
+                >
+                    <div
+                        className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="p-4 border-b">
+                            <h3 className="text-lg font-semibold">Add Document to Package</h3>
+                        </div>
+                        <div className="p-4 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Document Name *</label>
+                                <input
+                                    type="text"
+                                    value={newDocForm.name}
+                                    onChange={e => setNewDocForm(prev => ({ ...prev, name: e.target.value }))}
+                                    className="w-full p-2 border border-gray-300 rounded-lg"
+                                    placeholder="e.g., AWS Certification"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Document Type</label>
+                                <select
+                                    value={newDocForm.documentType}
+                                    onChange={e => setNewDocForm(prev => ({ ...prev, documentType: e.target.value }))}
+                                    className="w-full p-2 border border-gray-300 rounded-lg"
+                                >
+                                    <option value="certificate">Certificate</option>
+                                    <option value="portfolio">Portfolio</option>
+                                    <option value="reference">Reference</option>
+                                    <option value="transcript">Transcript</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
+                                <textarea
+                                    value={newDocForm.notes}
+                                    onChange={e => setNewDocForm(prev => ({ ...prev, notes: e.target.value }))}
+                                    className="w-full p-2 border border-gray-300 rounded-lg"
+                                    rows={2}
+                                    placeholder="Any additional notes..."
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Upload File (optional)</label>
+                                <input
+                                    type="file"
+                                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                    onChange={e => setSelectedFile(e.target.files[0] || null)}
+                                    className="w-full p-2 border border-gray-300 rounded-lg text-sm"
+                                />
+                                {selectedFile && (
+                                    <p className="text-xs text-green-600 mt-1">
+                                        ✓ Selected: {selectedFile.name}
+                                    </p>
+                                )}
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Accepted: PDF, DOC, DOCX, JPG, PNG (max 10MB)
+                                </p>
+                            </div>
+                        </div>
+                        <div className="p-4 border-t flex justify-end gap-2">
+                            <button
+                                onClick={() => setShowAddDocModal(false)}
+                                className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleAddDocument}
+                                disabled={addingDoc || !newDocForm.name.trim()}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                            >
+                                {addingDoc ? 'Adding...' : 'Add Document'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Resume Preview Modal - Matches ResumeTemplates.jsx View Resume Modal */}
             {showResumePreview && linkedResume && (

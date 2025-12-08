@@ -18,10 +18,13 @@ import {
   bulkArchiveJobs,
   bulkRestoreJobs,
   autoArchiveJobs,
-  getJobById
+  getJobById,
+  addAdditionalDocument,
+  removeAdditionalDocument
 } from "../controllers/jobController.js";
 import { scrapeJobFromURL } from "../controllers/jobScraperController.js";
 import { getInterviewInsights } from "../controllers/interviewInsightsController.js";
+import { upload } from "../middleware/uploadMiddleware.js";
 
 const router = express.Router();
 
@@ -81,6 +84,12 @@ router.put("/:jobId/link-resume", checkJwt, linkResumeToJob);
 
 // UC-042: PUT /api/jobs/:jobId/link-cover-letter - Link cover letter to job
 router.put("/:jobId/link-cover-letter", checkJwt, linkCoverLetterToJob);
+
+// POST /api/jobs/:jobId/additional-documents - Add additional document to job package (with file upload)
+router.post("/:jobId/additional-documents", checkJwt, upload.single('file'), addAdditionalDocument);
+
+// DELETE /api/jobs/:jobId/additional-documents/:docIndex - Remove additional document from job package
+router.delete("/:jobId/additional-documents/:docIndex", checkJwt, removeAdditionalDocument);
 
 // DELETE /api/jobs/:jobId - Delete a job
 router.delete("/:jobId", checkJwt, deleteJob);

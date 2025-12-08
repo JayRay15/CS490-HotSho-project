@@ -229,6 +229,24 @@ const jobSchema = new mongoose.Schema(
       ref: 'CoverLetter',
       default: null,
     },
+    // Additional documents for application package
+    linkedAdditionalDocuments: [{
+      name: {
+        type: String,
+        required: true,
+      },
+      documentType: {
+        type: String,
+        enum: ['certificate', 'portfolio', 'reference', 'transcript', 'other'],
+        default: 'other',
+      },
+      url: String,
+      notes: String,
+      addedAt: {
+        type: Date,
+        default: Date.now,
+      },
+    }],
     // Status tracking fields
     nextAction: {
       type: String,
