@@ -11,6 +11,7 @@ import ProjectGrid from "../../components/projects/ProjectGrid";
 import ProjectDetail from "../../components/projects/ProjectDetail";
 import ProjectFilters from "../../components/projects/ProjectFilters";
 import PortfolioModal from "../../components/projects/PortfolioModal";
+import GitHubShowcase from "../../components/GitHubShowcase";
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import Card from "../../components/Card";
 import Container from "../../components/Container";
@@ -1358,6 +1359,9 @@ export default function ProfilePage() {
                     />
                   )}
                 </Card>
+
+                {/* GitHub Showcase Section */}
+                <GitHubShowcase />
 
                 {/* Certifications Section */}
                 <Card variant="default" title="Certifications">
