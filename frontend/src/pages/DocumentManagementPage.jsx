@@ -20,12 +20,12 @@ export default function DocumentManagementPage() {
   const { getToken } = useAuth();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('resumes');
-  
+
   // Document counts and summaries
   const [resumeSummary, setResumeSummary] = useState({ total: 0, default: null, recent: [] });
   const [coverLetterSummary, setCoverLetterSummary] = useState({ total: 0, recent: [] });
   const [certificateSummary, setCertificateSummary] = useState({ total: 0, recent: [] });
-  const [linkedJobs, setLinkedJobs] = useState([]);
+  const [jobPackages, setJobPackages] = useState([]);
 
   useEffect(() => {
     loadDocumentSummaries();
@@ -65,8 +65,8 @@ export default function DocumentManagementPage() {
       try {
         const jobsRes = await api.get('/api/jobs');
         const jobs = jobsRes.data?.data?.jobs || jobsRes.data?.jobs || [];
-        const jobsWithDocs = jobs.filter(j => j.resumeId || j.coverLetterId).slice(0, 5);
-        setLinkedJobs(jobsWithDocs);
+        const jobsWithDocs = jobs.filter(j => j.linkedResumeId || j.linkedCoverLetterId);
+        setJobPackages(jobsWithDocs);
       } catch (err) {
         console.log('Could not fetch jobs:', err);
       }
@@ -101,7 +101,7 @@ export default function DocumentManagementPage() {
     { id: 'resumes', label: '📄 Resumes', count: resumeSummary.total },
     { id: 'coverLetters', label: '✉️ Cover Letters', count: coverLetterSummary.total },
     { id: 'certificates', label: '🏆 Certificates', count: certificateSummary.total },
-    { id: 'linked', label: '🔗 Linked to Jobs', count: linkedJobs.length }
+    { id: 'packages', label: '📦 Job Packages', count: jobPackages.length }
   ];
 
   if (loading) {
@@ -146,8 +146,8 @@ export default function DocumentManagementPage() {
             <div className="text-sm text-gray-600">Certificates</div>
           </Card>
           <Card className="text-center p-4">
-            <div className="text-3xl font-bold text-orange-600">{linkedJobs.length}</div>
-            <div className="text-sm text-gray-600">Linked Applications</div>
+            <div className="text-3xl font-bold text-orange-600">{jobPackages.length}</div>
+            <div className="text-sm text-gray-600">Job Packages</div>
           </Card>
         </div>
 
@@ -158,11 +158,10 @@ export default function DocumentManagementPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
               >
                 {tab.label}
                 <span className="ml-2 bg-gray-100 text-gray-600 py-0.5 px-2 rounded-full text-xs">
@@ -334,9 +333,9 @@ export default function DocumentManagementPage() {
                           )}
                         </div>
                         {cert.credentialUrl && (
-                          <a 
-                            href={cert.credentialUrl} 
-                            target="_blank" 
+                          <a
+                            href={cert.credentialUrl}
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="text-blue-600 hover:text-blue-800 text-sm"
                           >
@@ -381,41 +380,40 @@ export default function DocumentManagementPage() {
           </div>
         )}
 
-        {activeTab === 'linked' && (
+        {activeTab === 'packages' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Documents Linked to Jobs</h2>
+              <h2 className="text-xl font-semibold">Job Packages</h2>
               <Button variant="outline" onClick={() => navigate('/jobs')}>
                 📋 View All Jobs
               </Button>
             </div>
 
-            <Card title="Material Linking">
-              {linkedJobs.length > 0 ? (
+            <Card title="Application Packages">
+              {jobPackages.length > 0 ? (
                 <div className="divide-y divide-gray-100">
-                  {linkedJobs.map(job => (
+                  {jobPackages.map(job => (
                     <div key={job._id} className="py-4">
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="font-medium">{job.title}</h4>
                           <p className="text-sm text-gray-500">{job.company}</p>
                         </div>
-                        <span className={`text-xs px-2 py-1 rounded ${
-                          job.status === 'Applied' ? 'bg-blue-100 text-blue-700' :
+                        <span className={`text-xs px-2 py-1 rounded ${job.status === 'Applied' ? 'bg-blue-100 text-blue-700' :
                           job.status === 'Interview' ? 'bg-green-100 text-green-700' :
-                          job.status === 'Offer' ? 'bg-purple-100 text-purple-700' :
-                          'bg-gray-100 text-gray-700'
-                        }`}>
+                            job.status === 'Offer' ? 'bg-purple-100 text-purple-700' :
+                              'bg-gray-100 text-gray-700'
+                          }`}>
                           {job.status}
                         </span>
                       </div>
                       <div className="mt-2 flex gap-2">
-                        {job.resumeId && (
+                        {job.linkedResumeId && (
                           <span className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded">
                             📄 Resume linked
                           </span>
                         )}
-                        {job.coverLetterId && (
+                        {job.linkedCoverLetterId && (
                           <span className="text-xs bg-green-50 text-green-600 px-2 py-1 rounded">
                             ✉️ Cover letter linked
                           </span>
@@ -426,7 +424,7 @@ export default function DocumentManagementPage() {
                 </div>
               ) : (
                 <p className="text-gray-500 text-center py-4">
-                  No documents linked to job applications yet. Link resumes and cover letters when applying!
+                  No job packages yet. Link resumes and cover letters to job applications to see them here.
                 </p>
               )}
             </Card>
