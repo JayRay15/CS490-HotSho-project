@@ -97,6 +97,48 @@ export const connectGitHub = async (req, res) => {
       .sort((a, b) => b[1] - a[1])
       .map(([name, count]) => ({ name, count }));
     
+    // Fetch contribution activity (commits, PRs, issues)
+    let totalCommits = 0;
+    let totalPRs = 0;
+    let totalIssues = 0;
+    
+    try {
+      // Fetch user's events (recent activity)
+      const events = await fetchGitHubAPI(
+        `/users/${username}/events/public?per_page=100`,
+        personalAccessToken
+      );
+      
+      // Count different types of contributions from recent events
+      events.forEach(event => {
+        if (event.type === 'PushEvent') {
+          totalCommits += event.payload.commits?.length || 0;
+        } else if (event.type === 'PullRequestEvent') {
+          totalPRs++;
+        } else if (event.type === 'IssuesEvent') {
+          totalIssues++;
+        }
+      });
+      
+      // Also fetch commit counts for each repo (limited sample for performance)
+      const topRepos = repoData.slice(0, 10); // Check top 10 repos only
+      for (const repo of topRepos) {
+        try {
+          const commits = await fetchGitHubAPI(
+            `/repos/${repo.fullName}/commits?author=${username}&per_page=100`,
+            personalAccessToken
+          );
+          totalCommits += commits.length;
+        } catch (error) {
+          console.log(`Could not fetch commits for ${repo.fullName}:`, error.message);
+          // Continue with other repos
+        }
+      }
+    } catch (error) {
+      console.log("Could not fetch contribution activity:", error.message);
+      // Continue without contribution stats
+    }
+    
     // Create or update GitHub profile
     let githubProfile = await GitHubProfile.findOne({ userId });
     
@@ -122,6 +164,9 @@ export const connectGitHub = async (req, res) => {
       };
       githubProfile.repositories = repoData;
       githubProfile.contributionStats = {
+        totalCommits,
+        totalPRs,
+        totalIssues,
         totalStars,
         languages
       };
@@ -153,6 +198,9 @@ export const connectGitHub = async (req, res) => {
         },
         repositories: repoData,
         contributionStats: {
+          totalCommits,
+          totalPRs,
+          totalIssues,
           totalStars,
           languages
         },
@@ -274,6 +322,48 @@ export const refreshGitHubData = async (req, res) => {
       .sort((a, b) => b[1] - a[1])
       .map(([name, count]) => ({ name, count }));
     
+    // Fetch contribution activity (commits, PRs, issues)
+    let totalCommits = 0;
+    let totalPRs = 0;
+    let totalIssues = 0;
+    
+    try {
+      // Fetch user's events (recent activity)
+      const events = await fetchGitHubAPI(
+        `/users/${username}/events/public?per_page=100`,
+        personalAccessToken
+      );
+      
+      // Count different types of contributions from recent events
+      events.forEach(event => {
+        if (event.type === 'PushEvent') {
+          totalCommits += event.payload.commits?.length || 0;
+        } else if (event.type === 'PullRequestEvent') {
+          totalPRs++;
+        } else if (event.type === 'IssuesEvent') {
+          totalIssues++;
+        }
+      });
+      
+      // Also fetch commit counts for each repo (limited sample for performance)
+      const topRepos = repoData.slice(0, 10); // Check top 10 repos only
+      for (const repo of topRepos) {
+        try {
+          const commits = await fetchGitHubAPI(
+            `/repos/${repo.fullName}/commits?author=${username}&per_page=100`,
+            personalAccessToken
+          );
+          totalCommits += commits.length;
+        } catch (error) {
+          console.log(`Could not fetch commits for ${repo.fullName}:`, error.message);
+          // Continue with other repos
+        }
+      }
+    } catch (error) {
+      console.log("Could not fetch contribution activity:", error.message);
+      // Continue without contribution stats
+    }
+    
     // Update the profile
     githubProfile.profileData = {
       name: profileData.name,
@@ -294,6 +384,9 @@ export const refreshGitHubData = async (req, res) => {
     };
     githubProfile.repositories = repoData;
     githubProfile.contributionStats = {
+      totalCommits,
+      totalPRs,
+      totalIssues,
       totalStars,
       languages
     };

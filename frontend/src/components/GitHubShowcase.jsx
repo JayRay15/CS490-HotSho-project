@@ -345,6 +345,28 @@ export default function GitHubShowcase() {
           </div>
         </div>
         
+        {/* Contribution Activity */}
+        <div className="mt-6">
+          <h3 className="font-semibold text-gray-800 mb-3">Contribution Activity</h3>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center p-3 bg-blue-50 rounded-lg">
+              <div className="text-xl font-bold text-blue-800">{githubProfile.contributionStats.totalCommits || 0}</div>
+              <div className="text-xs text-blue-600">Commits</div>
+            </div>
+            <div className="text-center p-3 bg-green-50 rounded-lg">
+              <div className="text-xl font-bold text-green-800">{githubProfile.contributionStats.totalPRs || 0}</div>
+              <div className="text-xs text-green-600">Pull Requests</div>
+            </div>
+            <div className="text-center p-3 bg-purple-50 rounded-lg">
+              <div className="text-xl font-bold text-purple-800">{githubProfile.contributionStats.totalIssues || 0}</div>
+              <div className="text-xs text-purple-600">Issues</div>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            Recent activity from top repositories and public events
+          </p>
+        </div>
+        
         {/* Top Languages */}
         {githubProfile.contributionStats.languages.length > 0 && (
           <div className="mt-6">
