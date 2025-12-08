@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useUser } from "@clerk/clerk-react";
 import api, { setAuthToken } from "../api/axios";
 import Logo from "./Logo";
+import FollowUpReminderNotification from "./FollowUpReminderNotification";
 
 export default function Navbar() {
     const { getToken, signOut } = useAuth();
@@ -227,6 +228,11 @@ export default function Navbar() {
                                 )}
                             </div>
                             <div className="ml-3 flex items-center gap-3">
+                                {/* Follow-up Reminder Notification */}
+                                <FollowUpReminderNotification 
+                                  onViewAll={() => navigate('/jobs')}
+                                  onOpenFollowUpTemplates={(job) => navigate('/jobs')}
+                                />
                                 {/* User avatar */}
                                 <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
                                     {profilePicture ? (

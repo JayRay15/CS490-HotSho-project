@@ -4,6 +4,7 @@ import { successResponse, errorResponse, sendResponse, ERROR_CODES, validationEr
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { detectStatusFromEmail } from '../utils/emailStatusDetector.js';
 import { sendStatusChangeNotification } from '../utils/statusNotifications.js';
+import { handleStatusChange as handleFollowUpReminderStatusChange } from '../utils/followUpReminderService.js';
 
 // ===============================================
 // Application Status Tracking
@@ -129,6 +130,18 @@ export const updateApplicationStatus = asyncHandler(async (req, res) => {
   if (status.notifications.statusChangeAlert) {
     await sendStatusChangeNotification(sub, status, 'user');
   }
+
+  // Auto-create follow-up reminders for the new status
+  // This runs in the background and doesn't block the response
+  handleFollowUpReminderStatusChange(sub, jobId, newStatus, status.statusHistory.length > 1 ? status.statusHistory[status.statusHistory.length - 2]?.status : null)
+    .then(result => {
+      if (result.created) {
+        console.log(`✅ Created follow-up reminder for job ${jobId}: ${result.reminder?.title}`);
+      }
+    })
+    .catch(err => {
+      console.error(`⚠️ Failed to create follow-up reminder for job ${jobId}:`, err.message);
+    });
 
   const populatedStatus = await ApplicationStatus.findById(status._id)
     .populate('jobId', 'title company url location');

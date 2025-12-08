@@ -3,6 +3,7 @@ import { Job } from '../models/Job.js';
 import { User } from '../models/User.js';
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
+import { markReminderComplete } from '../utils/followUpReminderService.js';
 
 dotenv.config();
 
@@ -140,6 +141,17 @@ export const createFollowUp = async (req, res) => {
         console.log('⚠️  Interviewer email not provided, follow-up email not sent');
       }
     }
+
+    // Mark any pending follow-up reminder as completed
+    markReminderComplete(userId, jobId, followUp._id)
+      .then(completedReminder => {
+        if (completedReminder) {
+          console.log(`✅ Marked follow-up reminder as complete for job ${jobId}`);
+        }
+      })
+      .catch(err => {
+        console.error(`⚠️ Failed to mark reminder complete:`, err.message);
+      });
 
     res.status(201).json({
       success: true,
