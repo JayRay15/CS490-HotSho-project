@@ -5,51 +5,15 @@
 
 Complete the ATS for Candidates platform by integrating external APIs, implementing advanced AI-powered workflow automation, deploying to production cloud infrastructure, and conducting comprehensive testing with real user feedback. This final sprint transforms the application from a development prototype into a production-ready, publicly accessible platform with professional deployment practices.
 
-**Duration**: Weeks 13-16
 **Goal**: Deliver external API integrations, advanced AI automation features, cloud-deployed production environment, comprehensive testing suite, and user feedback analysis for future iterations.
 
 ---
 
 ## Use Cases by Sprint Goal
 
-### 🔌 Integration with External APIs (12 Use Cases)
+### 🔌 Integration with External APIs (6 Use Cases)
 
-#### UC-112: LinkedIn Profile Import via Public API
-**Summary**: As a user, I want to import my LinkedIn profile information so I can quickly populate my candidate profile without manual data entry.
-
-**Acceptance Criteria**:
-- Integrate with LinkedIn OAuth for user authentication
-- Import basic profile data: name, headline, summary, location
-- Import work experience with job titles, companies, dates, descriptions
-- Import education history with degrees, institutions, dates
-- Import skills list with endorsement counts
-- Handle API rate limits gracefully with user feedback
-- Provide manual override for any imported data
-- Store import timestamp and allow re-import to update data
-- Handle LinkedIn API authentication errors with clear messaging
-
-**Frontend Verification**: Click "Import from LinkedIn", complete OAuth flow, verify profile data populates correctly
-
----
-
-#### UC-113: Job Board Data Scraping (Free Sources)
-**Summary**: As a user, I want to search and import job postings from free public job boards so I can quickly add opportunities to track.
-
-**Acceptance Criteria**:
-- Integrate with free job board APIs (Adzuna, Remotive, GitHub Jobs Archive)
-- Search jobs by keywords, location, and job type
-- Display search results with job title, company, location, description preview
-- One-click import of job postings into user's tracking system
-- Automatically populate job fields from API data
-- Handle API failures with fallback to manual entry
-- Respect API rate limits and implement caching where appropriate
-- Track which jobs were imported vs manually entered
-
-**Frontend Verification**: Search for jobs via integrated APIs, import results, verify data accuracy
-
----
-
-#### UC-114: Salary Data Integration (Free Sources)
+#### UC-112: Salary Data Integration (Free Sources)
 **Summary**: As a user, I want to see salary benchmarks for job positions so I can make informed compensation decisions.
 
 **Acceptance Criteria**:
@@ -66,58 +30,7 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
-#### UC-115: Company Information Enrichment (Free Sources)
-**Summary**: As a user, I want automatic company information for job applications so I can research potential employers efficiently.
-
-**Acceptance Criteria**:
-- Integrate with free company data APIs (Clearbit Logo API, OpenCorporates)
-- Automatically fetch company logo when company name is entered
-- Display company size, industry, and founding year when available
-- Show company website and social media links
-- Cache company data to reduce API calls
-- Handle companies not found in API databases
-- Allow manual override of company information
-- Display data source attribution
-
-**Frontend Verification**: Add job with company name, verify automatic company information enrichment
-
----
-
-#### UC-116: News and Company Research Automation
-**Summary**: As a user, I want recent news about companies I'm applying to so I can stay informed for interviews and networking.
-
-**Acceptance Criteria**:
-- Integrate with free news APIs (NewsAPI.org free tier, Google News RSS)
-- Fetch recent news articles for target companies
-- Display articles with title, summary, date, and source
-- Filter news by relevance and recency (last 30 days priority)
-- Provide links to full articles
-- Update news automatically on company profile views
-- Handle companies with no recent news gracefully
-- Respect API rate limits with appropriate caching
-
-**Frontend Verification**: View company profile, verify recent news articles display with proper attribution
-
----
-
-#### UC-117: Calendar Integration for Interview Scheduling
-**Summary**: As a user, I want to sync interview appointments with my calendar so I don't miss important meetings.
-
-**Acceptance Criteria**:
-- Integrate with Google Calendar API (free tier)
-- Allow users to export interview appointments to calendar
-- Create calendar events with job title, company, location, and notes
-- Support calendar event updates and deletions
-- Handle calendar API authentication securely
-- Provide reminder settings for upcoming interviews
-- Display upcoming interviews from calendar in dashboard
-- Handle calendar sync errors gracefully
-
-**Frontend Verification**: Schedule interview, export to calendar, verify event appears in Google Calendar
-
----
-
-#### UC-118: Email Integration for Application Tracking
+#### UC-113: Email Integration for Application Tracking
 **Summary**: As a user, I want to track application-related emails so I can automatically update job statuses based on employer communications.
 
 **Acceptance Criteria**:
@@ -134,7 +47,7 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
-#### UC-119: GitHub Repository Showcase Integration
+#### UC-114: GitHub Repository Showcase Integration
 **Summary**: As a user, I want to showcase my GitHub projects so I can demonstrate technical skills to potential employers.
 
 **Acceptance Criteria**:
@@ -151,7 +64,7 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
-#### UC-120: External Skills Assessment Platform Integration
+#### UC-115: External Skills Assessment Platform Integration
 **Summary**: As a user, I want to link external skill certifications so I can validate my technical abilities.
 
 **Acceptance Criteria**:
@@ -168,41 +81,25 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
-#### UC-121: Location and Geo-coding Services
-**Summary**: As a user, I want location-based job recommendations so I can find opportunities in my preferred geographic areas.
+#### UC-116: Location and Geo-coding Services
+**Summary**: As a user, I want to visualize my tracked jobs from Sprint 2 on an interactive map so I can understand job locations and plan commutes.
 
 **Acceptance Criteria**:
 - Integrate with free geocoding API (OpenStreetMap Nominatim)
 - Convert location strings to coordinates for distance calculations
-- Display jobs on an interactive map view
-- Calculate distance from user's location to job locations
-- Support multiple location preferences (remote, hybrid, on-site)
-- Filter jobs by commute distance or remote status
+- Display jobs from Sprint 2's job tracking system (UC-036 to UC-045) on an interactive map view
+- Calculate commute distance and estimated travel time from user's home location to each job
+- Support filtering by location type (remote, hybrid, on-site)
+- Filter jobs by maximum commute distance or time
+- Compare locations side-by-side for multiple job offers
 - Handle international locations and time zones
 - Cache geocoding results to minimize API usage
 
-**Frontend Verification**: Set location preferences, view jobs on map, verify distance calculations
+**Frontend Verification**: View tracked jobs on map, verify accurate locations and commute distance/time calculations
 
 ---
 
-#### UC-122: Document Format Conversion Services
-**Summary**: As a user, I want to convert my resume between formats so I can meet different employer requirements.
-
-**Acceptance Criteria**:
-- Integrate with free document conversion API (CloudConvert free tier, LibreOffice Online)
-- Support conversion between PDF, DOCX, and TXT formats
-- Maintain formatting quality during conversion
-- Handle conversion errors with clear error messages
-- Provide download links for converted documents
-- Respect API rate limits with usage warnings
-- Queue conversions if API limits are reached
-- Store original and converted versions
-
-**Frontend Verification**: Upload resume, convert to different format, verify formatting is preserved
-
----
-
-#### UC-123: API Rate Limiting and Error Handling Dashboard
+#### UC-117: API Rate Limiting and Error Handling Dashboard
 **Summary**: As an administrator, I want to monitor API usage and errors so I can optimize integrations and stay within free tier limits.
 
 **Acceptance Criteria**:
@@ -219,43 +116,9 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
-### 🤖 Advanced AI Features and Workflow Automation (10 Use Cases)
+### 🤖 Advanced AI Features and Workflow Automation (11 Use Cases)
 
-#### UC-124: AI-Powered Job Matching Algorithm
-**Summary**: As a user, I want AI to recommend jobs that match my profile so I can discover relevant opportunities I might have missed.
-
-**Acceptance Criteria**:
-- Analyze user profile skills, experience, and preferences
-- Score job postings based on compatibility with user profile
-- Display match percentage for each job opportunity
-- Provide explanation for match scores (matching skills, location, etc.)
-- Learn from user behavior (applications, rejections, interests)
-- Improve recommendations over time based on user feedback
-- Filter out jobs below minimum match threshold
-- Send weekly digest of highly matched new opportunities
-
-**Frontend Verification**: View job recommendations, verify match scores and explanations are relevant
-
----
-
-#### UC-125: Intelligent Application Workflow Automation
-**Summary**: As a user, I want automated workflows for common job search tasks so I can save time and maintain consistency.
-
-**Acceptance Criteria**:
-- Create workflow templates (e.g., "New Application" workflow)
-- Automatically generate tailored resume for new job
-- Generate cover letter based on job description
-- Schedule follow-up reminders at appropriate intervals
-- Update job status based on time elapsed or user actions
-- Send automated follow-up emails at configured intervals
-- Track workflow completion and success rates
-- Allow customization of workflow steps and timing
-
-**Frontend Verification**: Apply to job, verify automated workflow executes all steps correctly
-
----
-
-#### UC-126: Smart Follow-Up Reminder System
+#### UC-118: Smart Follow-Up Reminder System
 **Summary**: As a user, I want intelligent follow-up reminders so I maintain appropriate contact with employers without being pushy.
 
 **Acceptance Criteria**:
@@ -272,128 +135,179 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
-#### UC-127: AI-Powered Interview Question Prediction
-**Summary**: As a user, I want AI to predict likely interview questions so I can prepare more effectively.
+#### UC-119: Application Success Optimization Dashboard
+**Summary**: As a user, I want a dashboard that helps me optimize my application success rate so I can focus on strategies that work.
 
 **Acceptance Criteria**:
-- Analyze job description to predict relevant questions
-- Consider company industry and interview stage
-- Generate behavioral, technical, and role-specific questions
-- Prioritize questions by likelihood of being asked
-- Provide sample responses with STAR method framework
-- Update predictions based on interview feedback from user
-- Include company-specific questions when available
-- Display confidence score for question predictions
+- Display success metrics (response rate, interview conversion, offer rate)
+- Analyze which resume/cover letter versions perform best
+- Track effectiveness of different application approaches (direct, referral, etc.)
+- Identify optimal application timing based on user's historical data
+- Highlight which types of roles yield best response rates
+- Provide actionable recommendations to improve success rate
+- Show A/B test results for different application strategies
+- Track improvement over time with trend visualization
 
-**Frontend Verification**: View predicted questions for upcoming interview, verify relevance to role
+**Frontend Verification**: View optimization dashboard, verify recommendations are data-driven and actionable
 
 ---
 
-#### UC-128: Application Performance Analytics with AI Insights
-**Summary**: As a user, I want AI-generated insights about my job search performance so I can improve my approach.
+#### UC-120: Application Material A/B Testing Dashboard
+**Summary**: As a user, I want to A/B test different versions of my resume and cover letter so I can determine which materials generate the best response rates.
 
 **Acceptance Criteria**:
-- Analyze application success rates by industry, company size, job level
-- Identify patterns in successful vs unsuccessful applications
-- Suggest profile improvements based on rejected applications
-- Predict best times to apply based on historical data
-- Recommend job types with highest success probability
-- Compare user's performance to aggregate anonymized data
-- Generate actionable improvement recommendations
-- Track improvement over time with trend analysis
+- Create multiple versions of resume and cover letter for testing
+- Randomly assign versions to similar job applications
+- Track response rates (interview invites, rejections, no response) by version
+- Calculate statistical significance of results (minimum sample size: 10 applications per version)
+- Display comparison metrics: response rate, time to response, interview conversion rate
+- Identify winning version based on key metrics
+- Provide insights on what elements (format, content, length) drive success
+- Allow users to archive underperforming versions and iterate on winners
 
-**Frontend Verification**: View AI insights dashboard, verify recommendations are actionable and relevant
+**Frontend Verification**: Create 2 resume versions, apply to 10+ jobs with each, view comparative performance metrics and statistical significance
 
 ---
 
-#### UC-129: Smart Skill Gap Analysis
-**Summary**: As a user, I want AI to identify skill gaps preventing me from target roles so I can focus my professional development.
+#### UC-121: Employer Response Time Prediction
+**Summary**: As a user, I want to know when I can expect to hear back from employers so I can manage my expectations and follow-up timing.
 
 **Acceptance Criteria**:
-- Compare user skills with requirements from target job postings
-- Identify most commonly required missing skills
-- Prioritize skill development based on market demand
-- Recommend learning resources for skill gaps (free courses, tutorials)
-- Track skill acquisition progress over time
-- Show ROI of learning each skill (job opportunities unlocked)
-- Update recommendations as user adds new skills
-- Generate personalized learning roadmap
+- Analyze historical data to predict average response time by company size, industry, and job level
+- Display predicted response timeline on each application (e.g., "Typically responds in 5-7 days")
+- Factor in seasonality (holidays, fiscal year-end) and day of week applied
+- Track actual vs predicted response times to improve model accuracy
+- Alert user when response is overdue based on prediction
+- Suggest optimal follow-up timing based on predicted timeline
+- Provide confidence interval for predictions (e.g., 80% respond within 3-10 days)
+- Show industry benchmarks for comparison
 
-**Frontend Verification**: View skill gap analysis, verify identified gaps match job requirements
+**Frontend Verification**: View application card, verify response time prediction is displayed with confidence interval and suggested follow-up date
 
 ---
 
-#### UC-130: Automated Resume Version Management
-**Summary**: As a user, I want AI to manage different resume versions so I can quickly access the right resume for each application.
+#### UC-122: Application Package Quality Scoring
+**Summary**: As a user, I want an AI-powered quality score for each job application package so I can identify weak applications before submitting.
 
 **Acceptance Criteria**:
-- Automatically create resume versions for each job application
-- Name versions based on job title and company
-- Track which version was submitted for each application
-- Compare versions to see differences
-- Suggest merging improvements from multiple versions
-- Archive outdated versions
-- Provide version control with rollback capability
-- Export all versions in bulk
+- Analyze resume, cover letter, and LinkedIn profile for each application
+- Score alignment between application materials and job requirements (0-100)
+- Identify missing keywords, skills, or experiences from job description
+- Flag formatting issues, typos, or inconsistencies across materials
+- Provide actionable improvement suggestions with priority ranking
+- Compare score to user's average and top-performing applications
+- Require minimum score threshold (e.g., 70) before allowing submission
+- Track score improvements over time as user implements suggestions
 
-**Frontend Verification**: Apply to multiple jobs, verify unique resume versions are created and tracked
+**Frontend Verification**: Prepare application for job, view quality score with specific improvement recommendations, verify score updates as changes are made
 
 ---
 
-#### UC-131: AI-Driven Networking Recommendations
-**Summary**: As a user, I want AI to suggest networking strategies so I can effectively leverage connections for job opportunities.
+#### UC-123: Competitive Analysis for Applications
+**Summary**: As a user, I want to understand how competitive I am for each role so I can prioritize applications and tailor my approach.
 
 **Acceptance Criteria**:
-- Analyze user's network for potential connections at target companies
-- Suggest mutual connections for warm introductions
-- Recommend LinkedIn messages for reaching out to recruiters
-- Identify networking events relevant to target industries
-- Suggest informational interview requests based on career goals
-- Track networking outreach and response rates
-- Provide conversation starters and networking tips
-- Measure networking effectiveness on job search outcomes
+- Estimate number of applicants for each job based on posting age, company size, and platform
+- Calculate user's competitive score (0-100) based on skills, experience, and requirements match
+- Identify user's competitive advantages (unique skills, relevant experience)
+- Highlight competitive disadvantages and mitigation strategies
+- Estimate likelihood of interview (low/medium/high) with confidence percentage
+- Suggest differentiating strategies to stand out from other applicants
+- Compare user's profile to typical hired candidate profile when available
+- Prioritize applications where user has highest competitive advantage
 
-**Frontend Verification**: View networking recommendations, verify suggestions are personalized and actionable
+**Frontend Verification**: View job posting, see competitive analysis with likelihood of success and specific strategies to differentiate
 
 ---
 
-#### UC-132: Automated Job Application Status Inference
-**Summary**: As a user, I want the system to automatically detect status changes so I don't have to manually update every application.
+#### UC-124: Job Application Timing Optimizer
+**Summary**: As a user, I want recommendations on the best time to submit applications so I can maximize visibility to recruiters.
 
 **Acceptance Criteria**:
-- Scan email for status change indicators (interview invite, rejection, offer)
-- Suggest status updates based on email content
-- Automatically update status with user confirmation
-- Track time in each status and flag stale applications
-- Detect ghosting scenarios (no response after extended period)
-- Send notifications for suggested status updates
-- Learn from user corrections to improve accuracy
-- Provide status change audit log
+- Analyze historical data to determine optimal submission times by industry and company size
+- Recommend best day of week and time of day to apply (e.g., "Tuesday 9-11 AM")
+- Factor in time zones for remote positions
+- Warn against bad timing (Friday evenings, holidays, end of fiscal quarter)
+- Allow scheduling of application submissions for optimal times
+- Track correlation between submission timing and response rates
+- Provide A/B test results showing impact of timing on success rates
+- Display real-time recommendation (e.g., "Submit now" vs "Wait until Tuesday morning")
 
-**Frontend Verification**: Receive application-related email, verify system suggests appropriate status update
+**Frontend Verification**: Complete application, view timing recommendation with reasoning and option to schedule submission
 
 ---
 
-#### UC-133: Personalized Job Search Strategy Dashboard
-**Summary**: As a user, I want a personalized strategy dashboard so I can see my optimal job search approach based on data.
+#### UC-125: Multi-Platform Application Tracker
+**Summary**: As a user, I want to track applications across multiple job platforms (LinkedIn, Indeed, Glassdoor, company sites) in one place so I don't lose track of where I've applied.
 
 **Acceptance Criteria**:
-- Display personalized KPIs (applications per week, response rate, etc.)
-- Recommend optimal application volume based on goals and availability
-- Suggest best days and times to submit applications
-- Show which application methods are most effective (direct, referral, etc.)
-- Identify highest-converting job sources
-- Compare user's strategy to successful job seekers in similar roles
-- Provide weekly strategy recommendations
-- Track adherence to strategy and outcomes
+- Detect and import applications from LinkedIn, Indeed, Glassdoor via email forwarding or browser extension
+- Automatically extract job details (title, company, location) from platform emails
+- Consolidate duplicate applications (same job on multiple platforms)
+- Track which platform was used for each application
+- Display platform-specific status updates and communications
+- Identify gaps in application history (applications user forgot to log)
+- Support manual entry for company career pages
+- Export unified application history across all platforms
 
-**Frontend Verification**: View strategy dashboard, verify recommendations align with user's search patterns
+**Frontend Verification**: Apply to jobs on LinkedIn and Indeed, verify applications are automatically imported and consolidated without duplicates
+
+---
+
+#### UC-126: Interview Question Response Library
+**Summary**: As a user, I want to build a library of my best interview responses so I can refine answers over time and reuse them across interviews.
+
+**Acceptance Criteria**:
+- Categorize responses by question type (behavioral, technical, situational)
+- Store multiple versions of responses with edit history
+- Tag responses with relevant skills, experiences, and companies used for
+- Suggest best response for each interview question based on job requirements
+- Allow practice mode with AI feedback on response quality
+- Track which responses led to successful outcomes (offer, next round)
+- Identify gaps in response library (question types user hasn't prepared)
+- Export response library as interview prep guide
+
+**Frontend Verification**: Add interview question response, tag with question type and skills, retrieve during interview prep for similar role
+
+---
+
+#### UC-127: Offer Evaluation & Comparison Tool
+**Summary**: As a user, I want to compare multiple job offers across all dimensions so I can make the best career decision.
+
+**Acceptance Criteria**:
+- Input all offer details (salary, bonus, equity, benefits, location, remote policy)
+- Calculate total compensation including benefits value (health insurance, 401k match, PTO)
+- Adjust for cost of living differences by location
+- Score non-financial factors (culture fit, growth opportunities, work-life balance)
+- Display side-by-side comparison matrix with weighted scores
+- Provide negotiation recommendations for each offer
+- Allow scenario analysis (e.g., "What if I negotiate 10% more salary?")
+- Archive declined offers with reasons for future reference
+
+**Frontend Verification**: Input 2 job offers with complete details, view comprehensive comparison with total compensation and weighted scores
+
+---
+
+#### UC-128: Career Path Simulation
+**Summary**: As a user, I want to simulate different career path outcomes so I can make strategic job decisions aligned with long-term goals.
+
+**Acceptance Criteria**:
+- Model career trajectories for different job choices (title progression, salary growth)
+- Factor in industry trends, company growth stage, and economic conditions
+- Simulate 5-year and 10-year outcomes for each path
+- Calculate expected lifetime earnings for each career decision
+- Identify decision points where paths diverge significantly
+- Recommend optimal next role based on long-term career goals
+- Show probability distributions for outcomes (best/worst/average case)
+- Allow user to define custom success criteria (work-life balance, learning opportunities, impact)
+
+**Frontend Verification**: Select current job offers or target roles, view 5-year simulation with salary projections and career progression milestones
 
 ---
 
 ### ☁️ Cloud Deployment and Production Environment (12 Use Cases)
 
-#### UC-134: Production Environment Setup on Free-Tier Cloud Platform
+#### UC-129: Production Environment Setup on Free-Tier Cloud Platform
 **Summary**: As a development team, we want to deploy the application to a free-tier cloud platform so it's publicly accessible without incurring costs.
 
 **Acceptance Criteria**:
@@ -410,7 +324,7 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
-#### UC-135: Database Migration to Production
+#### UC-130: Database Migration to Production
 **Summary**: As a development team, we want to migrate the database schema to production so data persistence works correctly.
 
 **Acceptance Criteria**:
@@ -427,7 +341,7 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
-#### UC-136: Environment Configuration Management
+#### UC-131: Environment Configuration Management
 **Summary**: As a developer, I want separate configurations for development, staging, and production so each environment operates correctly.
 
 **Acceptance Criteria**:
@@ -444,7 +358,7 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
-#### UC-137: CI/CD Pipeline Configuration
+#### UC-132: CI/CD Pipeline Configuration
 **Summary**: As a development team, we want automated deployment pipelines so code changes are deployed efficiently and reliably.
 
 **Acceptance Criteria**:
@@ -461,7 +375,7 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
-#### UC-138: Production Monitoring and Logging
+#### UC-133: Production Monitoring and Logging
 **Summary**: As a development team, we want monitoring and logging so we can detect and troubleshoot production issues.
 
 **Acceptance Criteria**:
@@ -478,7 +392,7 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
-#### UC-139: Production Performance Optimization
+#### UC-134: Production Performance Optimization
 **Summary**: As a user, I want fast page load times so I can efficiently use the application.
 
 **Acceptance Criteria**:
@@ -495,11 +409,10 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
-#### UC-140: Production Security Hardening
+#### UC-135: Production Security Hardening
 **Summary**: As a development team, we want production security measures so user data is protected.
 
 **Acceptance Criteria**:
-- Implement rate limiting on API endpoints
 - Enable CSRF protection for all forms
 - Sanitize all user inputs to prevent XSS attacks
 - Use parameterized queries to prevent SQL injection
@@ -512,7 +425,7 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
-#### UC-141: Scalability and Resource Management
+#### UC-136: Scalability and Resource Management
 **Summary**: As a development team, we want the application to handle growth so it remains performant as user base increases.
 
 **Acceptance Criteria**:
@@ -529,7 +442,7 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
-#### UC-142: Backup and Disaster Recovery
+#### UC-137: Backup and Disaster Recovery
 **Summary**: As a development team, we want backup and recovery procedures so we can restore service after failures.
 
 **Acceptance Criteria**:
@@ -546,7 +459,7 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
-#### UC-143: Production Documentation and Runbooks
+#### UC-138: Production Documentation and Runbooks
 **Summary**: As a development team, we want comprehensive documentation so we can maintain and troubleshoot production systems.
 
 **Acceptance Criteria**:
@@ -554,7 +467,6 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 - Create deployment runbooks with step-by-step procedures
 - Document all environment variables and configurations
 - Create troubleshooting guides for common issues
-- Document API endpoints and integration points
 - Maintain change log for production updates
 - Create on-call procedures and escalation paths
 - Document monitoring and alerting setup
@@ -563,7 +475,7 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
-#### UC-144: Domain and DNS Configuration
+#### UC-139: Domain and DNS Configuration
 **Summary**: As a user, I want to access the application via a professional domain so it appears credible and trustworthy.
 
 **Acceptance Criteria**:
@@ -580,7 +492,7 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
-#### UC-145: Production Data Seeding and Initial Content
+#### UC-140: Production Data Seeding and Initial Content
 **Summary**: As a development team, we want production data seeded so new users have example content and guidance.
 
 **Acceptance Criteria**:
@@ -597,16 +509,15 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
-### 🧪 Final Testing and User Feedback Integration (10 Use Cases)
+### 🧪 Final Testing and Quality Assurance (10 Use Cases)
 
-#### UC-146: End-to-End User Journey Testing
+#### UC-141: End-to-End User Journey Testing
 **Summary**: As a QA tester, I want to test complete user workflows so we ensure the entire application functions correctly.
 
 **Acceptance Criteria**:
 - Test complete registration to job application workflow
 - Verify AI features work end-to-end
 - Test multi-user collaboration scenarios
-- Verify external API integrations function correctly
 - Test mobile responsiveness across devices
 - Verify email notifications are sent correctly
 - Test error handling and edge cases
@@ -616,13 +527,12 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
-#### UC-147: Performance and Load Testing
+#### UC-142: Performance and Load Testing
 **Summary**: As a QA tester, I want to test application performance under load so we ensure it can handle multiple concurrent users.
 
 **Acceptance Criteria**:
 - Use free load testing tools (Apache JMeter, k6)
 - Simulate 50-100 concurrent users
-- Test API endpoint response times under load
 - Identify performance bottlenecks
 - Verify database query performance
 - Test file upload/download under load
@@ -633,7 +543,7 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
-#### UC-148: Cross-Browser Compatibility Testing
+#### UC-143: Cross-Browser Compatibility Testing
 **Summary**: As a QA tester, I want to verify the application works across different browsers so all users have a consistent experience.
 
 **Acceptance Criteria**:
@@ -650,7 +560,7 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
-#### UC-149: Accessibility Compliance Testing
+#### UC-144: Accessibility Compliance Testing
 **Summary**: As a QA tester, I want to verify accessibility compliance so the application is usable by people with disabilities.
 
 **Acceptance Criteria**:
@@ -667,7 +577,7 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
-#### UC-150: Security Penetration Testing
+#### UC-145: Security Penetration Testing
 **Summary**: As a security tester, I want to conduct basic penetration testing so we identify and fix security vulnerabilities.
 
 **Acceptance Criteria**:
@@ -684,58 +594,7 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
-#### UC-151: Beta User Recruitment and Onboarding
-**Summary**: As a product manager, I want to recruit beta users so we can gather real-world feedback.
-
-**Acceptance Criteria**:
-- Create beta user signup form
-- Recruit 20-30 beta testers from target demographic
-- Provide onboarding materials and guidance
-- Create feedback submission form
-- Set up communication channel (Discord, Slack)
-- Define beta testing timeline and expectations
-- Offer incentives for participation (e.g., free premium features)
-- Track beta user engagement and activity
-
-**Frontend Verification**: Beta users successfully sign up and access the application
-
----
-
-#### UC-152: User Feedback Collection System
-**Summary**: As a product manager, I want to collect structured feedback so we can identify improvement areas.
-
-**Acceptance Criteria**:
-- Implement in-app feedback widget
-- Create post-task micro-surveys (1-2 questions)
-- Set up user interview scheduling
-- Create feedback analysis dashboard
-- Collect Net Promoter Score (NPS) ratings
-- Track feature usage and adoption rates
-- Implement bug reporting system
-- Send weekly feedback summary to team
-
-**Frontend Verification**: Submit feedback through various channels, verify it's collected properly
-
----
-
-#### UC-153: Usability Testing Sessions
-**Summary**: As a UX researcher, I want to conduct usability testing so we identify user experience issues.
-
-**Acceptance Criteria**:
-- Conduct moderated usability sessions with 5-10 users
-- Create task-based testing scenarios
-- Record user sessions (with consent)
-- Identify common pain points and friction areas
-- Measure task completion rates and time
-- Collect qualitative feedback on user experience
-- Create prioritized list of UX improvements
-- Document findings in comprehensive report
-
-**Frontend Verification**: Complete usability testing sessions, analyze recordings and notes
-
----
-
-#### UC-154: Analytics Implementation and Tracking
+#### UC-146: Analytics Implementation and Tracking
 **Summary**: As a product manager, I want analytics tracking so we understand how users interact with the platform.
 
 **Acceptance Criteria**:
@@ -752,7 +611,7 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
-#### UC-155: Bug Tracking and Issue Resolution
+#### UC-147: Bug Tracking and Issue Resolution
 **Summary**: As a development team, we want systematic bug tracking so we efficiently resolve issues found during testing and beta.
 
 **Acceptance Criteria**:
@@ -769,7 +628,7 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
-#### UC-156: Final Pre-Launch Checklist and Go-Live
+#### UC-148: Final Pre-Launch Checklist and Go-Live
 **Summary**: As a project manager, I want a comprehensive pre-launch checklist so we ensure readiness for public release.
 
 **Acceptance Criteria**:
@@ -788,33 +647,14 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 
 ---
 
-#### UC-157: Post-Launch Monitoring and Rapid Response
-**Summary**: As a development team, we want post-launch monitoring so we can quickly respond to production issues.
-
-**Acceptance Criteria**:
-- Monitor error rates for first 48 hours continuously
-- Track user registration and activation rates
-- Monitor server performance and resource usage
-- Set up on-call rotation for first week
-- Respond to critical issues within 1 hour
-- Track and resolve all user-reported issues
-- Collect initial user feedback and sentiment
-- Create daily status reports for first week
-- Prepare hotfix deployment process
-
-**Frontend Verification**: Monitor production metrics, verify issues are detected and resolved promptly
-
----
-
 ## Testing Requirements
 
 ### Comprehensive Test Coverage
 
-#### UC-158: Sprint 4 Complete Test Suite
+#### UC-150: Sprint 4 Complete Test Suite
 **Summary**: As a QA engineer, I want comprehensive test coverage for all Sprint 4 features so we ensure production quality.
 
 **Acceptance Criteria**:
-- Unit tests for all API integration functions
 - Unit tests for AI automation features
 - Integration tests for external API connections
 - Integration tests for workflow automation
@@ -825,7 +665,6 @@ Complete the ATS for Candidates platform by integrating external APIs, implement
 - Cross-browser automated tests
 - Mobile responsiveness tests
 - Database operation tests for all Sprint 4 entities
-- API endpoint tests for all Sprint 4 functionality
 - Test coverage reports generated automatically
 - All tests pass in CI/CD pipeline
 - Minimum 90% code coverage achieved for Sprint 4 components
@@ -852,89 +691,6 @@ Each use case is considered complete when:
 10. **Monitoring**: Appropriate logging, monitoring, and alerts configured
 11. **User Testing**: Feature tested by beta users with positive feedback
 12. **Production Ready**: Feature stable in production with no critical bugs for 48 hours
-
----
-
-## Sprint Success Criteria
-
-Sprint 4 is successful when:
-
-1. **All External APIs Integrated**: LinkedIn, job boards, salary data, company info, calendar, email, and GitHub integrations working
-2. **Advanced AI Features Live**: Job matching, workflow automation, skill gap analysis, and networking recommendations functional
-3. **Production Deployment Complete**: Application accessible via public URL on free-tier cloud infrastructure
-4. **Performance Targets Met**: Lighthouse score > 90, page load < 3s, API response < 500ms
-5. **Security Verified**: No critical security vulnerabilities, OWASP Top 10 mitigated
-6. **Beta Testing Complete**: 20+ beta users tested platform with feedback collected and incorporated
-7. **Monitoring Operational**: Error tracking, uptime monitoring, and alerting systems functional
-8. **Documentation Complete**: User guides, API documentation, deployment runbooks, and architecture diagrams finalized
-9. **Test Coverage Achieved**: 90%+ code coverage with all tests passing
-10. **User Satisfaction**: Average beta user rating of 4+ out of 5 stars
-
----
-
-## Free-Tier Services Recommended for Students
-
-### Hosting & Infrastructure
-- **Frontend**: Vercel, Netlify, GitHub Pages
-- **Backend**: Render.com, Railway.app, Fly.io, Heroku (limited)
-- **Database**: Supabase, Neon, PlanetScale, ElephantSQL
-- **File Storage**: Cloudinary, Supabase Storage
-
-### APIs & Services
-- **Authentication**: Auth0 (free tier), Supabase Auth
-- **Email**: SendGrid (100 emails/day), Mailgun (100 emails/day)
-- **Job Boards**: Adzuna API, Remotive API, GitHub Jobs Archive
-- **Salary Data**: US Bureau of Labor Statistics API
-- **Company Data**: Clearbit Logo API, OpenCorporates
-- **News**: NewsAPI.org (100 requests/day), Google News RSS
-- **Maps/Location**: OpenStreetMap Nominatim
-- **Calendar**: Google Calendar API
-- **LinkedIn**: LinkedIn OAuth (basic profile only)
-- **GitHub**: GitHub API (5000 requests/hour)
-
-### Development Tools
-- **CI/CD**: GitHub Actions (free for public repos)
-- **Monitoring**: Sentry (5k errors/month), UptimeRobot (50 monitors)
-- **Analytics**: Google Analytics 4, PostHog (open source)
-- **Error Tracking**: Sentry, Rollbar (free tier)
-- **Logging**: Logtail (1GB/month), Better Stack
-- **Performance**: Lighthouse (free), WebPageTest
-- **CDN**: Cloudflare (free tier)
-
-### Testing & QA
-- **Load Testing**: Apache JMeter, k6 (open source)
-- **Browser Testing**: Selenium, Playwright
-- **Accessibility**: axe DevTools, Lighthouse
-- **Security**: OWASP ZAP, npm audit
-
----
-
-## Risk Mitigation
-
-### Technical Risks
-- **API Rate Limits**: Implement caching, graceful degradation, and queue systems
-- **Free Tier Limitations**: Monitor usage closely, implement usage caps, prepare upgrade paths
-- **Performance at Scale**: Optimize early, implement caching, use CDN for static assets
-- **Third-Party API Downtime**: Implement fallback mechanisms, cache data when possible
-
-### Project Risks
-- **Timeline Pressure**: Prioritize must-have features, maintain MVP mindset
-- **Feature Creep**: Stick to defined scope, document future enhancements separately
-- **Integration Complexity**: Start integrations early, test thoroughly, maintain good documentation
-- **Beta User Feedback**: Set clear expectations, timebox feedback incorporation
-
----
-
-## Post-Sprint Deliverables
-
-1. **Production Application**: Fully deployed and accessible web application
-2. **Source Code**: Clean, documented codebase with 90%+ test coverage
-3. **Documentation**: Complete user guide, API documentation, deployment guide, architecture diagrams
-4. **Test Suite**: Comprehensive automated tests with CI/CD integration
-5. **Beta Testing Report**: User feedback analysis and improvement recommendations
-6. **Presentation Materials**: Final project presentation and demo preparation
-7. **Deployment Guide**: Step-by-step production deployment and maintenance procedures
-8. **Retrospective Document**: Team learnings, successes, and areas for improvement
 
 ---
 
