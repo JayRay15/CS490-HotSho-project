@@ -25,13 +25,28 @@ export default function GitHubShowcase() {
   const [selectedRepos, setSelectedRepos] = useState([]);
   const [repoSkills, setRepoSkills] = useState({});
   const [isSavingFeatured, setIsSavingFeatured] = useState(false);
+  const [userSkills, setUserSkills] = useState([]);
   
   // Refresh state
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     fetchGitHubProfile();
+    fetchUserSkills();
   }, []);
+
+  const fetchUserSkills = async () => {
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      const response = await api.get("/api/users/me");
+      if (response.data.data && response.data.data.skills) {
+        setUserSkills(response.data.data.skills);
+      }
+    } catch (err) {
+      console.error("Failed to fetch user skills", err);
+    }
+  };
 
   const fetchGitHubProfile = async () => {
     try {
@@ -132,10 +147,22 @@ export default function GitHubShowcase() {
     });
   };
 
-  const handleSkillChange = (repoId, skills) => {
+  const handleAddSkill = (repoId, skillName) => {
+    if (!skillName) return;
+    setRepoSkills(prev => {
+      const currentSkills = prev[repoId] || [];
+      if (currentSkills.includes(skillName)) return prev;
+      return {
+        ...prev,
+        [repoId]: [...currentSkills, skillName]
+      };
+    });
+  };
+
+  const handleRemoveSkill = (repoId, skillName) => {
     setRepoSkills(prev => ({
       ...prev,
-      [repoId]: skills
+      [repoId]: (prev[repoId] || []).filter(s => s !== skillName)
     }));
   };
 
@@ -433,15 +460,52 @@ export default function GitHubShowcase() {
                       {selectedRepos.includes(repo.id) && (
                         <div className="mt-3">
                           <label className="block text-xs font-medium text-gray-700 mb-1">
-                            Linked Skills (comma-separated)
+                            Linked Skills
                           </label>
-                          <input
-                            type="text"
-                            value={(repoSkills[repo.id] || []).join(", ")}
-                            onChange={(e) => handleSkillChange(repo.id, e.target.value.split(",").map(s => s.trim()).filter(Boolean))}
-                            placeholder="e.g., React, Node.js, MongoDB"
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          />
+                          <div className="flex flex-wrap gap-1 mb-2">
+                            {(repoSkills[repo.id] || []).map(skill => (
+                              <span key={skill} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                {skill}
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveSkill(repo.id, skill)}
+                                  className="ml-1 text-blue-600 hover:text-blue-800 focus:outline-none font-bold"
+                                >
+                                  ×
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                          <div style={{ maxHeight: '120px', overflowY: 'auto', border: '1px solid #d1d5db', borderRadius: '0.375rem', padding: '0.5rem', background: '#f9fafb' }}>
+                            {userSkills.length === 0 ? (
+                              <p className="text-xs text-gray-500 mt-1">
+                                No skills found in your profile. Add skills to your profile to link them here.
+                              </p>
+                            ) : (
+                              userSkills.map(skill => (
+                                <label key={skill._id || skill.name} className="flex items-center gap-2 text-sm mb-1 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={(repoSkills[repo.id] || []).includes(skill.name)}
+                                    onChange={e => {
+                                      if (e.target.checked) {
+                                        handleAddSkill(repo.id, skill.name);
+                                      } else {
+                                        handleRemoveSkill(repo.id, skill.name);
+                                      }
+                                    }}
+                                    className="accent-blue-600"
+                                  />
+                                  {skill.name}
+                                </label>
+                              ))
+                            )}
+                          </div>
+                          {userSkills.length === 0 && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              No skills found in your profile. Add skills to your profile to link them here.
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>
