@@ -2,13 +2,49 @@ import api, { retryRequest } from "./axios";
 
 /**
  * UC-067: Salary Research and Benchmarking API
+ * UC-112: BLS Salary Data Integration
  * 
  * Frontend API service for salary research features including:
  * - Market salary data and benchmarks
+ * - BLS (Bureau of Labor Statistics) real salary data
  * - Salary comparison across companies
  * - Negotiation recommendations
  * - Total compensation analysis
  * - Export salary reports
+ */
+
+/**
+ * ========================================================================
+ * UC-112: BLS SALARY DATA INTEGRATION API
+ * ========================================================================
+ */
+
+/**
+ * Get BLS salary benchmarks by job title and location
+ * @param {string} jobTitle - Job title to search for
+ * @param {string} location - Location (city, state, or empty for national)
+ * @returns {Promise} BLS salary benchmark data with percentiles
+ */
+export const getBLSBenchmarks = (jobTitle, location = '') => {
+  const params = new URLSearchParams();
+  params.append('jobTitle', jobTitle);
+  if (location) params.append('location', location);
+  
+  return retryRequest(() => api.get(`/api/salary/bls-benchmarks?${params.toString()}`));
+};
+
+/**
+ * Get BLS salary benchmarks for a specific tracked job
+ * @param {string} jobId - Job ID to get benchmarks for
+ * @returns {Promise} BLS salary benchmark data combined with job details
+ */
+export const getJobBLSBenchmarks = (jobId) =>
+  retryRequest(() => api.get(`/api/salary/job-benchmarks/${jobId}`));
+
+/**
+ * ========================================================================
+ * UC-067: SALARY RESEARCH AND BENCHMARKING API
+ * ========================================================================
  */
 
 /**
