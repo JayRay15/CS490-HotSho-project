@@ -270,6 +270,16 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
               Full Details
             </button>
           )}
+          {/* UC-128: Career Path Simulation */}
+          {!job.archived && onSimulateCareer && (
+            <button
+              onClick={() => onSimulateCareer(job)}
+              className="text-xs text-purple-600 hover:text-purple-800 font-medium"
+              title="Simulate career path outcomes"
+            >
+              Career Path
+            </button>
+          )}
           {job.deadline && job._id && typeof window !== 'undefined' && (
             <button
               onClick={() => onStatusChange && onStatusChange(job._id, undefined, { extendDeadlineDays: 7 })}

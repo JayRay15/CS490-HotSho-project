@@ -112,20 +112,24 @@ const CareerSimulationResults = ({ simulation, onBack, onClose }) => {
           </div>
 
           {/* Recommended Path Banner */}
-          <div className="bg-primary-100 border-2 border-primary-400 p-5 rounded-xl mb-6 shadow-md">
+          <div className="bg-primary-100 border-2 border-primary-400 p-6 rounded-xl mb-6 shadow-md">
             <div className="flex items-start justify-between flex-wrap gap-4">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-bold text-lg text-gray-900">Recommended Path</h3>
-                </div>
-                <p className="text-xl font-bold text-primary-800">
+              <div className="flex-1">
+                <h3 className="font-bold text-lg text-gray-900 mb-2">Recommended Path</h3>
+                <p className="text-2xl font-bold text-primary-800 mb-3">
                   {simulation.paths.find(p => p.pathId === simulation.recommendedPath.pathId)?.pathName}
                 </p>
-                <p className="text-sm mt-2 text-gray-700">{simulation.recommendedPath.reasoning}</p>
+                {simulation.recommendedPath.reasoning && (
+                  <p className="text-sm text-gray-700 leading-relaxed">
+                    {simulation.recommendedPath.reasoning}
+                  </p>
+                )}
               </div>
-              <div className="text-right">
-                <div className="text-2xl font-bold text-primary-900">{formatCurrency(simulation.paths.find(p => p.pathId === simulation.recommendedPath.pathId)?.expectedLifetimeEarnings || 0)}</div>
-                <div className="text-sm text-gray-700">Expected Lifetime Earnings</div>
+              <div className="text-right bg-white px-4 py-3 rounded-lg border-2 border-primary-300 shadow-sm">
+                <div className="text-xs font-semibold text-gray-600 uppercase mb-1">Lifetime Earnings</div>
+                <div className="text-2xl font-bold text-primary-900">
+                  {formatCurrency(simulation.paths.find(p => p.pathId === simulation.recommendedPath.pathId)?.expectedLifetimeEarnings || 0)}
+                </div>
               </div>
             </div>
           </div>
