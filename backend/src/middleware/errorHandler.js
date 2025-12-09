@@ -1,19 +1,41 @@
 import { ERROR_CODES, errorResponse, sendResponse } from "../utils/responseFormat.js";
+import logger from "../utils/logger.js";
 
 /**
  * Global error handling middleware
  * Catches all errors and returns standardized error responses
+ * Integrates with structured logging for monitoring and alerting
  */
 export const errorHandler = (err, req, res, next) => {
-  // Log error for debugging (always log 500 errors)
+  // Create request-scoped logger for better tracing; fall back to a safe logger
+  // Handle cases where req is undefined (in tests) or logger.forRequest is not available
+  const safeLogger = {
+    error: (...args) => (logger && typeof logger.error === 'function') ? logger.error(...args) : console.error(...args),
+    warn: (...args) => (logger && typeof logger.warn === 'function') ? logger.warn(...args) : console.warn(...args),
+    debug: (...args) => (logger && typeof logger.debug === 'function') ? logger.debug(...args) : console.debug(...args)
+  };
+
+  const reqLogger = (req && logger && typeof logger.forRequest === 'function')
+    ? logger.forRequest(req)
+    : safeLogger;
+
+  // Log error with structured data for monitoring
+  const errorContext = {
+    error: err.message,
+    errorName: err.name,
+    errorCode: err.code,
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+    path: req?.path,
+    method: req?.method,
+    statusCode: err.statusCode || 500,
+    userId: req?.user?.id || req?.auth?.userId
+  };
+
+  // Log based on error severity
   if (err.statusCode >= 500 || !err.statusCode) {
-    console.error('❌ Server Error:', {
-      message: err.message,
-      stack: err.stack,
-      path: req.path,
-      method: req.method,
-      timestamp: new Date().toISOString()
-    });
+    reqLogger.error('Server error occurred', errorContext);
+  } else if (err.statusCode >= 400) {
+    reqLogger.warn('Client error occurred', errorContext);
   }
 
   // Handle Mongoose validation errors
@@ -85,7 +107,7 @@ export const errorHandler = (err, req, res, next) => {
       );
       return sendResponse(res, response, statusCode);
     }
-    
+
     const { response, statusCode } = errorResponse(
       err.message || "File upload error",
       400,
@@ -127,6 +149,8 @@ export const errorHandler = (err, req, res, next) => {
  * Handle 404 - Not Found errors
  */
 export const notFoundHandler = (req, res, next) => {
+  logger.debug('Route not found', { method: req.method, path: req.path });
+
   const { response, statusCode } = errorResponse(
     `Cannot ${req.method} ${req.path}`,
     404,

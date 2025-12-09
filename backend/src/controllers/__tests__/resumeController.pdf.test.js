@@ -167,7 +167,7 @@ describe('resumeController.generateResumePDF - PDF fallback and error branches',
     mockResume.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(resume) });
 
     const templateDoc = {
-      toObject: () => ({ theme: {}, layout: {}, pdfLayout: null }),
+      toObject: () => ({ theme: {}, layout: {}, pdfLayout: null, originalPdf: null }),
       originalPdf: null,
       pdfLayout: null
     };
@@ -176,14 +176,10 @@ describe('resumeController.generateResumePDF - PDF fallback and error branches',
     mockResumeTemplate.findOne.mockReset();
     mockResumeTemplate.findById.mockReset();
 
-    // Primary template lookup returns null
-    mockResumeTemplate.findOne.mockReturnValueOnce({ select: jest.fn().mockResolvedValue(null) });
-    // existsButNotAccessible check returns null
+    // Template found but without originalPdf/pdfLayout triggers HTML->PDF fallback
+    // The first findOne call returns a template that triggers the fallback path
+    mockResumeTemplate.findOne.mockReturnValue({ select: jest.fn().mockResolvedValue(templateDoc) });
     mockResumeTemplate.findById.mockReturnValue({ select: jest.fn().mockResolvedValue(null) });
-    // defaultTpl lookup returns null
-    mockResumeTemplate.findOne.mockReturnValueOnce({ select: jest.fn().mockResolvedValue(null) });
-    // anyTpl lookup returns templateDoc (triggers HTML->PDF fallback since no originalPdf/pdfLayout)
-    mockResumeTemplate.findOne.mockReturnValueOnce({ select: jest.fn().mockResolvedValue(templateDoc) });
 
     mockResumeExporter.exportToHtml.mockReturnValue('<html>ok</html>');
     mockHtmlToPdf.mockRejectedValue(new Error('chromium failed'));

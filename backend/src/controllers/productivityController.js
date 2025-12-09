@@ -4,7 +4,14 @@ import Goal from '../models/Goal.js';
 import { User } from '../models/User.js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// Initialize Gemini AI lazily to avoid errors when API key is missing
+let genAI = null;
+function getGenAI() {
+  if (!genAI && process.env.GEMINI_API_KEY) {
+    genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  }
+  return genAI;
+}
 
 /**
  * Get or create time tracking record for a specific date
@@ -382,13 +389,13 @@ export const getUserAnalyses = async (req, res) => {
 export const getProductivityDashboard = async (req, res) => {
   try {
     const userId = req.auth.userId;
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const weekAgo = new Date(today);
     weekAgo.setDate(weekAgo.getDate() - 7);
-    
+
     const monthAgo = new Date(today);
     monthAgo.setMonth(monthAgo.getMonth() - 1);
 
@@ -487,11 +494,11 @@ export const getProductivityInsights = async (req, res) => {
 export const getOptimalSchedule = async (req, res) => {
   try {
     const userId = req.auth.userId;
-    
+
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     thirtyDaysAgo.setHours(0, 0, 0, 0);
-    
+
     const today = new Date();
     today.setHours(23, 59, 59, 999);
 
@@ -574,11 +581,11 @@ export const compareProductivity = async (req, res) => {
         outcomesChangePercentage: period1Stats.totalOutcomes > 0
           ? +((((period2Stats.totalOutcomes - period1Stats.totalOutcomes) / period1Stats.totalOutcomes) * 100).toFixed(1))
           : 0,
-        trend: period2Stats.averageProductivity > period1Stats.averageProductivity 
-          ? 'Improving' 
-          : period2Stats.averageProductivity < period1Stats.averageProductivity 
-          ? 'Declining' 
-          : 'Stable'
+        trend: period2Stats.averageProductivity > period1Stats.averageProductivity
+          ? 'Improving'
+          : period2Stats.averageProductivity < period1Stats.averageProductivity
+            ? 'Declining'
+            : 'Stable'
       }
     };
 
@@ -601,7 +608,9 @@ export const compareProductivity = async (req, res) => {
  */
 async function generateProductivityRecommendations(analysis, user, goals) {
   try {
-    const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+    const ai = getGenAI();
+    if (!ai) return null;
+    const model = ai.getGenerativeModel({ model: 'models/gemini-flash-latest' });
 
     const prompt = `You are an expert productivity coach specializing in job search optimization. Analyze the following productivity data and provide actionable recommendations.
 
@@ -668,7 +677,9 @@ Return ONLY valid JSON with this structure:
  */
 async function generateProductivityInsights(stats, user) {
   try {
-    const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+    const ai = getGenAI();
+    if (!ai) return null;
+    const model = ai.getGenerativeModel({ model: 'models/gemini-flash-latest' });
 
     const prompt = `You are an expert productivity analyst. Analyze the following time tracking data and provide key insights.
 
@@ -681,9 +692,9 @@ async function generateProductivityInsights(stats, user) {
 - Days Tracked: ${stats.daysTracked}
 
 **ACTIVITY BREAKDOWN:**
-${Object.entries(stats.activityTotals || {}).map(([activity, minutes]) => 
-  `- ${activity}: ${(minutes / 60).toFixed(1)} hours`
-).join('\n')}
+${Object.entries(stats.activityTotals || {}).map(([activity, minutes]) =>
+      `- ${activity}: ${(minutes / 60).toFixed(1)} hours`
+    ).join('\n')}
 
 Generate 4-6 key insights about productivity patterns, strengths, and areas for improvement.
 
@@ -721,7 +732,9 @@ Return ONLY valid JSON with this structure:
  */
 async function generateOptimalSchedule(stats, user, goals) {
   try {
-    const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+    const ai = getGenAI();
+    if (!ai) return null;
+    const model = ai.getGenerativeModel({ model: 'models/gemini-flash-latest' });
 
     const activityBreakdown = Object.entries(stats.activityTotals || {})
       .map(([activity, minutes]) => `- ${activity}: ${(minutes / 60).toFixed(1)} hours`)

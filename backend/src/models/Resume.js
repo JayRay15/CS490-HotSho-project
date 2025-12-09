@@ -45,6 +45,6 @@ const resumeSchema = new mongoose.Schema(
 
 resumeSchema.index({ userId: 1, createdAt: -1 });
 resumeSchema.index({ userId: 1, isArchived: 1 }); // UC-52: Index for filtering archived resumes
-resumeSchema.index({ "shares.token": 1 });
+// Note: shares.token index is created via unique: true in the subdocument schema
 
 export const Resume = mongoose.model("Resume", resumeSchema);

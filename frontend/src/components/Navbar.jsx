@@ -21,21 +21,21 @@ export default function Navbar() {
         try {
             // Store logout message first
             sessionStorage.setItem("logoutMessage", "You have been signed out successfully.");
-            
+
             // Sign out from Clerk first (this needs Clerk's session data intact)
             await signOut();
-            
+
             // Clear storage after signOut completes
             localStorage.clear();
             sessionStorage.setItem("logoutMessage", "You have been signed out successfully.");
-            
+
             // Clear cookies
             document.cookie.split(";").forEach((c) => {
                 document.cookie = c
                     .replace(/^ +/, "")
                     .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
             });
-            
+
             // Redirect to login page
             window.location.href = "/login";
         } catch (error) {
@@ -157,7 +157,7 @@ export default function Navbar() {
                                 </button>
                                 {careerDropdownOpen && (
                                     <div
-                                        className="absolute left-0 mt-2 w-56 bg-white rounded shadow-lg z-10"
+                                        className="absolute left-0 mt-2 w-56 bg-white rounded shadow-lg z-10 max-h-96 overflow-y-auto"
                                         onMouseEnter={() => {
                                             if (dropdownTimeout) clearTimeout(dropdownTimeout);
                                             setCareerDropdownOpen(true);
@@ -223,6 +223,15 @@ export default function Navbar() {
                                         </NavLink>
                                         <NavLink to="/settings/linkedin" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="LinkedIn Settings" onClick={() => setCareerDropdownOpen(false)}>
                                             💼 LinkedIn Settings
+                                        </NavLink>
+                                        <NavLink to="/admin/api-monitoring" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="API Monitoring" onClick={() => setCareerDropdownOpen(false)}>
+                                            📊 API Monitoring
+                                        </NavLink>
+                                        <NavLink to="/admin/system-monitoring" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="System Monitoring" onClick={() => setCareerDropdownOpen(false)}>
+                                            🖥️ System Monitoring
+                                        </NavLink>
+                                        <NavLink to="/admin/test-errors" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Test Errors" onClick={() => setCareerDropdownOpen(false)}>
+                                            🐛 Test Errors
                                         </NavLink>
                                     </div>
                                 )}
@@ -609,6 +618,30 @@ export default function Navbar() {
                             aria-label="LinkedIn Settings"
                         >
                             💼 LinkedIn Settings
+                        </NavLink>
+                        <NavLink
+                            to="/admin/system-monitoring"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                }`
+                            }
+                            aria-label="System Monitoring"
+                        >
+                            🖥️ System Monitoring
+                        </NavLink>
+                        <NavLink
+                            to="/admin/test-errors"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                }`
+                            }
+                            aria-label="Test Errors"
+                        >
+                            🐛 Test Errors
                         </NavLink>
                         {/* Sign Out button for mobile */}
                         <div className="pt-3 pb-2 px-4">

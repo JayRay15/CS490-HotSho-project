@@ -1,10 +1,13 @@
 import { Component } from 'react';
 import PropTypes from 'prop-types';
+import { captureException, addBreadcrumb } from '../utils/sentry';
 
 /**
  * ErrorBoundary Component
  * Catches JavaScript errors anywhere in the child component tree
  * and displays a fallback UI instead of crashing the entire app
+ * 
+ * Integrates with Sentry for error tracking and monitoring
  */
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -12,7 +15,8 @@ class ErrorBoundary extends Component {
     this.state = {
       hasError: false,
       error: null,
-      errorInfo: null
+      errorInfo: null,
+      eventId: null
     };
   }
 
@@ -24,22 +28,39 @@ class ErrorBoundary extends Component {
   componentDidCatch(error, errorInfo) {
     // Log error details for debugging
     console.error('ErrorBoundary caught an error:', error, errorInfo);
-    
+
     this.setState({
       error,
       errorInfo
     });
 
-    // You can also log the error to an error reporting service here
-    // e.g., Sentry, LogRocket, etc.
+    // Add breadcrumb for context
+    addBreadcrumb('Error boundary triggered', 'error', 'error', {
+      errorMessage: error?.message,
+      componentStack: errorInfo?.componentStack?.substring(0, 500)
+    });
+
+    // Capture the error in Sentry
+    captureException(error, {
+      componentStack: errorInfo?.componentStack,
+      boundary: this.props.name || 'ErrorBoundary'
+    });
   }
 
   handleReset = () => {
     this.setState({
       hasError: false,
       error: null,
-      errorInfo: null
+      errorInfo: null,
+      eventId: null
     });
+  };
+
+  handleReportFeedback = () => {
+    // If Sentry is available, show feedback dialog
+    if (this.state.eventId && window.Sentry) {
+      window.Sentry.showReportDialog({ eventId: this.state.eventId });
+    }
   };
 
   render() {
@@ -68,16 +89,17 @@ class ErrorBoundary extends Component {
                 />
               </svg>
             </div>
-            
+
             <h2 className="mt-4 text-xl font-heading font-semibold text-center text-gray-900">
               Oops! Something went wrong
             </h2>
-            
+
             <p className="mt-2 text-sm text-center text-gray-600">
               We're sorry for the inconvenience. An unexpected error occurred.
+              Our team has been notified and is working on a fix.
             </p>
 
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            {import.meta.env.DEV && this.state.error && (
               <details className="mt-4 p-3 bg-gray-100 rounded text-xs">
                 <summary className="cursor-pointer font-heading font-medium text-gray-700">
                   Error Details (Development Only)
@@ -114,7 +136,8 @@ class ErrorBoundary extends Component {
 
 ErrorBoundary.propTypes = {
   children: PropTypes.node.isRequired,
-  fallback: PropTypes.node
+  fallback: PropTypes.node,
+  name: PropTypes.string
 };
 
 export default ErrorBoundary;

@@ -32,6 +32,8 @@ import InterviewChecklist from "../../components/InterviewChecklist";
 import FollowUpTemplates from "../../components/FollowUpTemplates";
 import FollowUpReminders from "../../components/FollowUpReminders";
 import ShareJobModal from "../../components/ShareJobModal";
+import CareerPathSimulator from "../../components/career-simulation/CareerPathSimulator";
+import TimingOptimizer from "../../components/TimingOptimizer";
 import * as interviewsAPI from "../../api/interviews";
 import * as statusAPI from "../../api/applicationStatus";
 
@@ -107,6 +109,14 @@ export default function Jobs() {
   const [showAutomation, setShowAutomation] = useState(false);
   const [selectedJobForPackage, setSelectedJobForPackage] = useState(null);
   const [bulkSelectionMode, setBulkSelectionMode] = useState(false);
+
+  // UC-128: Career Path Simulation state
+  const [showCareerSimulator, setShowCareerSimulator] = useState(false);
+  const [simulationJob, setSimulationJob] = useState(null);
+
+  // UC-124: Application Timing Optimizer state
+  const [showTimingOptimizer, setShowTimingOptimizer] = useState(false);
+  const [selectedJobForTiming, setSelectedJobForTiming] = useState(null);
 
   // Application Status Tracking state
   const [applicationStatuses, setApplicationStatuses] = useState({});
@@ -1099,6 +1109,18 @@ export default function Jobs() {
     setShowMatchScore(true);
   };
 
+  // UC-128: Career Path Simulation handler
+  const handleSimulateCareer = (job) => {
+    setSimulationJob(job);
+    setShowCareerSimulator(true);
+  };
+
+  // UC-124: Application Timing Optimizer handler
+  const handleOpenTimingOptimizer = (job) => {
+    setSelectedJobForTiming(job);
+    setShowTimingOptimizer(true);
+  };
+
   // Delete confirmation modal state and handlers
   const [jobToDelete, setJobToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -1797,6 +1819,8 @@ export default function Jobs() {
               onGenerateCoverLetter={handleGenerateCoverLetter}
               onOpenInterviewChecklist={handleOpenInterviewChecklist}
               onOpenFollowUpTemplates={handleOpenFollowUpTemplates}
+              onSimulateCareer={handleSimulateCareer}
+              onOpenTimingOptimizer={handleOpenTimingOptimizer}
               highlightTerms={[
                 searchTerm?.trim(),
                 filters.location?.trim(),
@@ -3862,6 +3886,32 @@ export default function Jobs() {
           }}
           onSuccess={() => {
             setSuccessMessage("Job shared with team successfully!");
+            setTimeout(() => setSuccessMessage(null), 3000);
+          }}
+        />
+      )}
+
+      {/* UC-128: Career Path Simulator Modal */}
+      {showCareerSimulator && (
+        <CareerPathSimulator
+          currentJob={simulationJob}
+          onClose={() => {
+            setShowCareerSimulator(false);
+            setSimulationJob(null);
+          }}
+        />
+      )}
+
+      {/* UC-124: Application Timing Optimizer Modal */}
+      {showTimingOptimizer && selectedJobForTiming && (
+        <TimingOptimizer
+          job={selectedJobForTiming}
+          onClose={() => {
+            setShowTimingOptimizer(false);
+            setSelectedJobForTiming(null);
+          }}
+          onScheduled={() => {
+            setSuccessMessage("Application submission scheduled successfully!");
             setTimeout(() => setSuccessMessage(null), 3000);
           }}
         />
