@@ -295,7 +295,7 @@ describe('asyncHandler', () => {
   it('should call the wrapped function', async () => {
     const mockFn = jest.fn().mockResolvedValue('success');
     const wrappedFn = asyncHandler(mockFn);
-    
+
     const mockReq = {};
     const mockRes = {};
     const mockNext = jest.fn();
@@ -309,7 +309,7 @@ describe('asyncHandler', () => {
     const error = new Error('Test error');
     const mockFn = jest.fn().mockRejectedValue(error);
     const wrappedFn = asyncHandler(mockFn);
-    
+
     const mockReq = {};
     const mockRes = {};
     const mockNext = jest.fn();

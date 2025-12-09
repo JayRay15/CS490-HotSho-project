@@ -1,7 +1,14 @@
 import fetch from 'node-fetch';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// Lazy-initialize GoogleGenerativeAI to avoid errors when API key is not set
+let genAI = null;
+function getGenAI() {
+  if (!genAI && process.env.GEMINI_API_KEY) {
+    genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  }
+  return genAI;
+}
 
 /**
  * Research company information using multiple sources
@@ -153,7 +160,11 @@ export async function conductComprehensiveResearch(companyName, jobDescription =
  * Use AI to analyze job description and generate company research
  */
 async function generateCompanyResearch(companyName, jobDescription) {
-  const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+  const ai = getGenAI();
+  if (!ai) {
+    throw new Error('GEMINI_API_KEY not configured');
+  }
+  const model = ai.getGenerativeModel({ model: 'models/gemini-flash-latest' });
 
   const prompt = `You are a professional company research analyst. Analyze the following job description and extract/infer comprehensive company information about ${companyName}.
 
@@ -334,7 +345,11 @@ async function gatherBasicCompanyInfo(companyName, companyWebsite) {
 
   try {
     // Use AI to extract basic company information
-    const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+    const ai = getGenAI();
+    if (!ai) {
+      return basicInfo;
+    }
+    const model = ai.getGenerativeModel({ model: 'models/gemini-flash-latest' });
 
     const prompt = `Provide basic information about ${companyName}${companyWebsite ? ` (website: ${companyWebsite})` : ''}.
 
@@ -377,7 +392,11 @@ Return ONLY a valid JSON object:
  * Use AI to generate comprehensive company research
  */
 async function generateAIResearch(companyName, jobDescription) {
-  const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+  const ai = getGenAI();
+  if (!ai) {
+    return null;
+  }
+  const model = ai.getGenerativeModel({ model: 'models/gemini-flash-latest' });
 
   const prompt = `You are a professional business research analyst. Conduct comprehensive research about ${companyName} and provide detailed insights.
 
@@ -496,7 +515,11 @@ async function findSocialMediaPresence(companyName, companyWebsite) {
 
   try {
     // Use AI to find social media accounts
-    const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+    const ai = getGenAI();
+    if (!ai) {
+      return socialMedia;
+    }
+    const model = ai.getGenerativeModel({ model: 'models/gemini-flash-latest' });
 
     const prompt = `What are the official social media accounts for ${companyName}${companyWebsite ? ` (website: ${companyWebsite})` : ''}? 
 
@@ -541,7 +564,11 @@ Only include URLs you are confident about. Use null for unknown accounts.`;
  * Identify key executives and leadership team
  */
 async function identifyExecutives(companyName) {
-  const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+  const ai = getGenAI();
+  if (!ai) {
+    return { executives: [] };
+  }
+  const model = ai.getGenerativeModel({ model: 'models/gemini-flash-latest' });
 
   const prompt = `List the key executives and leadership team for ${companyName}. 
 
