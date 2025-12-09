@@ -5,6 +5,9 @@ import {
   compareSalaries,
   getSalaryBenchmarks,
   exportSalaryReport,
+  // UC-112: BLS Salary Data Integration endpoints
+  getBLSBenchmarks,
+  getJobBLSBenchmarks,
   // UC-083: Salary Negotiation Preparation endpoints
   createNegotiation,
   getNegotiation,
@@ -30,6 +33,13 @@ import {
 } from "../controllers/salaryController.js";
 
 const router = express.Router();
+
+// UC-112: BLS Salary Data Integration Routes
+// GET /api/salary/bls-benchmarks - Get BLS salary benchmarks by job title and location
+router.get("/bls-benchmarks", checkJwt, getBLSBenchmarks);
+
+// GET /api/salary/job-benchmarks/:jobId - Get BLS benchmarks for specific tracked job
+router.get("/job-benchmarks/:jobId", checkJwt, getJobBLSBenchmarks);
 
 // UC-067: GET /api/salary/benchmarks - Get general salary benchmarks
 router.get("/benchmarks", checkJwt, getSalaryBenchmarks);

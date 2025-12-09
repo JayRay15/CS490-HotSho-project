@@ -15,6 +15,7 @@ import LoadingSpinner from './LoadingSpinner';
 import ErrorMessage from './ErrorMessage';
 import Card from './Card';
 import Button from './Button';
+import BLSSalaryBenchmarks from './BLSSalaryBenchmarks';
 import {
   BarChart,
   Bar,
@@ -41,9 +42,11 @@ import {
 /**
  * UC-067: Salary Research and Benchmarking Component
  * UC-100: Salary Progression and Market Positioning
+ * UC-112: BLS Salary Data Integration
  * 
  * Features:
  * - Display salary ranges for similar positions
+ * - Real BLS salary data with percentiles
  * - Factor in location, experience level, and company size
  * - Show total compensation including benefits
  * - Compare salary across different companies
@@ -375,6 +378,9 @@ const SalaryResearch = () => {
           </div>
         </div>
       </div>
+
+      {/* UC-112: BLS Salary Benchmarks - Real Government Data */}
+      <BLSSalaryBenchmarks jobId={jobId} />
 
       {/* Market Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

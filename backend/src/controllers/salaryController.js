@@ -2,8 +2,10 @@ import { Job } from "../models/Job.js";
 import { User } from "../models/User.js";
 import { SalaryNegotiation } from "../models/SalaryNegotiation.js";
 import { SalaryProgression } from "../models/SalaryProgression.js";
+import { SalaryBenchmarkCache } from "../models/SalaryBenchmarkCache.js";
 import { successResponse, errorResponse, sendResponse, ERROR_CODES } from "../utils/responseFormat.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
+import { fetchBLSSalaryData, formatBLSData } from "../services/blsApiService.js";
 
 /**
  * UC-067: Salary Research and Benchmarking
@@ -2568,3 +2570,289 @@ function calculateMonthsSinceLastIncrease(history) {
   
   return 0;
 }
+
+/**
+ * UC-112: GET /api/salary/bls-benchmarks - Get BLS salary benchmarks
+ * Fetches real salary data from US Bureau of Labor Statistics API
+ * with intelligent caching to minimize API calls
+ */
+export const getBLSBenchmarks = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { jobTitle, location } = req.query;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  if (!jobTitle) {
+    const { response, statusCode } = errorResponse(
+      "Job title is required",
+      400,
+      ERROR_CODES.VALIDATION_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  try {
+    const normalizedLocation = location || 'National';
+    
+    // Check cache first
+    const cachedData = await SalaryBenchmarkCache.findCachedData(jobTitle, normalizedLocation);
+    
+    if (cachedData) {
+      // Return cached data
+      const { response, statusCode } = successResponse(
+        "Salary benchmarks retrieved from cache",
+        {
+          source: cachedData.dataSource,
+          dataYear: cachedData.dataYear,
+          location: cachedData.location,
+          jobTitle: cachedData.jobTitle,
+          salaryRange: {
+            min: cachedData.salaryData.min,
+            max: cachedData.salaryData.max,
+            median: cachedData.salaryData.median,
+            mean: cachedData.salaryData.mean,
+          },
+          percentiles: cachedData.salaryData.percentiles,
+          metadata: {
+            occupationCode: cachedData.occupationCode,
+            cached: true,
+            cacheAge: Math.floor((new Date() - cachedData.updatedAt) / (1000 * 60 * 60 * 24)), // days
+            lastUpdated: cachedData.updatedAt,
+          },
+          disclaimer: "Salary data is sourced from the US Bureau of Labor Statistics and represents industry averages. Actual salaries may vary based on experience, education, company size, and other factors. Data is updated periodically and cached for performance."
+        }
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
+    // No cache - fetch from BLS API
+    const blsData = await fetchBLSSalaryData(jobTitle, location);
+    
+    if (!blsData) {
+      // No data available from BLS
+      const { response, statusCode } = errorResponse(
+        "No salary data available for this job title and location",
+        404,
+        ERROR_CODES.NOT_FOUND
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Format the data
+    const formattedData = formatBLSData(blsData);
+    
+    // Cache the data (30 days expiry)
+    await SalaryBenchmarkCache.cacheData(
+      jobTitle,
+      normalizedLocation,
+      formattedData.salaryRange,
+      {
+        dataSource: 'BLS',
+        occupationCode: blsData.occupationCode,
+        areaCode: blsData.areaCode,
+        dataYear: blsData.year,
+        cacheDurationDays: 30,
+        metadata: {
+          confidence: 'high',
+          notes: 'Data from US Bureau of Labor Statistics',
+        },
+      }
+    );
+
+    // Return fresh data
+    const { response, statusCode } = successResponse(
+      "Salary benchmarks retrieved from BLS",
+      {
+        ...formattedData,
+        jobTitle,
+        metadata: {
+          ...formattedData.metadata,
+          cached: false,
+        },
+        disclaimer: "Salary data is sourced from the US Bureau of Labor Statistics and represents industry averages. Actual salaries may vary based on experience, education, company size, and other factors. Data is updated periodically and cached for performance."
+      }
+    );
+    return sendResponse(res, response, statusCode);
+
+  } catch (error) {
+    console.error('Error fetching BLS benchmarks:', error);
+    
+    const { response, statusCode } = errorResponse(
+      `Failed to fetch salary benchmarks: ${error.message}`,
+      500,
+      ERROR_CODES.SERVER_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+});
+
+/**
+ * UC-112: GET /api/salary/job-benchmarks/:jobId - Get BLS benchmarks for a specific job
+ * Combines job details with real BLS salary data
+ */
+export const getJobBLSBenchmarks = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+  const { jobId } = req.params;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  try {
+    // Get job details
+    const job = await Job.findOne({ _id: jobId, userId });
+    
+    if (!job) {
+      const { response, statusCode } = errorResponse(
+        "Job not found or you don't have permission to access it",
+        404,
+        ERROR_CODES.NOT_FOUND
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
+    const jobTitle = job.title;
+    const location = job.location || 'National';
+    
+    // Check cache first
+    const cachedData = await SalaryBenchmarkCache.findCachedData(jobTitle, location);
+    
+    if (cachedData) {
+      // Return cached data with job context
+      const { response, statusCode } = successResponse(
+        "Job salary benchmarks retrieved",
+        {
+          job: {
+            id: job._id,
+            title: job.title,
+            company: job.company,
+            location: job.location,
+            providedSalary: job.salary,
+          },
+          benchmarkData: {
+            source: cachedData.dataSource,
+            dataYear: cachedData.dataYear,
+            location: cachedData.location,
+            salaryRange: {
+              min: cachedData.salaryData.min,
+              max: cachedData.salaryData.max,
+              median: cachedData.salaryData.median,
+              mean: cachedData.salaryData.mean,
+            },
+            percentiles: cachedData.salaryData.percentiles,
+            metadata: {
+              occupationCode: cachedData.occupationCode,
+              cached: true,
+              cacheAge: Math.floor((new Date() - cachedData.updatedAt) / (1000 * 60 * 60 * 24)),
+              lastUpdated: cachedData.updatedAt,
+            },
+          },
+          comparison: job.salary?.min ? {
+            jobMin: job.salary.min,
+            jobMax: job.salary.max,
+            benchmarkMedian: cachedData.salaryData.median,
+            difference: job.salary.min - cachedData.salaryData.median,
+            percentageDiff: ((job.salary.min - cachedData.salaryData.median) / cachedData.salaryData.median * 100).toFixed(1),
+          } : null,
+          disclaimer: "Salary data is sourced from the US Bureau of Labor Statistics and represents industry averages. Actual salaries may vary based on experience, education, company size, and other factors."
+        }
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
+    // No cache - fetch from BLS API
+    const blsData = await fetchBLSSalaryData(jobTitle, location);
+    
+    if (!blsData) {
+      // Return job data without benchmarks
+      const { response, statusCode } = successResponse(
+        "Job details retrieved, but no benchmark data available",
+        {
+          job: {
+            id: job._id,
+            title: job.title,
+            company: job.company,
+            location: job.location,
+            providedSalary: job.salary,
+          },
+          benchmarkData: null,
+          message: "No salary benchmark data available for this position",
+          disclaimer: "Salary benchmarks could not be retrieved. This may be due to an uncommon job title or location."
+        }
+      );
+      return sendResponse(res, response, statusCode);
+    }
+
+    // Format and cache the data
+    const formattedData = formatBLSData(blsData);
+    
+    await SalaryBenchmarkCache.cacheData(
+      jobTitle,
+      location,
+      formattedData.salaryRange,
+      {
+        dataSource: 'BLS',
+        occupationCode: blsData.occupationCode,
+        areaCode: blsData.areaCode,
+        dataYear: blsData.year,
+        cacheDurationDays: 30,
+        metadata: {
+          confidence: 'high',
+          notes: 'Data from US Bureau of Labor Statistics',
+        },
+      }
+    );
+
+    // Return job data with fresh benchmarks
+    const { response, statusCode } = successResponse(
+      "Job salary benchmarks retrieved from BLS",
+      {
+        job: {
+          id: job._id,
+          title: job.title,
+          company: job.company,
+          location: job.location,
+          providedSalary: job.salary,
+        },
+        benchmarkData: {
+          ...formattedData,
+          metadata: {
+            ...formattedData.metadata,
+            cached: false,
+          },
+        },
+        comparison: job.salary?.min ? {
+          jobMin: job.salary.min,
+          jobMax: job.salary.max,
+          benchmarkMedian: formattedData.salaryRange.median,
+          difference: job.salary.min - formattedData.salaryRange.median,
+          percentageDiff: ((job.salary.min - formattedData.salaryRange.median) / formattedData.salaryRange.median * 100).toFixed(1),
+        } : null,
+        disclaimer: "Salary data is sourced from the US Bureau of Labor Statistics and represents industry averages. Actual salaries may vary based on experience, education, company size, and other factors."
+      }
+    );
+    return sendResponse(res, response, statusCode);
+
+  } catch (error) {
+    console.error('Error fetching job BLS benchmarks:', error);
+    
+    const { response, statusCode } = errorResponse(
+      `Failed to fetch salary benchmarks: ${error.message}`,
+      500,
+      ERROR_CODES.SERVER_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+});
