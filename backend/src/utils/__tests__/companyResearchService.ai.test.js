@@ -1,6 +1,9 @@
 // Mock the GoogleGenerativeAI before importing the service so internal AI calls are deterministic
 import { jest } from '@jest/globals';
 
+// Set up environment variable for tests
+process.env.GEMINI_API_KEY = 'test-mock-api-key';
+
 await jest.unstable_mockModule('@google/generative-ai', () => ({
   GoogleGenerativeAI: function(apiKey) {
     return {
@@ -21,13 +24,17 @@ await jest.unstable_mockModule('@google/generative-ai', () => ({
             };
           } else if (prompt && prompt.includes('official social media')) {
             json = { linkedin:'https://linkedin.com/example', twitter:null, facebook:null, instagram:null, youtube:null, github:null };
-          } else if (prompt && prompt.includes('List the key executives')) {
+          } else if (prompt && prompt.includes('key executives and leadership team')) {
             json = { executives: [{ name:'Jane Doe', title:'CEO', background:'bg' }], keyLeaders:['Jane Doe - CEO'] };
           } else if (prompt && prompt.includes('provide a comprehensive company research report')) {
             json = { companyName:'ExampleCo', background:'bg', recentNews:['n'], mission:'m', values:['v'], initiatives:['i'], industryContext:'ic', size:'100-500', growth:'growth', funding:'f', competitive:'comp', researchSuccess:true };
           }
 
-          return { response: Promise.resolve({ text: () => JSON.stringify(json) }) };
+          return { 
+            response: { 
+              text: () => JSON.stringify(json) 
+            } 
+          };
         }
       })
     };

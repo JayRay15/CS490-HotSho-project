@@ -55,6 +55,8 @@ export const sendStatusChangeNotification = async (userId, applicationStatus, ch
         <h2 style="color: #2563eb;">Application Status Update</h2>
         ${sourceText}
         
+        <p>Hello <strong>${user.name || 'there'}</strong>,</p>
+        
         <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
           <h3 style="margin-top: 0;">${job.title}</h3>
           <p style="color: #6b7280; margin: 5px 0;"><strong>${job.company}</strong></p>
@@ -151,6 +153,8 @@ export const sendFollowUpReminder = async (userId, applicationStatus) => {
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #f59e0b;">⏰ Follow-Up Reminder</h2>
         
+        <p>Hello <strong>${user.name || 'there'}</strong>,</p>
+        
         <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
           <h3 style="margin-top: 0;">${job.title}</h3>
           <p style="color: #6b7280; margin: 5px 0;"><strong>${job.company}</strong></p>
@@ -234,6 +238,8 @@ export const sendStalledApplicationsAlert = async (userId, stalledApplications) 
     const emailContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #dc2626;">⚠️ Stalled Applications Alert</h2>
+        
+        <p>Hello <strong>${user.name || 'there'}</strong>,</p>
         
         <p>You have <strong>${stalledApplications.length}</strong> application(s) that haven't been updated in over 14 days:</p>
 

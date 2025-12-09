@@ -30,6 +30,7 @@ import BulkStatusUpdate from "../../components/BulkStatusUpdate";
 import CoverLetterGeneratorModal from "../../components/CoverLetterGeneratorModal";
 import InterviewChecklist from "../../components/InterviewChecklist";
 import FollowUpTemplates from "../../components/FollowUpTemplates";
+import FollowUpReminders from "../../components/FollowUpReminders";
 import ShareJobModal from "../../components/ShareJobModal";
 import CareerPathSimulator from "../../components/career-simulation/CareerPathSimulator";
 import TimingOptimizer from "../../components/TimingOptimizer";
@@ -136,6 +137,7 @@ export default function Jobs() {
   // Follow-Up Templates state
   const [showFollowUpTemplates, setShowFollowUpTemplates] = useState(false);
   const [selectedJobForFollowUp, setSelectedJobForFollowUp] = useState(null);
+  const [showFollowUpReminders, setShowFollowUpReminders] = useState(false);
 
   // Share Job with Team state
   const [showShareModal, setShowShareModal] = useState(false);
@@ -1438,6 +1440,9 @@ export default function Jobs() {
                 </Button>
                 <Button onClick={() => setShowStatistics(true)} variant="secondary">
                   Statistics
+                </Button>
+                <Button onClick={() => setShowFollowUpReminders(true)} variant="secondary">
+                  📧 Follow-up Reminders
                 </Button>
                 <Button
                   onClick={() => {
@@ -3843,6 +3848,30 @@ export default function Jobs() {
                 setSelectedJobForFollowUp(null);
               }}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Follow-Up Reminders Modal */}
+      {showFollowUpReminders && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={() => setShowFollowUpReminders(false)}
+        >
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 shadow-2xl mx-4" onClick={(e) => e.stopPropagation()}>
+            <FollowUpReminders 
+              onOpenFollowUpTemplates={(job) => {
+                setSelectedJobForFollowUp(job);
+                setShowFollowUpTemplates(true);
+                setShowFollowUpReminders(false);
+              }}
+            />
+            <div className="p-4 border-t border-gray-200 flex justify-end">
+              <Button onClick={() => setShowFollowUpReminders(false)} variant="secondary">
+                Close
+              </Button>
+            </div>
           </div>
         </div>
       )}

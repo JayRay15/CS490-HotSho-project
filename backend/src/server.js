@@ -56,6 +56,7 @@ import careerSimulationRoutes from "./routes/careerSimulationRoutes.js";
 import applicationTimingRoutes from "./routes/applicationTimingRoutes.js";
 import apiMonitoringRoutes from "./routes/apiMonitoringRoutes.js";
 import monitoringRoutes from "./routes/monitoringRoutes.js";
+import followUpReminderRoutes from "./routes/followUpReminderRoutes.js";
 import { getPublicProject } from "./controllers/profileController.js";
 import { viewSharedReport } from "./controllers/reportController.js";
 import { startDeadlineReminderSchedule } from "./utils/deadlineReminders.js";
@@ -63,6 +64,7 @@ import { startInterviewReminderSchedule } from "./utils/interviewReminders.js";
 import { startApplicationScheduler, startFollowUpScheduler } from "./utils/applicationScheduler.js";
 import { startStatusAutomationScheduler } from "./utils/statusAutomationScheduler.js";
 import { startTimingScheduler } from "./utils/timingScheduler.js";
+import { startReminderEmailScheduler } from "./utils/reminderEmailScheduler.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 // Monitoring and Logging imports
 import logger from "./utils/logger.js";
@@ -191,6 +193,8 @@ app.use("/api/application-timing", applicationTimingRoutes);
 console.log('✅ Application Timing routes registered at /api/application-timing');
 app.use("/api/api-monitoring", apiMonitoringRoutes);
 console.log('✅ API Monitoring routes registered at /api/api-monitoring');
+app.use("/api/follow-up-reminders", followUpReminderRoutes);
+console.log('✅ Follow-Up Reminder routes registered at /api/follow-up-reminders');
 
 // Mount profile routes under /api/profile (existing) and also under /api/users
 // so frontend requests to /api/users/... (used elsewhere in the app) resolve correctly.
@@ -256,6 +260,12 @@ app.listen(PORT, () => {
     startTimingScheduler();
   } catch (err) {
     console.error('Failed to start timing scheduler:', err?.message || err);
+  }
+  // Start reminder email scheduler
+  try {
+    startReminderEmailScheduler();
+  } catch (err) {
+    console.error('Failed to start reminder email scheduler:', err?.message || err);
   }
 });
 
