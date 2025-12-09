@@ -31,6 +31,7 @@ import CoverLetterGeneratorModal from "../../components/CoverLetterGeneratorModa
 import InterviewChecklist from "../../components/InterviewChecklist";
 import FollowUpTemplates from "../../components/FollowUpTemplates";
 import ShareJobModal from "../../components/ShareJobModal";
+import CareerPathSimulator from "../../components/career-simulation/CareerPathSimulator";
 import * as interviewsAPI from "../../api/interviews";
 import * as statusAPI from "../../api/applicationStatus";
 
@@ -106,6 +107,10 @@ export default function Jobs() {
   const [showAutomation, setShowAutomation] = useState(false);
   const [selectedJobForPackage, setSelectedJobForPackage] = useState(null);
   const [bulkSelectionMode, setBulkSelectionMode] = useState(false);
+
+  // UC-128: Career Path Simulation state
+  const [showCareerSimulator, setShowCareerSimulator] = useState(false);
+  const [simulationJob, setSimulationJob] = useState(null);
 
   // Application Status Tracking state
   const [applicationStatuses, setApplicationStatuses] = useState({});
@@ -1097,6 +1102,12 @@ export default function Jobs() {
     setShowMatchScore(true);
   };
 
+  // UC-128: Career Path Simulation handler
+  const handleSimulateCareer = (job) => {
+    setSimulationJob(job);
+    setShowCareerSimulator(true);
+  };
+
   // Delete confirmation modal state and handlers
   const [jobToDelete, setJobToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -1792,6 +1803,7 @@ export default function Jobs() {
               onGenerateCoverLetter={handleGenerateCoverLetter}
               onOpenInterviewChecklist={handleOpenInterviewChecklist}
               onOpenFollowUpTemplates={handleOpenFollowUpTemplates}
+              onSimulateCareer={handleSimulateCareer}
               highlightTerms={[
                 searchTerm?.trim(),
                 filters.location?.trim(),
@@ -3834,6 +3846,17 @@ export default function Jobs() {
           onSuccess={() => {
             setSuccessMessage("Job shared with team successfully!");
             setTimeout(() => setSuccessMessage(null), 3000);
+          }}
+        />
+      )}
+
+      {/* UC-128: Career Path Simulator Modal */}
+      {showCareerSimulator && (
+        <CareerPathSimulator
+          currentJob={simulationJob}
+          onClose={() => {
+            setShowCareerSimulator(false);
+            setSimulationJob(null);
           }}
         />
       )}

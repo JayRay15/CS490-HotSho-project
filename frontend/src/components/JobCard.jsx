@@ -18,7 +18,7 @@ const PRIORITY_COLORS = {
   "High": "text-red-600",
 };
 
-export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange, isDragging, highlightTerms, isSelected, onToggleSelect, onArchive, onRestore, onScheduleInterview, onViewMatchScore, onOpenStatusModal, onOpenTimeline, onOpenEmailDetector, applicationStatus, onGenerateCoverLetter, onOpenInterviewChecklist, onOpenFollowUpTemplates }) {
+export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange, isDragging, highlightTerms, isSelected, onToggleSelect, onArchive, onRestore, onScheduleInterview, onViewMatchScore, onOpenStatusModal, onOpenTimeline, onOpenEmailDetector, applicationStatus, onGenerateCoverLetter, onOpenInterviewChecklist, onOpenFollowUpTemplates, onSimulateCareer }) {
   const [showDetails, setShowDetails] = useState(false);
   const navigate = useNavigate();
 
@@ -270,6 +270,16 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
               Full Details
             </button>
           )}
+          {/* UC-128: Career Path Simulation */}
+          {!job.archived && onSimulateCareer && (
+            <button
+              onClick={() => onSimulateCareer(job)}
+              className="text-xs text-purple-600 hover:text-purple-800 font-medium"
+              title="Simulate career path outcomes"
+            >
+              Career Path
+            </button>
+          )}
           {job.deadline && job._id && typeof window !== 'undefined' && (
             <button
               onClick={() => onStatusChange && onStatusChange(job._id, undefined, { extendDeadlineDays: 7 })}
@@ -331,7 +341,7 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
           {onGenerateCoverLetter && !job.archived && (
             <button
               onClick={() => onGenerateCoverLetter(job)}
-              className="text-xs px-2 py-1 rounded bg-gradient-to-r from-blue-100 to-purple-100 hover:from-blue-200 hover:to-purple-200 text-blue-700 font-medium"
+              className="text-xs px-2 py-1 rounded bg-linear-to-r from-blue-100 to-purple-100 hover:from-blue-200 hover:to-purple-200 text-blue-700 font-medium"
               title="Generate AI-powered cover letter with experience highlighting"
             >
               ✨ Generate Cover Letter
@@ -395,6 +405,16 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
               ✨ Match Score
             </button>
           )}
+          {/* UC-128: Career Path Simulation button */}
+          {!job.archived && onSimulateCareer && (
+            <button
+              onClick={() => onSimulateCareer(job)}
+              className="text-xs px-2 py-1 rounded bg-purple-100 hover:bg-purple-200 text-purple-700 font-medium"
+              title="Simulate career path outcomes"
+            >
+              🚀 Career Path
+            </button>
+          )}
           {job.archived ? (
             onRestore && (
               <button
@@ -420,7 +440,7 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
               onClick={(e) => { e.stopPropagation(); onDelete(job._id); }}
               aria-label={`Delete ${job.title}`}
               title={`Delete ${job.title}`}
-              className="absolute right-3 bottom-3 p-1 rounded-lg transition flex-shrink-0 flex items-center justify-center"
+              className="absolute right-3 bottom-3 p-1 rounded-lg transition shrink-0 flex items-center justify-center"
               style={{ color: '#6B7280' }}
               onMouseOver={(e) => {
                 e.currentTarget.style.color = '#B91C1C';
