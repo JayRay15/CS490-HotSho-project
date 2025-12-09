@@ -11,7 +11,7 @@ const PIPELINE_STAGES = [
   { id: "Rejected", label: "Rejected", color: "bg-red-100 border-red-300" },
 ];
 
-export default function JobPipeline({ jobs, onJobStatusChange, onJobEdit, onJobDelete, onJobView, highlightTerms, selectedJobs = [], onToggleSelect, onJobArchive, onJobRestore, onScheduleInterview, onViewMatchScore, onOpenStatusModal, onOpenTimeline, onOpenEmailDetector, applicationStatuses = {}, onGenerateCoverLetter, onOpenInterviewChecklist, onOpenFollowUpTemplates, onSimulateCareer }) {
+export default function JobPipeline({ jobs, onJobStatusChange, onJobEdit, onJobDelete, onJobView, highlightTerms, selectedJobs = [], onToggleSelect, onJobArchive, onJobRestore, onScheduleInterview, onViewMatchScore, onOpenStatusModal, onOpenTimeline, onOpenEmailDetector, applicationStatuses = {}, onGenerateCoverLetter, onOpenInterviewChecklist, onOpenFollowUpTemplates, onSimulateCareer, onOpenTimingOptimizer }) {
   const [draggedJob, setDraggedJob] = useState(null);
   const [dragOverStage, setDragOverStage] = useState(null);
 
@@ -153,6 +153,7 @@ export default function JobPipeline({ jobs, onJobStatusChange, onJobEdit, onJobD
                       onOpenInterviewChecklist={onOpenInterviewChecklist}
                       onOpenFollowUpTemplates={onOpenFollowUpTemplates}
                       onSimulateCareer={onSimulateCareer}
+                      onOpenTimingOptimizer={onOpenTimingOptimizer}
                     />
                   </div>
                 ))
@@ -192,4 +193,6 @@ JobPipeline.propTypes = {
   onGenerateCoverLetter: PropTypes.func,
   onOpenInterviewChecklist: PropTypes.func,
   onOpenFollowUpTemplates: PropTypes.func,
+  onSimulateCareer: PropTypes.func,
+  onOpenTimingOptimizer: PropTypes.func,
 };

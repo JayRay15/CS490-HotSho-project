@@ -53,6 +53,7 @@ import informationalInterviewRoutes from "./routes/informationalInterviewRoutes.
 import jobLocationRoutes from "./routes/jobLocationRoutes.js";
 import githubRoutes from "./routes/githubRoutes.js";
 import careerSimulationRoutes from "./routes/careerSimulationRoutes.js";
+import applicationTimingRoutes from "./routes/applicationTimingRoutes.js";
 import apiMonitoringRoutes from "./routes/apiMonitoringRoutes.js";
 import monitoringRoutes from "./routes/monitoringRoutes.js";
 import { getPublicProject } from "./controllers/profileController.js";
@@ -61,6 +62,7 @@ import { startDeadlineReminderSchedule } from "./utils/deadlineReminders.js";
 import { startInterviewReminderSchedule } from "./utils/interviewReminders.js";
 import { startApplicationScheduler, startFollowUpScheduler } from "./utils/applicationScheduler.js";
 import { startStatusAutomationScheduler } from "./utils/statusAutomationScheduler.js";
+import { startTimingScheduler } from "./utils/timingScheduler.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 // Monitoring and Logging imports
 import logger from "./utils/logger.js";
@@ -185,6 +187,8 @@ app.use("/api/job-locations", jobLocationRoutes);
 console.log('✅ Job Location Map routes registered at /api/job-locations');
 app.use("/api/career-simulation", careerSimulationRoutes);
 console.log('✅ Career Simulation routes registered at /api/career-simulation');
+app.use("/api/application-timing", applicationTimingRoutes);
+console.log('✅ Application Timing routes registered at /api/application-timing');
 app.use("/api/api-monitoring", apiMonitoringRoutes);
 console.log('✅ API Monitoring routes registered at /api/api-monitoring');
 
@@ -246,6 +250,12 @@ app.listen(PORT, () => {
     startStatusAutomationScheduler();
   } catch (err) {
     logger.error('Failed to start status automation scheduler', { error: err?.message || err });
+  }
+  // Start timing optimizer scheduler
+  try {
+    startTimingScheduler();
+  } catch (err) {
+    console.error('Failed to start timing scheduler:', err?.message || err);
   }
 });
 
