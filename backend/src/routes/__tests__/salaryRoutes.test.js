@@ -7,6 +7,9 @@ const mockGetSalaryResearch = jest.fn((req, res) => res.json({ success: true }))
 const mockCompareSalaries = jest.fn((req, res) => res.json({ success: true }));
 const mockGetSalaryBenchmarks = jest.fn((req, res) => res.json({ success: true }));
 const mockExportSalaryReport = jest.fn((req, res) => res.json({ success: true }));
+// UC-112 mocks
+const mockGetBLSBenchmarks = jest.fn((req, res) => res.json({ success: true }));
+const mockGetJobBLSBenchmarks = jest.fn((req, res) => res.json({ success: true }));
 const mockCreateNegotiation = jest.fn((req, res) => res.json({ success: true }));
 const mockGetNegotiation = jest.fn((req, res) => res.json({ success: true }));
 const mockGetAllNegotiations = jest.fn((req, res) => res.json({ success: true }));
@@ -34,6 +37,9 @@ jest.unstable_mockModule('../../controllers/salaryController.js', () => ({
   compareSalaries: mockCompareSalaries,
   getSalaryBenchmarks: mockGetSalaryBenchmarks,
   exportSalaryReport: mockExportSalaryReport,
+  // UC-112 exports
+  getBLSBenchmarks: mockGetBLSBenchmarks,
+  getJobBLSBenchmarks: mockGetJobBLSBenchmarks,
   createNegotiation: mockCreateNegotiation,
   getNegotiation: mockGetNegotiation,
   getAllNegotiations: mockGetAllNegotiations,
