@@ -22,6 +22,7 @@
     "@fontsource/inter": "^5.2.8",
     "@google/generative-ai": "^0.24.1",
     "@heroicons/react": "^2.2.0",
+    "@sentry/react": "^10.29.0",
     "@tiptap/extension-placeholder": "^3.10.5",
     "@tiptap/react": "^3.10.5",
     "@tiptap/starter-kit": "^3.10.5",

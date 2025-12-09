@@ -54,6 +54,7 @@ import jobLocationRoutes from "./routes/jobLocationRoutes.js";
 import githubRoutes from "./routes/githubRoutes.js";
 import careerSimulationRoutes from "./routes/careerSimulationRoutes.js";
 import apiMonitoringRoutes from "./routes/apiMonitoringRoutes.js";
+import monitoringRoutes from "./routes/monitoringRoutes.js";
 import { getPublicProject } from "./controllers/profileController.js";
 import { viewSharedReport } from "./controllers/reportController.js";
 import { startDeadlineReminderSchedule } from "./utils/deadlineReminders.js";
@@ -61,6 +62,10 @@ import { startInterviewReminderSchedule } from "./utils/interviewReminders.js";
 import { startApplicationScheduler, startFollowUpScheduler } from "./utils/applicationScheduler.js";
 import { startStatusAutomationScheduler } from "./utils/statusAutomationScheduler.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
+// Monitoring and Logging imports
+import logger from "./utils/logger.js";
+import { initializeSentry, sentryErrorHandler, sentryRequestHandler } from "./utils/sentry.js";
+import { requestLoggingMiddleware, apiPerformanceMiddleware } from "./middleware/requestLogging.js";
 // Cleanup schedule no longer needed - accounts are deleted immediately
 // import { startCleanupSchedule } from "./utils/cleanupDeletedUsers.js";
 
@@ -71,13 +76,32 @@ const __dirname = dirname(__filename);
 // Load .env from backend root, not src/
 dotenv.config({ path: join(__dirname, '..', '.env') });
 
+// Initialize Sentry error tracking (if configured)
+await initializeSentry();
+
 // Connect to MongoDB before starting the server
 await connectDB();
+logger.info('MongoDB connected successfully');
 
 // Note: Automatic cleanup schedule removed - accounts are now deleted immediately upon request
 // No grace period or scheduled deletion needed
 
 const app = express();
+
+// ============================================================================
+// MIDDLEWARE: Request tracking and logging (must be first)
+// ============================================================================
+
+// Sentry request handler (must be first middleware)
+app.use(sentryRequestHandler());
+
+// Request logging and performance tracking
+app.use(requestLoggingMiddleware);
+app.use(apiPerformanceMiddleware);
+
+// ============================================================================
+// MIDDLEWARE: Core Express configuration
+// ============================================================================
 
 // Configure CORS to allow requests from frontend
 app.use(cors({
@@ -92,6 +116,11 @@ app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
 // Serve uploaded files statically
 app.use('/uploads', express.static(join(__dirname, '..', 'public', 'uploads')));
+
+// ============================================================================
+// ROUTES: Monitoring endpoints (public, no auth required)
+// ============================================================================
+app.use("/api/monitoring", monitoringRoutes);
 
 // API Routes
 app.use("/api/users", userRoutes);
@@ -182,40 +211,41 @@ app.get('/api/public/reports/:token', viewSharedReport);
 // 404 handler - must come after all routes
 app.use(notFoundHandler);
 
+// Sentry error handler - must be before other error handlers
+app.use(sentryErrorHandler());
+
 // Global error handler - must be last
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
+  logger.info(`Server started successfully`, { port: PORT, environment: process.env.NODE_ENV || 'development' });
   console.log(`🚀 Server running on port ${PORT}`);
+
   // Start daily deadline reminders if enabled via env flag
   try {
     startDeadlineReminderSchedule();
   } catch (err) {
-    console.error('Failed to start deadline reminder schedule:', err?.message || err);
+    logger.error('Failed to start deadline reminder schedule', { error: err?.message || err });
   }
   // Start interview reminders if enabled via env flag
   try {
     startInterviewReminderSchedule();
   } catch (err) {
-    console.error('Failed to start interview reminder schedule:', err?.message || err);
+    logger.error('Failed to start interview reminder schedule', { error: err?.message || err });
   }
   // Start application automation schedulers
   try {
     startApplicationScheduler();
     startFollowUpScheduler();
   } catch (err) {
-    console.error('Failed to start application schedulers:', err?.message || err);
+    logger.error('Failed to start application schedulers', { error: err?.message || err });
   }
   // Start status automation scheduler
   try {
     startStatusAutomationScheduler();
   } catch (err) {
-    console.error('Failed to start status automation scheduler:', err?.message || err);
+    logger.error('Failed to start status automation scheduler', { error: err?.message || err });
   }
 });
-
-
-
-
 

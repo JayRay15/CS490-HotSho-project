@@ -68,6 +68,8 @@ import InformationalInterviewsPage from "./pages/InformationalInterviews.jsx";
 import JobMapPage from "./pages/JobMapPage.jsx";
 import JobMaterialsPage from "./pages/auth/JobMaterialsPage.jsx";
 import APIMonitoringDashboard from "./pages/APIMonitoringDashboard.jsx";
+import SystemMonitoringDashboard from "./pages/SystemMonitoringDashboard.jsx";
+import TestErrorPage from "./pages/TestErrorPage.jsx";
 
 function App() {
   return (
@@ -153,6 +155,8 @@ function App() {
           <Route path="/peer-support" element={<ProtectedRoute><PeerSupportPage /></ProtectedRoute>} />
           <Route path="/job-map" element={<ProtectedRoute><JobMapPage /></ProtectedRoute>} />
           <Route path="/admin/api-monitoring" element={<ProtectedRoute><APIMonitoringDashboard /></ProtectedRoute>} />
+          <Route path="/admin/system-monitoring" element={<ProtectedRoute><SystemMonitoringDashboard /></ProtectedRoute>} />
+          <Route path="/admin/test-errors" element={<ProtectedRoute><TestErrorPage /></ProtectedRoute>} />
         </Routes>
       </Router>
     </ErrorBoundary>
