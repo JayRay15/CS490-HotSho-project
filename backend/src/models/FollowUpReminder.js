@@ -176,6 +176,13 @@ const followUpReminderSchema = new mongoose.Schema({
   },
   notificationSentAt: Date,
   
+  // Email notification tracking
+  emailNotificationSent: {
+    type: Boolean,
+    default: false
+  },
+  lastEmailSentAt: Date,
+  
   // Reminder frequency adjustment based on company responsiveness
   adjustedFrequency: {
     originalDays: Number,    // Original days until reminder

@@ -13,7 +13,8 @@ import {
   getReminderTypeInfo,
   formatScheduledDate,
   getResponsivenessInfo,
-  dismissRejectedReminders
+  dismissRejectedReminders,
+  generateEmailTemplate
 } from '../api/followUpReminders';
 
 const SNOOZE_OPTIONS = [
@@ -34,6 +35,8 @@ export default function FollowUpReminders({ onOpenFollowUpTemplates }) {
   const [actionLoading, setActionLoading] = useState(null);
   const [error, setError] = useState(null);
   const [showDismissedMessage, setShowDismissedMessage] = useState(false);
+  const [emailTemplate, setEmailTemplate] = useState(null);
+  const [showEmailTemplate, setShowEmailTemplate] = useState(false);
 
   const loadReminders = useCallback(async () => {
     try {
@@ -151,6 +154,22 @@ export default function FollowUpReminders({ onOpenFollowUpTemplates }) {
     }
   };
 
+  const handleGenerateEmailTemplate = async (reminderId) => {
+    try {
+      setActionLoading(reminderId);
+      const token = await getToken();
+      setAuthToken(token);
+      const response = await generateEmailTemplate(reminderId);
+      setEmailTemplate(response.data);
+      setShowEmailTemplate(true);
+    } catch (err) {
+      console.error('Failed to generate email template:', err);
+      setError('Failed to generate email template');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const ReminderCard = ({ reminder, isOverdue }) => {
     const typeInfo = getReminderTypeInfo(reminder.reminderType);
     const isExpanded = expandedReminder === reminder._id;
@@ -259,6 +278,15 @@ export default function FollowUpReminders({ onOpenFollowUpTemplates }) {
 
             {/* Actions */}
             <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-200">
+              {/* Generate Email Template Button */}
+              <button
+                onClick={() => handleGenerateEmailTemplate(reminder._id)}
+                disabled={isLoading}
+                className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition disabled:opacity-50"
+              >
+                📝 Generate Email Template
+              </button>
+
               {/* Send Follow-up Button */}
               <button
                 onClick={() => handleSendFollowUp(reminder)}
@@ -465,6 +493,108 @@ export default function FollowUpReminders({ onOpenFollowUpTemplates }) {
           </ul>
         </div>
       </div>
+
+      {/* Email Template Modal */}
+      {showEmailTemplate && emailTemplate && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="text-xl font-bold text-gray-900">📧 Follow-Up Email Template</h3>
+                <button
+                  onClick={() => setShowEmailTemplate(false)}
+                  className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>{emailTemplate.job?.title}</strong> at <strong>{emailTemplate.job?.company}</strong>
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  Template type: {emailTemplate.reminderType?.replace(/-/g, ' ')}
+                </p>
+              </div>
+
+              {/* Subject */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Subject:</label>
+                <input
+                  type="text"
+                  value={emailTemplate.template?.subject || ''}
+                  readOnly
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-800"
+                />
+              </div>
+
+              {/* Body */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Email Body:</label>
+                <textarea
+                  value={emailTemplate.template?.body || ''}
+                  readOnly
+                  rows={15}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-800 font-mono text-sm"
+                />
+              </div>
+
+              {/* Etiquette Tips */}
+              {emailTemplate.etiquetteTips && emailTemplate.etiquetteTips.length > 0 && (
+                <div className="mb-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <h4 className="text-sm font-semibold text-yellow-800 mb-2">💡 Etiquette Tips:</h4>
+                  <ul className="space-y-1">
+                    {emailTemplate.etiquetteTips.map((tip, index) => (
+                      <li key={index} className="text-sm text-yellow-800 flex items-start gap-2">
+                        <span className={tip.importance === 'critical' ? 'text-red-500' : tip.importance === 'important' ? 'text-yellow-500' : 'text-green-500'}>
+                          {tip.importance === 'critical' ? '⚠️' : tip.importance === 'important' ? '📌' : '💚'}
+                        </span>
+                        <span>{tip.tip}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Suggested Actions */}
+              {emailTemplate.suggestedActions && emailTemplate.suggestedActions.length > 0 && (
+                <div className="mb-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                  <h4 className="text-sm font-semibold text-green-800 mb-2">✅ Before Sending:</h4>
+                  <ul className="space-y-1">
+                    {emailTemplate.suggestedActions.map((action, index) => (
+                      <li key={index} className="text-sm text-green-800">
+                        • {action}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-4 border-t">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(
+                      `Subject: ${emailTemplate.template?.subject}\n\n${emailTemplate.template?.body}`
+                    );
+                    alert('Email template copied to clipboard!');
+                  }}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
+                >
+                  📋 Copy to Clipboard
+                </button>
+                <button
+                  onClick={() => setShowEmailTemplate(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300 transition"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

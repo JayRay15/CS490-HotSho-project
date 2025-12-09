@@ -59,6 +59,7 @@ import { startDeadlineReminderSchedule } from "./utils/deadlineReminders.js";
 import { startInterviewReminderSchedule } from "./utils/interviewReminders.js";
 import { startApplicationScheduler, startFollowUpScheduler } from "./utils/applicationScheduler.js";
 import { startStatusAutomationScheduler } from "./utils/statusAutomationScheduler.js";
+import { startReminderEmailScheduler } from "./utils/reminderEmailScheduler.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 // Cleanup schedule no longer needed - accounts are deleted immediately
 // import { startCleanupSchedule } from "./utils/cleanupDeletedUsers.js";
@@ -209,6 +210,12 @@ app.listen(PORT, () => {
     startStatusAutomationScheduler();
   } catch (err) {
     console.error('Failed to start status automation scheduler:', err?.message || err);
+  }
+  // Start reminder email scheduler
+  try {
+    startReminderEmailScheduler();
+  } catch (err) {
+    console.error('Failed to start reminder email scheduler:', err?.message || err);
   }
 });
 

@@ -1,6 +1,7 @@
 import { FollowUpReminder } from '../models/FollowUpReminder.js';
 import { Job } from '../models/Job.js';
 import { ApplicationStatus } from '../models/ApplicationStatus.js';
+import { User } from '../models/User.js';
 import {
   createFollowUpReminder,
   createSecondaryFollowUpReminder,
@@ -669,6 +670,193 @@ export const dismissRejectedReminders = async (req, res) => {
   }
 };
 
+/**
+ * Generate follow-up email template based on reminder type and job
+ */
+export const generateFollowUpEmailTemplate = async (req, res) => {
+  try {
+    const userId = req.auth?.userId || req.auth?.payload?.sub;
+    const { reminderId } = req.params;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'User ID not found in authentication token'
+      });
+    }
+    
+    const reminder = await FollowUpReminder.findOne({ _id: reminderId, userId })
+      .populate('jobId', 'title company status location');
+    
+    if (!reminder) {
+      return res.status(404).json({
+        success: false,
+        message: 'Reminder not found'
+      });
+    }
+    
+    // Get user information
+    const user = await User.findOne({ auth0Id: userId });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    const job = reminder.jobId;
+    const userName = user.name || 'Candidate';
+    
+    // Generate email template based on reminder type
+    let subject = '';
+    let body = '';
+    
+    switch (reminder.reminderType) {
+      case 'application-follow-up':
+        subject = `Following Up: ${job.title} Application`;
+        body = `Dear Hiring Manager,
+
+I hope this email finds you well. I wanted to follow up on my application for the ${job.title} position at ${job.company}, which I submitted on [APPLICATION_DATE].
+
+I remain very interested in this opportunity and believe my skills and experience align well with the role's requirements. I would welcome the chance to discuss how I can contribute to ${job.company}'s continued success.
+
+If there are any updates regarding my application status or if you need any additional information from me, please don't hesitate to reach out.
+
+Thank you for your time and consideration.
+
+Best regards,
+${userName}`;
+        break;
+        
+      case 'post-interview-thank-you':
+        subject = `Thank You - ${job.title} Interview`;
+        body = `Dear [INTERVIEWER_NAME],
+
+Thank you for taking the time to meet with me ${reminder.applicationStage.includes('Phone') ? 'on the phone' : 'today'} to discuss the ${job.title} position at ${job.company}.
+
+I greatly enjoyed our conversation about [SPECIFIC_TOPIC_DISCUSSED] and learning more about ${job.company}'s [SPECIFIC_PROJECT_OR_INITIATIVE]. The role aligns perfectly with my background in [YOUR_RELEVANT_EXPERIENCE], and I'm excited about the possibility of contributing to your team.
+
+Our discussion reinforced my enthusiasm for this opportunity, particularly [MENTION_SPECIFIC_ASPECT_THAT_EXCITED_YOU].
+
+Please let me know if you need any additional information from me. I look forward to hearing about the next steps in the process.
+
+Thank you again for your time and consideration.
+
+Best regards,
+${userName}`;
+        break;
+        
+      case 'post-interview-follow-up':
+      case 'status-inquiry':
+        subject = `Following Up: ${job.title} Interview`;
+        body = `Dear [INTERVIEWER_NAME],
+
+I wanted to follow up on our recent interview for the ${job.title} position at ${job.company}. I remain very enthusiastic about the opportunity to join your team.
+
+Since our conversation, I've continued to think about [SPECIFIC_ASPECT_DISCUSSED] and how my experience with [YOUR_RELEVANT_SKILL] could contribute to ${job.company}'s goals.
+
+I understand that hiring decisions take time, but I wanted to reiterate my strong interest in the role. If there are any updates you can share about the process timeline or if you need any additional information from me, I would be happy to provide it.
+
+Thank you again for considering my application.
+
+Best regards,
+${userName}`;
+        break;
+        
+      case 'feedback-request':
+        subject = `Thank You and Feedback Request - ${job.title}`;
+        body = `Dear Hiring Manager,
+
+Thank you for considering me for the ${job.title} position at ${job.company}. While I'm disappointed to learn that I won't be moving forward in the process, I appreciate the time you invested in reviewing my application.
+
+I'm committed to continuous improvement in my job search and professional development. If you have a moment, I would greatly appreciate any feedback you could share about my application or interview performance. Understanding areas where I could strengthen my candidacy would be extremely valuable.
+
+I remain impressed by ${job.company}'s work and would welcome the opportunity to be considered for future roles that may be a better fit.
+
+Thank you again for your time and consideration.
+
+Best regards,
+${userName}`;
+        break;
+        
+      case 'offer-response':
+        subject = `Re: ${job.title} Offer`;
+        body = `Dear [HIRING_MANAGER_NAME],
+
+Thank you for extending an offer for the ${job.title} position at ${job.company}. I'm excited about the opportunity and appreciate your confidence in my abilities.
+
+I'm currently reviewing the offer details carefully. [IF_NEED_TIME: I would like to request until [DATE] to make my final decision, as I want to ensure this is the right fit for both of us.] [IF_QUESTIONS: I have a few questions about [BENEFITS/RESPONSIBILITIES/START_DATE] that I'd like to discuss.]
+
+I remain very interested in joining ${job.company} and contributing to [SPECIFIC_TEAM_OR_PROJECT].
+
+Could we schedule a time to discuss this further?
+
+Thank you for your understanding.
+
+Best regards,
+${userName}`;
+        break;
+        
+      case 'networking-follow-up':
+        subject = `Staying in Touch - ${job.company}`;
+        body = `Dear [CONTACT_NAME],
+
+I wanted to reach out and thank you again for considering me for the ${job.title} position at ${job.company}. While the timing didn't work out this time, I remain very impressed by the work ${job.company} is doing in [INDUSTRY/FIELD].
+
+I'm continuing to develop my skills in [RELEVANT_AREAS] and would love to stay connected for potential future opportunities. I'd also be happy to share any relevant insights or connections that might be valuable to your team.
+
+Thank you again for your time and consideration. I hope we can keep in touch.
+
+Best regards,
+${userName}`;
+        break;
+        
+      default:
+        subject = `Following Up: ${job.title} at ${job.company}`;
+        body = `Dear Hiring Manager,
+
+I wanted to follow up regarding the ${job.title} position at ${job.company}.
+
+I remain very interested in this opportunity and would welcome any updates you can share.
+
+Thank you for your time and consideration.
+
+Best regards,
+${userName}`;
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        reminderId: reminder._id,
+        reminderType: reminder.reminderType,
+        job: {
+          title: job.title,
+          company: job.company
+        },
+        template: {
+          subject,
+          body
+        },
+        etiquetteTips: reminder.etiquetteTips,
+        suggestedActions: [
+          'Personalize [BRACKETED_PLACEHOLDERS] with specific details',
+          'Review and adjust tone based on your previous interactions',
+          'Keep email concise and professional',
+          'Proofread carefully before sending'
+        ]
+      }
+    });
+  } catch (error) {
+    console.error('Error generating email template:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate email template',
+      error: error.message
+    });
+  }
+};
+
 export default {
   getAllReminders,
   getJobReminders,
@@ -683,5 +871,6 @@ export default {
   triggerStatusChangeReminders,
   markResponseReceived,
   deleteReminder,
-  dismissRejectedReminders
+  dismissRejectedReminders,
+  generateFollowUpEmailTemplate
 };

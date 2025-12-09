@@ -14,7 +14,8 @@ import {
   triggerStatusChangeReminders,
   markResponseReceived,
   deleteReminder,
-  dismissRejectedReminders
+  dismissRejectedReminders,
+  generateFollowUpEmailTemplate
 } from '../controllers/followUpReminderController.js';
 
 const router = express.Router();
@@ -46,6 +47,9 @@ router.get('/responsiveness/:company', getCompanyResponsivenessEndpoint);
 
 // Get reminders for a specific job
 router.get('/job/:jobId', getJobReminders);
+
+// Generate email template for a reminder
+router.get('/:reminderId/email-template', generateFollowUpEmailTemplate);
 
 // Create a new reminder
 router.post('/', createReminder);

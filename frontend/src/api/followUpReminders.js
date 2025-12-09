@@ -153,6 +153,16 @@ export const dismissRejectedReminders = async () => {
   return response.data;
 };
 
+/**
+ * Generate email template for a reminder
+ * @param {string} reminderId - Reminder ID
+ * @returns {Promise<Object>} Email template with subject and body
+ */
+export const generateEmailTemplate = async (reminderId) => {
+  const response = await axiosInstance.get(`/api/follow-up-reminders/${reminderId}/email-template`);
+  return response.data;
+};
+
 // Helper functions for UI
 
 /**
