@@ -81,7 +81,7 @@ const scheduledSubmissionSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['scheduled', 'submitted', 'cancelled', 'failed'],
+    enum: ['scheduled', 'submitted', 'reminded', 'cancelled', 'failed'],
     default: 'scheduled',
     required: true
   },

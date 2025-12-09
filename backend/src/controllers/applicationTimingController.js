@@ -1,6 +1,21 @@
 import { ApplicationTiming } from '../models/ApplicationTiming.js';
 import { Job } from '../models/Job.js';
 import applicationTimingService from '../services/applicationTimingService.js';
+import nodemailer from 'nodemailer';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+// Create email transporter
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: process.env.SMTP_PORT,
+  secure: process.env.SMTP_SECURE === 'true',
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
+  }
+});
 
 /**
  * UC-124: Get timing recommendation for a job application
@@ -24,6 +39,14 @@ export const getTimingRecommendation = async (req, res) => {
       timezone: job.timezone || 'EST',
       isRemote: job.workMode === 'Remote' || job.workMode === 'Hybrid'
     };
+
+    console.log('Job details for timing:', {
+      title: job.title,
+      company: job.company,
+      industry: job.industry,
+      jobDataIndustry: jobData.industry,
+      workMode: job.workMode
+    });
 
     const userData = {
       userId,
@@ -111,8 +134,39 @@ export const scheduleSubmission = async (req, res) => {
     const { jobId } = req.params;
     const { scheduledTime, autoSubmit = false } = req.body;
 
+    console.log('📅 Received schedule request:', { scheduledTime, autoSubmit, type: typeof scheduledTime });
+
     if (!scheduledTime) {
       return res.status(400).json({ error: 'Scheduled time is required' });
+    }
+
+    // Parse and validate the date
+    let parsedDate;
+    try {
+      // Handle both ISO string and datetime-local format (YYYY-MM-DDTHH:MM)
+      if (typeof scheduledTime === 'string') {
+        // If it's in format YYYY-MM-DDTHH:MM, add seconds
+        const dateStr = scheduledTime.length === 16 ? `${scheduledTime}:00` : scheduledTime;
+        parsedDate = new Date(dateStr);
+      } else {
+        parsedDate = new Date(scheduledTime);
+      }
+
+      // Check if date is valid
+      if (isNaN(parsedDate.getTime())) {
+        console.error('Invalid date parsed:', { scheduledTime, parsedDate });
+        return res.status(400).json({ error: 'Invalid date format' });
+      }
+
+      // Check if date is in the future
+      if (parsedDate <= new Date()) {
+        return res.status(400).json({ error: 'Scheduled time must be in the future' });
+      }
+
+      console.log('✅ Parsed date successfully:', parsedDate.toISOString());
+    } catch (error) {
+      console.error('Error parsing date:', error);
+      return res.status(400).json({ error: 'Failed to parse date: ' + error.message });
     }
 
     // Validate job exists
@@ -145,13 +199,30 @@ export const scheduleSubmission = async (req, res) => {
     }
 
     // Schedule the submission
-    await timingRecord.scheduleSubmission(new Date(scheduledTime), autoSubmit);
+    await timingRecord.scheduleSubmission(parsedDate, autoSubmit);
+
+    console.log('📅 Submission scheduled:', {
+      jobTitle: job.title,
+      company: job.company,
+      scheduledTime: parsedDate.toISOString(),
+      autoSubmit,
+      willAutoSubmit: autoSubmit ? 'YES - will auto-submit' : 'NO - reminder only'
+    });
+
+    // Send confirmation message (scheduler will handle actual submission/reminder)
+    const scheduledDate = new Date(scheduledTime);
+    const message = autoSubmit 
+      ? `✅ Auto-submit scheduled for ${scheduledDate.toLocaleString()}. The application will be automatically submitted at that time.`
+      : `✅ Reminder scheduled for ${scheduledDate.toLocaleString()}. You'll receive a notification to submit the application.`;
 
     res.json({
       success: true,
-      message: 'Application submission scheduled successfully',
+      message,
       scheduledTime: timingRecord.scheduledSubmission.scheduledTime,
-      autoSubmit: timingRecord.scheduledSubmission.autoSubmit
+      autoSubmit: timingRecord.scheduledSubmission.autoSubmit,
+      note: process.env.ENABLE_APPLICATION_SCHEDULER !== 'true' 
+        ? 'Note: Background scheduler is currently disabled. Enable it in .env with ENABLE_APPLICATION_SCHEDULER=true'
+        : 'Scheduler is active and will process this at the scheduled time'
     });
   } catch (error) {
     console.error('Error scheduling submission:', error);

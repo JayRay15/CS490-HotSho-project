@@ -22,10 +22,20 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
   const [autoSubmit, setAutoSubmit] = useState(false);
   const [scheduling, setScheduling] = useState(false);
   const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
 
   useEffect(() => {
     loadData();
   }, [job]);
+
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => {
+        setSuccessMessage(null);
+      }, 8000); // Auto-dismiss after 8 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
 
   const loadData = async () => {
     try {
@@ -38,6 +48,12 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
       // Load recommendation
       const recResponse = await getTimingRecommendation(job._id, userTimezone);
       setRecommendation(recResponse.recommendation);
+      
+      // Set default scheduled time to recommended time
+      if (recResponse.recommendation?.recommendedTime) {
+        const recTime = new Date(recResponse.recommendation.recommendedTime);
+        setScheduledTime(recTime.toISOString().slice(0, 16));
+      }
 
       // Load realtime recommendation
       try {
@@ -80,6 +96,10 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
   };
 
   const handleSchedule = async () => {
+    console.log('🔔 Schedule button clicked');
+    console.log('Scheduled time:', scheduledTime);
+    console.log('Auto submit:', autoSubmit);
+    
     if (!scheduledTime) {
       setError('Please select a time to schedule');
       return;
@@ -89,7 +109,9 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
       setScheduling(true);
       setError(null);
 
-      await scheduleSubmission(job._id, scheduledTime, autoSubmit);
+      console.log('Calling scheduleSubmission API...');
+      const response = await scheduleSubmission(job._id, scheduledTime, autoSubmit);
+      console.log('Schedule response:', response);
 
       if (onScheduled) {
         onScheduled();
@@ -98,10 +120,18 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
       // Reload data
       await loadData();
 
-      alert('Application submission scheduled successfully!');
+      setSuccessMessage({
+        type: 'schedule',
+        message: response.message || 'Application submission scheduled successfully!',
+        details: autoSubmit ? 'The application will be automatically submitted at the scheduled time.' : 'You will receive a reminder email at the scheduled time.'
+      });
+      
+      // Clear scheduledTime after successful scheduling
+      setScheduledTime('');
+      setAutoSubmit(false);
     } catch (err) {
       console.error('Error scheduling submission:', err);
-      setError('Failed to schedule submission');
+      setError('Failed to schedule submission: ' + (err.response?.data?.error || err.message));
     } finally {
       setScheduling(false);
     }
@@ -117,7 +147,11 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
       // Reload data
       await loadData();
 
-      alert('Scheduled submission cancelled successfully!');
+      setSuccessMessage({
+        type: 'cancel',
+        message: 'Scheduled submission cancelled successfully!',
+        details: 'Your scheduled application has been cancelled.'
+      });
     } catch (err) {
       console.error('Error cancelling schedule:', err);
       setError('Failed to cancel scheduled submission');
@@ -214,6 +248,35 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
         {error && (
           <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-300 rounded-lg text-red-800">
             {error}
+          </div>
+        )}
+
+        {successMessage && (
+          <div className="mx-6 mt-4 p-4 bg-green-50 border border-green-300 rounded-lg">
+            <div className="flex items-start">
+              <div className="shrink-0">
+                <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3 flex-1">
+                <p className="text-sm font-medium text-green-800">
+                  {successMessage.message}
+                </p>
+                <p className="mt-1 text-sm text-green-700">
+                  {successMessage.details}
+                </p>
+              </div>
+              <button
+                onClick={() => setSuccessMessage(null)}
+                className="ml-3 inline-flex text-green-400 hover:text-green-600"
+              >
+                <span className="sr-only">Dismiss</span>
+                <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
           </div>
         )}
 
@@ -360,13 +423,35 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Schedule Time
                     </label>
-                    <input
-                      type="datetime-local"
-                      value={scheduledTime}
-                      onChange={(e) => setScheduledTime(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      min={new Date().toISOString().slice(0, 16)}
-                    />
+                    {/* Debug info */}
+                    <div className="text-xs text-gray-500 mb-1">
+                      Current value: {scheduledTime || 'empty'}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="date"
+                        value={scheduledTime.split('T')[0] || ''}
+                        onChange={(e) => {
+                          const currentTime = scheduledTime.split('T')[1] || '09:00';
+                          const timeOnly = currentTime.includes(':') ? currentTime.slice(0, 5) : '09:00';
+                          setScheduledTime(`${e.target.value}T${timeOnly}`);
+                        }}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        min={new Date().toISOString().split('T')[0]}
+                      />
+                      <input
+                        type="time"
+                        value={scheduledTime.split('T')[1]?.slice(0, 5) || '09:00'}
+                        onChange={(e) => {
+                          console.log('Time input changed:', e.target.value);
+                          const date = scheduledTime.split('T')[0] || new Date().toISOString().split('T')[0];
+                          const newScheduledTime = `${date}T${e.target.value}`;
+                          console.log('Setting new scheduled time:', newScheduledTime);
+                          setScheduledTime(newScheduledTime);
+                        }}
+                        className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
                     {recommendation && (
                       <button
                         onClick={() => {
@@ -395,7 +480,10 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
 
                   <div className="flex gap-3">
                     <button
-                      onClick={handleSchedule}
+                      onClick={(e) => {
+                        console.log('Button clicked!', e);
+                        handleSchedule();
+                      }}
                       disabled={scheduling || !scheduledTime}
                       className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium"
                     >
@@ -501,49 +589,60 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
 
           {activeTab === 'insights' && (
             <div className="space-y-6">
-              {/* A/B Test Results */}
-              {abTestResults && (
-                <div className="bg-white rounded-lg border border-gray-200">
-                  <h4 className="text-lg font-semibold text-gray-900 p-4 border-b border-gray-200">
-                    A/B Test Results
-                  </h4>
-                  <div className="p-4">
-                    <p className="text-sm text-gray-600 mb-4">
-                      Compare the success rates of different timing strategies
-                    </p>
-                    <div className="space-y-3">
-                      {Object.entries(abTestResults).map(([group, data]) => (
-                        <div key={group} className="p-4 bg-gray-50 rounded-lg">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="font-medium text-gray-900 capitalize">
-                              {group.replace(/_/g, ' ')}
-                            </span>
-                            <span className="text-lg font-bold text-blue-600">
-                              {data.rate.toFixed(1)}%
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-4 text-sm text-gray-600">
-                            <span>{data.submissions} submissions</span>
-                            <span>{data.responses} responses</span>
-                          </div>
-                          <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-blue-600 h-2 rounded-full transition-all"
-                              style={{ width: `${data.rate}%` }}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+              {((!abTestResults || Object.keys(abTestResults).every(key => abTestResults[key].submissions === 0)) && 
+                (!correlations || ((!correlations.byDayOfWeek || Object.keys(correlations.byDayOfWeek).length === 0) && 
+                                   (!correlations.byHourOfDay || Object.keys(correlations.byHourOfDay).length === 0)))) && (
+                <div className="text-center py-12">
+                  <p className="text-gray-500 text-lg mb-2">No analytics data yet</p>
+                  <p className="text-sm text-gray-400">
+                    Submit applications using our timing recommendations to see insights and patterns
+                  </p>
                 </div>
               )}
+              
+              {/* A/B Test Results */}
+              {abTestResults && Object.keys(abTestResults).some(key => abTestResults[key].submissions > 0) && (
+                    <div className="bg-white rounded-lg border border-gray-200">
+                      <h4 className="text-lg font-semibold text-gray-900 p-4 border-b border-gray-200">
+                        A/B Test Results
+                      </h4>
+                      <div className="p-4">
+                        <p className="text-sm text-gray-600 mb-4">
+                          Compare the success rates of different timing strategies
+                        </p>
+                        <div className="space-y-3">
+                          {Object.entries(abTestResults).map(([group, data]) => (
+                            <div key={group} className="p-4 bg-gray-50 rounded-lg">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-medium text-gray-900 capitalize">
+                                  {group.replace(/_/g, ' ')}
+                                </span>
+                                <span className="text-lg font-bold text-blue-600">
+                                  {data.rate.toFixed(1)}%
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-4 text-sm text-gray-600">
+                                <span>{data.submissions} submissions</span>
+                                <span>{data.responses} responses</span>
+                              </div>
+                              <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+                                <div
+                                  className="bg-blue-600 h-2 rounded-full transition-all"
+                                  style={{ width: `${data.rate}%` }}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
-              {/* Correlations */}
-              {correlations && (
-                <>
-                  {/* Day of Week Correlation */}
-                  {correlations.byDayOfWeek && Object.keys(correlations.byDayOfWeek).length > 0 && (
+                  {/* Correlations */}
+                  {correlations && (
+                    <>
+                      {/* Day of Week Correlation */}
+                      {correlations.byDayOfWeek && Object.keys(correlations.byDayOfWeek).length > 0 && (
                     <div className="bg-white rounded-lg border border-gray-200">
                       <h4 className="text-lg font-semibold text-gray-900 p-4 border-b border-gray-200">
                         Success Rate by Day of Week
@@ -615,8 +714,8 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
                       </div>
                     </div>
                   )}
-                </>
-              )}
+                    </>
+                  )}
             </div>
           )}
         </div>

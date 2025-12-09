@@ -6,7 +6,7 @@ class ApplicationTimingService {
     this.industryPatterns = {
       'Technology': {
         bestDays: ['Tuesday', 'Wednesday', 'Thursday'],
-        bestHours: [9, 10, 11, 14, 15],
+        bestHours: [10, 11, 14, 15, 9], // Primary: 10 AM
         avoidDays: ['Friday', 'Sunday'],
         quarterEndMonths: [3, 6, 9, 12], // Avoid last 2 weeks
         hiringSeasons: {
@@ -16,8 +16,18 @@ class ApplicationTimingService {
       },
       'Finance': {
         bestDays: ['Tuesday', 'Wednesday', 'Thursday'],
-        bestHours: [8, 9, 10, 14],
+        bestHours: [8, 9, 10, 14], // Primary: 8 AM (earlier for finance)
         avoidDays: ['Monday', 'Friday', 'Sunday'],
+        quarterEndMonths: [3, 6, 9, 12],
+        hiringSeasons: {
+          high: [1, 2, 9],
+          low: [7, 12]
+        }
+      },
+      'Consulting': {
+        bestDays: ['Monday', 'Tuesday', 'Wednesday'],
+        bestHours: [11, 14, 10, 15], // Primary: 11 AM
+        avoidDays: ['Friday', 'Sunday'],
         quarterEndMonths: [3, 6, 9, 12],
         hiringSeasons: {
           high: [1, 2, 9],
@@ -26,7 +36,7 @@ class ApplicationTimingService {
       },
       'Healthcare': {
         bestDays: ['Tuesday', 'Wednesday', 'Thursday'],
-        bestHours: [9, 10, 11, 13, 14],
+        bestHours: [9, 10, 11, 13, 14], // Primary: 9 AM
         avoidDays: ['Sunday'],
         quarterEndMonths: [],
         hiringSeasons: {
@@ -36,7 +46,7 @@ class ApplicationTimingService {
       },
       'Retail': {
         bestDays: ['Monday', 'Tuesday', 'Wednesday'],
-        bestHours: [10, 11, 14, 15],
+        bestHours: [14, 15, 10, 11], // Primary: 2 PM (afternoon for retail)
         avoidDays: ['Saturday', 'Sunday'],
         quarterEndMonths: [],
         hiringSeasons: {
@@ -46,7 +56,7 @@ class ApplicationTimingService {
       },
       'Education': {
         bestDays: ['Tuesday', 'Wednesday', 'Thursday'],
-        bestHours: [9, 10, 11, 13],
+        bestHours: [9, 10, 11, 13], // Primary: 9 AM
         avoidDays: ['Friday', 'Saturday', 'Sunday'],
         quarterEndMonths: [],
         hiringSeasons: {
@@ -283,6 +293,10 @@ class ApplicationTimingService {
     const industryPattern = this.getIndustryPattern(industry);
     const companySizePattern = this.getCompanySizePattern(companySize);
 
+    console.log('Timing service - Industry:', industry);
+    console.log('Using pattern with bestHours:', industryPattern.bestHours);
+    console.log('Best days:', industryPattern.bestDays);
+
     // Analyze historical data if userId provided
     let historicalAnalysis = null;
     if (userId) {
@@ -374,8 +388,12 @@ class ApplicationTimingService {
         description: `Based on your history, ${optimalHour}:00 has the best response rate`
       });
     } else if (industryPattern.bestHours.length > 0) {
-      // Pick middle of best hours range
-      optimalHour = industryPattern.bestHours[Math.floor(industryPattern.bestHours.length / 2)];
+      // Use first optimal hour for consistency, or add slight variation based on company size
+      const hourIndex = companySizePattern.preferredTimes[0] && industryPattern.bestHours.includes(companySizePattern.preferredTimes[0])
+        ? industryPattern.bestHours.indexOf(companySizePattern.preferredTimes[0])
+        : 0;
+      optimalHour = industryPattern.bestHours[hourIndex];
+      console.log('Selected hour:', optimalHour, 'from index:', hourIndex);
       factors.push({
         factor: 'time_of_day',
         impact: 'positive',
@@ -385,6 +403,8 @@ class ApplicationTimingService {
     }
 
     recommendedTime.setHours(optimalHour, 0, 0, 0);
+    console.log('Recommended time set to:', recommendedTime.toISOString(), 'Hour:', optimalHour);
+    console.log('Recommended time set to:', recommendedTime.toISOString(), '(', recommendedTime.toLocaleString(), ')');
 
     // Adjust for timezone if remote
     if (isRemote && timezone !== userTimezone) {
