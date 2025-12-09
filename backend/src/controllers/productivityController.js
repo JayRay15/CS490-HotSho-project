@@ -4,7 +4,14 @@ import Goal from '../models/Goal.js';
 import { User } from '../models/User.js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// Initialize Gemini AI lazily to avoid errors when API key is missing
+let genAI = null;
+function getGenAI() {
+    if (!genAI && process.env.GEMINI_API_KEY) {
+        genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    }
+    return genAI;
+}
 
 /**
  * Get or create time tracking record for a specific date
@@ -601,7 +608,9 @@ export const compareProductivity = async (req, res) => {
  */
 async function generateProductivityRecommendations(analysis, user, goals) {
   try {
-    const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+    const ai = getGenAI();
+    if (!ai) return null;
+    const model = ai.getGenerativeModel({ model: 'models/gemini-flash-latest' });
 
     const prompt = `You are an expert productivity coach specializing in job search optimization. Analyze the following productivity data and provide actionable recommendations.
 
@@ -668,7 +677,9 @@ Return ONLY valid JSON with this structure:
  */
 async function generateProductivityInsights(stats, user) {
   try {
-    const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+    const ai = getGenAI();
+    if (!ai) return null;
+    const model = ai.getGenerativeModel({ model: 'models/gemini-flash-latest' });
 
     const prompt = `You are an expert productivity analyst. Analyze the following time tracking data and provide key insights.
 
@@ -721,7 +732,9 @@ Return ONLY valid JSON with this structure:
  */
 async function generateOptimalSchedule(stats, user, goals) {
   try {
-    const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+    const ai = getGenAI();
+    if (!ai) return null;
+    const model = ai.getGenerativeModel({ model: 'models/gemini-flash-latest' });
 
     const activityBreakdown = Object.entries(stats.activityTotals || {})
       .map(([activity, minutes]) => `- ${activity}: ${(minutes / 60).toFixed(1)} hours`)

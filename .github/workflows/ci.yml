@@ -49,6 +49,8 @@ jobs:
       env:
         NODE_OPTIONS: --experimental-vm-modules
         MONGODB_URI: mongodb://localhost:27017/hotshot-test
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
     
     - name: Upload backend coverage
       uses: actions/upload-artifact@v4

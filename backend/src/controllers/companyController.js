@@ -14,8 +14,14 @@ if (!GEMINI_CONFIGURED) {
     console.warn('[company-controller] WARNING: GEMINI_API_KEY is not configured. AI-powered company research will not be available.');
 }
 
-// Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// Initialize Gemini AI lazily to avoid errors when API key is missing
+let genAI = null;
+function getGenAI() {
+    if (!genAI && process.env.GEMINI_API_KEY) {
+        genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    }
+    return genAI;
+}
 
 /**
  * Use Gemini AI to extract comprehensive company information
@@ -23,7 +29,12 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
  */
 async function extractCompanyInfoWithAI(companyName, websiteUrl = '') {
     try {
-        const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+        const ai = getGenAI();
+        if (!ai) {
+            console.warn('[company-controller] Gemini AI not available - API key not configured');
+            return null;
+        }
+        const model = ai.getGenerativeModel({ model: 'models/gemini-flash-latest' });
 
         const prompt = `You are a company research expert. Determine if ${companyName}${websiteUrl ? ` (website: ${websiteUrl})` : ''} is a real, existing company that you have knowledge about.
 
