@@ -12,29 +12,17 @@ import ProjectDetail from "../../components/projects/ProjectDetail";
 import ProjectFilters from "../../components/projects/ProjectFilters";
 import PortfolioModal from "../../components/projects/PortfolioModal";
 import GitHubShowcase from "../../components/GitHubShowcase";
+import EmploymentHistory from "../../components/profile/EmploymentHistory";
+import SkillsSection from "../../components/profile/SkillsSection";
+import CertificationsSection from "../../components/profile/CertificationsSection";
+import EditProfileModal from "../../components/profile/EditProfileModal";
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import Card from "../../components/Card";
 import Container from "../../components/Container";
 // import { useNavigate } from "react-router-dom";
 import LoadingSpinner from "../../components/LoadingSpinner";
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  useSortable,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+
+
 
 const INDUSTRIES = ['Technology', 'Healthcare', 'Finance', 'Education', 'Construction', 'Real Estate'];
 const EXPERIENCE_LEVELS = ['Entry', 'Mid', 'Senior', 'Executive'];
@@ -173,157 +161,22 @@ export default function ProfilePage() {
     }
   };
 
-  // Skills organization helpers
-  const groupSkillsByCategory = (skills) => {
-    const grouped = {};
-    skills.forEach(skill => {
-      const cat = skill.category || 'Other';
-      if (!grouped[cat]) grouped[cat] = [];
-      grouped[cat].push(skill);
-    });
-    return grouped;
-  };
-
-  const getSkillLevelSummary = (skills) => {
-    const summary = { Beginner: 0, Intermediate: 0, Advanced: 0, Expert: 0 };
-    skills.forEach(skill => {
-      if (summary.hasOwnProperty(skill.level)) {
-        summary[skill.level]++;
-      }
-    });
-    return summary;
-  };
-
-  const filteredSkills = skillList.filter(skill => {
-    if (!skillSearchQuery.trim()) return true;
-    const query = skillSearchQuery.toLowerCase();
-    return (
-      skill.name.toLowerCase().includes(query) ||
-      skill.category.toLowerCase().includes(query) ||
-      skill.level.toLowerCase().includes(query)
-    );
-  });
-
-  const toggleCategory = (category) => {
-    setExpandedCategories(prev => ({
-      ...prev,
-      [category]: !prev[category]
-    }));
-  };
-
-  const exportSkillsByCategory = () => {
-    const grouped = groupSkillsByCategory(skillList);
-    const today = new Date();
-    const dateStr = today.toISOString().split('T')[0];
-
-    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-
-    // Title
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(18);
-    doc.text('Skills Export', 40, 40);
-
-    // Meta
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(11);
-    doc.text(`Date: ${dateStr}`, 40, 60);
-    doc.text(`Total skills: ${skillList.length}`, 40, 75);
-
-    let currentY = 95;
-
-    const categories = Object.keys(grouped);
-    if (categories.length === 0) {
-      doc.text('No skills to export.', 40, currentY);
-    }
-
-    categories.forEach((category, idx) => {
-      if (idx > 0) {
-        currentY += 20; // spacing between categories
-      }
-
-      // Category header
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(14);
-      doc.text(`${category} (${grouped[category].length})`, 40, currentY);
-
-      // Level summary line
-      const summary = getSkillLevelSummary(grouped[category]);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-      currentY += 14;
-      doc.text(
-        `Beginner: ${summary.Beginner}   Intermediate: ${summary.Intermediate}   Advanced: ${summary.Advanced}   Expert: ${summary.Expert}`,
-        40,
-        currentY
-      );
-
-      // Table of skills in this category
-      const rows = grouped[category]
-        .map(s => [s.name || '', s.level || '', s.category || category]);
-
-      // Use autoTable for tabular data under this category
-      autoTable(doc, {
-        startY: currentY + 8,
-        margin: { left: 40, right: 40 },
-        head: [['Name', 'Level', 'Category']],
-        body: rows,
-        styles: { font: 'helvetica', fontSize: 10 },
-        headStyles: { fillColor: [33, 150, 243], textColor: 255 },
-        alternateRowStyles: { fillColor: [245, 245, 245] },
-      });
-
-      // Update currentY to the end of the table
-      currentY = doc.lastAutoTable ? doc.lastAutoTable.finalY : currentY + 40;
-    });
-
-    doc.save(`skills-export-${dateStr}.pdf`);
-  };
-
-  const handleSkillDragEnd = async (event) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const oldIndex = skillList.findIndex(s => s._id === active.id);
-    const newIndex = skillList.findIndex(s => s._id === over.id);
-
-    if (oldIndex === -1 || newIndex === -1) return;
-
-    const newSkillList = arrayMove(skillList, oldIndex, newIndex);
-    setSkillList(newSkillList);
-
-    // Optionally persist the new order to backend
+  // Certification delete handler
+  const handleDeleteCertification = async (c) => {
+    if (!confirm('Delete this certification?')) return;
     try {
       const token = await getToken();
       setAuthToken(token);
-      await api.put('/api/profile/skills/reorder', { skills: newSkillList.map(s => s._id) });
-    } catch (err) {
-      console.error('Failed to persist skill order:', err);
+      await api.delete(`/api/profile/certifications/${c._id}`);
+      const me = await api.get('/api/users/me');
+      setCertList(me?.data?.data?.certifications || []);
+      setCertificationSuccessMessage(`Certification "${c.name}" deleted successfully!`);
+      setTimeout(() => setCertificationSuccessMessage(null), 5000);
+    } catch (e) {
+      console.error(e);
+      alert('Failed to delete certification. Please try again.');
     }
   };
-
-  const moveSkillToCategory = async (skill, newCategory) => {
-    try {
-      const token = await getToken();
-      setAuthToken(token);
-      await api.put(`/api/profile/skills/${skill._id}`, { ...skill, category: newCategory });
-
-      setSkillList(prev => prev.map(s =>
-        s._id === skill._id ? { ...s, category: newCategory } : s
-      ));
-      setSkillSuccessMessage(`Skill moved to ${newCategory}`);
-      setTimeout(() => setSkillSuccessMessage(null), 3000);
-    } catch (err) {
-      console.error('Failed to move skill:', err);
-      setError(err);
-    }
-  };
-
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
 
   const [showCertModal, setShowCertModal] = useState(false);
   const [certList, setCertList] = useState([]);
@@ -880,144 +733,20 @@ export default function ProfilePage() {
                 </Card>
 
                 {/* Employment History Section */}
-                <Card variant="default" title="Employment History">
-                  <div className="flex justify-between items-center mb-4">
-                    <button
-                      onClick={() => setShowEmploymentModal(true)}
-                      className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 ml-auto focus:outline-none focus:ring-2 focus:ring-offset-2"
-                      style={{ backgroundColor: '#777C6D' }}
-                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                      <span>Add Employment</span>
-                    </button>
-                  </div>
-
-                  {/* Employment Success Message */}
-                  {employmentSuccessMessage && (
-                    <div className="mb-4 p-4 border rounded-lg" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }}>
-                      <p className="font-medium" style={{ color: '#166534' }}>{employmentSuccessMessage}</p>
-                    </div>
-                  )}
-
-                  {employmentList && employmentList.length > 0 ? (
-                    <div className="space-y-4">
-                      {employmentList
-                        .sort((a, b) => {
-                          // Current positions first
-                          if (a.isCurrentPosition && !b.isCurrentPosition) return -1;
-                          if (!a.isCurrentPosition && b.isCurrentPosition) return 1;
-
-                          // For current positions, sort by start date (most recent first)
-                          if (a.isCurrentPosition && b.isCurrentPosition) {
-                            return new Date(b.startDate) - new Date(a.startDate);
-                          }
-
-                          // For past positions, sort by end date (most recent first)
-                          return new Date(b.endDate) - new Date(a.endDate);
-                        })
-                        .map((job, index) => (
-                          <Card key={job._id || index} variant="outlined" interactive className="relative">
-                            {/* Current Position Badge - Top Right */}
-                            {job.isCurrentPosition && (
-                              <div className="absolute top-4 right-4">
-                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border" style={{ backgroundColor: '#DCFCE7', color: '#166534', borderColor: '#BBF7D0' }}>
-                                  Current Position
-                                </span>
-                              </div>
-                            )}
-
-                            <div className="flex flex-col">
-                              {/* Job Details */}
-                              <div className="flex-1 pr-32">
-                                <h3 className="text-lg font-heading font-semibold text-text-primary">{job.jobTitle}</h3>
-                                <p className="text-text-primary font-medium">{job.company}</p>
-                                <div className="flex items-center text-sm text-text-secondary mt-1 space-x-2">
-                                  {job.location && (
-                                    <>
-                                      <span>{job.location}</span>
-                                      <span>•</span>
-                                    </>
-                                  )}
-                                  <span>
-                                    {(() => {
-                                      const startDate = new Date(job.startDate);
-                                      const startMonth = String(startDate.getMonth() + 1).padStart(2, '0');
-                                      const startYear = startDate.getFullYear();
-                                      return `${startMonth}/${startYear}`;
-                                    })()}
-                                    {' - '}
-                                    {job.isCurrentPosition
-                                      ? 'Present'
-                                      : (() => {
-                                        const endDate = new Date(job.endDate);
-                                        const endMonth = String(endDate.getMonth() + 1).padStart(2, '0');
-                                        const endYear = endDate.getFullYear();
-                                        return `${endMonth}/${endYear}`;
-                                      })()
-                                    }
-                                  </span>
-                                </div>
-                                {job.description && (
-                                  <p className="mt-2 whitespace-pre-wrap" style={{ color: '#4F5348' }}>{job.description}</p>
-                                )}
-                              </div>
-
-                              {/* Action Buttons - Bottom Right */}
-                              <div className="flex justify-end mt-3 space-x-2">
-                                <button
-                                  onClick={() => handleEditEmployment(job)}
-                                  className="p-2 rounded-lg transition focus:outline-none focus:ring-2"
-                                  style={{ color: '#6B7280' }}
-                                  onMouseOver={(e) => {
-                                    e.currentTarget.style.color = '#777C6D';
-                                    e.currentTarget.style.backgroundColor = '#F5F6F4';
-                                  }}
-                                  onMouseOut={(e) => {
-                                    e.currentTarget.style.color = '#6B7280';
-                                    e.currentTarget.style.backgroundColor = 'transparent';
-                                  }}
-                                  title="Edit employment"
-                                >
-                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                  </svg>
-                                </button>
-
-                                {/* Hide delete button if only 1 entry */}
-                                {employmentList.length > 1 && (
-                                  <button
-                                    onClick={() => handleDeleteClick(job)}
-                                    className="p-2 rounded-lg transition focus:outline-none focus:ring-2"
-                                    style={{ color: '#6B7280' }}
-                                    onMouseOver={(e) => {
-                                      e.currentTarget.style.color = '#EF4444';
-                                      e.currentTarget.style.backgroundColor = '#FEF2F2';
-                                    }}
-                                    onMouseOut={(e) => {
-                                      e.currentTarget.style.color = '#6B7280';
-                                      e.currentTarget.style.backgroundColor = 'transparent';
-                                    }}
-                                    title="Delete employment"
-                                  >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          </Card>
-                        ))}
-
-                    </div>
-                  ) : (
-                    <p className="italic" style={{ color: '#9CA3AF' }}>No employment history added yet.</p>
-                  )}
-                </Card>
+                {/* Employment History Section */}
+                <EmploymentHistory
+                  employmentList={employmentList}
+                  onAdd={() => setShowEmploymentModal(true)}
+                  onEdit={(job) => {
+                    setEditingEmployment(job);
+                    setShowEmploymentModal(true);
+                  }}
+                  onDelete={(job) => {
+                    setDeletingEmployment(job);
+                    setShowEmploymentDeleteModal(true);
+                  }}
+                  successMessage={employmentSuccessMessage}
+                />
 
                 {/* Education History Section */}
                 <Card variant="default" title="Education">
@@ -1149,142 +878,18 @@ export default function ProfilePage() {
                 </Card>
 
                 {/* Skills Section - Enhanced with Categories */}
-                <Card variant="default" title="Skills">
-                  <div className="flex justify-between items-center mb-4">
-                    <div>
-                      <p className="text-sm mt-1" style={{ color: '#656A5C' }}>{skillList.length} total skills across {Object.keys(groupSkillsByCategory(skillList)).length} categories</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={exportSkillsByCategory}
-                        disabled={skillList.length === 0}
-                        className="px-4 py-2 border rounded-lg transition flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        style={{ borderColor: '#D1D5DB', color: '#656A5C' }}
-                        onMouseOver={(e) => skillList.length > 0 && (e.currentTarget.style.backgroundColor = '#F5F6F4')}
-                        onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                        title="Export skills by category"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                        <span>Export</span>
-                      </button>
-                      <button
-                        onClick={() => { setEditingSkill(null); setShowSkillModal(true); }}
-                        className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2"
-                        style={{ backgroundColor: '#777C6D' }}
-                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                        <span>Add Skill</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {skillSuccessMessage && (
-                    <div className="mb-4 p-4 border rounded-lg" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }}>
-                      <p className="font-medium" style={{ color: '#166534' }}>{skillSuccessMessage}</p>
-                    </div>
-                  )}
-
-                  {/* Search Bar */}
-                  {skillList.length > 0 && (
-                    <div className="mb-4">
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={skillSearchQuery}
-                          onChange={(e) => setSkillSearchQuery(e.target.value)}
-                          placeholder="Search skills by name, category, or proficiency..."
-                          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                        />
-                        <svg className="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        {skillSearchQuery && (
-                          <button
-                            onClick={() => setSkillSearchQuery('')}
-                            className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {skillList.length > 0 ? (
-                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleSkillDragEnd}>
-                      {Object.entries(groupSkillsByCategory(filteredSkills)).map(([category, skills]) => (
-                        <div key={category} className="mb-6 last:mb-0">
-                          {/* Category Header */}
-                          <div
-                            className="flex items-center justify-between p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg mb-3 cursor-pointer hover:from-gray-100 hover:to-gray-150 transition"
-                            onClick={() => toggleCategory(category)}
-                          >
-                            <div className="flex items-center space-x-3">
-                              <button className="text-gray-600">
-                                <svg className={`w-5 h-5 transition-transform ${expandedCategories[category] ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                </svg>
-                              </button>
-                              <div>
-                                <h3 className="text-lg font-semibold text-gray-800">{category}</h3>
-                                <div className="flex items-center space-x-4 mt-1">
-                                  <span className="text-sm text-gray-600">{skills.length} skill{skills.length !== 1 ? 's' : ''}</span>
-                                  {/* Level Summary */}
-                                  <div className="flex items-center space-x-2 text-xs">
-                                    {Object.entries(getSkillLevelSummary(skills)).map(([level, count]) => (
-                                      count > 0 && (
-                                        <span key={level} className={`px-2 py-0.5 rounded ${level === 'Beginner' ? 'bg-gray-200 text-gray-800' :
-                                            level === 'Intermediate' ? 'bg-yellow-100 text-yellow-800' :
-                                              level === 'Advanced' ? 'bg-indigo-100 text-indigo-800' :
-                                                'bg-green-100 text-green-800'
-                                          }`}>
-                                          {count} {level}
-                                        </span>
-                                      )
-                                    ))}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Skills in Category */}
-                          {expandedCategories[category] && (
-                            <SortableContext items={skills.map(s => s._id)} strategy={verticalListSortingStrategy}>
-                              <div className="space-y-2 pl-8">
-                                {skills.map((skill) => (
-                                  <SortableSkillItem
-                                    key={skill._id}
-                                    skill={skill}
-                                    onEdit={handleEditSkill}
-                                    onDelete={handleDeleteSkillClick}
-                                    onMoveCategory={moveSkillToCategory}
-                                    categories={['Technical', 'Soft Skills', 'Languages', 'Industry-Specific']}
-                                  />
-                                ))}
-                              </div>
-                            </SortableContext>
-                          )}
-                        </div>
-                      ))}
-                    </DndContext>
-                  ) : (
-                    <div className="text-center py-12">
-                      <svg className="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: '#D1D5DB' }}>
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                      </svg>
-                      <p className="italic" style={{ color: '#9CA3AF' }}>No skills added yet. Click "Add Skill" to get started!</p>
-                    </div>
-                  )}
-                </Card>
+                {/* Skills Section - Enhanced with Categories */}
+                <SkillsSection
+                  skillList={skillList}
+                  setSkillList={setSkillList}
+                  onAdd={() => { setEditingSkill(null); setShowSkillModal(true); }}
+                  onEdit={(skill) => {
+                    setEditingSkill(skill);
+                    setShowSkillModal(true);
+                  }}
+                  onDelete={handleDeleteSkillClick}
+                  successMessage={skillSuccessMessage}
+                />
 
                 {/* Projects Section */}
                 <Card variant="default" title="Projects">
@@ -1364,138 +969,17 @@ export default function ProfilePage() {
                 <GitHubShowcase />
 
                 {/* Certifications Section */}
-                <Card variant="default" title="Certifications">
-                  <div className="flex justify-between items-center mb-4">
-                    <button
-                      onClick={() => { setEditingCertification(null); setShowCertModal(true); }}
-                      className="px-4 py-2 text-white rounded-lg transition flex items-center space-x-2 ml-auto focus:outline-none focus:ring-2 focus:ring-offset-2"
-                      style={{ backgroundColor: '#777C6D' }}
-                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
-                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                      <span>Add Certification</span>
-                    </button>
-                  </div>
-
-                  {certificationSuccessMessage && (
-                    <div className="mb-4 p-4 border rounded-lg flex items-center" style={{ backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', color: '#166534' }}>
-                      <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                      {certificationSuccessMessage}
-                    </div>
-                  )}
-
-                  {/* Compact certifications list */}
-                  {certList && certList.length > 0 ? (
-                    <div className="space-y-4">
-                      {certList.map((c, index) => {
-                        const days = (() => {
-                          if (c.doesNotExpire) return null;
-                          if (!c.expirationDate) return null;
-                          const d = new Date(c.expirationDate);
-                          if (isNaN(d.getTime())) return null; // Invalid date
-                          const now = new Date();
-                          return Math.ceil((d - now) / (1000 * 60 * 60 * 24));
-                        })();
-                        const expiringSoon = days !== null && days <= (c.reminderDays || 30) && days >= 0;
-                        const expired = days !== null && days < 0;
-
-                        // Format dates for display
-                        const formatDate = (dateStr) => {
-                          if (!dateStr) return '—';
-                          const d = new Date(dateStr);
-                          if (isNaN(d.getTime())) return '—';
-                          return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
-                        };
-
-                        return (
-                          <div key={c._id || c.id || index} className="border rounded-lg p-4 hover:shadow-md transition relative">
-                            <div className="flex justify-between">
-                              <div>
-                                <h3 className="text-lg font-heading font-semibold" style={{ color: '#4F5348' }}>{c.name}</h3>
-                                <p className="font-medium" style={{ color: '#656A5C' }}>{c.organization}</p>
-                                <div className="flex items-center text-sm mt-1 space-x-2" style={{ color: '#9CA3AF' }}>
-                                  {c.certId && <span>ID: {c.certId}</span>}
-                                  <span>•</span>
-                                  <span>{c.industry || '—'}</span>
-                                </div>
-                                <div className="text-sm mt-2" style={{ color: '#656A5C' }}>Earned: {formatDate(c.dateEarned)} · {c.doesNotExpire ? 'Does not expire' : formatDate(c.expirationDate)}</div>
-                                <div className="text-sm mt-1" style={{ color: '#656A5C' }}>Verification: <strong className={`ml-2 ${c.verification === 'Verified' ? 'text-green-600' : c.verification === 'Pending' ? 'text-yellow-600' : 'text-gray-600'}`}>{c.verification}</strong></div>
-                                {c.document && <div className="mt-2"><a className="text-sm underline" style={{ color: '#777C6D' }} href={c.document.data} target="_blank" rel="noreferrer">View document ({c.document.name})</a></div>}
-                                <div className="mt-2 text-sm">
-                                  {expired && <span className="text-red-600">Expired</span>}
-                                  {expiringSoon && <span className="text-yellow-600">Expires in {days} day(s)</span>}
-                                </div>
-                              </div>
-
-                              <div className="flex items-start gap-2">
-                                <button
-                                  onClick={() => {
-                                    setEditingCertification(c);
-                                    setShowCertModal(true);
-                                  }}
-                                  className="p-2 rounded-lg transition"
-                                  style={{ color: '#6B7280' }}
-                                  onMouseOver={(e) => {
-                                    e.currentTarget.style.color = '#777C6D';
-                                    e.currentTarget.style.backgroundColor = '#F5F6F4';
-                                  }}
-                                  onMouseOut={(e) => {
-                                    e.currentTarget.style.color = '#6B7280';
-                                    e.currentTarget.style.backgroundColor = 'transparent';
-                                  }}
-                                  title="Edit certification"
-                                >
-                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                  </svg>
-                                </button>
-                                <button
-                                  onClick={async () => {
-                                    if (!confirm('Delete this certification?')) return;
-                                    try {
-                                      const token = await getToken();
-                                      setAuthToken(token);
-                                      await api.delete(`/api/profile/certifications/${c._id}`);
-                                      const me = await api.get('/api/users/me');
-                                      setCertList(me?.data?.data?.certifications || []);
-                                      setCertificationSuccessMessage(`Certification "${c.name}" deleted successfully!`);
-                                      setTimeout(() => setCertificationSuccessMessage(null), 5000);
-                                    } catch (e) {
-                                      console.error(e);
-                                      alert('Failed to delete certification. Please try again.');
-                                    }
-                                  }}
-                                  className="p-2 rounded-lg transition"
-                                  style={{ color: '#6B7280' }}
-                                  onMouseOver={(e) => {
-                                    e.currentTarget.style.color = '#EF4444';
-                                    e.currentTarget.style.backgroundColor = '#FEF2F2';
-                                  }}
-                                  onMouseOut={(e) => {
-                                    e.currentTarget.style.color = '#6B7280';
-                                    e.currentTarget.style.backgroundColor = 'transparent';
-                                  }}
-                                  title="Delete certification"
-                                >
-                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                  </svg>
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="italic" style={{ color: '#9CA3AF' }}>No certifications added yet.</p>
-                  )}
-                </Card>
+                {/* Certifications Section */}
+                <CertificationsSection
+                  certList={certList}
+                  onAdd={() => { setEditingCertification(null); setShowCertModal(true); }}
+                  onEdit={(c) => {
+                    setEditingCertification(c);
+                    setShowCertModal(true);
+                  }}
+                  onDelete={handleDeleteCertification}
+                  successMessage={certificationSuccessMessage}
+                />
 
                 {/* Upcoming Reminders Section */}
                 <Card variant="info" title="Upcoming Reminders">
@@ -1922,9 +1406,9 @@ export default function ProfilePage() {
                 <p className="font-semibold text-gray-900">{deletingSkill.name}</p>
                 <div className="flex items-center gap-2 mt-1">
                   <span className={`text-sm px-2 py-0.5 rounded ${deletingSkill.level === 'Beginner' ? 'bg-gray-200 text-gray-800' :
-                      deletingSkill.level === 'Intermediate' ? 'bg-yellow-100 text-yellow-800' :
-                        deletingSkill.level === 'Advanced' ? 'bg-indigo-100 text-indigo-800' :
-                          'bg-green-100 text-green-800'
+                    deletingSkill.level === 'Intermediate' ? 'bg-yellow-100 text-yellow-800' :
+                      deletingSkill.level === 'Advanced' ? 'bg-indigo-100 text-indigo-800' :
+                        'bg-green-100 text-green-800'
                     }`}>
                     {deletingSkill.level}
                   </span>
@@ -1985,225 +1469,17 @@ export default function ProfilePage() {
       )}
 
       {/* Edit Profile Modal */}
-      {showEditModal && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-50"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
-          onClick={(e) => {
-            // Allow closing modal by clicking backdrop even if there's an error
-            if (!isSaving) {
-              handleCancel();
-            }
-          }}
-        >
-          <div
-            className="rounded-lg shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto relative border"
-            style={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="sticky top-0 border-b px-6 py-4 flex justify-between items-center z-10" style={{ backgroundColor: '#FFFFFF' }}>
-              <h3 className="text-2xl font-semibold" style={{ color: '#111827' }}>Edit Profile</h3>
-              <button
-                onClick={handleCancel}
-                disabled={isSaving}
-                className="transition disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ color: '#9CA3AF' }}
-                onMouseOver={(e) => !isSaving && (e.currentTarget.style.color = '#4B5563')}
-                onMouseOut={(e) => !isSaving && (e.currentTarget.style.color = '#9CA3AF')}
-                title={isSaving ? "Please wait while saving..." : "Close"}
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="p-6">
-              {/* Error Display */}
-              {error && (
-                <ErrorMessage
-                  error={error}
-                  onDismiss={() => setError(null)}
-                  className="mb-6"
-                />
-              )}
-
-              <form onSubmit={handleSave} className="space-y-6">
-                {/* Name and Email Row */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                      Full Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      id="name"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="John Doe"
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                      Email <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="john@example.com"
-                    />
-                  </div>
-                </div>
-
-
-
-                {/* Phone and Location Row */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-                      Phone
-                    </label>
-                    <input
-                      type="tel"
-                      id="phone"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="1234567890 or (555) 123-4567"
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-2">
-                      Location (City, State)
-                    </label>
-                    <input
-                      type="text"
-                      id="location"
-                      name="location"
-                      value={formData.location}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="New York, NY"
-                    />
-                  </div>
-                </div>
-
-                {/* Professional Headline */}
-                <div>
-                  <label htmlFor="headline" className="block text-sm font-medium text-gray-700 mb-2">
-                    Professional Headline <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="headline"
-                    name="headline"
-                    value={formData.headline}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Senior Software Engineer | Full Stack Developer"
-                  />
-                </div>
-
-                {/* Bio/Summary */}
-                <div>
-                  <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-2">
-                    Bio / Summary
-                  </label>
-                  <textarea
-                    id="bio"
-                    name="bio"
-                    value={formData.bio}
-                    onChange={handleInputChange}
-                    rows={4}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                    placeholder="Tell us about yourself, your expertise, and what you're looking for..."
-                  />
-                  <div className="mt-1 flex justify-between items-center">
-                    <p className="text-xs text-gray-500">Optional</p>
-                    <p className={`text-sm ${bioCharCount > 450 ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
-                      {bioCharCount} / 500 characters
-                    </p>
-                  </div>
-                </div>
-
-                {/* Industry and Experience Level Row */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label htmlFor="industry" className="block text-sm font-medium text-gray-700 mb-2">
-                      Industry <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      id="industry"
-                      name="industry"
-                      value={formData.industry}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="">Select an industry...</option>
-                      {INDUSTRIES.map(industry => (
-                        <option key={industry} value={industry}>{industry}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label htmlFor="experienceLevel" className="block text-sm font-medium text-gray-700 mb-2">
-                      Experience Level <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      id="experienceLevel"
-                      name="experienceLevel"
-                      value={formData.experienceLevel}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="">Select experience level...</option>
-                      {EXPERIENCE_LEVELS.map(level => (
-                        <option key={level} value={level}>{level}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex justify-end space-x-4 pt-6 border-t sticky bottom-0" style={{ backgroundColor: '#FFFFFF' }}>
-                  <button
-                    type="button"
-                    onClick={handleCancel}
-                    disabled={isSaving}
-                    className="px-6 py-2 border rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ borderColor: '#D1D5DB', color: '#374151' }}
-                    onMouseOver={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#F9FAFB')}
-                    onMouseOut={(e) => !isSaving && (e.currentTarget.style.backgroundColor = 'transparent')}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSaving}
-                    className="px-6 py-2 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ backgroundColor: '#777C6D' }}
-                    onMouseOver={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#656A5C')}
-                    onMouseOut={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#777C6D')}
-                  >
-                    {isSaving ? 'Saving...' : 'Save Changes'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
+      <EditProfileModal
+        isOpen={showEditModal}
+        onClose={handleCancel}
+        onSave={handleSave}
+        formData={formData}
+        handleInputChange={handleInputChange}
+        bioCharCount={bioCharCount}
+        isSaving={isSaving}
+        error={error}
+        onErrorDismiss={() => setError(null)}
+      />
 
       {/* Add/Edit Employment Modal */}
       {showEmploymentModal && (
@@ -2454,122 +1730,7 @@ export default function ProfilePage() {
   );
 }
 
-// Sortable Skill Item Component
-function SortableSkillItem({ skill, onEdit, onDelete, onMoveCategory, categories }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: skill._id });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  const [showCategoryMenu, setShowCategoryMenu] = useState(false);
-
-  const getLevelColor = (level) => {
-    switch (level) {
-      case 'Beginner': return 'bg-gray-200 text-gray-800';
-      case 'Intermediate': return 'bg-yellow-100 text-yellow-800';
-      case 'Advanced': return 'bg-indigo-100 text-indigo-800';
-      case 'Expert': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-700';
-    }
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className="group flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:shadow-md transition"
-    >
-      <div className="flex items-center space-x-3 flex-1">
-        {/* Drag Handle */}
-        <button
-          {...attributes}
-          {...listeners}
-          className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 p-1"
-          title="Drag to reorder"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-          </svg>
-        </button>
-
-        {/* Skill Name */}
-        <span className="text-sm font-medium text-gray-800 flex-1">{skill.name}</span>
-
-        {/* Proficiency Badge */}
-        <span className={`text-xs px-2 py-1 rounded font-medium ${getLevelColor(skill.level)}`}>
-          {skill.level}
-        </span>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="flex items-center space-x-1 ml-3 opacity-0 group-hover:opacity-100 transition">
-        {/* Move to Category Dropdown */}
-        <div className="relative">
-          <button
-            onClick={() => setShowCategoryMenu(!showCategoryMenu)}
-            className="p-1.5 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded transition"
-            title="Move to category"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12M8 12h12m-12 5h12M3 7h.01M3 12h.01M3 17h.01" />
-            </svg>
-          </button>
-          {showCategoryMenu && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setShowCategoryMenu(false)} />
-              <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
-                {categories.filter(cat => cat !== skill.category).map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => {
-                      onMoveCategory(skill, cat);
-                      setShowCategoryMenu(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
-                  >
-                    Move to {cat}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Edit Button */}
-        <button
-          onClick={() => onEdit(skill)}
-          className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition"
-          title="Edit skill"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-          </svg>
-        </button>
-
-        {/* Delete Button */}
-        <button
-          onClick={() => onDelete(skill)}
-          className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition"
-          title="Delete skill"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M4 7h16" />
-          </svg>
-        </button>
-      </div>
-    </div>
-  );
-}
 
 // Education Modal Component
 function EducationModal({ isOpen, onClose, onSuccess, getToken, editingEducation }) {
