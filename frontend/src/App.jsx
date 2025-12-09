@@ -67,6 +67,7 @@ import CompetitiveAnalysis from "./pages/auth/CompetitiveAnalysis.jsx";
 import InformationalInterviewsPage from "./pages/InformationalInterviews.jsx";
 import JobMapPage from "./pages/JobMapPage.jsx";
 import JobMaterialsPage from "./pages/auth/JobMaterialsPage.jsx";
+import APIMonitoringDashboard from "./pages/APIMonitoringDashboard.jsx";
 
 function App() {
   return (
@@ -151,6 +152,7 @@ function App() {
           <Route path="/advisors/messages" element={<ProtectedRoute><AdvisorMessagingPage /></ProtectedRoute>} />
           <Route path="/peer-support" element={<ProtectedRoute><PeerSupportPage /></ProtectedRoute>} />
           <Route path="/job-map" element={<ProtectedRoute><JobMapPage /></ProtectedRoute>} />
+          <Route path="/admin/api-monitoring" element={<ProtectedRoute><APIMonitoringDashboard /></ProtectedRoute>} />
         </Routes>
       </Router>
     </ErrorBoundary>

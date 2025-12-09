@@ -20,21 +20,21 @@ export default function Navbar() {
         try {
             // Store logout message first
             sessionStorage.setItem("logoutMessage", "You have been signed out successfully.");
-            
+
             // Sign out from Clerk first (this needs Clerk's session data intact)
             await signOut();
-            
+
             // Clear storage after signOut completes
             localStorage.clear();
             sessionStorage.setItem("logoutMessage", "You have been signed out successfully.");
-            
+
             // Clear cookies
             document.cookie.split(";").forEach((c) => {
                 document.cookie = c
                     .replace(/^ +/, "")
                     .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
             });
-            
+
             // Redirect to login page
             window.location.href = "/login";
         } catch (error) {
@@ -222,6 +222,9 @@ export default function Navbar() {
                                         </NavLink>
                                         <NavLink to="/settings/linkedin" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="LinkedIn Settings" onClick={() => setCareerDropdownOpen(false)}>
                                             💼 LinkedIn Settings
+                                        </NavLink>
+                                        <NavLink to="/admin/api-monitoring" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="API Monitoring" onClick={() => setCareerDropdownOpen(false)}>
+                                            📊 API Monitoring
                                         </NavLink>
                                     </div>
                                 )}
