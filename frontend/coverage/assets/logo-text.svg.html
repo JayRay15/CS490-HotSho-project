@@ -3,7 +3,7 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for components/ProtectedRoute.jsx</title>
+    <title>Code coverage report for assets/logo-text.svg</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="../prettify.css" />
     <link rel="stylesheet" href="../base.css" />
@@ -19,34 +19,34 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../index.html">All files</a> / <a href="index.html">components</a> ProtectedRoute.jsx</h1>
+        <h1><a href="../index.html">All files</a> / <a href="index.html">assets</a> logo-text.svg</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>7/7</span>
+                <span class='fraction'>0/0</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>4/4</span>
+                <span class='fraction'>0/0</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>1/1</span>
+                <span class='fraction'>0/0</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>7/7</span>
+                <span class='fraction'>0/0</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line high'></div>
+    <div class='status-line low'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -87,21 +87,7 @@
 <a name='L22'></a><a href='#L22'>22</a>
 <a name='L23'></a><a href='#L23'>23</a>
 <a name='L24'></a><a href='#L24'>24</a>
-<a name='L25'></a><a href='#L25'>25</a>
-<a name='L26'></a><a href='#L26'>26</a>
-<a name='L27'></a><a href='#L27'>27</a>
-<a name='L28'></a><a href='#L28'>28</a>
-<a name='L29'></a><a href='#L29'>29</a>
-<a name='L30'></a><a href='#L30'>30</a>
-<a name='L31'></a><a href='#L31'>31</a>
-<a name='L32'></a><a href='#L32'>32</a>
-<a name='L33'></a><a href='#L33'>33</a>
-<a name='L34'></a><a href='#L34'>34</a>
-<a name='L35'></a><a href='#L35'>35</a>
-<a name='L36'></a><a href='#L36'>36</a>
-<a name='L37'></a><a href='#L37'>37</a>
-<a name='L38'></a><a href='#L38'>38</a>
-<a name='L39'></a><a href='#L39'>39</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L25'></a><a href='#L25'>25</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -115,12 +101,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">11x</span>
-<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -131,52 +111,30 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { useAuth } from "@clerk/clerk-react";
-import { Navigate, useLocation } from "react-router-dom";
-import LoadingSpinner from "./LoadingSpinner";
-&nbsp;
-/**
- * ProtectedRoute - Wrapper component to protect routes that require authentication
- * 
- * Features:
- * - Redirects unauthenticated users to login page
- * - Preserves the intended destination for post-login redirect
- * - Shows loading state while checking authentication
- * - Prevents error pages when navigating back after logout
- */
-export default function ProtectedRoute({ children }) {
-  const { isLoaded, isSignedIn } = useAuth();
-  const location = useLocation();
-&nbsp;
-  // Wait for Clerk to finish loading authentication state
-  if (!isLoaded) {
-    return (
-      &lt;LoadingSpinner 
-        fullScreen={true} 
-        size="lg"
-        text="Loading..." 
-        variant="logo" 
-      /&gt;
-    );
-  }
-&nbsp;
-  // If not signed in, redirect to login page
-  // Save current location so user can be redirected back after login
-  if (!isSignedIn) {
-    return &lt;Navigate to="/login" state={{ from: location }} replace /&gt;;
-  }
-&nbsp;
-  // User is authenticated, render the protected content
-  return children;
-}
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">&lt;svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 60" width="260" height="60" role="img" aria-label="Nirvana ATS text logo"&gt;
+  &lt;defs&gt;
+    &lt;linearGradient id="textGradient" x1="0%" y1="0%" x2="100%" y2="0%"&gt;
+      &lt;stop offset="0%" style="stop-color:#4F5348;stop-opacity:1" /&gt;
+      &lt;stop offset="100%" style="stop-color:#777C6D;stop-opacity:1" /&gt;
+    &lt;/linearGradient&gt;
+  &lt;/defs&gt;
+  
+  &lt;!-- Text: Nirvana with gradient --&gt;
+  &lt;text x="0" y="40" font-family="Poppins, sans-serif" font-size="36" font-weight="700" fill="url(#textGradient)" letter-spacing="2"&gt;
+    NIRVANA
+  &lt;/text&gt;
+  
+  &lt;!-- Vertical divider --&gt;
+  &lt;line x1="185" y1="18" x2="185" y2="45" stroke="#B7B89F" stroke-width="2.5" opacity="0.4"/&gt;
+  
+  &lt;!-- Tagline: ATS --&gt;
+  &lt;text x="195" y="30" font-family="Inter, sans-serif" font-size="10" font-weight="700" fill="#4F5348" letter-spacing="1.5"&gt;
+    APPLICANT
+  &lt;/text&gt;
+  &lt;text x="195" y="42" font-family="Inter, sans-serif" font-size="10" font-weight="700" fill="#B7B89F" letter-spacing="1.5"&gt;
+    TRACKING
+  &lt;/text&gt;
+&lt;/svg&gt;
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
