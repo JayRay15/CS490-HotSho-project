@@ -215,7 +215,11 @@ const logger = {
      * Create a request-scoped logger with request context
      */
     forRequest: (req) => {
-        const requestId = req.requestId || req.headers['x-request-id'] || uuidv4();
+        // Handle undefined or incomplete request objects (e.g., in tests)
+        if (!req) {
+            return logger.child({ requestId: uuidv4() });
+        }
+        const requestId = req.requestId || req.headers?.['x-request-id'] || uuidv4();
         const context = {
             requestId,
             method: req.method,
