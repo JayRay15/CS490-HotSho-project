@@ -18,7 +18,7 @@ const PRIORITY_COLORS = {
   "High": "text-red-600",
 };
 
-export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange, isDragging, highlightTerms, isSelected, onToggleSelect, onArchive, onRestore, onScheduleInterview, onViewMatchScore, onOpenStatusModal, onOpenTimeline, onOpenEmailDetector, applicationStatus, onGenerateCoverLetter, onOpenInterviewChecklist, onOpenFollowUpTemplates, onSimulateCareer }) {
+export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange, isDragging, highlightTerms, isSelected, onToggleSelect, onArchive, onRestore, onScheduleInterview, onViewMatchScore, onOpenStatusModal, onOpenTimeline, onOpenEmailDetector, applicationStatus, onGenerateCoverLetter, onOpenInterviewChecklist, onOpenFollowUpTemplates, onSimulateCareer, onOpenTimingOptimizer }) {
   const [showDetails, setShowDetails] = useState(false);
   const navigate = useNavigate();
 
@@ -309,6 +309,16 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
               📁 View Materials
             </button>
           )}
+          {/* UC-124: Application Timing Optimizer */}
+          {onOpenTimingOptimizer && !job.archived && (
+            <button
+              onClick={() => onOpenTimingOptimizer(job)}
+              className="text-xs px-2 py-1 rounded bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-medium"
+              title="Get optimal timing recommendation for application submission"
+            >
+              ⏰ Timing Optimizer
+            </button>
+          )}
           {onScheduleInterview && !job.archived && (job.status === "Interview" || job.status === "Phone Screen") && (
             <button
               onClick={() => onScheduleInterview(job)}
@@ -575,4 +585,6 @@ JobCard.propTypes = {
   onGenerateCoverLetter: PropTypes.func,
   onOpenInterviewChecklist: PropTypes.func,
   onOpenFollowUpTemplates: PropTypes.func,
+  onSimulateCareer: PropTypes.func,
+  onOpenTimingOptimizer: PropTypes.func,
 };
