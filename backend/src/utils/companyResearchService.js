@@ -78,7 +78,7 @@ export async function conductComprehensiveResearch(companyName, jobDescription =
         industry: aiResearch.industry || basicInfo.industry || 'Not specified',
         headquarters: aiResearch.headquarters || basicInfo.headquarters || 'Not specified',
         founded: aiResearch.founded || basicInfo.founded || null,
-        website: basicInfo.website || companyWebsite || null,
+        website: companyWebsite || basicInfo.website || null,
         logo: basicInfo.logo || null,
         // New enhanced fields
         companyType: aiResearch.companyType || 'Private',
@@ -699,7 +699,8 @@ function getMinimalComprehensiveResearchData(companyName) {
       headquarters: 'Unknown',
       founded: null,
       website: null,
-      logo: null
+      logo: null,
+      description: `${companyName} is a company. Further research data is unavailable.`
     },
     missionAndCulture: {
       mission: null,

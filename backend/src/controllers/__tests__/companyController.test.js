@@ -134,6 +134,9 @@ jest.unstable_mockModule('../../utils/newsService.js', () => mockNewsService);
 
 jest.unstable_mockModule('../../utils/companyResearchService.js', () => mockResearchService);
 
+// Set up environment variables for tests
+process.env.GEMINI_API_KEY = 'test-api-key';
+
 // Import controller
 const {
   getCompanyInfo,

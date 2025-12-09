@@ -133,7 +133,7 @@ export const updateApplicationStatus = asyncHandler(async (req, res) => {
 
   // Auto-create follow-up reminders for the new status
   // This runs in the background and doesn't block the response
-  handleFollowUpReminderStatusChange(sub, jobId, newStatus, status.statusHistory.length > 1 ? status.statusHistory[status.statusHistory.length - 2]?.status : null)
+  handleFollowUpReminderStatusChange(sub, jobId, newStatus, status.statusHistory?.length > 1 ? status.statusHistory[status.statusHistory.length - 2]?.status : null)
     .then(result => {
       if (result.created) {
         console.log(`✅ Created follow-up reminder for job ${jobId}: ${result.reminder?.title}`);
