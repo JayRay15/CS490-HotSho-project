@@ -256,7 +256,8 @@ describe('errorHandler middleware', () => {
 
     errorHandler(err, mockReq, mockRes, mockNext);
 
-    expect(console.error).toHaveBeenCalled();
+    // The error handler should return a 500 status for server errors
+    expect(mockRes.status).toHaveBeenCalledWith(500);
   });
 });
 
