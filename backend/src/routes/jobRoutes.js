@@ -24,6 +24,7 @@ import {
 } from "../controllers/jobController.js";
 import { scrapeJobFromURL } from "../controllers/jobScraperController.js";
 import { getInterviewInsights } from "../controllers/interviewInsightsController.js";
+import { getJobCompetitiveAnalysis } from "../controllers/jobCompetitiveAnalysisController.js";
 
 
 const router = express.Router();
@@ -72,6 +73,9 @@ router.post("/:jobId/restore", checkJwt, restoreJob);
 
 // UC-68: GET /api/jobs/:jobId/interview-insights - Get interview insights for a company
 router.get("/:jobId/interview-insights", checkJwt, getInterviewInsights);
+
+// UC-123: GET /api/jobs/:jobId/competitive-analysis - Get competitive analysis for a specific job
+router.get("/:jobId/competitive-analysis", checkJwt, getJobCompetitiveAnalysis);
 
 // PUT /api/jobs/:jobId - Update a job
 router.put("/:jobId", checkJwt, updateJob);

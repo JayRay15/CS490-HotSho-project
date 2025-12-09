@@ -68,9 +68,7 @@ export default function Navbar() {
 
         if (user) {
             fetchProfilePicture();
-            // Poll for updates every 3 seconds to catch new uploads
-            const interval = setInterval(fetchProfilePicture, 3000);
-            return () => clearInterval(interval);
+            // Only fetch once on mount - profile picture updates will be reflected on next page load
         }
     }, [getToken, user]);
 
