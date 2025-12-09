@@ -7,8 +7,17 @@ import logger from "../utils/logger.js";
  * Integrates with structured logging for monitoring and alerting
  */
 export const errorHandler = (err, req, res, next) => {
-  // Create request-scoped logger for better tracing
-  const reqLogger = logger.forRequest(req);
+  // Create request-scoped logger for better tracing; fall back to a safe logger
+  // Handle cases where req is undefined (in tests) or logger.forRequest is not available
+  const safeLogger = {
+    error: (...args) => (logger && typeof logger.error === 'function') ? logger.error(...args) : console.error(...args),
+    warn: (...args) => (logger && typeof logger.warn === 'function') ? logger.warn(...args) : console.warn(...args),
+    debug: (...args) => (logger && typeof logger.debug === 'function') ? logger.debug(...args) : console.debug(...args)
+  };
+
+  const reqLogger = (req && logger && typeof logger.forRequest === 'function')
+    ? logger.forRequest(req)
+    : safeLogger;
 
   // Log error with structured data for monitoring
   const errorContext = {
@@ -16,10 +25,10 @@ export const errorHandler = (err, req, res, next) => {
     errorName: err.name,
     errorCode: err.code,
     stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
-    path: req.path,
-    method: req.method,
+    path: req?.path,
+    method: req?.method,
     statusCode: err.statusCode || 500,
-    userId: req.user?.id || req.auth?.userId
+    userId: req?.user?.id || req?.auth?.userId
   };
 
   // Log based on error severity
