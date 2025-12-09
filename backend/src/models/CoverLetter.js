@@ -62,6 +62,6 @@ const coverLetterSchema = new mongoose.Schema(
 
 coverLetterSchema.index({ userId: 1, createdAt: -1 });
 coverLetterSchema.index({ userId: 1, isArchived: 1 }); // Index for filtering archived cover letters
-coverLetterSchema.index({ "shares.token": 1 }); // UC-110: Index for share token lookup
+// Note: shares.token index is created via unique: true in the subdocument schema
 
 export const CoverLetter = mongoose.model("CoverLetter", coverLetterSchema);
