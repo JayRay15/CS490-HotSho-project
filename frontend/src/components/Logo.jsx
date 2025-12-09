@@ -1,4 +1,8 @@
 import PropTypes from 'prop-types';
+import logoFull from '../assets/logo-full.svg';
+import logoIcon from '../assets/logo-icon.svg';
+import logoText from '../assets/logo-text.svg';
+import logoWhite from '../assets/logo-white.svg';
 
 /**
  * Logo Component - Displays Nirvana branding with multiple variants
@@ -36,10 +40,10 @@ const Logo = ({
 
   // Select appropriate logo file
   const logoSources = {
-    full: '/src/assets/logo-full.svg',
-    icon: '/src/assets/logo-icon.svg',
-    text: '/src/assets/logo-text.svg',
-    white: '/src/assets/logo-white.svg'
+    full: logoFull,
+    icon: logoIcon,
+    text: logoText,
+    white: logoWhite
   };
 
   const logoSrc = logoSources[variant] || logoSources.full;
