@@ -9,6 +9,8 @@ import {
   getOptimizationRecommendations,
   getSuccessPrediction,
   getPatternEvolution,
+  getResponseTracking,
+  getABTesting,
 } from "../../api/applicationSuccess";
 import { setAuthToken } from "../../api/axios";
 
@@ -25,10 +27,14 @@ export default function ApplicationSuccessAnalysis() {
   const [recommendations, setRecommendations] = useState(null);
   const [prediction, setPrediction] = useState(null);
   const [evolution, setEvolution] = useState(null);
+  const [responseTracking, setResponseTracking] = useState(null);
+  const [abTesting, setAbTesting] = useState(null);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [predictionLoading, setPredictionLoading] = useState(false);
   const [evolutionLoading, setEvolutionLoading] = useState(false);
+  const [responseTrackingLoading, setResponseTrackingLoading] = useState(false);
+  const [abTestingLoading, setAbTestingLoading] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -93,6 +99,34 @@ export default function ApplicationSuccessAnalysis() {
     }
   };
 
+  const loadResponseTracking = async () => {
+    try {
+      setResponseTrackingLoading(true);
+      const token = await getToken();
+      setAuthToken(token);
+      const trackingData = await getResponseTracking();
+      setResponseTracking(trackingData.data || trackingData);
+    } catch (err) {
+      console.error("Failed to load response tracking:", err);
+    } finally {
+      setResponseTrackingLoading(false);
+    }
+  };
+
+  const loadABTesting = async () => {
+    try {
+      setAbTestingLoading(true);
+      const token = await getToken();
+      setAuthToken(token);
+      const testingData = await getABTesting();
+      setAbTesting(testingData.data || testingData);
+    } catch (err) {
+      console.error("Failed to load A/B testing:", err);
+    } finally {
+      setAbTestingLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -137,6 +171,7 @@ export default function ApplicationSuccessAnalysis() {
     { id: "overview", label: "Overview", icon: "📊" },
     { id: "industry", label: "Industry Analysis", icon: "🏢" },
     { id: "patterns", label: "Success Patterns", icon: "✨" },
+    { id: "abtesting", label: "A/B Testing", icon: "🧪" },
     { id: "prediction", label: "Prediction", icon: "🔮" },
     { id: "evolution", label: "Strategy Evolution", icon: "📈" },
     { id: "materials", label: "Materials Impact", icon: "📄" },
@@ -205,16 +240,29 @@ export default function ApplicationSuccessAnalysis() {
 
       {/* Tab Content */}
       <div className="space-y-6">
-        {activeTab === "overview" && <OverviewTab analysis={analysis} />}
+        {activeTab === "overview" && (
+          <OverviewTab 
+            analysis={analysis} 
+            responseTracking={responseTracking}
+            onLoadResponseTracking={loadResponseTracking}
+            responseTrackingLoading={responseTrackingLoading}
+          />
+        )}
         {activeTab === "industry" && <IndustryTab analysis={analysis} />}
         {activeTab === "patterns" && <PatternsTab patterns={patterns} analysis={analysis} />}
+        {activeTab === "abtesting" && (
+          <ABTestingTab
+            abTesting={abTesting}
+            onLoadABTesting={loadABTesting}
+            loading={abTestingLoading}
+          />
+        )}
         {activeTab === "prediction" && (
           <PredictionTab
             prediction={prediction}
             onLoadPrediction={loadPrediction}
             loading={predictionLoading}
             error={predictionError}
-            analysis={analysis}
           />
         )}
         {activeTab === "evolution" && (
@@ -255,89 +303,228 @@ function SummaryCard({ title, value, subtitle, icon, color = "gray" }) {
 }
 
 // ============================================================================
-// Overview Tab
+// Overview Tab - Enhanced with Conversion Funnel and Response Tracking
 // ============================================================================
-function OverviewTab({ analysis }) {
+function OverviewTab({ analysis, responseTracking, onLoadResponseTracking, responseTrackingLoading }) {
+  // Load response tracking data when component mounts
+  useEffect(() => {
+    if (!responseTracking && onLoadResponseTracking) {
+      onLoadResponseTracking();
+    }
+  }, []);
+
+  // Calculate funnel metrics
+  const funnelData = [
+    { 
+      stage: "Applications", 
+      count: analysis.summary.totalApplications, 
+      icon: "📝",
+      color: "bg-blue-500",
+      percentage: 100 
+    },
+    { 
+      stage: "Responses", 
+      count: analysis.summary.successfulApplications + analysis.summary.rejectedApplications, 
+      icon: "📬",
+      color: "bg-purple-500",
+      percentage: analysis.summary.totalApplications > 0 
+        ? Math.round(((analysis.summary.successfulApplications + analysis.summary.rejectedApplications) / analysis.summary.totalApplications) * 100) 
+        : 0
+    },
+    { 
+      stage: "Interviews", 
+      count: Math.round(analysis.summary.totalApplications * analysis.summary.interviewRate / 100), 
+      icon: "🎤",
+      color: "bg-indigo-500",
+      percentage: analysis.summary.interviewRate 
+    },
+    { 
+      stage: "Offers", 
+      count: Math.round(analysis.summary.totalApplications * analysis.summary.offerRate / 100), 
+      icon: "🏆",
+      color: "bg-green-500",
+      percentage: analysis.summary.offerRate 
+    }
+  ];
+
   return (
-    <div className="grid md:grid-cols-2 gap-6">
-      {/* Quick Stats */}
+    <div className="space-y-6">
+      {/* Conversion Funnel */}
       <Card>
-        <h3 className="text-lg font-semibold mb-4">📈 Performance Overview</h3>
-        <div className="space-y-4">
-          <StatBar
-            label="Overall Success Rate"
-            value={analysis.summary.overallSuccessRate}
-            benchmark={15}
-            color="green"
-          />
-          <StatBar
-            label="Interview Rate"
-            value={analysis.summary.interviewRate}
-            benchmark={10}
-            color="blue"
-          />
-          <StatBar
-            label="Offer Rate"
-            value={analysis.summary.offerRate}
-            benchmark={5}
-            color="purple"
-          />
-        </div>
-      </Card>
-
-      {/* Top Recommendations */}
-      <Card>
-        <h3 className="text-lg font-semibold mb-4">🎯 Top Priorities</h3>
-        {analysis.recommendations.length > 0 ? (
-          <div className="space-y-3">
-            {analysis.recommendations.slice(0, 3).map((rec, idx) => (
-              <div
-                key={idx}
-                className={`p-3 rounded-lg border-l-4 ${rec.priority === "high"
-                    ? "bg-red-50 border-red-500"
-                    : rec.priority === "medium"
-                      ? "bg-yellow-50 border-yellow-500"
-                      : "bg-blue-50 border-blue-500"
-                  }`}
-              >
-                <div className="font-medium">{rec.title}</div>
-                <div className="text-sm text-gray-600">{rec.description}</div>
+        <h3 className="text-lg font-semibold mb-4">🔄 Application Conversion Funnel</h3>
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 py-4">
+          {funnelData.map((stage, idx) => (
+            <div key={idx} className="flex flex-col items-center flex-1 relative">
+              {/* Connector Arrow */}
+              {idx < funnelData.length - 1 && (
+                <div className="hidden md:block absolute right-0 top-1/2 transform translate-x-1/2 -translate-y-1/2 text-gray-300 text-2xl">
+                  →
+                </div>
+              )}
+              <div className={`w-16 h-16 ${stage.color} rounded-full flex items-center justify-center text-white text-2xl shadow-lg`}>
+                {stage.icon}
               </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-gray-500">No specific recommendations yet. Keep applying!</p>
-        )}
-      </Card>
-
-      {/* Best Performers */}
-      <Card>
-        <h3 className="text-lg font-semibold mb-4">🌟 Your Strengths</h3>
-        <div className="space-y-3">
-          {analysis.industryAnalysis.topPerforming.slice(0, 3).map((item, idx) => (
-            <div key={idx} className="flex justify-between items-center p-2 bg-green-50 rounded">
-              <span>{item.industry}</span>
-              <span className="font-bold text-green-600">{item.successRate}%</span>
+              <div className="mt-2 text-2xl font-bold text-gray-900">{stage.count}</div>
+              <div className="text-sm text-gray-600">{stage.stage}</div>
+              <div className={`text-xs font-medium ${stage.percentage >= 20 ? 'text-green-600' : 'text-gray-500'}`}>
+                {stage.percentage}%
+              </div>
             </div>
           ))}
-          {analysis.industryAnalysis.topPerforming.length === 0 && (
-            <p className="text-gray-500">Apply to more roles to identify your strengths</p>
-          )}
+        </div>
+        
+        {/* Conversion Rate Arrows */}
+        <div className="hidden md:flex justify-between mt-4 px-12 text-sm text-gray-500">
+          <div className="text-center">
+            <span className="font-medium">Response Rate</span>
+            <div className="text-lg font-bold text-purple-600">{funnelData[1].percentage}%</div>
+          </div>
+          <div className="text-center">
+            <span className="font-medium">Interview Rate</span>
+            <div className="text-lg font-bold text-indigo-600">{analysis.summary.interviewRate}%</div>
+          </div>
+          <div className="text-center">
+            <span className="font-medium">Offer Rate</span>
+            <div className="text-lg font-bold text-green-600">{analysis.summary.offerRate}%</div>
+          </div>
         </div>
       </Card>
 
-      {/* Areas for Improvement */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Quick Stats */}
+        <Card>
+          <h3 className="text-lg font-semibold mb-4">📈 Performance Overview</h3>
+          <div className="space-y-4">
+            <StatBar
+              label="Overall Success Rate"
+              value={analysis.summary.overallSuccessRate}
+              benchmark={15}
+              color="green"
+            />
+            <StatBar
+              label="Interview Rate"
+              value={analysis.summary.interviewRate}
+              benchmark={10}
+              color="blue"
+            />
+            <StatBar
+              label="Offer Rate"
+              value={analysis.summary.offerRate}
+              benchmark={5}
+              color="purple"
+            />
+          </div>
+        </Card>
+
+        {/* Response Tracking */}
+        <Card>
+          <h3 className="text-lg font-semibold mb-4">📬 Response Tracking</h3>
+          {responseTrackingLoading ? (
+            <div className="flex items-center justify-center h-32">
+              <LoadingSpinner size="sm" />
+            </div>
+          ) : responseTracking?.hasData ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-blue-50 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-blue-700">{responseTracking.metrics.responseRate}%</div>
+                  <div className="text-xs text-gray-600">Response Rate</div>
+                </div>
+                <div className="p-3 bg-green-50 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-green-700">{responseTracking.metrics.avgResponseTime} days</div>
+                  <div className="text-xs text-gray-600">Avg Response Time</div>
+                </div>
+              </div>
+              {/* Trend indicator */}
+              {responseTracking.metrics.trendData?.length >= 2 && (
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <div className="text-sm font-medium mb-2">Monthly Trend</div>
+                  <div className="flex items-center gap-1 overflow-x-auto">
+                    {responseTracking.metrics.trendData.slice(-6).map((month, idx) => (
+                      <div key={idx} className="flex flex-col items-center min-w-[50px]">
+                        <div 
+                          className="w-8 bg-blue-500 rounded-t"
+                          style={{ height: `${Math.max(4, month.responseRate * 1.5)}px` }}
+                        />
+                        <div className="text-xs text-gray-500 mt-1">{month.month.slice(-2)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <p>No response data available yet</p>
+              <Button variant="outline" size="sm" className="mt-2" onClick={onLoadResponseTracking}>
+                Load Data
+              </Button>
+            </div>
+          )}
+        </Card>
+
+        {/* Top Recommendations */}
+        <Card>
+          <h3 className="text-lg font-semibold mb-4">🎯 Top Priorities</h3>
+          {analysis.recommendations.length > 0 ? (
+            <div className="space-y-3">
+              {analysis.recommendations.slice(0, 3).map((rec, idx) => (
+                <div
+                  key={idx}
+                  className={`p-3 rounded-lg border-l-4 ${rec.priority === "high"
+                      ? "bg-red-50 border-red-500"
+                      : rec.priority === "medium"
+                        ? "bg-yellow-50 border-yellow-500"
+                        : "bg-blue-50 border-blue-500"
+                    }`}
+                >
+                  <div className="font-medium">{rec.title}</div>
+                  <div className="text-sm text-gray-600">{rec.description}</div>
+                  {rec.expectedImpact && (
+                    <div className="mt-2 text-xs text-green-600 font-medium">
+                      Expected Impact: {rec.expectedImpact}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500">No specific recommendations yet. Keep applying!</p>
+          )}
+        </Card>
+
+        {/* Best Performers */}
+        <Card>
+          <h3 className="text-lg font-semibold mb-4">🌟 Your Strengths</h3>
+          <div className="space-y-3">
+            {analysis.industryAnalysis.topPerforming.slice(0, 3).map((item, idx) => (
+              <div key={idx} className="flex justify-between items-center p-2 bg-green-50 rounded">
+                <span>{item.industry}</span>
+                <span className="font-bold text-green-600">{item.successRate}%</span>
+              </div>
+            ))}
+            {analysis.industryAnalysis.topPerforming.length === 0 && (
+              <p className="text-gray-500">Apply to more roles to identify your strengths</p>
+            )}
+          </div>
+        </Card>
+      </div>
+
+      {/* Areas for Improvement - Full Width */}
       <Card>
         <h3 className="text-lg font-semibold mb-4">📉 Areas to Improve</h3>
-        <div className="space-y-3">
+        <div className="grid md:grid-cols-3 gap-4">
           {analysis.industryAnalysis.needsImprovement.slice(0, 3).map((item, idx) => (
-            <div key={idx} className="flex justify-between items-center p-2 bg-red-50 rounded">
-              <span>{item.industry}</span>
+            <div key={idx} className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
+              <div>
+                <span className="font-medium">{item.industry}</span>
+                <div className="text-xs text-gray-500">{item.total} applications</div>
+              </div>
               <span className="font-bold text-red-600">{item.successRate}%</span>
             </div>
           ))}
           {analysis.industryAnalysis.needsImprovement.length === 0 && (
-            <p className="text-gray-500 text-center">Great job! No significant underperformance detected.</p>
+            <p className="text-gray-500 col-span-3 text-center py-4">Great job! No significant underperformance detected.</p>
           )}
         </div>
       </Card>
@@ -832,15 +1019,274 @@ function MaterialsTab({ analysis }) {
 }
 
 // ============================================================================
-// Timing Tab
+// A/B Testing Tab - Compare resume and cover letter versions
+// ============================================================================
+function ABTestingTab({ abTesting, onLoadABTesting, loading }) {
+  useEffect(() => {
+    if (!abTesting && onLoadABTesting) {
+      onLoadABTesting();
+    }
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (!abTesting?.hasData) {
+    return (
+      <Card className="text-center py-12">
+        <div className="text-6xl mb-4">🧪</div>
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">A/B Testing</h2>
+        <p className="text-gray-600 mb-4">
+          {abTesting?.message || "Create multiple versions of your resume or cover letter to compare their performance"}
+        </p>
+        <Button variant="outline" onClick={onLoadABTesting}>
+          Refresh Data
+        </Button>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Summary Insight */}
+      {abTesting.insights?.recommendation && (
+        <Card className="bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200">
+          <div className="flex items-start gap-3">
+            <span className="text-3xl">💡</span>
+            <div>
+              <h3 className="font-semibold text-purple-900">Key Insight</h3>
+              <p className="text-purple-800">{abTesting.insights.recommendation}</p>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Resume Version Comparison */}
+      <Card>
+        <h3 className="text-lg font-semibold mb-4">📄 Resume Version Performance</h3>
+        {abTesting.resumeVersions?.length > 0 ? (
+          <div className="space-y-4">
+            {/* Best Performer Badge */}
+            {abTesting.insights?.bestResume && (
+              <div className="flex items-center gap-2 p-2 bg-green-50 rounded-lg border border-green-200 mb-4">
+                <span className="text-xl">🏆</span>
+                <span className="text-green-800">
+                  Best performer: <strong>{abTesting.insights.bestResume.name}</strong> ({abTesting.insights.bestResume.successRate}% success rate)
+                </span>
+              </div>
+            )}
+            
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="text-left text-sm text-gray-500 border-b">
+                    <th className="pb-2">Resume</th>
+                    <th className="pb-2 text-center">Applications</th>
+                    <th className="pb-2 text-center">Interviews</th>
+                    <th className="pb-2 text-center">Success Rate</th>
+                    <th className="pb-2 text-center">Type</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {abTesting.resumeVersions.map((resume, idx) => (
+                    <tr key={idx} className={`border-b last:border-0 ${idx === 0 ? 'bg-green-50' : ''}`}>
+                      <td className="py-3">
+                        <div className="flex items-center gap-2">
+                          {idx === 0 && <span className="text-sm">🏆</span>}
+                          <span className="font-medium">{resume.name}</span>
+                        </div>
+                      </td>
+                      <td className="py-3 text-center">{resume.applicationsUsed}</td>
+                      <td className="py-3 text-center">{Math.round(resume.applicationsUsed * resume.interviewRate / 100)}</td>
+                      <td className="py-3 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full ${resume.successRate >= 20 ? 'bg-green-500' : resume.successRate >= 10 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                              style={{ width: `${Math.min(100, resume.successRate * 2)}%` }}
+                            />
+                          </div>
+                          <span className={`font-bold ${resume.successRate >= 20 ? 'text-green-600' : 'text-gray-600'}`}>
+                            {resume.successRate}%
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 text-center">
+                        <span className={`px-2 py-1 text-xs rounded ${resume.isTailored ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
+                          {resume.isTailored ? 'Tailored' : 'Generic'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          <p className="text-gray-500 text-center py-4">No resume versions to compare yet</p>
+        )}
+      </Card>
+
+      {/* Cover Letter Version Comparison */}
+      <Card>
+        <h3 className="text-lg font-semibold mb-4">✉️ Cover Letter Version Performance</h3>
+        {abTesting.coverLetterVersions?.length > 0 ? (
+          <div className="space-y-4">
+            {abTesting.insights?.bestCoverLetter && (
+              <div className="flex items-center gap-2 p-2 bg-green-50 rounded-lg border border-green-200 mb-4">
+                <span className="text-xl">🏆</span>
+                <span className="text-green-800">
+                  Best performer: <strong>{abTesting.insights.bestCoverLetter.name}</strong> ({abTesting.insights.bestCoverLetter.successRate}% success rate)
+                </span>
+              </div>
+            )}
+            
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="text-left text-sm text-gray-500 border-b">
+                    <th className="pb-2">Cover Letter</th>
+                    <th className="pb-2 text-center">Applications</th>
+                    <th className="pb-2 text-center">Interviews</th>
+                    <th className="pb-2 text-center">Success Rate</th>
+                    <th className="pb-2 text-center">Type</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {abTesting.coverLetterVersions.map((cl, idx) => (
+                    <tr key={idx} className={`border-b last:border-0 ${idx === 0 ? 'bg-green-50' : ''}`}>
+                      <td className="py-3">
+                        <div className="flex items-center gap-2">
+                          {idx === 0 && <span className="text-sm">🏆</span>}
+                          <span className="font-medium">{cl.name}</span>
+                        </div>
+                      </td>
+                      <td className="py-3 text-center">{cl.applicationsUsed}</td>
+                      <td className="py-3 text-center">{Math.round(cl.applicationsUsed * cl.interviewRate / 100)}</td>
+                      <td className="py-3 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full ${cl.successRate >= 20 ? 'bg-green-500' : cl.successRate >= 10 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                              style={{ width: `${Math.min(100, cl.successRate * 2)}%` }}
+                            />
+                          </div>
+                          <span className={`font-bold ${cl.successRate >= 20 ? 'text-green-600' : 'text-gray-600'}`}>
+                            {cl.successRate}%
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 text-center">
+                        <span className={`px-2 py-1 text-xs rounded ${cl.isTailored ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
+                          {cl.isTailored ? 'Tailored' : 'Generic'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          <p className="text-gray-500 text-center py-4">No cover letter versions to compare yet</p>
+        )}
+      </Card>
+
+      {/* Tailored vs Generic Comparison */}
+      <Card>
+        <h3 className="text-lg font-semibold mb-4">🎯 Tailored vs Generic Performance</h3>
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-2xl">✨</span>
+              <h4 className="font-semibold text-blue-900">Tailored Materials</h4>
+            </div>
+            <div className="text-3xl font-bold text-blue-700">
+              {abTesting.insights?.tailoredVsGeneric?.tailored?.avgSuccessRate || 0}%
+            </div>
+            <div className="text-sm text-blue-600">
+              {abTesting.insights?.tailoredVsGeneric?.tailored?.resumes?.length || 0} tailored versions
+            </div>
+          </div>
+          <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-2xl">📋</span>
+              <h4 className="font-semibold text-gray-900">Generic Materials</h4>
+            </div>
+            <div className="text-3xl font-bold text-gray-700">
+              {abTesting.insights?.tailoredVsGeneric?.generic?.avgSuccessRate || 0}%
+            </div>
+            <div className="text-sm text-gray-600">
+              {abTesting.insights?.tailoredVsGeneric?.generic?.resumes?.length || 0} generic versions
+            </div>
+          </div>
+        </div>
+        
+        {/* Difference indicator */}
+        {abTesting.insights?.tailoredVsGeneric && (
+          <div className="mt-4 p-3 bg-green-50 rounded-lg">
+            {abTesting.insights.tailoredVsGeneric.tailored?.avgSuccessRate > abTesting.insights.tailoredVsGeneric.generic?.avgSuccessRate ? (
+              <p className="text-green-800">
+                <span className="font-bold">✅ Tailored materials outperform generic by{' '}
+                {(abTesting.insights.tailoredVsGeneric.tailored.avgSuccessRate - abTesting.insights.tailoredVsGeneric.generic.avgSuccessRate).toFixed(1)}%</span>
+                {' '}- Keep customizing your applications!
+              </p>
+            ) : (
+              <p className="text-gray-700">
+                Consider creating more tailored versions of your resume and cover letters for better results.
+              </p>
+            )}
+          </div>
+        )}
+      </Card>
+
+      {/* Statistical Significance */}
+      {abTesting.insights?.statisticalSignificance?.significant && (
+        <Card className="bg-purple-50 border-purple-200">
+          <div className="flex items-start gap-3">
+            <span className="text-3xl">📊</span>
+            <div>
+              <h3 className="font-semibold text-purple-900">Statistical Significance</h3>
+              <p className="text-purple-800">
+                Your top performing resume has a statistically significant advantage with{' '}
+                <strong>{abTesting.insights.statisticalSignificance.confidence}% confidence</strong>.
+                This result is reliable enough to guide your future applications.
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// Timing Tab - Enhanced with Calendar Heatmap
 // ============================================================================
 function TimingTab({ analysis }) {
   const { timingAnalysis } = analysis;
 
+  // Generate heatmap data for day/hour combinations
+  const hours = ["Early Morning", "Morning", "Afternoon", "Evening"];
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  const getHeatmapColor = (rate) => {
+    if (rate >= 30) return "bg-green-600 text-white";
+    if (rate >= 20) return "bg-green-400 text-white";
+    if (rate >= 10) return "bg-yellow-400 text-gray-800";
+    if (rate >= 5) return "bg-yellow-200 text-gray-800";
+    return "bg-gray-100 text-gray-600";
+  };
+
   return (
     <div className="space-y-6">
       {/* Best Times Summary */}
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid md:grid-cols-3 gap-4">
         <Card className="bg-gradient-to-br from-green-50 to-emerald-50">
           <div className="text-center">
             <div className="text-4xl mb-2">📅</div>
@@ -850,7 +1296,7 @@ function TimingTab({ analysis }) {
             </div>
             {timingAnalysis.bestDay && (
               <p className="text-sm text-gray-600 mt-1">
-                {timingAnalysis.bestDay.successRate}% success rate from {timingAnalysis.bestDay.total} applications
+                {timingAnalysis.bestDay.successRate}% success rate
               </p>
             )}
           </div>
@@ -870,7 +1316,80 @@ function TimingTab({ analysis }) {
             )}
           </div>
         </Card>
+
+        <Card className="bg-gradient-to-br from-purple-50 to-pink-50">
+          <div className="text-center">
+            <div className="text-4xl mb-2">🎯</div>
+            <h3 className="text-lg font-semibold">Optimal Window</h3>
+            <div className="text-xl font-bold text-purple-600 mt-2">
+              {timingAnalysis.bestDay?.day || "N/A"} {timingAnalysis.bestTime?.timeRange?.split("(")[1]?.replace(")", "") || "Morning"}
+            </div>
+            <p className="text-sm text-gray-600 mt-1">
+              Combine day + time for best results
+            </p>
+          </div>
+        </Card>
       </div>
+
+      {/* Calendar Heatmap */}
+      <Card>
+        <h3 className="text-lg font-semibold mb-4">🗓️ Weekly Success Heatmap</h3>
+        <p className="text-sm text-gray-600 mb-4">
+          Darker green indicates higher success rates. Find your optimal application windows.
+        </p>
+        <div className="overflow-x-auto">
+          <div className="min-w-[500px]">
+            {/* Header - Days */}
+            <div className="grid grid-cols-8 gap-1 mb-1">
+              <div className="h-8"></div>
+              {days.map(day => (
+                <div key={day} className="h-8 flex items-center justify-center text-xs font-medium text-gray-600">
+                  {day}
+                </div>
+              ))}
+            </div>
+            
+            {/* Heatmap Grid */}
+            {hours.map((hour) => (
+              <div key={hour} className="grid grid-cols-8 gap-1 mb-1">
+                <div className="text-xs text-gray-600 flex items-center pr-2 truncate">
+                  {hour}
+                </div>
+                {days.map((day) => {
+                  // Find matching data or default
+                  const dayData = timingAnalysis.byDayOfWeek?.find(d => d.day.startsWith(day)) || { successRate: 0 };
+                  const timeData = timingAnalysis.byTimeOfDay?.find(t => t.timeRange.includes(hour)) || { successRate: 0 };
+                  // Combine day and time factors (weighted average)
+                  const combinedRate = Math.round((dayData.successRate * 0.6) + (timeData.successRate * 0.4));
+                  
+                  return (
+                    <div 
+                      key={`${day}-${hour}`}
+                      className={`h-10 rounded flex items-center justify-center text-xs font-medium cursor-default transition-all hover:scale-105 ${getHeatmapColor(combinedRate)}`}
+                      title={`${day} ${hour}: ~${combinedRate}% success rate`}
+                    >
+                      {combinedRate}%
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        {/* Legend */}
+        <div className="flex items-center justify-center gap-4 mt-4 text-xs">
+          <span className="text-gray-500">Lower</span>
+          <div className="flex gap-1">
+            <div className="w-6 h-4 bg-gray-100 rounded"></div>
+            <div className="w-6 h-4 bg-yellow-200 rounded"></div>
+            <div className="w-6 h-4 bg-yellow-400 rounded"></div>
+            <div className="w-6 h-4 bg-green-400 rounded"></div>
+            <div className="w-6 h-4 bg-green-600 rounded"></div>
+          </div>
+          <span className="text-gray-500">Higher</span>
+        </div>
+      </Card>
 
       {/* Day of Week Analysis */}
       <Card>
@@ -914,6 +1433,21 @@ function TimingTab({ analysis }) {
           ))}
         </div>
       </Card>
+
+      {/* Timing Recommendation */}
+      <Card className="bg-gradient-to-r from-blue-50 to-green-50">
+        <div className="flex items-start gap-3">
+          <span className="text-3xl">💡</span>
+          <div>
+            <h3 className="font-semibold text-gray-900">Timing Recommendation</h3>
+            <p className="text-gray-700">
+              Based on your data, submit applications on <strong>{timingAnalysis.bestDay?.day || "weekdays"}</strong> during 
+              <strong> {timingAnalysis.bestTime?.timeRange || "morning hours"}</strong> for the best results. 
+              Avoid applying on weekends when response rates tend to be lower.
+            </p>
+          </div>
+        </div>
+      </Card>
     </div>
   );
 }
@@ -921,7 +1455,7 @@ function TimingTab({ analysis }) {
 // ============================================================================
 // UC-105: Prediction Tab - Success Probability Prediction
 // ============================================================================
-function PredictionTab({ prediction, onLoadPrediction, loading, error, analysis }) {
+function PredictionTab({ prediction, onLoadPrediction, loading, error }) {
   const [industry, setIndustry] = useState("");
   const [companySize, setCompanySize] = useState("");
   const [roleType, setRoleType] = useState("");
@@ -1301,14 +1835,62 @@ function EvolutionTab({ evolution, onLoadEvolution, loading, analysis }) {
 }
 
 // ============================================================================
-// Recommendations Tab
+// Recommendations Tab - Enhanced with Expected Impact and Quick Wins
 // ============================================================================
 function RecommendationsTab({ analysis, recommendations }) {
   const hasDetailedRecs = recommendations?.hasData && recommendations.recommendations?.length > 0;
 
+  // Identify quick wins (high impact, low effort recommendations)
+  const quickWins = analysis.recommendations.filter(rec => 
+    rec.priority === "high" || (rec.priority === "medium" && rec.category === "timing")
+  ).slice(0, 3);
+
+  // Calculate expected impact based on recommendation type
+  const getExpectedImpact = (rec) => {
+    if (rec.category === "industry") return "+5-10% success rate";
+    if (rec.category === "timing") return "+3-5% response rate";
+    if (rec.category === "materials") return "+8-15% interview rate";
+    if (rec.category === "targeting") return "+5-8% success rate";
+    return "+3-5% improvement";
+  };
+
   return (
     <div className="space-y-6">
-      {/* Priority Recommendations */}
+      {/* Quick Wins Section */}
+      {quickWins.length > 0 && (
+        <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <span className="text-2xl">⚡</span>
+            Quick Wins
+          </h3>
+          <p className="text-sm text-gray-600 mb-4">
+            High-impact actions you can take today to improve your success rate
+          </p>
+          <div className="grid md:grid-cols-3 gap-4">
+            {quickWins.map((rec, idx) => (
+              <div 
+                key={idx} 
+                className="p-4 bg-white rounded-lg shadow-sm border border-green-100"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-2xl">
+                    {rec.category === "timing" ? "⏰" : 
+                     rec.category === "materials" ? "📄" : 
+                     rec.category === "industry" ? "🏢" : "🎯"}
+                  </span>
+                  <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium">
+                    {getExpectedImpact(rec)}
+                  </span>
+                </div>
+                <h4 className="font-medium text-gray-900 text-sm">{rec.title}</h4>
+                <p className="text-xs text-gray-600 mt-1">{rec.description}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Priority Recommendations with Expected Impact */}
       <Card>
         <h3 className="text-lg font-semibold mb-4">🎯 Priority Actions</h3>
         {analysis.recommendations.length > 0 ? (
@@ -1323,21 +1905,29 @@ function RecommendationsTab({ analysis, recommendations }) {
                       : "bg-blue-50 border-blue-500"
                   }`}
               >
-                <div className="flex items-center gap-2 mb-1">
-                  <span className={`px-2 py-0.5 text-xs font-medium rounded ${rec.priority === "high" ? "bg-red-100 text-red-700" :
-                      rec.priority === "medium" ? "bg-yellow-100 text-yellow-700" :
-                        "bg-blue-100 text-blue-700"
-                    }`}>
-                    {rec.priority.toUpperCase()}
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-0.5 text-xs font-medium rounded ${rec.priority === "high" ? "bg-red-100 text-red-700" :
+                        rec.priority === "medium" ? "bg-yellow-100 text-yellow-700" :
+                          "bg-blue-100 text-blue-700"
+                      }`}>
+                      {rec.priority.toUpperCase()}
+                    </span>
+                    <span className="text-xs text-gray-500">{rec.category}</span>
+                  </div>
+                  <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded font-medium">
+                    Expected: {getExpectedImpact(rec)}
                   </span>
-                  <span className="text-xs text-gray-500">{rec.category}</span>
                 </div>
                 <h4 className="font-medium text-gray-900">{rec.title}</h4>
                 <p className="text-sm text-gray-600 mt-1">{rec.description}</p>
                 {rec.actionable && (
-                  <p className="text-sm text-gray-700 mt-2">
-                    <span className="font-medium">Action:</span> {rec.actionable}
-                  </p>
+                  <div className="mt-3 p-2 bg-white/50 rounded flex items-start gap-2">
+                    <span className="text-green-500">✓</span>
+                    <p className="text-sm text-gray-700">
+                      <span className="font-medium">Action:</span> {rec.actionable}
+                    </p>
+                  </div>
                 )}
               </div>
             ))}
@@ -1345,6 +1935,31 @@ function RecommendationsTab({ analysis, recommendations }) {
         ) : (
           <p className="text-gray-500">Keep applying to generate personalized recommendations!</p>
         )}
+      </Card>
+
+      {/* Progress Tracker */}
+      <Card>
+        <h3 className="text-lg font-semibold mb-4">📈 Your Optimization Progress</h3>
+        <div className="grid md:grid-cols-4 gap-4">
+          <div className="text-center p-4 bg-blue-50 rounded-lg">
+            <div className="text-3xl font-bold text-blue-700">{analysis.summary.totalApplications}</div>
+            <div className="text-sm text-gray-600">Total Applications</div>
+          </div>
+          <div className="text-center p-4 bg-green-50 rounded-lg">
+            <div className="text-3xl font-bold text-green-700">{analysis.summary.overallSuccessRate}%</div>
+            <div className="text-sm text-gray-600">Current Success Rate</div>
+          </div>
+          <div className="text-center p-4 bg-purple-50 rounded-lg">
+            <div className="text-3xl font-bold text-purple-700">
+              {Math.min(100, analysis.summary.overallSuccessRate + 10)}%
+            </div>
+            <div className="text-sm text-gray-600">Target Rate</div>
+          </div>
+          <div className="text-center p-4 bg-amber-50 rounded-lg">
+            <div className="text-3xl font-bold text-amber-700">{analysis.recommendations.length}</div>
+            <div className="text-sm text-gray-600">Actions Available</div>
+          </div>
+        </div>
       </Card>
 
       {/* Detailed Recommendations */}
@@ -1394,6 +2009,25 @@ function RecommendationsTab({ analysis, recommendations }) {
           </ul>
         </Card>
       )}
+
+      {/* Next Steps Call to Action */}
+      <Card className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold mb-1">🚀 Ready to Improve?</h3>
+            <p className="text-blue-100 text-sm">
+              Implement these recommendations and track your progress. Your success rate can improve significantly!
+            </p>
+          </div>
+          <Button 
+            variant="outline" 
+            className="bg-white text-blue-600 hover:bg-blue-50 border-white"
+            onClick={() => window.location.href = "/jobs"}
+          >
+            Apply Now
+          </Button>
+        </div>
+      </Card>
     </div>
   );
 }
