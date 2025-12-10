@@ -1555,3 +1555,229 @@ function identifyStrategyChanges(periods) {
 
   return changes;
 }
+
+/**
+ * GET /api/application-success/response-tracking
+ * Track application response rates over time
+ */
+export const getResponseTracking = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const allJobs = await Job.find({ userId }).sort({ createdAt: 1 });
+
+  if (allJobs.length === 0) {
+    const { response, statusCode } = successResponse("No applications to track", {
+      hasData: false,
+    });
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Calculate response metrics
+  const responseMetrics = {
+    totalApplications: allJobs.length,
+    responsesReceived: 0,
+    interviewsReceived: 0,
+    offersReceived: 0,
+    avgResponseTime: 0,
+    responseRate: 0,
+    interviewConversionRate: 0,
+    offerConversionRate: 0,
+    trendData: []
+  };
+
+  const responseTimes = [];
+  const successStatuses = ["Interview", "Phone Screen", "Offer", "Accepted"];
+  const responseStatuses = [...successStatuses, "Rejected"];
+
+  allJobs.forEach(job => {
+    if (responseStatuses.includes(job.status)) {
+      responseMetrics.responsesReceived++;
+    }
+    if (["Interview", "Phone Screen"].includes(job.status)) {
+      responseMetrics.interviewsReceived++;
+    }
+    if (["Offer", "Accepted"].includes(job.status)) {
+      responseMetrics.offersReceived++;
+    }
+
+    // Calculate response time if available
+    if (job.statusHistory && job.statusHistory.length >= 2) {
+      const applied = job.statusHistory.find(s => s.status === "Applied")?.timestamp;
+      const response = job.statusHistory.find(s => responseStatuses.includes(s.status))?.timestamp;
+      if (applied && response) {
+        const days = (new Date(response) - new Date(applied)) / (1000 * 60 * 60 * 24);
+        responseTimes.push(days);
+      }
+    }
+  });
+
+  responseMetrics.responseRate = parseFloat(((responseMetrics.responsesReceived / responseMetrics.totalApplications) * 100).toFixed(1));
+  responseMetrics.interviewConversionRate = parseFloat(((responseMetrics.interviewsReceived / responseMetrics.totalApplications) * 100).toFixed(1));
+  responseMetrics.offerConversionRate = parseFloat(((responseMetrics.offersReceived / responseMetrics.totalApplications) * 100).toFixed(1));
+  responseMetrics.avgResponseTime = responseTimes.length > 0
+    ? parseFloat((responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length).toFixed(1))
+    : 0;
+
+  // Generate trend data by month
+  const monthlyData = {};
+  allJobs.forEach(job => {
+    const monthKey = new Date(job.createdAt).toISOString().slice(0, 7); // YYYY-MM
+    if (!monthlyData[monthKey]) {
+      monthlyData[monthKey] = {
+        month: monthKey,
+        total: 0,
+        responses: 0,
+        interviews: 0,
+        offers: 0
+      };
+    }
+    monthlyData[monthKey].total++;
+    if (responseStatuses.includes(job.status)) monthlyData[monthKey].responses++;
+    if (["Interview", "Phone Screen"].includes(job.status)) monthlyData[monthKey].interviews++;
+    if (["Offer", "Accepted"].includes(job.status)) monthlyData[monthKey].offers++;
+  });
+
+  responseMetrics.trendData = Object.values(monthlyData).map(data => ({
+    ...data,
+    responseRate: parseFloat(((data.responses / data.total) * 100).toFixed(1)),
+    interviewRate: parseFloat(((data.interviews / data.total) * 100).toFixed(1)),
+    offerRate: parseFloat(((data.offers / data.total) * 100).toFixed(1))
+  }));
+
+  const { response, statusCode } = successResponse("Response tracking retrieved", {
+    hasData: true,
+    metrics: responseMetrics
+  });
+  return sendResponse(res, response, statusCode);
+});
+
+/**
+ * GET /api/application-success/ab-testing
+ * Compare performance of different resume/cover letter versions
+ */
+export const getABTesting = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const allJobs = await Job.find({ userId });
+  const resumes = await Resume.find({ userId });
+  const coverLetters = await CoverLetter.find({ userId });
+
+  if (resumes.length < 2 && coverLetters.length < 2) {
+    const { response, statusCode } = successResponse("Not enough material versions for A/B testing", {
+      hasData: false,
+      message: "Create multiple versions of your resume or cover letter to see performance comparison"
+    });
+    return sendResponse(res, response, statusCode);
+  }
+
+  const successStatuses = ["Interview", "Phone Screen", "Offer", "Accepted"];
+
+  // Analyze resume versions
+  const resumePerformance = resumes.map(resume => {
+    const jobsWithResume = allJobs.filter(j => 
+      j.linkedResumeId?.toString() === resume._id.toString() || 
+      j.materials?.resume === resume.fileName
+    );
+    const successful = jobsWithResume.filter(j => successStatuses.includes(j.status)).length;
+
+    return {
+      id: resume._id,
+      name: resume.fileName || `Resume ${resume._id.toString().slice(-6)}`,
+      version: resume.version || 1,
+      applicationsUsed: jobsWithResume.length,
+      successfulApplications: successful,
+      successRate: jobsWithResume.length > 0 ? parseFloat(((successful / jobsWithResume.length) * 100).toFixed(1)) : 0,
+      interviewRate: jobsWithResume.length > 0 
+        ? parseFloat(((jobsWithResume.filter(j => ["Interview", "Phone Screen"].includes(j.status)).length / jobsWithResume.length) * 100).toFixed(1))
+        : 0,
+      lastUsed: jobsWithResume.length > 0 
+        ? new Date(Math.max(...jobsWithResume.map(j => new Date(j.createdAt)))).toISOString()
+        : resume.createdAt,
+      isTailored: resume.metadata?.tailoredForJob || false
+    };
+  }).sort((a, b) => b.successRate - a.successRate);
+
+  // Analyze cover letter versions
+  const coverLetterPerformance = coverLetters.map(cl => {
+    const jobsWithCoverLetter = allJobs.filter(j => 
+      j.materials?.coverLetter === cl.fileName ||
+      j.linkedCoverLetterId?.toString() === cl._id.toString()
+    );
+    const successful = jobsWithCoverLetter.filter(j => successStatuses.includes(j.status)).length;
+
+    return {
+      id: cl._id,
+      name: cl.fileName || `Cover Letter ${cl._id.toString().slice(-6)}`,
+      applicationsUsed: jobsWithCoverLetter.length,
+      successfulApplications: successful,
+      successRate: jobsWithCoverLetter.length > 0 ? parseFloat(((successful / jobsWithCoverLetter.length) * 100).toFixed(1)) : 0,
+      interviewRate: jobsWithCoverLetter.length > 0 
+        ? parseFloat(((jobsWithCoverLetter.filter(j => ["Interview", "Phone Screen"].includes(j.status)).length / jobsWithCoverLetter.length) * 100).toFixed(1))
+        : 0,
+      lastUsed: jobsWithCoverLetter.length > 0 
+        ? new Date(Math.max(...jobsWithCoverLetter.map(j => new Date(j.createdAt)))).toISOString()
+        : cl.createdAt,
+      isTailored: cl.metadata?.tailoredForJob || cl.jobId || false
+    };
+  }).sort((a, b) => b.successRate - a.successRate);
+
+  // Calculate statistical significance
+  const topResume = resumePerformance[0];
+  const bottomResume = resumePerformance[resumePerformance.length - 1];
+  const resumeSignificance = topResume && bottomResume && topResume.applicationsUsed >= 3 && bottomResume.applicationsUsed >= 3
+    ? getStatisticalSignificance(
+        calculateZScore(
+          topResume.successfulApplications,
+          topResume.applicationsUsed,
+          bottomResume.successRate / 100
+        )
+      )
+    : { level: "none", confidence: 0, significant: false };
+
+  const { response, statusCode } = successResponse("A/B testing analysis retrieved", {
+    hasData: true,
+    resumeVersions: resumePerformance,
+    coverLetterVersions: coverLetterPerformance,
+    insights: {
+      bestResume: resumePerformance[0] || null,
+      bestCoverLetter: coverLetterPerformance[0] || null,
+      tailoredVsGeneric: {
+        tailored: {
+          resumes: resumePerformance.filter(r => r.isTailored),
+          avgSuccessRate: resumePerformance.filter(r => r.isTailored).length > 0
+            ? parseFloat((resumePerformance.filter(r => r.isTailored).reduce((sum, r) => sum + r.successRate, 0) / resumePerformance.filter(r => r.isTailored).length).toFixed(1))
+            : 0
+        },
+        generic: {
+          resumes: resumePerformance.filter(r => !r.isTailored),
+          avgSuccessRate: resumePerformance.filter(r => !r.isTailored).length > 0
+            ? parseFloat((resumePerformance.filter(r => !r.isTailored).reduce((sum, r) => sum + r.successRate, 0) / resumePerformance.filter(r => !r.isTailored).length).toFixed(1))
+            : 0
+        }
+      },
+      statisticalSignificance: resumeSignificance,
+      recommendation: topResume && topResume.successRate > 20 
+        ? `Your "${topResume.name}" resume performs best with ${topResume.successRate}% success rate`
+        : "Continue testing different resume versions to identify the most effective format"
+    }
+  });
+  return sendResponse(res, response, statusCode);
+});
