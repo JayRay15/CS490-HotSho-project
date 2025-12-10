@@ -8,6 +8,8 @@ import {
   getMaterialsImpact,
   getSuccessPrediction,
   getPatternEvolution,
+  getResponseTracking,
+  getABTesting,
 } from '../controllers/applicationSuccessController.js';
 
 const router = express.Router();
@@ -68,5 +70,19 @@ router.get('/prediction', checkJwt, getSuccessPrediction);
  * @access  Protected
  */
 router.get('/evolution', checkJwt, getPatternEvolution);
+
+/**
+ * @route   GET /api/application-success/response-tracking
+ * @desc    Track application response rates over time
+ * @access  Protected
+ */
+router.get('/response-tracking', checkJwt, getResponseTracking);
+
+/**
+ * @route   GET /api/application-success/ab-testing
+ * @desc    Compare performance of different resume/cover letter versions
+ * @access  Protected
+ */
+router.get('/ab-testing', checkJwt, getABTesting);
 
 export default router;

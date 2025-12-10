@@ -74,3 +74,19 @@ export const getPatternEvolution = async () => {
   const response = await api.get('/api/application-success/evolution');
   return response.data;
 };
+
+/**
+ * Get application response rate tracking over time
+ */
+export const getResponseTracking = async () => {
+  const response = await api.get('/api/application-success/response-tracking');
+  return response.data;
+};
+
+/**
+ * Get A/B testing comparison of resume and cover letter versions
+ */
+export const getABTesting = async () => {
+  const response = await api.get('/api/application-success/ab-testing');
+  return response.data;
+};
