@@ -34,6 +34,7 @@ import FollowUpReminders from "../../components/FollowUpReminders";
 import ShareJobModal from "../../components/ShareJobModal";
 import CareerPathSimulator from "../../components/career-simulation/CareerPathSimulator";
 import TimingOptimizer from "../../components/TimingOptimizer";
+import JobCompetitiveAnalysis from "../../components/JobCompetitiveAnalysis";
 import * as interviewsAPI from "../../api/interviews";
 import * as statusAPI from "../../api/applicationStatus";
 
@@ -117,6 +118,10 @@ export default function Jobs() {
   // UC-124: Application Timing Optimizer state
   const [showTimingOptimizer, setShowTimingOptimizer] = useState(false);
   const [selectedJobForTiming, setSelectedJobForTiming] = useState(null);
+
+  // UC-123: Job Competitive Analysis state
+  const [showCompetitiveAnalysis, setShowCompetitiveAnalysis] = useState(false);
+  const [selectedJobForCompetitive, setSelectedJobForCompetitive] = useState(null);
 
   // Application Status Tracking state
   const [applicationStatuses, setApplicationStatuses] = useState({});
@@ -3140,6 +3145,17 @@ export default function Jobs() {
                 >
                   ⚡ Generate Package
                 </Button>
+                {/* UC-123: Competitive Analysis Button */}
+                <Button
+                  onClick={() => {
+                    setSelectedJobForCompetitive(viewingJob);
+                    setShowCompetitiveAnalysis(true);
+                  }}
+                  variant="secondary"
+                  className="bg-gradient-to-r from-indigo-100 to-purple-100 hover:from-indigo-200 hover:to-purple-200 text-indigo-700"
+                >
+                  🏆 Competitive Analysis
+                </Button>
                 {/* UC-68: Interview Insights Button */}
                 <Button
                   onClick={() => {
@@ -3915,6 +3931,31 @@ export default function Jobs() {
             setTimeout(() => setSuccessMessage(null), 3000);
           }}
         />
+      )}
+
+      {/* UC-123: Job Competitive Analysis Modal */}
+      {showCompetitiveAnalysis && selectedJobForCompetitive && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+          onClick={() => {
+            setShowCompetitiveAnalysis(false);
+            setSelectedJobForCompetitive(null);
+          }}
+        >
+          <div 
+            className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto mx-4 p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <JobCompetitiveAnalysis
+              job={selectedJobForCompetitive}
+              onClose={() => {
+                setShowCompetitiveAnalysis(false);
+                setSelectedJobForCompetitive(null);
+              }}
+            />
+          </div>
+        </div>
       )}
     </div>
   );
