@@ -137,12 +137,22 @@ describe('resumeController.generateResumePDF - PDF fallback and error branches',
 
     // Template without originalPdf or without pdfLayout triggers fallback
     const templateDoc = { toObject: () => ({ theme: {}, layout: {}, pdfLayout: null }), originalPdf: null };
-    // Main primary findOne(...).select returns null
-    mockResumeTemplate.findOne.mockReturnValueOnce({ select: jest.fn().mockResolvedValue(null) });
+    
+    // Reset mocks to ensure clean state
+    mockResumeTemplate.findOne.mockReset();
+    mockResumeTemplate.findById.mockReset();
+    
     // findById returns null for existsButNotAccessible (chainable)
     mockResumeTemplate.findById.mockReturnValue({ select: jest.fn().mockResolvedValue(null) });
-    // defaultTpl findOne(...).select returns null, then anyTpl returns templateDoc
-    mockResumeTemplate.findOne.mockReturnValueOnce({ select: jest.fn().mockResolvedValue(null) }).mockReturnValueOnce({ select: jest.fn().mockResolvedValue(templateDoc) });
+    
+    // Setup findOne mock sequence:
+    // 1st call: primary template lookup - returns null
+    // 2nd call: default template fallback - returns null  
+    // 3rd call: any template fallback - returns templateDoc (triggers HTML->PDF fallback)
+    mockResumeTemplate.findOne
+      .mockReturnValueOnce({ select: jest.fn().mockResolvedValue(null) })
+      .mockReturnValueOnce({ select: jest.fn().mockResolvedValue(null) })
+      .mockReturnValueOnce({ select: jest.fn().mockResolvedValue(templateDoc) });
 
     // exportToHtml returns html string
     mockResumeExporter.exportToHtml.mockReturnValue('<html>ok</html>');

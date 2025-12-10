@@ -64,6 +64,7 @@ import ApplicationSuccessAnalysis from "./pages/auth/ApplicationSuccessAnalysis.
 import ABTestingPage from "./pages/auth/ABTestingPage.jsx";
 import InterviewPerformance from "./pages/auth/InterviewPerformance.jsx";
 import PredictiveAnalytics from "./pages/PredictiveAnalytics.jsx";
+import ResponseTimeDashboard from "./pages/ResponseTimeDashboard.jsx";
 import CompetitiveAnalysis from "./pages/auth/CompetitiveAnalysis.jsx";
 import InformationalInterviewsPage from "./pages/InformationalInterviews.jsx";
 import JobMapPage from "./pages/JobMapPage.jsx";
@@ -143,6 +144,7 @@ function App() {
           <Route path="/application-success" element={<Navigate to="/my-performance?tab=success" replace />} />
           <Route path="/interview-performance" element={<Navigate to="/interviews?tab=performance" replace />} />
           <Route path="/predictive-analytics" element={<ProtectedRoute><PredictiveAnalytics /></ProtectedRoute>} />
+          <Route path="/response-time" element={<ProtectedRoute><ResponseTimeDashboard /></ProtectedRoute>} />
           <Route path="/competitive-analysis" element={<ProtectedRoute><CompetitiveAnalysis /></ProtectedRoute>} />
           <Route path="/ab-testing" element={<ProtectedRoute><ABTestingPage /></ProtectedRoute>} />
           <Route path="/mentors-advisors" element={<ProtectedRoute><MentorsAdvisorsPage /></ProtectedRoute>} />

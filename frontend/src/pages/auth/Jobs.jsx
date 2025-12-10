@@ -35,6 +35,8 @@ import ShareJobModal from "../../components/ShareJobModal";
 import CareerPathSimulator from "../../components/career-simulation/CareerPathSimulator";
 import TimingOptimizer from "../../components/TimingOptimizer";
 import JobCompetitiveAnalysis from "../../components/JobCompetitiveAnalysis";
+import OverdueApplicationsAlert from "../../components/OverdueApplicationsAlert";
+import ResponseTimePrediction from "../../components/ResponseTimePrediction";
 import * as interviewsAPI from "../../api/interviews";
 import * as statusAPI from "../../api/applicationStatus";
 
@@ -1334,6 +1336,9 @@ export default function Jobs() {
             </div>
           )}
 
+          {/* Overdue Applications Alert */}
+          <OverdueApplicationsAlert showPanel={true} />
+
           {/* Stats Cards */}
           {stats && (
             <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
@@ -1445,6 +1450,9 @@ export default function Jobs() {
                 </Button>
                 <Button onClick={() => setShowStatistics(true)} variant="secondary">
                   Statistics
+                </Button>
+                <Button onClick={() => navigate('/response-time')} variant="secondary">
+                  📊 Response Times
                 </Button>
                 <Button onClick={() => setShowFollowUpReminders(true)} variant="secondary">
                   📧 Follow-up Reminders
@@ -3288,6 +3296,19 @@ export default function Jobs() {
                       <p className="text-gray-900">{viewingJob.daysInStage || 0} days</p>
                     </div>
                   </div>
+
+                  {/* Response Time Prediction - Show for applied jobs */}
+                  {viewingJob.applicationDate && ["Applied", "Phone Screen", "Interview"].includes(viewingJob.status) && (
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <h4 className="text-sm font-medium text-gray-700 mb-3">Response Time Prediction</h4>
+                      <ResponseTimePrediction
+                        jobId={viewingJob._id}
+                        companyName={viewingJob.company}
+                        applicationDate={viewingJob.applicationDate}
+                        compact={false}
+                      />
+                    </div>
+                  )}
 
                   {viewingJob.url && (
                     <div className="mt-4">

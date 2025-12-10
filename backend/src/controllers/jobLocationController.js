@@ -18,7 +18,7 @@ import {
  */
 export const getJobsWithLocations = async (req, res) => {
   try {
-    const userId = req.auth?.userId;
+    const userId = req.auth?.payload?.sub || req.auth?.userId;
 
     if (!userId) {
       return res.status(401).json({
@@ -98,7 +98,7 @@ export const getJobsWithLocations = async (req, res) => {
  */
 export const geocodeJobLocation = async (req, res) => {
   try {
-    const userId = req.auth?.userId;
+    const userId = req.auth?.payload?.sub || req.auth?.userId;
     const { jobId } = req.params;
 
     if (!userId) {
@@ -171,7 +171,7 @@ export const geocodeJobLocation = async (req, res) => {
  */
 export const geocodeAllJobs = async (req, res) => {
   try {
-    const userId = req.auth?.userId;
+    const userId = req.auth?.payload?.sub || req.auth?.userId;
 
     if (!userId) {
       return res.status(401).json({
@@ -244,7 +244,7 @@ export const geocodeAllJobs = async (req, res) => {
  */
 export const setHomeLocation = async (req, res) => {
   try {
-    const userId = req.auth?.userId;
+    const userId = req.auth?.payload?.sub || req.auth?.userId;
     const { address } = req.body;
 
     console.log("setHomeLocation called with:", { userId, address });
@@ -277,21 +277,31 @@ export const setHomeLocation = async (req, res) => {
 
     // Update user's home location
     console.log("Updating user with auth0Id:", userId);
+    console.log("Setting homeLocation to:", JSON.stringify({
+      address: address,
+      coordinates: geocodeResult.coordinates,
+      displayName: geocodeResult.displayName,
+      timezone: geocodeResult.timezone?.name || geocodeResult.timezone,
+    }, null, 2));
+    
     const user = await User.findOneAndUpdate(
       { auth0Id: userId },
       {
         $set: {
-          "homeLocation.address": address,
-          "homeLocation.coordinates": geocodeResult.coordinates,
-          "homeLocation.displayName": geocodeResult.displayName,
-          "homeLocation.timezone": geocodeResult.timezone,
+          homeLocation: {
+            address: address,
+            coordinates: geocodeResult.coordinates,
+            displayName: geocodeResult.displayName,
+            timezone: geocodeResult.timezone?.name || geocodeResult.timezone,
+          }
         }
       },
-      { new: true, upsert: false }
+      { new: true, upsert: false, runValidators: false }
     );
 
-    console.log("User update result:", user ? "User found" : "User null");
-    console.log("User homeLocation:", JSON.stringify(user?.homeLocation, null, 2));
+    console.log("User update result:", user ? "User found and updated" : "User NOT found");
+    console.log("Full user object keys:", user ? Object.keys(user.toObject ? user.toObject() : user) : "N/A");
+    console.log("User homeLocation after update:", JSON.stringify(user?.homeLocation, null, 2));
 
     if (!user) {
       return res.status(404).json({
@@ -333,7 +343,7 @@ export const setHomeLocation = async (req, res) => {
  */
 export const getHomeLocation = async (req, res) => {
   try {
-    const userId = req.auth?.userId;
+    const userId = req.auth?.payload?.sub || req.auth?.userId;
 
     if (!userId) {
       return res.status(401).json({
@@ -364,7 +374,7 @@ export const getHomeLocation = async (req, res) => {
  */
 export const compareLocations = async (req, res) => {
   try {
-    const userId = req.auth?.userId;
+    const userId = req.auth?.payload?.sub || req.auth?.userId;
     const { jobIds } = req.body;
 
     if (!userId) {
@@ -440,7 +450,7 @@ export const compareLocations = async (req, res) => {
  */
 export const getCommuteDetails = async (req, res) => {
   try {
-    const userId = req.auth?.userId;
+    const userId = req.auth?.payload?.sub || req.auth?.userId;
     const { jobId } = req.params;
 
     if (!userId) {
