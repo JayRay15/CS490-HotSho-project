@@ -359,6 +359,12 @@ const SalaryResearch = () => {
               Prepare Negotiation
             </Button>
             <Button
+              onClick={() => navigate('/offer-comparison')}
+              className="bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              Compare Offers
+            </Button>
+            <Button
               onClick={() => handleExport('json')}
               variant="outline"
               disabled={exportLoading}

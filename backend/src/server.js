@@ -58,6 +58,7 @@ import apiMonitoringRoutes from "./routes/apiMonitoringRoutes.js";
 import monitoringRoutes from "./routes/monitoringRoutes.js";
 import followUpReminderRoutes from "./routes/followUpReminderRoutes.js";
 import abTestRoutes from "./routes/abTestRoutes.js";
+import offerRoutes from "./routes/offerRoutes.js";
 import { getPublicProject } from "./controllers/profileController.js";
 import { viewSharedReport } from "./controllers/reportController.js";
 import { startDeadlineReminderSchedule } from "./utils/deadlineReminders.js";
@@ -198,6 +199,8 @@ app.use("/api/follow-up-reminders", followUpReminderRoutes);
 console.log('✅ Follow-Up Reminder routes registered at /api/follow-up-reminders');
 app.use("/api/ab-tests", abTestRoutes);
 console.log('✅ A/B Test routes registered at /api/ab-tests');
+app.use("/api/offers", offerRoutes);
+console.log('✅ Offer Comparison routes registered at /api/offers');
 
 // Mount profile routes under /api/profile (existing) and also under /api/users
 // so frontend requests to /api/users/... (used elsewhere in the app) resolve correctly.
