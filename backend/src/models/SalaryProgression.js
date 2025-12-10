@@ -278,6 +278,63 @@ const careerProgressionSchema = new mongoose.Schema({
     marketData: mongoose.Schema.Types.Mixed
   }],
   
+  // UC-127: Archived/declined offers with reasons
+  archivedOffers: [{
+    company: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    title: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    location: String,
+    baseSalary: Number,
+    totalCompensation: Number,
+    benefits: mongoose.Schema.Types.Mixed,
+    offerDate: Date,
+    declinedDate: {
+      type: Date,
+      default: Date.now
+    },
+    declineReason: {
+      type: String,
+      enum: [
+        'Compensation Too Low',
+        'Better Offer Elsewhere',
+        'Location/Commute',
+        'Remote Work Policy',
+        'Company Culture Concerns',
+        'Limited Growth Opportunities',
+        'Work-Life Balance Concerns',
+        'Benefits Not Competitive',
+        'Job Role Mismatch',
+        'Company Stability Concerns',
+        'Personal Reasons',
+        'Timing Issues',
+        'Counter Offer Accepted',
+        'Other'
+      ],
+      required: true
+    },
+    declineNotes: {
+      type: String,
+      maxlength: 1000
+    },
+    futureConsideration: {
+      type: Boolean,
+      default: false
+    },
+    nonFinancialFactors: {
+      cultureFit: { type: Number, min: 1, max: 10 },
+      growthOpportunities: { type: Number, min: 1, max: 10 },
+      workLifeBalance: { type: Number, min: 1, max: 10 },
+      locationDesirability: { type: Number, min: 1, max: 10 }
+    }
+  }],
+
   // Analytics metadata
   analytics: {
     totalOffersReceived: {
