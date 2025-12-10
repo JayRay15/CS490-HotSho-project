@@ -1050,7 +1050,7 @@ const OfferComparison = () => {
 
       {/* Archive Modal */}
       {showArchiveModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
           <Card className="w-full max-w-md mx-4 p-6">
             <h3 className="text-xl font-bold mb-4">Archive Declined Offer</h3>
             <p className="text-gray-600 mb-4">
