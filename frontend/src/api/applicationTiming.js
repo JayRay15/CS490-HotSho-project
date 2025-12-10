@@ -159,3 +159,17 @@ export const getTimingStats = async (industry = null, companySize = null) => {
     throw error;
   }
 };
+
+/**
+ * UC-124: Get comprehensive insights with industry benchmarks
+ * Returns insights even when user has no data by using industry patterns
+ */
+export const getComprehensiveInsights = async () => {
+  try {
+    const response = await apiClient.get('/application-timing/insights');
+    return response.data;
+  } catch (error) {
+    console.error('Error getting comprehensive insights:', error);
+    throw error;
+  }
+};

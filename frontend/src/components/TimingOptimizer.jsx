@@ -7,7 +7,8 @@ import {
   cancelScheduledSubmission,
   getTimingMetrics,
   getABTestResults,
-  getCorrelations
+  getCorrelations,
+  getComprehensiveInsights
 } from '../api/applicationTiming';
 
 const TimingOptimizer = ({ job, onClose, onScheduled }) => {
@@ -17,6 +18,7 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
   const [metrics, setMetrics] = useState(null);
   const [abTestResults, setAbTestResults] = useState(null);
   const [correlations, setCorrelations] = useState(null);
+  const [insights, setInsights] = useState(null);
   const [activeTab, setActiveTab] = useState('recommendation');
   const [scheduledTime, setScheduledTime] = useState('');
   const [autoSubmit, setAutoSubmit] = useState(false);
@@ -85,6 +87,14 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
         setCorrelations(corrResponse.correlations);
       } catch (err) {
         console.error('Error loading correlations:', err);
+      }
+
+      // Load comprehensive insights (always has data even for new users)
+      try {
+        const insightsResponse = await getComprehensiveInsights();
+        setInsights(insightsResponse);
+      } catch (err) {
+        console.error('Error loading comprehensive insights:', err);
       }
 
     } catch (err) {
@@ -589,14 +599,139 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
 
           {activeTab === 'insights' && (
             <div className="space-y-6">
-              {((!abTestResults || Object.keys(abTestResults).every(key => abTestResults[key].submissions === 0)) && 
-                (!correlations || ((!correlations.byDayOfWeek || Object.keys(correlations.byDayOfWeek).length === 0) && 
-                                   (!correlations.byHourOfDay || Object.keys(correlations.byHourOfDay).length === 0)))) && (
-                <div className="text-center py-12">
-                  <p className="text-gray-500 text-lg mb-2">No analytics data yet</p>
-                  <p className="text-sm text-gray-400">
-                    Submit applications using our timing recommendations to see insights and patterns
-                  </p>
+              {/* Recommendations */}
+              {insights?.recommendations && insights.recommendations.length > 0 && (
+                <div className="bg-white rounded-lg border border-gray-200">
+                  <h4 className="text-lg font-semibold text-gray-900 p-4 border-b border-gray-200">
+                    💡 Personalized Recommendations
+                  </h4>
+                  <div className="p-4 space-y-3">
+                    {insights.recommendations.map((rec, index) => (
+                      <div 
+                        key={index} 
+                        className={`p-4 rounded-lg border ${
+                          rec.priority === 'high' 
+                            ? 'bg-blue-50 border-blue-200' 
+                            : rec.priority === 'medium'
+                            ? 'bg-yellow-50 border-yellow-200'
+                            : 'bg-green-50 border-green-200'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="text-2xl">
+                            {rec.type === 'get_started' && '🚀'}
+                            {rec.type === 'best_day' && '📅'}
+                            {rec.type === 'improvement' && '📈'}
+                            {rec.type === 'success' && '🎉'}
+                          </span>
+                          <div>
+                            <h5 className="font-semibold text-gray-900">{rec.title}</h5>
+                            <p className="text-sm text-gray-600 mt-1">{rec.description}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* User Stats Summary */}
+              {insights?.userStats && insights.userStats.totalSubmissions > 0 && (
+                <div className="bg-white rounded-lg border border-gray-200 p-4">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4">📊 Your Stats</h4>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="text-center p-3 bg-blue-50 rounded-lg">
+                      <p className="text-2xl font-bold text-blue-600">{insights.userStats.totalSubmissions}</p>
+                      <p className="text-sm text-gray-600">Total Submissions</p>
+                    </div>
+                    <div className="text-center p-3 bg-green-50 rounded-lg">
+                      <p className="text-2xl font-bold text-green-600">{insights.userStats.totalResponses}</p>
+                      <p className="text-sm text-gray-600">Responses</p>
+                    </div>
+                    <div className="text-center p-3 bg-purple-50 rounded-lg">
+                      <p className="text-2xl font-bold text-purple-600">{insights.userStats.overallRate.toFixed(1)}%</p>
+                      <p className="text-sm text-gray-600">Response Rate</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Industry Benchmarks - Always shown */}
+              {insights?.industryBenchmarks && (
+                <div className="bg-white rounded-lg border border-gray-200">
+                  <h4 className="text-lg font-semibold text-gray-900 p-4 border-b border-gray-200">
+                    🏢 Industry Timing Benchmarks
+                  </h4>
+                  <div className="p-4">
+                    <p className="text-sm text-gray-600 mb-4">
+                      Best practices for application timing based on industry research
+                    </p>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {Object.entries(insights.industryBenchmarks)
+                        .filter(([key]) => key !== 'default')
+                        .map(([industry, data]) => (
+                          <div key={industry} className="p-4 bg-gray-50 rounded-lg">
+                            <h5 className="font-semibold text-gray-900 mb-2">{industry}</h5>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex items-center gap-2">
+                                <span className="text-green-600">✓</span>
+                                <span>Best days: {data.bestDays.join(', ')}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-blue-600">⏰</span>
+                                <span>Best hours: {data.bestHours.join(', ')}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-purple-600">📈</span>
+                                <span>Avg response rate: {data.avgResponseRate}%</span>
+                              </div>
+                            </div>
+                            {data.insights && (
+                              <div className="mt-3 pt-3 border-t border-gray-200">
+                                <p className="text-xs text-gray-500 italic">
+                                  💡 {data.insights[0]}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* User's Success Rate by Day - Only if has data */}
+              {insights?.correlations?.byDayOfWeek && 
+               Object.keys(insights.correlations.byDayOfWeek).length > 0 && (
+                <div className="bg-white rounded-lg border border-gray-200">
+                  <h4 className="text-lg font-semibold text-gray-900 p-4 border-b border-gray-200">
+                    📆 Your Success Rate by Day
+                  </h4>
+                  <div className="p-4 space-y-2">
+                    {Object.entries(insights.correlations.byDayOfWeek)
+                      .sort((a, b) => b[1].rate - a[1].rate)
+                      .map(([day, data]) => (
+                        <div key={day} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <span className="font-medium text-gray-900 w-24">{day}</span>
+                            <span className="text-sm text-gray-600">
+                              {data.total} application{data.total !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="w-32 bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-green-600 h-2 rounded-full transition-all"
+                                style={{ width: `${Math.min(data.rate, 100)}%` }}
+                              />
+                            </div>
+                            <span className="font-bold text-green-600 w-16 text-right">
+                              {data.rate.toFixed(1)}%
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
                 </div>
               )}
               
@@ -604,7 +739,7 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
               {abTestResults && Object.keys(abTestResults).some(key => abTestResults[key].submissions > 0) && (
                     <div className="bg-white rounded-lg border border-gray-200">
                       <h4 className="text-lg font-semibold text-gray-900 p-4 border-b border-gray-200">
-                        A/B Test Results
+                        🧪 A/B Test Results
                       </h4>
                       <div className="p-4">
                         <p className="text-sm text-gray-600 mb-4">
@@ -716,6 +851,18 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
                   )}
                     </>
                   )}
+
+              {/* No Data Message - Only if truly nothing to show */}
+              {!insights?.industryBenchmarks && 
+               !abTestResults && 
+               !correlations && (
+                <div className="text-center py-12">
+                  <p className="text-gray-500 text-lg mb-2">Loading insights...</p>
+                  <p className="text-sm text-gray-400">
+                    Getting timing analytics and industry benchmarks
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>

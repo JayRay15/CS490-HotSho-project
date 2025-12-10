@@ -476,3 +476,183 @@ export const getTimingStats = async (req, res) => {
     res.status(500).json({ error: 'Failed to get timing stats' });
   }
 };
+
+/**
+ * UC-124: Get comprehensive timing insights with industry benchmarks
+ * Returns insights even when user has no data by using industry patterns
+ */
+export const getComprehensiveInsights = async (req, res) => {
+  try {
+    const userId = req.auth?.payload?.sub || req.auth?.userId;
+
+    // Get user's actual data
+    const userTimings = await ApplicationTiming.find({ userId });
+    
+    // Calculate user-specific correlations
+    const userCorrelations = {
+      byDayOfWeek: {},
+      byHourOfDay: {},
+      byIndustry: {}
+    };
+
+    let totalUserSubmissions = 0;
+    let totalUserResponses = 0;
+
+    userTimings.forEach(timing => {
+      timing.submissionHistory.forEach(submission => {
+        totalUserSubmissions++;
+        
+        // Day of week
+        const day = submission.dayOfWeek || 'Unknown';
+        if (!userCorrelations.byDayOfWeek[day]) {
+          userCorrelations.byDayOfWeek[day] = { total: 0, responses: 0, rate: 0 };
+        }
+        userCorrelations.byDayOfWeek[day].total += 1;
+        if (submission.responseReceived && submission.responseType === 'positive') {
+          userCorrelations.byDayOfWeek[day].responses += 1;
+          totalUserResponses++;
+        }
+
+        // Hour of day
+        const hour = submission.hourOfDay?.toString() || 'Unknown';
+        if (!userCorrelations.byHourOfDay[hour]) {
+          userCorrelations.byHourOfDay[hour] = { total: 0, responses: 0, rate: 0 };
+        }
+        userCorrelations.byHourOfDay[hour].total += 1;
+        if (submission.responseReceived && submission.responseType === 'positive') {
+          userCorrelations.byHourOfDay[hour].responses += 1;
+        }
+      });
+    });
+
+    // Calculate rates
+    Object.keys(userCorrelations.byDayOfWeek).forEach(day => {
+      const data = userCorrelations.byDayOfWeek[day];
+      data.rate = data.total > 0 ? (data.responses / data.total) * 100 : 0;
+    });
+    
+    Object.keys(userCorrelations.byHourOfDay).forEach(hour => {
+      const data = userCorrelations.byHourOfDay[hour];
+      data.rate = data.total > 0 ? (data.responses / data.total) * 100 : 0;
+    });
+
+    // Generate industry benchmark insights (always available)
+    const industryBenchmarks = {
+      Technology: {
+        bestDays: ['Tuesday', 'Wednesday', 'Thursday'],
+        bestHours: ['9 AM', '10 AM', '11 AM', '2 PM'],
+        avgResponseRate: 8.5,
+        avgResponseTime: 72,
+        insights: [
+          'Tech companies typically review applications mid-week',
+          'Morning submissions (9-11 AM) get 15% more views',
+          'Avoid Friday afternoon submissions - they may sit over the weekend'
+        ]
+      },
+      Finance: {
+        bestDays: ['Tuesday', 'Wednesday'],
+        bestHours: ['8 AM', '9 AM', '10 AM'],
+        avgResponseRate: 6.2,
+        avgResponseTime: 120,
+        insights: [
+          'Finance recruiters start early - submit by 9 AM',
+          'Avoid month-end and quarter-end submissions',
+          'Tuesday submissions have highest response rates'
+        ]
+      },
+      Healthcare: {
+        bestDays: ['Tuesday', 'Wednesday', 'Thursday'],
+        bestHours: ['9 AM', '10 AM', '2 PM'],
+        avgResponseRate: 12.1,
+        avgResponseTime: 96,
+        insights: [
+          'Healthcare has higher response rates overall',
+          'Avoid Monday - staff catching up on patient care',
+          'Mid-week applications perform best'
+        ]
+      },
+      Consulting: {
+        bestDays: ['Monday', 'Tuesday', 'Wednesday'],
+        bestHours: ['10 AM', '11 AM', '2 PM'],
+        avgResponseRate: 5.8,
+        avgResponseTime: 168,
+        insights: [
+          'Consulting has longer response times due to project cycles',
+          'Early week submissions align with project planning',
+          'Late afternoon submissions often get next-day review'
+        ]
+      },
+      default: {
+        bestDays: ['Tuesday', 'Wednesday', 'Thursday'],
+        bestHours: ['9 AM', '10 AM', '11 AM', '2 PM'],
+        avgResponseRate: 7.5,
+        avgResponseTime: 96,
+        insights: [
+          'Mid-week submissions generally perform best',
+          'Morning applications get more immediate attention',
+          'Avoid weekends and holidays for submissions'
+        ]
+      }
+    };
+
+    // Generate actionable recommendations
+    const recommendations = [];
+    
+    if (totalUserSubmissions === 0) {
+      recommendations.push({
+        type: 'get_started',
+        title: 'Start Tracking Your Applications',
+        description: 'Use our timing recommendations when submitting applications to build your personal analytics.',
+        priority: 'high'
+      });
+    } else {
+      // Find best performing day
+      const bestDay = Object.entries(userCorrelations.byDayOfWeek)
+        .filter(([_, data]) => data.total >= 2)
+        .sort((a, b) => b[1].rate - a[1].rate)[0];
+      
+      if (bestDay && bestDay[1].rate > 0) {
+        recommendations.push({
+          type: 'best_day',
+          title: `${bestDay[0]} Works Best for You`,
+          description: `You have a ${bestDay[1].rate.toFixed(1)}% success rate on ${bestDay[0]}s. Consider submitting more applications on this day.`,
+          priority: 'high'
+        });
+      }
+
+      // Overall success rate feedback
+      const overallRate = totalUserSubmissions > 0 ? (totalUserResponses / totalUserSubmissions) * 100 : 0;
+      if (overallRate < 5) {
+        recommendations.push({
+          type: 'improvement',
+          title: 'Try Optimal Timing',
+          description: 'Your response rate is below average. Try following our timing recommendations more closely.',
+          priority: 'medium'
+        });
+      } else if (overallRate > 15) {
+        recommendations.push({
+          type: 'success',
+          title: 'Great Job!',
+          description: `Your ${overallRate.toFixed(1)}% response rate is above average. Keep using these timing strategies!`,
+          priority: 'low'
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      userStats: {
+        totalSubmissions: totalUserSubmissions,
+        totalResponses: totalUserResponses,
+        overallRate: totalUserSubmissions > 0 ? (totalUserResponses / totalUserSubmissions) * 100 : 0
+      },
+      correlations: userCorrelations,
+      industryBenchmarks,
+      recommendations,
+      hasData: totalUserSubmissions > 0
+    });
+  } catch (error) {
+    console.error('Error getting comprehensive insights:', error);
+    res.status(500).json({ error: 'Failed to get comprehensive insights' });
+  }
+};
