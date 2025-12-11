@@ -4,9 +4,16 @@ import { ClerkProvider } from "@clerk/clerk-react";
 import App from "./App.jsx";
 import "./index.css";
 import { initializeSentry } from "./utils/sentry";
+import { initPerformanceMonitoring } from "./utils/performance";
 
 // Initialize Sentry error tracking
 initializeSentry();
+
+// Initialize performance monitoring (Web Vitals)
+initPerformanceMonitoring({
+  reportToConsole: import.meta.env.DEV,
+  reportToAnalytics: import.meta.env.PROD,
+});
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
