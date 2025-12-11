@@ -4,6 +4,8 @@
  */
 
 import React, { useState } from 'react';
+import { useAuth } from '@clerk/clerk-react';
+import { setAuthToken } from '../api/axios';
 import {
     exportCoverLetterAsPdf,
     exportCoverLetterAsDocx,
@@ -18,6 +20,7 @@ const CoverLetterExportModal = ({
     contactInfo = null,
     linkedJob = null
 }) => {
+    const { getToken } = useAuth();
     const [exportFormat, setExportFormat] = useState('pdf');
     const [isExporting, setIsExporting] = useState(false);
     const [exportOptions, setExportOptions] = useState({
@@ -87,6 +90,15 @@ const CoverLetterExportModal = ({
     const handleExport = async () => {
         setIsExporting(true);
         try {
+            // Get and set authentication token
+            const token = await getToken();
+            setAuthToken(token);
+
+            // Validate cover letter ID
+            if (!coverLetter || !coverLetter._id) {
+                throw new Error('Cover letter ID is missing');
+            }
+
             let response;
             const payload = {
                 letterhead: exportOptions.letterhead,
@@ -94,6 +106,8 @@ const CoverLetterExportModal = ({
                 printOptimized: exportOptions.printOptimized,
                 includeHeader: exportOptions.includeHeader
             };
+
+            console.log('Exporting cover letter:', { id: coverLetter._id, format: exportFormat });
 
             // Call appropriate export API based on format
             switch (exportFormat) {
@@ -141,7 +155,29 @@ const CoverLetterExportModal = ({
             alert(`Cover letter exported successfully as ${exportFormat.toUpperCase()}!`);
         } catch (error) {
             console.error('Export failed:', error);
-            alert(`Failed to export cover letter: ${error.response?.data?.message || error.message}`);
+            
+            // Handle blob error responses - need to convert to text first
+            let errorMessage = error.message || 'Failed to export cover letter';
+            
+            if (error.response) {
+                // If response is a blob (because responseType: 'blob'), try to read it as text
+                if (error.response.data instanceof Blob) {
+                    try {
+                        const text = await error.response.data.text();
+                        const json = JSON.parse(text);
+                        errorMessage = json.message || errorMessage;
+                    } catch (e) {
+                        // If parsing fails, use status text or default message
+                        errorMessage = error.response.statusText || `Server returned ${error.response.status}`;
+                    }
+                } else if (error.response.data?.message) {
+                    errorMessage = error.response.data.message;
+                } else if (error.response.status === 404) {
+                    errorMessage = 'Cover letter not found or export endpoint not available';
+                }
+            }
+            
+            alert(`Failed to export cover letter: ${errorMessage}`);
         } finally {
             setIsExporting(false);
         }
@@ -150,6 +186,10 @@ const CoverLetterExportModal = ({
     const handleGenerateEmailTemplate = async () => {
         setIsExporting(true);
         try {
+            // Get and set authentication token
+            const token = await getToken();
+            setAuthToken(token);
+
             const payload = {
                 jobDetails: exportOptions.jobDetails
             };

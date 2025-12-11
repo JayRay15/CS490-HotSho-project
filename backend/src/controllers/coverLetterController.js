@@ -328,7 +328,7 @@ export const exportCoverLetterAsPdf = async (req, res) => {
     }
 
     // Get user contact info
-    const user = await User.findOne({ userId }).select('profile').lean();
+    const user = await User.findOne({ auth0Id: userId }).select('profile').lean();
     const contactInfo = user?.profile?.contactInfo || {};
 
     // Merge job details from linked job if available
@@ -557,7 +557,7 @@ export const exportCoverLetterAsDocx = async (req, res) => {
     }
 
     // Get user contact info
-    const user = await User.findOne({ userId }).select('profile').lean();
+    const user = await User.findOne({ auth0Id: userId }).select('profile').lean();
     const contactInfo = user?.profile?.contactInfo || {};
 
     // Merge job details
@@ -594,7 +594,7 @@ export const exportCoverLetterAsDocx = async (req, res) => {
     res.send(docxBuffer);
   } catch (err) {
     console.error("Failed to export cover letter as DOCX:", err);
-    const { response, statusCode } = errorResponse("Failed to export cover letter", 500, ERROR_CODES.EXPORT_ERROR);
+    const { response, statusCode } = errorResponse("Failed to export cover letter", 500, ERROR_CODES.SERVER_ERROR);
     return sendResponse(res, response, statusCode);
   }
 };
@@ -621,7 +621,7 @@ export const exportCoverLetterAsHtml = async (req, res) => {
     }
 
     // Get user contact info
-    const user = await User.findOne({ userId }).select('profile').lean();
+    const user = await User.findOne({ auth0Id: userId }).select('profile').lean();
     const contactInfo = user?.profile?.contactInfo || {};
 
     // Merge job details
@@ -658,7 +658,7 @@ export const exportCoverLetterAsHtml = async (req, res) => {
     res.send(html);
   } catch (err) {
     console.error("Failed to export cover letter as HTML:", err);
-    const { response, statusCode } = errorResponse("Failed to export cover letter", 500, ERROR_CODES.EXPORT_ERROR);
+    const { response, statusCode } = errorResponse("Failed to export cover letter", 500, ERROR_CODES.SERVER_ERROR);
     return sendResponse(res, response, statusCode);
   }
 };
@@ -683,7 +683,7 @@ export const exportCoverLetterAsText = async (req, res) => {
     }
 
     // Get user contact info
-    const user = await User.findOne({ userId }).select('profile').lean();
+    const user = await User.findOne({ auth0Id: userId }).select('profile').lean();
     const contactInfo = user?.profile?.contactInfo || {};
 
     // Merge job details
@@ -717,7 +717,7 @@ export const exportCoverLetterAsText = async (req, res) => {
     res.send(text);
   } catch (err) {
     console.error("Failed to export cover letter as text:", err);
-    const { response, statusCode } = errorResponse("Failed to export cover letter", 500, ERROR_CODES.EXPORT_ERROR);
+    const { response, statusCode } = errorResponse("Failed to export cover letter", 500, ERROR_CODES.SERVER_ERROR);
     return sendResponse(res, response, statusCode);
   }
 };
@@ -739,7 +739,7 @@ export const generateCoverLetterEmailTemplate = async (req, res) => {
     }
 
     // Get user contact info
-    const user = await User.findOne({ userId }).select('profile').lean();
+    const user = await User.findOne({ auth0Id: userId }).select('profile').lean();
     const contactInfo = user?.profile?.contactInfo || {};
 
     // Merge job details
