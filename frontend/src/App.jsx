@@ -4,6 +4,7 @@ import Navbar from "./components/Navbar";
 import Breadcrumb from "./components/Breadcrumb";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdminRoute from "./components/AdminRoute";
 
 // Loading component for lazy-loaded routes
 const PageLoader = () => (
@@ -198,9 +199,10 @@ function App() {
             <Route path="/advisors/messages" element={<ProtectedRoute><AdvisorMessagingPage /></ProtectedRoute>} />
             <Route path="/peer-support" element={<ProtectedRoute><PeerSupportPage /></ProtectedRoute>} />
             <Route path="/job-map" element={<ProtectedRoute><JobMapPage /></ProtectedRoute>} />
-            <Route path="/admin/api-monitoring" element={<ProtectedRoute><APIMonitoringDashboard /></ProtectedRoute>} />
-            <Route path="/admin/system-monitoring" element={<ProtectedRoute><SystemMonitoringDashboard /></ProtectedRoute>} />
-            <Route path="/admin/test-errors" element={<ProtectedRoute><TestErrorPage /></ProtectedRoute>} />
+            {/* Admin-only routes - requires admin role */}
+            <Route path="/admin/api-monitoring" element={<AdminRoute><APIMonitoringDashboard /></AdminRoute>} />
+            <Route path="/admin/system-monitoring" element={<AdminRoute><SystemMonitoringDashboard /></AdminRoute>} />
+            <Route path="/admin/test-errors" element={<AdminRoute><TestErrorPage /></AdminRoute>} />
           </Routes>
         </Suspense>
       </Router>
