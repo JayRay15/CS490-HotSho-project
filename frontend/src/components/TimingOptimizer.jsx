@@ -8,8 +8,10 @@ import {
   getTimingMetrics,
   getABTestResults,
   getCorrelations,
-  getComprehensiveInsights
+  getComprehensiveInsights,
+  getScheduledSubmissions
 } from '../api/applicationTiming';
+import apiClient from '../api/apiClient';
 
 const TimingOptimizer = ({ job, onClose, onScheduled }) => {
   const [loading, setLoading] = useState(true);
@@ -19,12 +21,14 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
   const [abTestResults, setAbTestResults] = useState(null);
   const [correlations, setCorrelations] = useState(null);
   const [insights, setInsights] = useState(null);
+  const [scheduledSubmissions, setScheduledSubmissions] = useState([]);
   const [activeTab, setActiveTab] = useState('recommendation');
   const [scheduledTime, setScheduledTime] = useState('');
   const [autoSubmit, setAutoSubmit] = useState(false);
   const [scheduling, setScheduling] = useState(false);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
+  const [confirmModal, setConfirmModal] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -95,6 +99,14 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
         setInsights(insightsResponse);
       } catch (err) {
         console.error('Error loading comprehensive insights:', err);
+      }
+
+      // Load scheduled submissions
+      try {
+        const scheduledResponse = await getScheduledSubmissions();
+        setScheduledSubmissions(scheduledResponse.scheduled || []);
+      } catch (err) {
+        console.error('Error loading scheduled submissions:', err);
       }
 
     } catch (err) {
@@ -185,11 +197,11 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
   const getActionColor = (action) => {
     switch (action) {
       case 'submit_now':
-        return 'bg-green-100 text-green-800 border-green-300';
+        return 'bg-primary-100 text-primary-800 border-primary-300';
       case 'wait_briefly':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+        return 'bg-gray-100 text-gray-800 border-gray-300';
       case 'schedule':
-        return 'bg-blue-100 text-blue-800 border-blue-300';
+        return 'bg-primary-100 text-primary-800 border-primary-300';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-300';
     }
@@ -228,7 +240,7 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
         <div className="bg-white rounded-lg p-8 max-w-md w-full">
           <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
           </div>
           <p className="text-center mt-4 text-gray-600">Analyzing optimal timing...</p>
         </div>
@@ -293,19 +305,20 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
         {/* Tabs */}
         <div className="border-b border-gray-200">
           <nav className="flex space-x-4 px-6" aria-label="Tabs">
-            {['recommendation', 'metrics', 'insights'].map((tab) => (
+            {['recommendation', 'metrics', 'insights', 'scheduled'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={`py-4 px-1 border-b-2 font-medium text-sm ${
                   activeTab === tab
-                    ? 'border-blue-500 text-blue-600'
+                    ? 'border-primary-600 text-primary-700'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                {tab === 'recommendation' && '📅 Recommendation'}
-                {tab === 'metrics' && '📊 Your Metrics'}
-                {tab === 'insights' && '💡 Insights & Analytics'}
+                {tab === 'recommendation' && 'Recommendation'}
+                {tab === 'metrics' && 'Your Metrics'}
+                {tab === 'insights' && 'Insights & Analytics'}
+                {tab === 'scheduled' && `Scheduled ${scheduledSubmissions.length > 0 ? `(${scheduledSubmissions.length})` : ''}`}
               </button>
             ))}
           </nav>
@@ -317,18 +330,17 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
             <div className="space-y-6">
               {/* Real-time Recommendation */}
               {realtimeRec && (
-                <div className={`border-2 rounded-lg p-6 ${getActionColor(realtimeRec.action)}`}>
+                <div className="border rounded-lg p-6 bg-primary-50 border-primary-200">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xl font-bold">Right Now</h3>
-                    <span className="text-2xl">
-                      {realtimeRec.action === 'submit_now' && '🟢'}
-                      {realtimeRec.action === 'wait_briefly' && '🟡'}
-                      {realtimeRec.action === 'schedule' && '🔵'}
-                    </span>
+                    <h3 className="text-xl font-bold text-gray-900">
+                      {realtimeRec.action === 'submit_now' && 'Right Now'}
+                      {realtimeRec.action === 'wait_briefly' && 'Soon'}
+                      {realtimeRec.action === 'schedule' && 'Recommendation'}
+                    </h3>
                   </div>
-                  <p className="text-lg font-medium mb-2">{realtimeRec.message}</p>
+                  <p className="text-lg font-medium text-gray-700 mb-2">{realtimeRec.message}</p>
                   {realtimeRec.hoursUntilOptimal > 0 && (
-                    <p className="text-sm opacity-90">
+                    <p className="text-sm text-gray-600">
                       {realtimeRec.hoursUntilOptimal} hours until optimal time
                     </p>
                   )}
@@ -337,11 +349,11 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
 
               {/* Detailed Recommendation */}
               {recommendation && (
-                <div className="bg-linear-to-br from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200">
+                <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
                   <div className="flex items-start justify-between mb-4">
                     <div>
                       <h3 className="text-xl font-bold text-gray-900 mb-2">Optimal Submission Time</h3>
-                      <p className="text-3xl font-bold text-blue-600">
+                      <p className="text-3xl font-bold text-gray-900">
                         {recommendation.dayOfWeek}
                       </p>
                       <p className="text-xl text-gray-700 mt-1">
@@ -363,7 +375,7 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
                     </div>
                   </div>
 
-                  <div className="mt-6 p-4 bg-white rounded-lg border border-blue-200">
+                  <div className="mt-6 p-4 bg-white rounded-lg border border-gray-200">
                     <p className="text-gray-800">{recommendation.reasoning}</p>
                   </div>
                 </div>
@@ -468,7 +480,7 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
                           const recTime = new Date(recommendation.recommendedTime);
                           setScheduledTime(recTime.toISOString().slice(0, 16));
                         }}
-                        className="mt-2 text-sm text-blue-600 hover:text-blue-800"
+                        className="mt-2 text-sm text-gray-600 hover:text-gray-800"
                       >
                         Use recommended time
                       </button>
@@ -481,7 +493,7 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
                       id="autoSubmit"
                       checked={autoSubmit}
                       onChange={(e) => setAutoSubmit(e.target.checked)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                     />
                     <label htmlFor="autoSubmit" className="text-sm text-gray-700">
                       Auto-submit at scheduled time (sends reminder if unchecked)
@@ -495,7 +507,7 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
                         handleSchedule();
                       }}
                       disabled={scheduling || !scheduledTime}
-                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium"
+                      className="flex-1 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium"
                     >
                       {scheduling ? 'Scheduling...' : 'Schedule Submission'}
                     </button>
@@ -511,7 +523,7 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
                   </div>
 
                   {metrics?.scheduledSubmission?.status === 'scheduled' && (
-                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="p-3 bg-primary-50 border border-primary-200 rounded-lg">
                       <p className="text-sm font-medium text-blue-900">
                         Currently scheduled for:{' '}
                         {formatDateTime(metrics.scheduledSubmission.scheduledTime)}
@@ -529,9 +541,9 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
                 <>
                   {/* Overall Metrics */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-linear-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                       <p className="text-sm text-gray-600 mb-1">Total Submissions</p>
-                      <p className="text-3xl font-bold text-blue-600">{metrics.totalSubmissions}</p>
+                      <p className="text-3xl font-bold text-primary-700">{metrics.totalSubmissions}</p>
                     </div>
                     <div className="bg-linear-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
                       <p className="text-sm text-gray-600 mb-1">Response Rate</p>
@@ -574,7 +586,7 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
                         </div>
                       </div>
                       {metrics.optimalTimeSuccessRate > metrics.nonOptimalTimeSuccessRate && (
-                        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="mt-4 p-3 bg-primary-50 border border-primary-200 rounded-lg">
                           <p className="text-sm text-blue-800">
                             Applying at optimal times improved your success rate by{' '}
                             <span className="font-bold">
@@ -603,7 +615,7 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
               {insights?.recommendations && insights.recommendations.length > 0 && (
                 <div className="bg-white rounded-lg border border-gray-200">
                   <h4 className="text-lg font-semibold text-gray-900 p-4 border-b border-gray-200">
-                    💡 Personalized Recommendations
+                    Personalized Recommendations
                   </h4>
                   <div className="p-4 space-y-3">
                     {insights.recommendations.map((rec, index) => (
@@ -611,19 +623,13 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
                         key={index} 
                         className={`p-4 rounded-lg border ${
                           rec.priority === 'high' 
-                            ? 'bg-blue-50 border-blue-200' 
+                            ? 'bg-primary-50 border-primary-200' 
                             : rec.priority === 'medium'
-                            ? 'bg-yellow-50 border-yellow-200'
-                            : 'bg-green-50 border-green-200'
+                            ? 'bg-gray-50 border-gray-200'
+                            : 'bg-gray-50 border-gray-200'
                         }`}
                       >
                         <div className="flex items-start gap-3">
-                          <span className="text-2xl">
-                            {rec.type === 'get_started' && '🚀'}
-                            {rec.type === 'best_day' && '📅'}
-                            {rec.type === 'improvement' && '📈'}
-                            {rec.type === 'success' && '🎉'}
-                          </span>
                           <div>
                             <h5 className="font-semibold text-gray-900">{rec.title}</h5>
                             <p className="text-sm text-gray-600 mt-1">{rec.description}</p>
@@ -638,18 +644,18 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
               {/* User Stats Summary */}
               {insights?.userStats && insights.userStats.totalSubmissions > 0 && (
                 <div className="bg-white rounded-lg border border-gray-200 p-4">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-4">📊 Your Stats</h4>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4">Your Stats</h4>
                   <div className="grid grid-cols-3 gap-4">
-                    <div className="text-center p-3 bg-blue-50 rounded-lg">
-                      <p className="text-2xl font-bold text-blue-600">{insights.userStats.totalSubmissions}</p>
+                    <div className="text-center p-3 bg-primary-50 rounded-lg">
+                      <p className="text-2xl font-bold text-primary-700">{insights.userStats.totalSubmissions}</p>
                       <p className="text-sm text-gray-600">Total Submissions</p>
                     </div>
-                    <div className="text-center p-3 bg-green-50 rounded-lg">
-                      <p className="text-2xl font-bold text-green-600">{insights.userStats.totalResponses}</p>
+                    <div className="text-center p-3 bg-gray-50 rounded-lg">
+                      <p className="text-2xl font-bold text-gray-700">{insights.userStats.totalResponses}</p>
                       <p className="text-sm text-gray-600">Responses</p>
                     </div>
-                    <div className="text-center p-3 bg-purple-50 rounded-lg">
-                      <p className="text-2xl font-bold text-purple-600">{insights.userStats.overallRate.toFixed(1)}%</p>
+                    <div className="text-center p-3 bg-gray-50 rounded-lg">
+                      <p className="text-2xl font-bold text-gray-700">{insights.userStats.overallRate.toFixed(1)}%</p>
                       <p className="text-sm text-gray-600">Response Rate</p>
                     </div>
                   </div>
@@ -660,7 +666,7 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
               {insights?.industryBenchmarks && (
                 <div className="bg-white rounded-lg border border-gray-200">
                   <h4 className="text-lg font-semibold text-gray-900 p-4 border-b border-gray-200">
-                    🏢 Industry Timing Benchmarks
+                    Industry Timing Benchmarks
                   </h4>
                   <div className="p-4">
                     <p className="text-sm text-gray-600 mb-4">
@@ -674,22 +680,19 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
                             <h5 className="font-semibold text-gray-900 mb-2">{industry}</h5>
                             <div className="space-y-2 text-sm">
                               <div className="flex items-center gap-2">
-                                <span className="text-green-600">✓</span>
                                 <span>Best days: {data.bestDays.join(', ')}</span>
                               </div>
                               <div className="flex items-center gap-2">
-                                <span className="text-blue-600">⏰</span>
                                 <span>Best hours: {data.bestHours.join(', ')}</span>
                               </div>
                               <div className="flex items-center gap-2">
-                                <span className="text-purple-600">📈</span>
                                 <span>Avg response rate: {data.avgResponseRate}%</span>
                               </div>
                             </div>
                             {data.insights && (
                               <div className="mt-3 pt-3 border-t border-gray-200">
                                 <p className="text-xs text-gray-500 italic">
-                                  💡 {data.insights[0]}
+                                  {data.insights[0]}
                                 </p>
                               </div>
                             )}
@@ -705,7 +708,7 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
                Object.keys(insights.correlations.byDayOfWeek).length > 0 && (
                 <div className="bg-white rounded-lg border border-gray-200">
                   <h4 className="text-lg font-semibold text-gray-900 p-4 border-b border-gray-200">
-                    📆 Your Success Rate by Day
+                    Your Success Rate by Day
                   </h4>
                   <div className="p-4 space-y-2">
                     {Object.entries(insights.correlations.byDayOfWeek)
@@ -721,11 +724,11 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
                           <div className="flex items-center gap-3">
                             <div className="w-32 bg-gray-200 rounded-full h-2">
                               <div
-                                className="bg-green-600 h-2 rounded-full transition-all"
+                                className="bg-primary-600 h-2 rounded-full transition-all"
                                 style={{ width: `${Math.min(data.rate, 100)}%` }}
                               />
                             </div>
-                            <span className="font-bold text-green-600 w-16 text-right">
+                            <span className="font-bold text-primary-700 w-16 text-right">
                               {data.rate.toFixed(1)}%
                             </span>
                           </div>
@@ -739,7 +742,7 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
               {abTestResults && Object.keys(abTestResults).some(key => abTestResults[key].submissions > 0) && (
                     <div className="bg-white rounded-lg border border-gray-200">
                       <h4 className="text-lg font-semibold text-gray-900 p-4 border-b border-gray-200">
-                        🧪 A/B Test Results
+                        A/B Test Results
                       </h4>
                       <div className="p-4">
                         <p className="text-sm text-gray-600 mb-4">
@@ -752,7 +755,7 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
                                 <span className="font-medium text-gray-900 capitalize">
                                   {group.replace(/_/g, ' ')}
                                 </span>
-                                <span className="text-lg font-bold text-blue-600">
+                                <span className="text-lg font-bold text-gray-700">
                                   {data.rate.toFixed(1)}%
                                 </span>
                               </div>
@@ -762,7 +765,7 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
                               </div>
                               <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
                                 <div
-                                  className="bg-blue-600 h-2 rounded-full transition-all"
+                                  className="bg-primary-600 h-2 rounded-full transition-all"
                                   style={{ width: `${data.rate}%` }}
                                 />
                               </div>
@@ -835,11 +838,11 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
                                 <div className="flex items-center gap-3">
                                   <div className="w-32 bg-gray-200 rounded-full h-2">
                                     <div
-                                      className="bg-blue-600 h-2 rounded-full transition-all"
+                                      className="bg-primary-600 h-2 rounded-full transition-all"
                                       style={{ width: `${data.rate}%` }}
                                     />
                                   </div>
-                                  <span className="font-bold text-blue-600 w-16 text-right">
+                                  <span className="font-bold text-primary-700 w-16 text-right">
                                     {data.rate.toFixed(1)}%
                                   </span>
                                 </div>
@@ -865,6 +868,138 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
               )}
             </div>
           )}
+
+          {/* Scheduled Tab */}
+          {activeTab === 'scheduled' && (
+            <div className="space-y-4">
+              {scheduledSubmissions.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-500 text-lg mb-2">No Scheduled Submissions</p>
+                  <p className="text-sm text-gray-400">
+                    Schedule an application submission using the Recommendation tab
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="bg-primary-50 border border-primary-200 rounded-lg p-4 mb-4">
+                    <p className="text-sm text-primary-800">
+                      <strong>{scheduledSubmissions.length}</strong> application{scheduledSubmissions.length !== 1 ? 's' : ''} scheduled
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    {scheduledSubmissions.map((scheduled, index) => {
+                      const scheduledDate = new Date(scheduled.scheduledTime);
+                      const isPast = scheduledDate < new Date();
+                      const isToday = scheduledDate.toDateString() === new Date().toDateString();
+                      
+                      return (
+                        <div 
+                          key={index} 
+                          className={`border rounded-lg p-4 ${
+                            isPast ? 'bg-gray-50 border-gray-300' : 'bg-white border-primary-200'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <div>
+                                  <h4 className="font-semibold text-gray-900">
+                                    {scheduled.jobTitle || 'Job Application'}
+                                  </h4>
+                                  <p className="text-sm text-gray-600">
+                                    {scheduled.jobCompany || 'Company'}
+                                  </p>
+                                </div>
+                              </div>
+                              
+                              <div className="mt-3 space-y-2">
+                                <div className="flex items-center gap-2 text-sm">
+                                  <span className={`font-medium ${
+                                    isToday ? 'text-primary-700' : isPast ? 'text-gray-500' : 'text-gray-700'
+                                  }`}>
+                                    {scheduledDate.toLocaleDateString()} at {scheduledDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                </div>
+                                
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                    scheduled.autoSubmit
+                                      ? 'bg-primary-100 text-primary-700'
+                                      : 'bg-gray-100 text-gray-700'
+                                  }`}>
+                                    {scheduled.autoSubmit ? 'Auto-Submit' : 'Reminder Only'}
+                                  </span>
+                                  
+                                  {isPast && (
+                                    <span className="text-xs px-2 py-1 rounded-full font-medium bg-gray-200 text-gray-600">
+                                      Completed
+                                    </span>
+                                  )}
+                                  
+                                  {isToday && !isPast && (
+                                    <span className="text-xs px-2 py-1 rounded-full font-medium bg-primary-100 text-primary-700">
+                                      Today
+                                    </span>
+                                  )}
+                                  
+                                  {scheduled.reminderSent && (
+                                    <span className="text-xs px-2 py-1 rounded-full font-medium bg-gray-100 text-gray-600">
+                                      Reminder Sent
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {!isPast && (
+                              <div className="ml-4 flex flex-col gap-2">
+                                <button
+                                  onClick={() => {
+                                    setConfirmModal({
+                                      type: 'submit',
+                                      jobId: scheduled.jobId,
+                                      jobCompany: scheduled.jobCompany
+                                    });
+                                  }}
+                                  className="px-3 py-1 text-sm text-white bg-gray-800 hover:bg-gray-900 rounded-lg transition-colors"
+                                >
+                                  Submit Now
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    // Switch to recommendation tab and pre-fill with current scheduled time
+                                    setScheduledTime(new Date(scheduled.scheduledTime).toISOString().slice(0, 16));
+                                    setAutoSubmit(scheduled.autoSubmit);
+                                    setActiveTab('recommendation');
+                                  }}
+                                  className="px-3 py-1 text-sm text-gray-700 hover:bg-gray-50 border border-gray-300 rounded-lg transition-colors"
+                                >
+                                  Reschedule
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setConfirmModal({
+                                      type: 'cancel',
+                                      jobId: scheduled.jobId,
+                                      jobCompany: scheduled.jobCompany
+                                    });
+                                  }}
+                                  className="px-3 py-1 text-sm text-gray-600 hover:bg-gray-50 border border-gray-300 rounded-lg transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -877,6 +1012,80 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
           </button>
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      {confirmModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-60">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              {confirmModal.type === 'submit' ? 'Submit Application Now?' : 'Cancel Scheduled Submission?'}
+            </h3>
+            <p className="text-gray-600 mb-6">
+              {confirmModal.type === 'submit' 
+                ? `Are you sure you want to submit your application to ${confirmModal.jobCompany} now? This will cancel the scheduled submission.`
+                : `Are you sure you want to cancel the scheduled submission for ${confirmModal.jobCompany}?`
+              }
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setConfirmModal(null)}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    if (confirmModal.type === 'submit') {
+                      // Cancel the schedule
+                      await cancelScheduledSubmission(confirmModal.jobId, 'Submitted immediately');
+                      
+                      // Update job status to "Applied" and set application date
+                      await apiClient.put(`/jobs/${confirmModal.jobId}/status`, { 
+                        status: 'Applied'
+                      });
+                      
+                      // Update job with application date
+                      await apiClient.put(`/jobs/${confirmModal.jobId}`, {
+                        applicationDate: new Date().toISOString()
+                      });
+                      
+                      const scheduledResponse = await getScheduledSubmissions();
+                      setScheduledSubmissions(scheduledResponse.scheduled || []);
+                      setSuccessMessage({
+                        type: 'success',
+                        message: 'Application submitted! Job status updated to "Applied".'
+                      });
+                      setConfirmModal(null);
+                      
+                      // Notify parent to refresh job list
+                      if (onScheduled) {
+                        onScheduled();
+                      }
+                      onClose();
+                    } else {
+                      await cancelScheduledSubmission(confirmModal.jobId);
+                      const scheduledResponse = await getScheduledSubmissions();
+                      setScheduledSubmissions(scheduledResponse.scheduled || []);
+                      setSuccessMessage({
+                        type: 'success',
+                        message: 'Scheduled submission cancelled'
+                      });
+                      setConfirmModal(null);
+                    }
+                  } catch (err) {
+                    setError('Failed to process request');
+                    setConfirmModal(null);
+                  }
+                }}
+                className="px-4 py-2 text-white bg-gray-800 hover:bg-gray-900 rounded-lg transition-colors"
+              >
+                {confirmModal.type === 'submit' ? 'Submit Now' : 'Yes, Cancel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
