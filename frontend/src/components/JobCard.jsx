@@ -270,16 +270,6 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
               Full Details
             </button>
           )}
-          {/* UC-128: Career Path Simulation */}
-          {!job.archived && onSimulateCareer && (
-            <button
-              onClick={() => onSimulateCareer(job)}
-              className="text-xs text-purple-600 hover:text-purple-800 font-medium"
-              title="Simulate career path outcomes"
-            >
-              Career Path
-            </button>
-          )}
           {job.deadline && job._id && typeof window !== 'undefined' && (
             <button
               onClick={() => onStatusChange && onStatusChange(job._id, undefined, { extendDeadlineDays: 7 })}
@@ -413,16 +403,6 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
               title="View match score and analysis"
             >
               ✨ Match Score
-            </button>
-          )}
-          {/* UC-128: Career Path Simulation button */}
-          {!job.archived && onSimulateCareer && (
-            <button
-              onClick={() => onSimulateCareer(job)}
-              className="text-xs px-2 py-1 rounded bg-purple-100 hover:bg-purple-200 text-purple-700 font-medium"
-              title="Simulate career path outcomes"
-            >
-              🚀 Career Path
             </button>
           )}
           {job.archived ? (

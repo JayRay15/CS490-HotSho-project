@@ -104,7 +104,9 @@ const BLSSalaryBenchmarks = ({ jobId }) => {
   }
 
   const { job, benchmarkData, comparison, disclaimer } = blsData;
-  const { salaryRange, percentiles, source, dataYear, location, metadata } = benchmarkData;
+  const { salaryRange, percentiles = {}, source, dataYear, location, metadata } = benchmarkData;
+
+  console.log('BLS Data:', { salaryRange, percentiles, source, dataYear, location });
 
   // Prepare percentile data for chart
   const percentileData = [
@@ -288,35 +290,38 @@ const BLSSalaryBenchmarks = ({ jobId }) => {
           <div className="bg-white rounded-lg p-6 mb-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Percentile Breakdown</h3>
             <div className="space-y-3">
-              {percentiles.p10 && (
+              {percentiles?.p10 ? (
                 <div className="flex justify-between items-center py-2 border-b border-gray-100">
                   <span className="text-sm text-gray-600">10th Percentile (Entry Level)</span>
                   <span className="font-semibold text-gray-900">${percentiles.p10.toLocaleString()}/year</span>
                 </div>
-              )}
-              {percentiles.p25 && (
+              ) : null}
+              {percentiles?.p25 ? (
                 <div className="flex justify-between items-center py-2 border-b border-gray-100">
                   <span className="text-sm text-gray-600">25th Percentile (Lower Quartile)</span>
                   <span className="font-semibold text-gray-900">${percentiles.p25.toLocaleString()}/year</span>
                 </div>
-              )}
-              {percentiles.p50 && (
+              ) : null}
+              {percentiles?.p50 ? (
                 <div className="flex justify-between items-center py-2 border-b border-gray-100 bg-emerald-50">
                   <span className="text-sm font-medium text-emerald-700">50th Percentile (Median)</span>
                   <span className="font-bold text-emerald-700">${percentiles.p50.toLocaleString()}/year</span>
                 </div>
-              )}
-              {percentiles.p75 && (
+              ) : null}
+              {percentiles?.p75 ? (
                 <div className="flex justify-between items-center py-2 border-b border-gray-100">
                   <span className="text-sm text-gray-600">75th Percentile (Upper Quartile)</span>
                   <span className="font-semibold text-gray-900">${percentiles.p75.toLocaleString()}/year</span>
                 </div>
-              )}
-              {percentiles.p90 && (
+              ) : null}
+              {percentiles?.p90 ? (
                 <div className="flex justify-between items-center py-2">
                   <span className="text-sm text-gray-600">90th Percentile (Senior Level)</span>
                   <span className="font-semibold text-gray-900">${percentiles.p90.toLocaleString()}/year</span>
                 </div>
+              ) : null}
+              {!percentiles?.p10 && !percentiles?.p25 && !percentiles?.p50 && !percentiles?.p75 && !percentiles?.p90 && (
+                <p className="text-sm text-gray-500 italic">No percentile data available</p>
               )}
             </div>
           </div>

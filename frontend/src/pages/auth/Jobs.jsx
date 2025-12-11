@@ -3947,9 +3947,11 @@ export default function Jobs() {
             setShowTimingOptimizer(false);
             setSelectedJobForTiming(null);
           }}
-          onScheduled={() => {
+          onScheduled={async () => {
             setSuccessMessage("Application submission scheduled successfully!");
             setTimeout(() => setSuccessMessage(null), 3000);
+            await fetchJobs();
+            await fetchStats();
           }}
         />
       )}

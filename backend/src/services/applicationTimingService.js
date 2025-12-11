@@ -523,11 +523,17 @@ class ApplicationTimingService {
       message = 'This is an optimal time to submit your application!';
     } else if (hoursUntilOptimal < 24) {
       action = 'wait_briefly';
-      message = `Wait ${Math.round(hoursUntilOptimal)} hours for optimal timing (${recommendation.dayOfWeek} at ${recommendation.recommendedTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })})`;
+      const hours = Math.round(hoursUntilOptimal);
+      message = `Wait ${hours} hour${hours !== 1 ? 's' : ''} for optimal timing (${recommendation.dayOfWeek} at ${recommendation.recommendedTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })})`;
     } else {
-      const days = Math.floor(hoursUntilOptimal / 24);
+      const days = Math.ceil(hoursUntilOptimal / 24);
       action = 'schedule';
-      message = `Schedule for ${recommendation.dayOfWeek} (in ${days} day${days > 1 ? 's' : ''}) for best results`;
+      
+      // Better day calculation
+      const daysFromNow = Math.floor((recommendation.recommendedTime - now) / (1000 * 60 * 60 * 24));
+      const actualDays = daysFromNow === 0 ? 'later today' : daysFromNow === 1 ? 'tomorrow' : `in ${daysFromNow} day${daysFromNow > 1 ? 's' : ''}`;
+      
+      message = `Schedule for ${recommendation.dayOfWeek} (${actualDays}) for best results`;
     }
 
     return {

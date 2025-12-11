@@ -40,4 +40,7 @@ router.get('/scheduled', timingController.getScheduledSubmissions);
 // UC-124: Get industry and company size statistics
 router.get('/stats', timingController.getTimingStats);
 
+// UC-124: Get comprehensive insights with industry benchmarks
+router.get('/insights', timingController.getComprehensiveInsights);
+
 export default router;
