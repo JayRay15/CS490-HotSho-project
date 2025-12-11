@@ -3,6 +3,7 @@
  * Handles job location mapping, geocoding, and commute calculations
  */
 
+import mongoose from "mongoose";
 import { Job } from "../models/Job.js";
 import { User } from "../models/User.js";
 import {
@@ -28,7 +29,9 @@ export const getJobsWithLocations = async (req, res) => {
     }
 
     // Get query parameters for filtering
-    const { workMode, maxDistance, status } = req.query;
+    const { workMode, maxDistance, maxCommuteTime, status } = req.query;
+
+    console.log("getJobsWithLocations params:", { workMode, maxDistance, maxCommuteTime, status });
 
     // Build query
     const query = { userId };
@@ -48,8 +51,15 @@ export const getJobsWithLocations = async (req, res) => {
       )
       .sort({ createdAt: -1 });
 
-    // Get user's home location for commute calculations
-    const user = await User.findOne({ auth0Id: userId }).select("homeLocation");
+    // Get user's home location for commute calculations - use native MongoDB
+    const db = mongoose.connection.db;
+    const usersCollection = db.collection('users');
+    const user = await usersCollection.findOne(
+      { auth0Id: userId },
+      { projection: { homeLocation: 1 } }
+    );
+    
+    console.log("User homeLocation from DB (native):", JSON.stringify(user?.homeLocation, null, 2));
 
     // Process jobs and add commute details if home location exists
     let jobsWithCommute = jobs.map((job) => {
@@ -68,11 +78,29 @@ export const getJobsWithLocations = async (req, res) => {
     // Filter by max distance if specified
     if (maxDistance && user?.homeLocation?.coordinates) {
       const maxDistanceNum = parseFloat(maxDistance);
+      console.log("Filtering by maxDistance:", maxDistanceNum);
       jobsWithCommute = jobsWithCommute.filter((job) => {
         if (!job.commuteDetails) return true; // Keep jobs without location data
-        return job.commuteDetails.distance.km <= maxDistanceNum;
+        const passes = job.commuteDetails.distance.km <= maxDistanceNum;
+        console.log(`Job ${job.title}: ${job.commuteDetails.distance.km}km <= ${maxDistanceNum}km = ${passes}`);
+        return passes;
       });
     }
+
+    // Filter by max commute time if specified
+    if (maxCommuteTime && user?.homeLocation?.coordinates) {
+      const maxTimeNum = parseFloat(maxCommuteTime);
+      console.log("Filtering by maxCommuteTime:", maxTimeNum);
+      jobsWithCommute = jobsWithCommute.filter((job) => {
+        if (!job.commuteDetails) return true; // Keep jobs without location data
+        const drivingTime = job.commuteDetails.estimates.driving.timeMinutes;
+        const passes = drivingTime <= maxTimeNum;
+        console.log(`Job ${job.title}: ${drivingTime}min <= ${maxTimeNum}min = ${passes}`);
+        return passes;
+      });
+    }
+
+    console.log(`Returning ${jobsWithCommute.length} jobs after filtering`);
 
     return res.status(200).json({
       success: true,
@@ -275,54 +303,54 @@ export const setHomeLocation = async (req, res) => {
       });
     }
 
-    // Update user's home location
+    // Update user's home location using direct MongoDB update
     console.log("Updating user with auth0Id:", userId);
-    console.log("Setting homeLocation to:", JSON.stringify({
+    const homeLocationData = {
       address: address,
-      coordinates: geocodeResult.coordinates,
-      displayName: geocodeResult.displayName,
-      timezone: geocodeResult.timezone?.name || geocodeResult.timezone,
-    }, null, 2));
-    
-    const user = await User.findOneAndUpdate(
-      { auth0Id: userId },
-      {
-        $set: {
-          homeLocation: {
-            address: address,
-            coordinates: geocodeResult.coordinates,
-            displayName: geocodeResult.displayName,
-            timezone: geocodeResult.timezone?.name || geocodeResult.timezone,
-          }
-        }
+      coordinates: {
+        lat: geocodeResult.coordinates.lat,
+        lng: geocodeResult.coordinates.lng,
       },
-      { new: true, upsert: false, runValidators: false }
+      displayName: geocodeResult.displayName,
+      timezone: geocodeResult.timezone?.name || geocodeResult.timezone || null,
+    };
+    console.log("Setting homeLocation to:", JSON.stringify(homeLocationData, null, 2));
+    
+    // Use updateOne with $set for direct MongoDB update - bypasses Mongoose schema validation
+    // Using the native MongoDB collection directly to ensure the update is persisted
+    const db = mongoose.connection.db;
+    const usersCollection = db.collection('users');
+    
+    const updateResult = await usersCollection.updateOne(
+      { auth0Id: userId },
+      { $set: { homeLocation: homeLocationData } }
     );
-
-    console.log("User update result:", user ? "User found and updated" : "User NOT found");
-    console.log("Full user object keys:", user ? Object.keys(user.toObject ? user.toObject() : user) : "N/A");
-    console.log("User homeLocation after update:", JSON.stringify(user?.homeLocation, null, 2));
-
-    if (!user) {
+    
+    console.log("Native MongoDB update result:", JSON.stringify(updateResult, null, 2));
+    
+    if (updateResult.matchedCount === 0) {
+      console.log("User NOT found with auth0Id:", userId);
       return res.status(404).json({
         success: false,
         message: "User not found. Please make sure you have a profile.",
       });
     }
+    
+    if (updateResult.modifiedCount === 0 && updateResult.matchedCount > 0) {
+      console.log("WARNING: User found but document not modified - data might be the same");
+    }
+    
+    // Verify by re-fetching the user using native collection
+    const verifyUser = await usersCollection.findOne(
+      { auth0Id: userId },
+      { projection: { homeLocation: 1 } }
+    );
+    console.log("Verified homeLocation from DB (native):", JSON.stringify(verifyUser?.homeLocation, null, 2));
 
-    // Extract homeLocation - need to convert to plain object
-    const homeLocationData = user.homeLocation ? {
-      address: user.homeLocation.address,
-      coordinates: user.homeLocation.coordinates,
-      displayName: user.homeLocation.displayName,
-      timezone: user.homeLocation.timezone,
-    } : null;
-
-    console.log("Extracted homeLocationData:", JSON.stringify(homeLocationData, null, 2));
-
+    // Return the saved homeLocation data
     const responseData = {
       success: true,
-      data: homeLocationData,
+      data: verifyUser?.homeLocation || homeLocationData,
     };
     console.log("Sending response:", JSON.stringify(responseData, null, 2));
     
@@ -345,6 +373,8 @@ export const getHomeLocation = async (req, res) => {
   try {
     const userId = req.auth?.payload?.sub || req.auth?.userId;
 
+    console.log("getHomeLocation called with userId:", userId);
+
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -352,7 +382,17 @@ export const getHomeLocation = async (req, res) => {
       });
     }
 
-    const user = await User.findOne({ auth0Id: userId }).select("homeLocation");
+    // Use native MongoDB collection to read data directly
+    const db = mongoose.connection.db;
+    const usersCollection = db.collection('users');
+    
+    const user = await usersCollection.findOne(
+      { auth0Id: userId },
+      { projection: { homeLocation: 1 } }
+    );
+    
+    console.log("getHomeLocation - User found:", user ? "yes" : "no");
+    console.log("getHomeLocation - homeLocation:", JSON.stringify(user?.homeLocation, null, 2));
 
     return res.status(200).json({
       success: true,

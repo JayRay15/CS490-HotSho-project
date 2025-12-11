@@ -110,6 +110,7 @@ const JobMapPage = () => {
   const [showComparison, setShowComparison] = useState(false);
   const [selectedJobsForComparison, setSelectedJobsForComparison] = useState([]);
   const [comparisonData, setComparisonData] = useState(null);
+  const [selectedJobForDetails, setSelectedJobForDetails] = useState(null);
 
   // Filters
   const [filters, setFilters] = useState({
@@ -135,14 +136,22 @@ const JobMapPage = () => {
             workMode: filters.workMode || undefined,
             status: filters.status || undefined,
             maxDistance: filters.maxDistance || undefined,
+            maxCommuteTime: filters.maxCommuteTime || undefined,
           },
           getToken
         ),
         getHomeLocation(getToken),
       ]);
 
+      console.log("Jobs response:", jobsResponse);
+      console.log("Home response:", homeResponse);
+
       if (jobsResponse.success) {
         setJobs(jobsResponse.data.jobs);
+        // Also update home location from jobs response if available
+        if (jobsResponse.data.homeLocation) {
+          setHomeLocationState(jobsResponse.data.homeLocation);
+        }
       }
 
       if (homeResponse.success && homeResponse.data) {
@@ -156,16 +165,11 @@ const JobMapPage = () => {
     }
   };
 
-  // Filter jobs by commute time (client-side)
+  // Filter jobs by commute time (client-side) - now also handled server-side
   const filteredJobs = useMemo(() => {
-    if (!filters.maxCommuteTime) return jobs;
-
-    const maxMinutes = parseInt(filters.maxCommuteTime);
-    return jobs.filter((job) => {
-      if (!job.commuteDetails) return true; // Keep jobs without commute data
-      return job.commuteDetails.estimates.driving.timeMinutes <= maxMinutes;
-    });
-  }, [jobs, filters.maxCommuteTime]);
+    // Server already filters, but keep client-side filter as backup
+    return jobs;
+  }, [jobs]);
 
   // Jobs with coordinates for map display
   const mappableJobs = useMemo(() => {
@@ -562,8 +566,8 @@ const JobMapPage = () => {
                   key={job._id}
                   className={`p-4 border-b hover:bg-gray-50 cursor-pointer ${
                     selectedJobsForComparison.includes(job._id) ? "bg-purple-50" : ""
-                  }`}
-                  onClick={() => toggleJobSelection(job._id)}
+                  } ${selectedJobForDetails?._id === job._id ? "bg-blue-50 border-l-4 border-l-blue-500" : ""}`}
+                  onClick={() => setSelectedJobForDetails(selectedJobForDetails?._id === job._id ? null : job)}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -596,6 +600,75 @@ const JobMapPage = () => {
                       <div className="flex items-center gap-1">
                         <Navigation className="h-3 w-3" />
                         {job.commuteDetails.distance.miles} mi
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Expanded commute details when job is selected */}
+                  {selectedJobForDetails?._id === job._id && job.commuteDetails && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <div className="text-xs font-medium text-gray-700 mb-2">Commute Details from Home</div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="flex items-center gap-2 p-2 bg-blue-50 rounded">
+                          <Car className="h-4 w-4 text-blue-600" />
+                          <div>
+                            <div className="font-medium text-blue-900">Driving</div>
+                            <div className="text-blue-700">{job.commuteDetails.estimates.driving.timeFormatted}</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 p-2 bg-green-50 rounded">
+                          <Train className="h-4 w-4 text-green-600" />
+                          <div>
+                            <div className="font-medium text-green-900">Transit</div>
+                            <div className="text-green-700">{job.commuteDetails.estimates.transit.timeFormatted}</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 p-2 bg-orange-50 rounded">
+                          <Bike className="h-4 w-4 text-orange-600" />
+                          <div>
+                            <div className="font-medium text-orange-900">Cycling</div>
+                            <div className="text-orange-700">{job.commuteDetails.estimates.cycling.timeFormatted}</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 p-2 bg-purple-50 rounded">
+                          <Footprints className="h-4 w-4 text-purple-600" />
+                          <div>
+                            <div className="font-medium text-purple-900">Walking</div>
+                            <div className="text-purple-700">{job.commuteDetails.estimates.walking.timeFormatted}</div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-2 p-2 bg-gray-100 rounded text-center">
+                        <span className="font-medium text-gray-900">{job.commuteDetails.distance.miles} miles</span>
+                        <span className="text-gray-600"> ({job.commuteDetails.distance.km} km)</span>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleJobSelection(job._id);
+                        }}
+                        className={`mt-2 w-full py-1 text-xs rounded ${
+                          selectedJobsForComparison.includes(job._id)
+                            ? "bg-purple-100 text-purple-700"
+                            : "bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        {selectedJobsForComparison.includes(job._id) ? "✓ Selected for Comparison" : "Add to Comparison"}
+                      </button>
+                    </div>
+                  )}
+                  
+                  {/* Message when no home location or commute data */}
+                  {selectedJobForDetails?._id === job._id && !job.commuteDetails && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <div className="text-xs text-gray-500 text-center p-2 bg-yellow-50 rounded">
+                        {!homeLocation ? (
+                          <span>Set your home location to see commute times</span>
+                        ) : !job.coordinates?.lat ? (
+                          <span>Job location needs geocoding to calculate commute</span>
+                        ) : (
+                          <span>Unable to calculate commute details</span>
+                        )}
                       </div>
                     </div>
                   )}

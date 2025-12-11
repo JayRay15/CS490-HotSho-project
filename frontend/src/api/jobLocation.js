@@ -10,6 +10,7 @@ import api, { setAuthToken } from "./axios";
  * @param {Object} options - Filter options
  * @param {string} options.workMode - Filter by work mode (Remote, Hybrid, On-site)
  * @param {number} options.maxDistance - Filter by maximum distance from home (km)
+ * @param {number} options.maxCommuteTime - Filter by maximum commute time (minutes)
  * @param {string} options.status - Filter by job status
  * @param {Function} getToken - Clerk getToken function
  */
@@ -22,6 +23,7 @@ export const getJobsWithLocations = async (options = {}, getToken) => {
   const params = new URLSearchParams();
   if (options.workMode) params.append("workMode", options.workMode);
   if (options.maxDistance) params.append("maxDistance", options.maxDistance);
+  if (options.maxCommuteTime) params.append("maxCommuteTime", options.maxCommuteTime);
   if (options.status) params.append("status", options.status);
 
   const response = await api.get(`/api/job-locations?${params.toString()}`);
