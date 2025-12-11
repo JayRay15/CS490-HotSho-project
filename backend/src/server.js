@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import compression from "compression";
 import dotenv from "dotenv";
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -107,6 +108,59 @@ app.use(requestLoggingMiddleware);
 app.use(apiPerformanceMiddleware);
 
 // ============================================================================
+// MIDDLEWARE: Performance optimizations
+// ============================================================================
+
+// Gzip/Brotli compression for all responses
+// This reduces response sizes by 60-80% for text-based content
+app.use(compression({
+  // Compression level (1-9, higher = better compression but slower)
+  level: 6,
+  // Minimum size to compress (don't compress tiny responses)
+  threshold: 1024,
+  // Filter function to determine which responses to compress
+  filter: (req, res) => {
+    // Don't compress if client doesn't support it
+    if (req.headers['x-no-compression']) {
+      return false;
+    }
+    // Use compression's default filter (compresses text-based content)
+    return compression.filter(req, res);
+  },
+}));
+
+// ============================================================================
+// MIDDLEWARE: Browser caching for static assets
+// ============================================================================
+
+// Custom cache control middleware for API responses
+const cacheMiddleware = (req, res, next) => {
+  // Don't cache API mutations
+  if (req.method !== 'GET') {
+    res.setHeader('Cache-Control', 'no-store');
+    return next();
+  }
+
+  // Cache static monitoring data for 5 minutes
+  if (req.path.startsWith('/api/monitoring')) {
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    return next();
+  }
+
+  // Cache salary/market data for 1 hour (data doesn't change frequently)
+  if (req.path.startsWith('/api/salary') || req.path.startsWith('/api/market-intelligence')) {
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return next();
+  }
+
+  // Default: no caching for user-specific data
+  res.setHeader('Cache-Control', 'private, no-cache');
+  next();
+};
+
+app.use(cacheMiddleware);
+
+// ============================================================================
 // MIDDLEWARE: Core Express configuration
 // ============================================================================
 
@@ -121,8 +175,19 @@ app.use(cors({
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
-// Serve uploaded files statically
-app.use('/uploads', express.static(join(__dirname, '..', 'public', 'uploads')));
+// Serve uploaded files statically with aggressive caching
+// These files are user uploads with unique names, so long cache is safe
+app.use('/uploads', express.static(join(__dirname, '..', 'public', 'uploads'), {
+  maxAge: '7d', // Cache for 7 days
+  etag: true,
+  lastModified: true,
+  setHeaders: (res, path) => {
+    // Set immutable for hashed assets
+    if (path.includes('-') && /\.[a-f0-9]{8,}\./i.test(path)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+  },
+}));
 
 // ============================================================================
 // ROUTES: Monitoring endpoints (public, no auth required)
@@ -183,7 +248,7 @@ app.use("/api/github", githubRoutes);
 console.log('âœ… GitHub routes registered at /api/github');
 app.use("/api/predictive-analytics", predictiveAnalyticsRoutes);
 app.use("/api/response-time-prediction", responseTimePredictionRoutes);
-console.log('âœ Response Time Prediction routes mounted at /api/response-time-prediction');
+console.log('ï¿½ Response Time Prediction routes mounted at /api/response-time-prediction');
 console.log(" Predictive Analytics routes mounted at /api/predictive-analytics");
 console.log(' Interview Performance routes registered at /api/interview-performance');
 app.use("/api/competitive-analysis", competitiveAnalysisRoutes);

@@ -382,4 +382,117 @@ function formatBytes(bytes) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
+// ============================================================================
+// Web Vitals Collection Endpoint
+// ============================================================================
+
+// In-memory store for web vitals metrics (in production, use a proper time-series DB)
+const webVitalsStore = {
+    metrics: [],
+    maxSize: 1000, // Keep last 1000 metrics
+};
+
+/**
+ * @route   POST /api/monitoring/web-vitals
+ * @desc    Collect Web Vitals metrics from frontend
+ * @access  Public
+ */
+router.post('/web-vitals', express.json(), (req, res) => {
+    try {
+        const { name, value, rating } = req.body;
+
+        if (!name || value === undefined) {
+            return res.status(400).json({ error: 'Missing required fields: name, value' });
+        }
+
+        const metric = {
+            name,
+            value,
+            rating,
+            timestamp: new Date().toISOString(),
+            userAgent: req.headers['user-agent'],
+            url: req.headers.referer || 'unknown',
+        };
+
+        // Add to store
+        webVitalsStore.metrics.push(metric);
+
+        // Trim if too large
+        if (webVitalsStore.metrics.length > webVitalsStore.maxSize) {
+            webVitalsStore.metrics = webVitalsStore.metrics.slice(-webVitalsStore.maxSize);
+        }
+
+        // Log poor metrics for investigation
+        if (rating === 'poor') {
+            logger.warn('Poor Web Vital detected', { metric });
+        }
+
+        res.status(204).send();
+    } catch (error) {
+        logger.error('Error collecting web vitals', { error: error.message });
+        res.status(500).json({ error: 'Failed to collect metrics' });
+    }
+});
+
+/**
+ * @route   GET /api/monitoring/web-vitals/summary
+ * @desc    Get aggregated Web Vitals summary
+ * @access  Public
+ */
+router.get('/web-vitals/summary', (req, res) => {
+    try {
+        const { timeRange = '1h' } = req.query;
+
+        // Calculate time cutoff
+        const timeRangeMs = {
+            '1h': 60 * 60 * 1000,
+            '24h': 24 * 60 * 60 * 1000,
+            '7d': 7 * 24 * 60 * 60 * 1000,
+        };
+
+        const cutoff = Date.now() - (timeRangeMs[timeRange] || timeRangeMs['1h']);
+
+        // Filter metrics by time range
+        const recentMetrics = webVitalsStore.metrics.filter(
+            m => new Date(m.timestamp).getTime() > cutoff
+        );
+
+        // Aggregate by metric name
+        const summary = {};
+        const metricNames = ['LCP', 'FID', 'CLS', 'TTFB', 'FCP'];
+
+        metricNames.forEach(name => {
+            const values = recentMetrics
+                .filter(m => m.name === name)
+                .map(m => m.value);
+
+            if (values.length > 0) {
+                values.sort((a, b) => a - b);
+                summary[name] = {
+                    count: values.length,
+                    avg: values.reduce((a, b) => a + b, 0) / values.length,
+                    p50: values[Math.floor(values.length * 0.5)],
+                    p75: values[Math.floor(values.length * 0.75)],
+                    p95: values[Math.floor(values.length * 0.95)],
+                    min: values[0],
+                    max: values[values.length - 1],
+                    good: recentMetrics.filter(m => m.name === name && m.rating === 'good').length,
+                    needsImprovement: recentMetrics.filter(m => m.name === name && m.rating === 'needs-improvement').length,
+                    poor: recentMetrics.filter(m => m.name === name && m.rating === 'poor').length,
+                };
+            }
+        });
+
+        res.json({
+            timeRange,
+            totalSamples: recentMetrics.length,
+            summary,
+            timestamp: new Date().toISOString(),
+        });
+    } catch (error) {
+        logger.error('Error generating web vitals summary', { error: error.message });
+        res.status(500).json({ error: 'Failed to generate summary' });
+    }
+});
+
 export default router;
