@@ -16,6 +16,7 @@ import ErrorMessage from './ErrorMessage';
 import Card from './Card';
 import Button from './Button';
 import BLSSalaryBenchmarks from './BLSSalaryBenchmarks';
+import CareerGrowthCalculator from './CareerGrowthCalculator';
 import {
   BarChart,
   Bar,
@@ -82,6 +83,9 @@ const SalaryResearch = () => {
   const [trackedOffers, setTrackedOffers] = useState([]);
   const [deleteConfirmModalOpen, setDeleteConfirmModalOpen] = useState(false);
   const [offerToDelete, setOfferToDelete] = useState(null);
+  
+  // UC-128: Career Growth Calculator state
+  const [showCareerGrowthCalculator, setShowCareerGrowthCalculator] = useState(false);
 
   const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
@@ -898,6 +902,40 @@ const SalaryResearch = () => {
               className="bg-blue-600 hover:bg-blue-700 text-white"
             >
               Track Offer for This Position
+            </Button>
+          </div>
+        </div>
+      </Card>
+
+      {/* UC-128: Career Growth Calculator */}
+      <Card className="p-6 mb-8 border border-gray-200 bg-linear-to-br from-purple-50 to-indigo-50">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <h3 className="text-xl font-bold text-gray-900 mb-2">
+              Career Growth Calculator
+            </h3>
+            <p className="text-gray-600 mb-4">
+              Calculate potential salary growth over 5 and 10 years. Compare different scenarios with custom raise percentages, bonuses, equity, and career milestones to make informed decisions.
+            </p>
+            <div className="flex flex-wrap gap-2 text-sm text-gray-600 mb-4">
+              <span className="inline-flex items-center px-3 py-1 rounded-full bg-white border border-purple-200">
+                Multiple scenarios comparison
+              </span>
+              <span className="inline-flex items-center px-3 py-1 rounded-full bg-white border border-purple-200">
+                Custom career milestones
+              </span>
+              <span className="inline-flex items-center px-3 py-1 rounded-full bg-white border border-purple-200">
+                Bonus & equity tracking
+              </span>
+              <span className="inline-flex items-center px-3 py-1 rounded-full bg-white border border-purple-200">
+                Visual growth trajectory
+              </span>
+            </div>
+            <Button
+              onClick={() => setShowCareerGrowthCalculator(true)}
+              className="bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              Calculate Career Growth
             </Button>
           </div>
         </div>
@@ -1903,6 +1941,14 @@ const SalaryResearch = () => {
           Use this information as a guide for your salary negotiations.
         </p>
       </Card>
+
+      {/* UC-128: Career Growth Calculator Modal */}
+      {showCareerGrowthCalculator && (
+        <CareerGrowthCalculator
+          job={job}
+          onClose={() => setShowCareerGrowthCalculator(false)}
+        />
+      )}
     </div>
   );
 };
