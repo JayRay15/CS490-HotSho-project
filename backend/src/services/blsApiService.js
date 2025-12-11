@@ -194,6 +194,28 @@ const BLS_OES_DATA = {
     year: 2024,
     employment: 324100
   },
+  '15-1244': { // Network and Computer Systems Administrators
+    title: 'Network and Computer Systems Administrators',
+    median: 95360,
+    mean: 101110,
+    percentile10: 55080,
+    percentile25: 70970,
+    percentile75: 122100,
+    percentile90: 151420,
+    year: 2024,
+    employment: 337900
+  },
+  '15-1256': { // Software Developers and Software Quality Assurance (Combined)
+    title: 'Software Developers and Software Quality Assurance',
+    median: 130160,
+    mean: 138320,
+    percentile10: 76680,
+    percentile25: 101270,
+    percentile75: 168960,
+    percentile90: 208620,
+    year: 2024,
+    employment: 2007900
+  },
   '11-2021': { // Marketing Managers
     title: 'Marketing Managers',
     median: 166650,
@@ -204,6 +226,28 @@ const BLS_OES_DATA = {
     percentile90: 0, // Wages above $239,200
     year: 2024,
     employment: 337300
+  },
+  '11-2022': { // Sales Managers
+    title: 'Sales Managers',
+    median: 142660,
+    mean: 163990,
+    percentile10: 67170,
+    percentile25: 94840,
+    percentile75: 194840,
+    percentile90: 0, // Wages above $239,200
+    year: 2024,
+    employment: 485900
+  },
+  '11-9199': { // Managers, All Other (includes Product Managers)
+    title: 'Product Managers and Managers, All Other',
+    median: 119460,
+    mean: 139530,
+    percentile10: 59800,
+    percentile25: 82020,
+    percentile75: 167290,
+    percentile90: 0, // Wages above $239,200
+    year: 2024,
+    employment: 1031500
   },
   '11-3031': { // Financial Managers
     title: 'Financial Managers',
@@ -237,6 +281,72 @@ const BLS_OES_DATA = {
     percentile90: 143070,
     year: 2024,
     employment: 1370200
+  },
+  '13-2031': { // Budget Analysts
+    title: 'Budget Analysts',
+    median: 87220,
+    mean: 91300,
+    percentile10: 58050,
+    percentile25: 69940,
+    percentile75: 107030,
+    percentile90: 129820,
+    year: 2024,
+    employment: 50200
+  },
+  '13-2041': { // Credit Analysts
+    title: 'Credit Analysts',
+    median: 80290,
+    mean: 92050,
+    percentile10: 48800,
+    percentile25: 60520,
+    percentile75: 109430,
+    percentile90: 147040,
+    year: 2024,
+    employment: 66800
+  },
+  '13-2052': { // Personal Financial Advisors
+    title: 'Personal Financial Advisors',
+    median: 99580,
+    mean: 136550,
+    percentile10: 51780,
+    percentile25: 66580,
+    percentile75: 169200,
+    percentile90: 0, // Wages above $239,200
+    year: 2024,
+    employment: 272600
+  },
+  '13-2054': { // Financial Risk Specialists
+    title: 'Financial Risk Specialists',
+    median: 109590,
+    mean: 120860,
+    percentile10: 62830,
+    percentile25: 79690,
+    percentile75: 148470,
+    percentile90: 194340,
+    year: 2024,
+    employment: 63500
+  },
+  '13-2061': { // Financial Examiners
+    title: 'Financial Examiners',
+    median: 85440,
+    mean: 93960,
+    percentile10: 50830,
+    percentile25: 64390,
+    percentile75: 113960,
+    percentile90: 147130,
+    year: 2024,
+    employment: 62500
+  },
+  '13-2099': { // Financial Specialists, All Other
+    title: 'Financial Specialists, All Other',
+    median: 79260,
+    mean: 92700,
+    percentile10: 46990,
+    percentile25: 58770,
+    percentile75: 109390,
+    percentile90: 150860,
+    year: 2024,
+    employment: 222600
   },
   '17-2141': { // Mechanical Engineers
     title: 'Mechanical Engineers',
@@ -323,20 +433,28 @@ export const OCCUPATION_CODES = {
   'WEB_DESIGNER': '15-1255',
   'USER_SUPPORT': '15-1232',
   'NETWORK_SUPPORT': '15-1231',
+  'SYSTEMS_ADMIN': '15-1244',
+  'DEVOPS_ENGINEER': '15-1256', // Maps to combined software dev category
   'COMPUTER_OTHER': '15-1299',
   
   // Management
   'COMPUTER_MANAGER': '11-3021',
   'MARKETING_MANAGER': '11-2021',
+  'SALES_MANAGER': '11-2022',
+  'PRODUCT_MANAGER': '11-9199',
   'FINANCIAL_MANAGER': '11-3031',
   'HR_MANAGER': '11-3121',
   'OPERATIONS_MANAGER': '11-1021',
-  'SALES_MANAGER': '11-2022',
   
   // Finance
   'FINANCIAL_ANALYST': '13-2051',
   'ACCOUNTANT': '13-2011',
   'BUDGET_ANALYST': '13-2031',
+  'CREDIT_ANALYST': '13-2041',
+  'FINANCIAL_ADVISOR': '13-2052',
+  'RISK_ANALYST': '13-2054',
+  'FINANCIAL_EXAMINER': '13-2061',
+  'FINANCE_OTHER': '13-2099',
   
   // Healthcare
   'REGISTERED_NURSE': '29-1141',
@@ -419,13 +537,21 @@ export const mapJobTitleToOccupationCode = (jobTitle) => {
     return OCCUPATION_CODES.SOFTWARE_DEVELOPER;
   }
   
-  // DevOps and Cloud
+  // DevOps and Cloud - map to combined software developer category (higher paying)
   if (titleLower.includes('devops') || 
       titleLower.includes('site reliability') ||
       titleLower.includes('sre') ||
       titleLower.includes('cloud engineer') ||
-      titleLower.includes('platform engineer')) {
-    return OCCUPATION_CODES.SOFTWARE_DEVELOPER;
+      titleLower.includes('platform engineer') ||
+      titleLower.includes('infrastructure engineer')) {
+    return OCCUPATION_CODES.DEVOPS_ENGINEER;
+  }
+  
+  // Systems Administrator
+  if (titleLower.includes('systems administrator') ||
+      titleLower.includes('sysadmin') ||
+      titleLower.includes('system admin')) {
+    return OCCUPATION_CODES.SYSTEMS_ADMIN;
   }
   
   // Database roles
@@ -475,6 +601,15 @@ export const mapJobTitleToOccupationCode = (jobTitle) => {
   }
   
   // Management roles
+  if (titleLower.includes('product manager') ||
+      titleLower.includes('product owner') ||
+      titleLower.includes('product lead') ||
+      titleLower.includes('group product manager') ||
+      titleLower.includes('senior product manager') ||
+      titleLower.includes('technical product manager') ||
+      titleLower.includes('tpm')) {
+    return OCCUPATION_CODES.PRODUCT_MANAGER;
+  }
   if (titleLower.includes('it manager') || 
       titleLower.includes('engineering manager') ||
       titleLower.includes('technical manager') ||
@@ -507,13 +642,38 @@ export const mapJobTitleToOccupationCode = (jobTitle) => {
   // Finance roles
   if (titleLower.includes('financial analyst') || 
       titleLower.includes('investment analyst') ||
-      titleLower.includes('equity analyst')) {
+      titleLower.includes('equity analyst') ||
+      titleLower.includes('research analyst')) {
     return OCCUPATION_CODES.FINANCIAL_ANALYST;
+  }
+  if (titleLower.includes('risk analyst') ||
+      titleLower.includes('credit risk') ||
+      titleLower.includes('market risk') ||
+      titleLower.includes('operational risk') ||
+      titleLower.includes('quantitative analyst') ||
+      titleLower.includes('quant')) {
+    return OCCUPATION_CODES.RISK_ANALYST;
+  }
+  if (titleLower.includes('financial advisor') ||
+      titleLower.includes('wealth advisor') ||
+      titleLower.includes('investment advisor') ||
+      titleLower.includes('portfolio manager')) {
+    return OCCUPATION_CODES.FINANCIAL_ADVISOR;
+  }
+  if (titleLower.includes('budget analyst')) {
+    return OCCUPATION_CODES.BUDGET_ANALYST;
+  }
+  if (titleLower.includes('credit analyst')) {
+    return OCCUPATION_CODES.CREDIT_ANALYST;
   }
   if (titleLower.includes('accountant') || 
       titleLower.includes('cpa') ||
       titleLower.includes('auditor')) {
     return OCCUPATION_CODES.ACCOUNTANT;
+  }
+  if (titleLower.includes('finance') && 
+      (titleLower.includes('analyst') || titleLower.includes('specialist'))) {
+    return OCCUPATION_CODES.FINANCE_OTHER;
   }
   
   // Healthcare roles
