@@ -122,24 +122,24 @@ Let's see how our fully deployed platform delivers a production-ready career adv
 
 ## Act 3: Advanced AI Workflow Automation (5 minutes)
 
-### 3.1 Success Optimization and A/B Testing (UC-119, UC-120)
+### 3.1 Success Optimization and Material Comparison (UC-119, UC-120)
 **[Demo Action: View optimization dashboard, verify recommendations are data-driven and actionable]**
-**[Demo Action: View A/B testing results dashboard with pre-populated data, verify comparative performance metrics]**
+**[Demo Action: View material comparison dashboard with pre-populated data, verify comparative performance metrics]**
 
 "AI optimizes every aspect of your job search..."
 - Navigate to success optimization dashboard
 - Display success metrics: response rate 34%, interview conversion 18%
-- "AI identifies which resume version performs best"
+- "Track which resume version performs best"
 - Show actionable recommendations for improving success rate
-- Display A/B testing dashboard with pre-populated test data
+- Display material comparison dashboard with pre-populated data
 - Show existing comparison: 12 applications with Version A, 11 with Version B
 - "Version A: 42% response rate, Version B: 27% response rate"
-- Display statistical significance calculation
+- Display simple percentage comparisons and charts
 - "Data-driven insights guide material optimization"
 
-### 3.2 Application Quality Scoring and Timing Optimization (UC-122, UC-124)
+### 3.2 Application Quality Scoring and Scheduling (UC-122, UC-124)
 **[Demo Action: Prepare application for job, view quality score with specific improvement recommendations, verify score updates as changes are made]**
-**[Demo Action: Complete application, view timing recommendation with reasoning and option to schedule submission]**
+**[Demo Action: Schedule application submission, verify reminder notification and calendar view]**
 
 "AI ensures every application is optimized before submission..."
 - Start new job application
@@ -147,40 +147,40 @@ Let's see how our fully deployed platform delivers a production-ready career adv
 - View improvement suggestions prioritized by impact
 - Implement recommendations and watch score update
 - "Score now 81/100 - ready to submit"
-- View timing recommendation: "Submit Tuesday 9-11 AM for optimal visibility"
-- "Avoid Friday evening - 23% lower response rate"
-- Schedule application submission for optimal time
+- View general timing best practices: "Avoid weekends and late evenings"
+- Schedule application submission for future date/time
+- Show calendar view with scheduled and completed applications
 
-### 3.3 Competitive Analysis and Multi-Platform Tracking (UC-123, UC-125)
-**[Demo Action: View job posting, see competitive analysis with likelihood of success and specific strategies to differentiate]**
+### 3.3 Requirements Match Analysis and Multi-Platform Tracking (UC-123, UC-125)
+**[Demo Action: View job posting, see requirements match analysis with score and recommendations]**
 **[Demo Action: View multi-platform tracker, verify applications are imported and consolidated without duplicates]**
 
-"Understand your competitive position and track everywhere..."
-- View competitive analysis for target role
-- "Estimated 230 applicants for this senior role"
-- Show competitive score: 76/100
-- Display competitive advantages and differentiation strategies
-- "Likelihood of interview: Medium-High (62% confidence)"
+"Understand how well you match each role and track everywhere..."
+- View requirements match analysis for target role
+- "Skills match score: 76/100"
+- Show matching skills and experiences highlighted
+- Display missing requirements and suggestions to address them
+- "Emphasize your 5 years of React experience in application"
 - Navigate to multi-platform tracker
 - Show pre-imported applications from LinkedIn, Indeed, Glassdoor
 - "Applications automatically imported and consolidated without duplicates"
 - Track status across all platforms in one place
 
-### 3.4 Offer Comparison and Career Path Simulation (UC-127, UC-128)
+### 3.4 Offer Comparison and Career Growth Calculator (UC-127, UC-128)
 **[Demo Action: View pre-populated job offer comparison, verify comprehensive analysis with total compensation and weighted scores]**
-**[Demo Action: View career path simulation results, verify 5-year projections with salary and progression milestones]**
+**[Demo Action: View salary growth projections, verify calculations for multiple scenarios]**
 
-"Make data-driven career decisions with AI modeling..."
+"Make informed career decisions with comprehensive comparisons..."
 - Access offer comparison tool with pre-loaded offers
 - View two job offers side-by-side with complete details
 - "Total compensation adjusted for cost of living"
 - Display comparison with weighted scores
-- "Offer A: $142K total comp, Offer B: $138K but better growth"
-- Switch to career path simulation
-- View pre-run simulation for the two career paths
-- "Path A: Startup → Senior role in 2-3 years, high risk/reward"
-- Display 5-year projections with salary growth trajectories
-- "Expected lifetime earnings difference: $180K over 10 years"
+- "Offer A: $142K total comp, Offer B: $138K starting salary"
+- Switch to career growth calculator
+- Input starting salaries and expected annual raises (3%, 5%, 7%)
+- "Offer A with 5% raises: $182K in 5 years"
+- Display visual chart comparing salary trajectories
+- "Calculate different scenarios: conservative, expected, optimistic"
 
 ---
 
@@ -229,7 +229,7 @@ Let's see how our fully deployed platform delivers a production-ready career adv
 - [ ] Interview response library populated
 - [ ] Gmail account connected
 - [ ] GitHub account connected with public repositories
-- [ ] External certification profiles linked (HackerRank, LeetCode)
+- [ ] Skills and certifications manually added to profile
 
 **Technical Preparation:**
 - [ ] Production deployment stable (no errors in logs)
@@ -245,13 +245,13 @@ Let's see how our fully deployed platform delivers a production-ready career adv
 
 **Content Preparation:**
 - [ ] Sample job applications with realistic data
-- [ ] Multiple resume versions for A/B testing
+- [ ] Multiple resume versions for comparison tracking
 - [ ] Job offers with complete compensation details
 - [ ] Interview responses in library
-- [ ] Career path simulation scenarios
+- [ ] Salary growth calculator scenarios with different offers
 - [ ] Email samples linked to applications
 - [ ] GitHub repositories selected and featured
-- [ ] Certification profiles linked and verified
+- [ ] Skills and certifications manually added with images
 - [ ] Admin credentials for monitoring dashboards
 
 **Testing Preparation:**
