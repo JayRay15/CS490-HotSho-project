@@ -210,6 +210,9 @@ export default function Navbar() {
                                         <NavLink to="/my-performance" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="My Performance" onClick={() => setCareerDropdownOpen(false)}>
                                             My Performance
                                         </NavLink>
+                                        <NavLink to="/ab-testing" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="A/B Testing" onClick={() => setCareerDropdownOpen(false)}>
+                                            🧪 A/B Testing
+                                        </NavLink>
                                         <NavLink to="/predictive-analytics" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Predictive Analytics" onClick={() => setCareerDropdownOpen(false)}>
                                             Predictive Analytics
                                         </NavLink>
@@ -534,6 +537,18 @@ export default function Navbar() {
                             aria-label="My Performance"
                         >
                             My Performance
+                        </NavLink>
+                        <NavLink
+                            to="/ab-testing"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                }`
+                            }
+                            aria-label="A/B Testing"
+                        >
+                            🧪 A/B Testing
                         </NavLink>
                         <NavLink
                             to="/predictive-analytics"
