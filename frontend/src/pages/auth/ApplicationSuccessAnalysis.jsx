@@ -1044,15 +1044,27 @@ function ABTestingTab({ abTesting, onLoadABTesting, loading }) {
         <p className="text-gray-600 mb-4">
           {abTesting?.message || "Create multiple versions of your resume or cover letter to compare their performance"}
         </p>
-        <Button variant="outline" onClick={onLoadABTesting}>
-          Refresh Data
-        </Button>
+        <div className="flex gap-3 justify-center">
+          <Button variant="outline" onClick={onLoadABTesting}>
+            Refresh Data
+          </Button>
+          <Button onClick={() => window.location.href = "/ab-testing"}>
+            🧪 Go to A/B Testing
+          </Button>
+        </div>
       </Card>
     );
   }
 
   return (
     <div className="space-y-6">
+      {/* Link to full A/B Testing page */}
+      <div className="flex justify-end">
+        <Button variant="outline" onClick={() => window.location.href = "/ab-testing"}>
+          🧪 Open Full A/B Testing Dashboard →
+        </Button>
+      </div>
+
       {/* Summary Insight */}
       {abTesting.insights?.recommendation && (
         <Card className="bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200">

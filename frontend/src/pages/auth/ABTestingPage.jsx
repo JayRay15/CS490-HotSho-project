@@ -32,7 +32,6 @@ export default function ABTestingPage() {
   const [selectedTest, setSelectedTest] = useState(null);
   const [testResults, setTestResults] = useState(null);
   const [resultsLoading, setResultsLoading] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
   // Load initial data
@@ -54,8 +53,9 @@ export default function ABTestingPage() {
       ]);
 
       setAbTests(testsRes.data?.abTests || []);
-      setResumes(resumesRes.data?.resumes || resumesRes.data || []);
-      setCoverLetters(coverLettersRes.data?.coverLetters || coverLettersRes.data || []);
+      // The API response structure is: { success, message, data: { resumes: [...] } }
+      setResumes(resumesRes.data?.data?.resumes || resumesRes.data?.resumes || []);
+      setCoverLetters(coverLettersRes.data?.data?.coverLetters || coverLettersRes.data?.coverLetters || []);
     } catch (err) {
       console.error("Failed to load A/B testing data:", err);
       setError("Failed to load data. Please try again.");
@@ -165,9 +165,6 @@ export default function ABTestingPage() {
           <Button variant="outline" onClick={handleSyncFromJobs} disabled={syncing}>
             {syncing ? "⏳ Syncing..." : "🔄 Sync from Jobs"}
           </Button>
-          <Button onClick={() => setShowCreateModal(true)}>
-            + Create Test
-          </Button>
         </div>
       </div>
 
@@ -235,17 +232,6 @@ export default function ABTestingPage() {
           onDeclareWinner={handleDeclareWinner}
           onArchiveLoser={handleArchiveLoser}
           onRefresh={() => handleViewResults(selectedTest)}
-        />
-      )}
-
-      {/* Create Modal */}
-      {showCreateModal && (
-        <CreateTestModal
-          resumes={resumes}
-          coverLetters={coverLetters}
-          onClose={() => setShowCreateModal(false)}
-          onCreated={() => { loadData(); setShowCreateModal(false); }}
-          getToken={getToken}
         />
       )}
     </div>
@@ -449,7 +435,11 @@ function CreateTestTab({ resumes, coverLetters, onCreated, getToken }) {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState(null);
 
-  const materials = formData.materialType === "resume" ? resumes : coverLetters;
+  // Ensure arrays are always defined
+  const resumesList = Array.isArray(resumes) ? resumes : [];
+  const coverLettersList = Array.isArray(coverLetters) ? coverLetters : [];
+  
+  const materials = formData.materialType === "resume" ? resumesList : coverLettersList;
   const availableMaterials = materials.filter(m => !m.isArchived);
 
   const handleToggleMaterial = (id) => {
@@ -538,7 +528,7 @@ function CreateTestTab({ resumes, coverLetters, onCreated, getToken }) {
             >
               <div className="text-3xl mb-2">📄</div>
               <div className="font-medium">Resume Versions</div>
-              <div className="text-sm text-gray-500">{resumes.filter(r => !r.isArchived).length} available</div>
+              <div className="text-sm text-gray-500">{resumesList.filter(r => !r.isArchived).length} available</div>
             </button>
             <button
               type="button"
@@ -551,7 +541,7 @@ function CreateTestTab({ resumes, coverLetters, onCreated, getToken }) {
             >
               <div className="text-3xl mb-2">✉️</div>
               <div className="font-medium">Cover Letter Versions</div>
-              <div className="text-sm text-gray-500">{coverLetters.filter(c => !c.isArchived).length} available</div>
+              <div className="text-sm text-gray-500">{coverLettersList.filter(c => !c.isArchived).length} available</div>
             </button>
           </div>
         </div>
