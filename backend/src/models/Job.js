@@ -256,6 +256,46 @@ const jobSchema = new mongoose.Schema(
     nextActionDate: {
       type: Date,
     },
+    // UC-125: Multi-Platform Application Tracker
+    // Track applications across multiple job platforms
+    applicationPlatforms: [{
+      name: {
+        type: String,
+        enum: ['LinkedIn', 'Indeed', 'Glassdoor', 'Company Website', 'ZipRecruiter', 'Monster', 'CareerBuilder', 'AngelList', 'Other'],
+        required: true,
+      },
+      status: {
+        type: String,
+        enum: ['Applied', 'Viewed', 'In Review', 'Interview Scheduled', 'Rejected', 'No Response'],
+        default: 'Applied',
+      },
+      url: {
+        type: String,
+        trim: true,
+      },
+      externalId: {
+        type: String,
+        trim: true,
+      },
+      dateApplied: {
+        type: Date,
+        default: Date.now,
+      },
+      dateImported: {
+        type: Date,
+        default: Date.now,
+      },
+      notes: {
+        type: String,
+        trim: true,
+      },
+    }],
+    // Primary platform used for this application
+    primaryPlatform: {
+      type: String,
+      enum: ['LinkedIn', 'Indeed', 'Glassdoor', 'Company Website', 'ZipRecruiter', 'Monster', 'CareerBuilder', 'AngelList', 'Other', ''],
+      default: '',
+    },
   },
   {
     timestamps: true,

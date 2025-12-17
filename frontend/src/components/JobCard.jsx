@@ -18,6 +18,19 @@ const PRIORITY_COLORS = {
   "High": "text-red-600",
 };
 
+// UC-125: Platform icon mapping for multi-platform tracker
+const PLATFORM_CONFIG = {
+  "LinkedIn": { icon: "🔗", color: "bg-blue-100 text-blue-800", label: "LinkedIn" },
+  "Indeed": { icon: "📋", color: "bg-purple-100 text-purple-800", label: "Indeed" },
+  "Glassdoor": { icon: "🚪", color: "bg-green-100 text-green-800", label: "Glassdoor" },
+  "Company Website": { icon: "🏢", color: "bg-gray-100 text-gray-800", label: "Company" },
+  "ZipRecruiter": { icon: "⚡", color: "bg-orange-100 text-orange-800", label: "ZipRecruiter" },
+  "Monster": { icon: "👾", color: "bg-indigo-100 text-indigo-800", label: "Monster" },
+  "CareerBuilder": { icon: "🛠️", color: "bg-yellow-100 text-yellow-800", label: "CareerBuilder" },
+  "AngelList": { icon: "😇", color: "bg-pink-100 text-pink-800", label: "AngelList" },
+  "Other": { icon: "📄", color: "bg-gray-100 text-gray-700", label: "Other" },
+};
+
 export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange, isDragging, highlightTerms, isSelected, onToggleSelect, onArchive, onRestore, onScheduleInterview, onViewMatchScore, onOpenStatusModal, onOpenTimeline, onOpenEmailDetector, applicationStatus, onGenerateCoverLetter, onOpenInterviewChecklist, onOpenFollowUpTemplates, onSimulateCareer, onOpenTimingOptimizer }) {
   const [showDetails, setShowDetails] = useState(false);
   const navigate = useNavigate();
@@ -251,6 +264,33 @@ export default function JobCard({ job, onEdit, onDelete, onView, onStatusChange,
           )}
         </div>
       )}
+
+      {/* UC-125: Multi-Platform Badges */}
+      {(job.applicationPlatforms && job.applicationPlatforms.length > 0) || job.primaryPlatform ? (
+        <div className="flex flex-wrap gap-1 mb-3">
+          {job.applicationPlatforms && job.applicationPlatforms.length > 0 ? (
+            job.applicationPlatforms.map((platform, idx) => {
+              const config = PLATFORM_CONFIG[platform.name] || PLATFORM_CONFIG["Other"];
+              return (
+                <span
+                  key={idx}
+                  className={`px-2 py-0.5 text-xs rounded-full font-medium ${config.color}`}
+                  title={`Applied via ${platform.name}${platform.dateApplied ? ` on ${formatDate(platform.dateApplied)}` : ''}`}
+                >
+                  {config.icon} {config.label}
+                </span>
+              );
+            })
+          ) : job.primaryPlatform ? (
+            <span
+              className={`px-2 py-0.5 text-xs rounded-full font-medium ${(PLATFORM_CONFIG[job.primaryPlatform] || PLATFORM_CONFIG["Other"]).color}`}
+              title={`Applied via ${job.primaryPlatform}`}
+            >
+              {(PLATFORM_CONFIG[job.primaryPlatform] || PLATFORM_CONFIG["Other"]).icon} {(PLATFORM_CONFIG[job.primaryPlatform] || PLATFORM_CONFIG["Other"]).label}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* Actions */}
       <div className="flex flex-col gap-2 pt-2 border-t border-gray-200">
@@ -545,6 +585,17 @@ JobCard.propTypes = {
     archived: PropTypes.bool,
     archiveReason: PropTypes.string,
     archivedAt: PropTypes.string,
+    // UC-125: Multi-Platform Application Tracker fields
+    primaryPlatform: PropTypes.string,
+    applicationPlatforms: PropTypes.arrayOf(PropTypes.shape({
+      name: PropTypes.string,
+      status: PropTypes.string,
+      url: PropTypes.string,
+      externalId: PropTypes.string,
+      dateApplied: PropTypes.string,
+      dateImported: PropTypes.string,
+      notes: PropTypes.string,
+    })),
   }).isRequired,
   onEdit: PropTypes.func,
   onDelete: PropTypes.func,

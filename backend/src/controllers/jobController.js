@@ -1390,3 +1390,186 @@ export const removeAdditionalDocument = asyncHandler(async (req, res) => {
   const { response, statusCode } = successResponse("Document removed from job package", { job });
   return sendResponse(res, response, statusCode);
 });
+
+// UC-125: POST /api/jobs/import - Import jobs from multiple platforms with duplicate consolidation
+export const importJobs = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const { jobs: jobsToImport } = req.body;
+
+  if (!Array.isArray(jobsToImport) || jobsToImport.length === 0) {
+    const { response, statusCode } = validationErrorResponse(
+      "Please provide an array of jobs to import",
+      [{ field: "jobs", message: "Jobs array is required and must not be empty" }]
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const results = {
+    imported: 0,
+    consolidated: 0,
+    failed: 0,
+    details: [],
+  };
+
+  for (const jobData of jobsToImport) {
+    try {
+      const { title, company, location, platform, url, externalId, status, dateApplied } = jobData;
+
+      if (!title || !company || !platform) {
+        results.failed++;
+        results.details.push({
+          title: title || "Unknown",
+          company: company || "Unknown",
+          status: "failed",
+          reason: "Missing required fields (title, company, or platform)",
+        });
+        continue;
+      }
+
+      // Check for existing job with same title and company (case-insensitive)
+      const existingJob = await Job.findOne({
+        userId,
+        title: { $regex: new RegExp(`^${title.trim()}$`, "i") },
+        company: { $regex: new RegExp(`^${company.trim()}$`, "i") },
+      });
+
+      const platformEntry = {
+        name: platform,
+        status: status || "Applied",
+        url: url || "",
+        externalId: externalId || "",
+        dateApplied: dateApplied ? new Date(dateApplied) : new Date(),
+        dateImported: new Date(),
+        notes: "",
+      };
+
+      if (existingJob) {
+        // Check if platform already exists
+        const platformExists = existingJob.applicationPlatforms?.some(
+          (p) => p.name === platform
+        );
+
+        if (platformExists) {
+          results.details.push({
+            title,
+            company,
+            status: "skipped",
+            reason: `Already imported from ${platform}`,
+          });
+          continue;
+        }
+
+        // Consolidate: Add new platform to existing job
+        if (!existingJob.applicationPlatforms) {
+          existingJob.applicationPlatforms = [];
+        }
+        existingJob.applicationPlatforms.push(platformEntry);
+        await existingJob.save();
+
+        results.consolidated++;
+        results.details.push({
+          title,
+          company,
+          status: "consolidated",
+          reason: `Added ${platform} to existing application`,
+          jobId: existingJob._id,
+        });
+      } else {
+        // Create new job with platform entry
+        const newJob = new Job({
+          userId,
+          title: title.trim(),
+          company: company.trim(),
+          location: location || "",
+          status: "Applied",
+          url: url || "",
+          applicationDate: dateApplied ? new Date(dateApplied) : new Date(),
+          applicationPlatforms: [platformEntry],
+          primaryPlatform: platform,
+        });
+
+        await newJob.save();
+
+        results.imported++;
+        results.details.push({
+          title,
+          company,
+          status: "imported",
+          reason: `New application from ${platform}`,
+          jobId: newJob._id,
+        });
+      }
+    } catch (error) {
+      console.error("Error importing job:", error);
+      results.failed++;
+      results.details.push({
+        title: jobData.title || "Unknown",
+        company: jobData.company || "Unknown",
+        status: "failed",
+        reason: error.message,
+      });
+    }
+  }
+
+  const { response, statusCode } = successResponse(
+    `Import complete: ${results.imported} imported, ${results.consolidated} consolidated, ${results.failed} failed`,
+    results
+  );
+  return sendResponse(res, response, statusCode);
+});
+
+// UC-125: GET /api/jobs/export - Export unified application history
+export const exportJobs = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const jobs = await Job.find({ userId }).sort({ createdAt: -1 });
+
+  // Format jobs for export with platform details
+  const exportData = jobs.map((job) => ({
+    title: job.title,
+    company: job.company,
+    location: job.location || "",
+    status: job.status,
+    applicationDate: job.applicationDate,
+    primaryPlatform: job.primaryPlatform || "",
+    platforms: (job.applicationPlatforms || []).map((p) => ({
+      name: p.name,
+      status: p.status,
+      dateApplied: p.dateApplied,
+      url: p.url,
+    })),
+    salary: job.salary,
+    jobType: job.jobType,
+    workMode: job.workMode,
+    notes: job.notes,
+    url: job.url,
+    createdAt: job.createdAt,
+    updatedAt: job.updatedAt,
+  }));
+
+  const { response, statusCode } = successResponse("Jobs exported successfully", {
+    count: exportData.length,
+    jobs: exportData,
+    exportedAt: new Date(),
+  });
+  return sendResponse(res, response, statusCode);
+});

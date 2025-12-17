@@ -20,7 +20,9 @@ import {
   autoArchiveJobs,
   getJobById,
   addAdditionalDocument,
-  removeAdditionalDocument
+  removeAdditionalDocument,
+  importJobs,
+  exportJobs
 } from "../controllers/jobController.js";
 import { scrapeJobFromURL } from "../controllers/jobScraperController.js";
 import { getInterviewInsights } from "../controllers/interviewInsightsController.js";
@@ -40,6 +42,12 @@ router.get("/", checkJwt, getJobs);
 
 // POST /api/jobs/scrape - Scrape job details from URL
 router.post("/scrape", checkJwt, scrapeJobFromURL);
+
+// UC-125: POST /api/jobs/import - Import jobs from multiple platforms
+router.post("/import", checkJwt, importJobs);
+
+// UC-125: GET /api/jobs/export - Export unified application history
+router.get("/export", checkJwt, exportJobs);
 
 // POST /api/jobs - Create a new job
 router.post("/", checkJwt, addJob);
