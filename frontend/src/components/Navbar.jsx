@@ -325,7 +325,7 @@ export default function Navbar() {
             {/* Mobile Menu */}
             <div
                 id="mobile-menu"
-                className={`md:hidden border-t transition-all duration-300 ease-in-out overflow-hidden ${mobileMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                className={`md:hidden border-t transition-all duration-300 ease-in-out ${mobileMenuOpen ? 'max-h-[80vh] opacity-100 overflow-y-auto' : 'max-h-0 opacity-0 overflow-hidden'
                     }`}
                 style={{ backgroundColor: '#3A3D35', borderTopColor: '#656A5C' }}
                 aria-hidden={!mobileMenuOpen}
@@ -430,7 +430,30 @@ export default function Navbar() {
                         >
                             Resumes
                         </NavLink>
-                        // ...existing code...
+                        <NavLink
+                            to="/skill-trends"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                }`
+                            }
+                            aria-label="Skill Trends"
+                        >
+                            Skills
+                        </NavLink>
+                        <NavLink
+                            to="/mock-interviews"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                }`
+                            }
+                            aria-label="Mock Interviews"
+                        >
+                            Mock Interviews
+                        </NavLink>
                         <NavLink
                             to="/goals"
                             className={({ isActive }) =>
