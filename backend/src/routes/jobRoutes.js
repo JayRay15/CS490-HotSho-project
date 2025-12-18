@@ -20,7 +20,13 @@ import {
   autoArchiveJobs,
   getJobById,
   addAdditionalDocument,
-  removeAdditionalDocument
+  removeAdditionalDocument,
+  importJobs,
+  exportJobs,
+  exportJobsCSV,
+  importFromEmail,
+  importDemoEmails,
+  getApplicationGaps
 } from "../controllers/jobController.js";
 import { scrapeJobFromURL } from "../controllers/jobScraperController.js";
 import { getInterviewInsights } from "../controllers/interviewInsightsController.js";
@@ -40,6 +46,24 @@ router.get("/", checkJwt, getJobs);
 
 // POST /api/jobs/scrape - Scrape job details from URL
 router.post("/scrape", checkJwt, scrapeJobFromURL);
+
+// UC-125: POST /api/jobs/import - Import jobs from multiple platforms
+router.post("/import", checkJwt, importJobs);
+
+// UC-125: GET /api/jobs/export - Export unified application history
+router.get("/export", checkJwt, exportJobs);
+
+// UC-125: GET /api/jobs/export/csv - Export as CSV
+router.get("/export/csv", checkJwt, exportJobsCSV);
+
+// UC-125: POST /api/jobs/import-email - Import from forwarded email
+router.post("/import-email", checkJwt, importFromEmail);
+
+// UC-125: POST /api/jobs/import-demo-emails - Import demo emails for demonstration
+router.post("/import-demo-emails", checkJwt, importDemoEmails);
+
+// UC-125: GET /api/jobs/gaps - Identify gaps in application history
+router.get("/gaps", checkJwt, getApplicationGaps);
 
 // POST /api/jobs - Create a new job
 router.post("/", checkJwt, addJob);

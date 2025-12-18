@@ -73,6 +73,7 @@ export default function Jobs() {
     applicationDateTo: "",
     deadlineFrom: "",
     deadlineTo: "",
+    platform: "", // UC-125: Platform filter
   });
   const [sortBy, setSortBy] = useState("dateAdded");
   const [sortOrder, setSortOrder] = useState("desc");
@@ -81,6 +82,11 @@ export default function Jobs() {
   const [isImporting, setIsImporting] = useState(false);
   const [importStatus, setImportStatus] = useState(null);
   const [importMessage, setImportMessage] = useState("");
+
+  // UC-125: Multi-Platform Import state
+  const [isImportingPlatforms, setIsImportingPlatforms] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importResults, setImportResults] = useState(null);
 
   // Archive-related state
   const [showArchived, setShowArchived] = useState(false);
@@ -171,6 +177,8 @@ export default function Jobs() {
     contacts: [],
     interviewNotes: "",
     salaryNegotiationNotes: "",
+    // UC-125: Primary platform for manual entry
+    primaryPlatform: "",
     // UC-062: Company information
     companyInfo: {
       size: "",
@@ -306,6 +314,19 @@ export default function Jobs() {
     // Apply priority filter
     if (filters.priority) {
       filtered = filtered.filter((job) => job.priority === filters.priority);
+    }
+
+    // UC-125: Apply platform filter
+    if (filters.platform) {
+      filtered = filtered.filter((job) => {
+        // Check primaryPlatform
+        if (job.primaryPlatform === filters.platform) return true;
+        // Check applicationPlatforms array
+        if (job.applicationPlatforms && job.applicationPlatforms.length > 0) {
+          return job.applicationPlatforms.some(p => p.name === filters.platform);
+        }
+        return false;
+      });
     }
 
     // Apply tags filter
@@ -510,6 +531,101 @@ export default function Jobs() {
     }
   };
 
+  // UC-125: Import applications from multiple platforms (demo with mock data)
+  const handleImportFromPlatforms = async () => {
+    setIsImportingPlatforms(true);
+    setImportResults(null);
+
+    // Mock data simulating applications from LinkedIn, Indeed, Glassdoor
+    // This includes a deliberate duplicate to test consolidation
+    const mockApplications = [
+      {
+        title: "Senior Frontend Developer",
+        company: "TechCorp Inc",
+        location: "San Francisco, CA",
+        platform: "LinkedIn",
+        url: "https://linkedin.com/jobs/view/123456",
+        externalId: "li-123456",
+        status: "Applied",
+        dateApplied: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days ago
+      },
+      {
+        title: "React Engineer",
+        company: "WebSolutions LLC",
+        location: "New York, NY",
+        platform: "Indeed",
+        url: "https://indeed.com/viewjob?jk=abc123",
+        externalId: "ind-abc123",
+        status: "Applied",
+        dateApplied: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days ago
+      },
+      {
+        title: "Full Stack Developer",
+        company: "InnovateHub",
+        location: "Austin, TX",
+        platform: "Glassdoor",
+        url: "https://glassdoor.com/job-listing/456789",
+        externalId: "gd-456789",
+        status: "Viewed",
+        dateApplied: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days ago
+      },
+      {
+        title: "Software Engineer",
+        company: "StartupXYZ",
+        location: "Remote",
+        platform: "AngelList",
+        url: "https://angel.co/l/job123",
+        externalId: "al-job123",
+        status: "Applied",
+        dateApplied: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
+      },
+      // Duplicate - same job applied from different platform (to test consolidation)
+      {
+        title: "Senior Frontend Developer",
+        company: "TechCorp Inc",
+        location: "San Francisco, CA",
+        platform: "Indeed",
+        url: "https://indeed.com/viewjob?jk=xyz789",
+        externalId: "ind-xyz789",
+        status: "Applied",
+        dateApplied: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(), // 4 days ago
+      },
+      {
+        title: "UI/UX Developer",
+        company: "DesignFirst Co",
+        location: "Chicago, IL",
+        platform: "ZipRecruiter",
+        url: "https://ziprecruiter.com/jobs/abc",
+        externalId: "zr-abc",
+        status: "Applied",
+        dateApplied: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
+      },
+    ];
+
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+
+      const response = await api.post('/api/jobs/import', { jobs: mockApplications });
+      const results = response.data.data;
+
+      setImportResults(results);
+      setShowImportModal(true);
+
+      // Refresh jobs list
+      await fetchJobs();
+      await fetchStats();
+
+      setSuccessMessage(`Import complete: ${results.imported} new, ${results.consolidated} consolidated`);
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (error) {
+      console.error('Failed to import from platforms:', error);
+      alert(error.response?.data?.message || 'Failed to import applications. Please try again.');
+    } finally {
+      setIsImportingPlatforms(false);
+    }
+  };
+
   const handleAddJob = async (e) => {
     e.preventDefault();
 
@@ -540,6 +656,8 @@ export default function Jobs() {
         tags: formData.tags ? formData.tags.split(",").map((t) => t.trim()) : undefined,
         applicationDate: formData.applicationDate || undefined,
         deadline: formData.deadline || undefined,
+        // UC-125: Primary platform for manual entry
+        primaryPlatform: formData.primaryPlatform || undefined,
         // UC-062: Company information
         companyInfo: {
           size: formData.companyInfo?.size || undefined,
@@ -609,6 +727,8 @@ export default function Jobs() {
         tags: formData.tags ? formData.tags.split(",").map((t) => t.trim()) : undefined,
         applicationDate: formData.applicationDate || undefined,
         deadline: formData.deadline || undefined,
+        // UC-125: Primary platform for manual entry
+        primaryPlatform: formData.primaryPlatform || undefined,
         // UC-062: Company information
         companyInfo: {
           size: formData.companyInfo?.size || undefined,
@@ -702,6 +822,8 @@ export default function Jobs() {
       deadline: job.deadline ? job.deadline.split("T")[0] : "",
       interviewNotes: job.interviewNotes || "",
       salaryNegotiationNotes: job.salaryNegotiationNotes || "",
+      // UC-125: Primary platform
+      primaryPlatform: job.primaryPlatform || "",
       // UC-062: Company information
       companyInfo: {
         size: job.companyInfo?.size || "",
@@ -1500,6 +1622,15 @@ export default function Jobs() {
                     <Button onClick={() => setShowComparison(true)} variant="secondary">
                       Compare Matches
                     </Button>
+                    {/* UC-125: Import from multiple platforms */}
+                    <Button 
+                      onClick={handleImportFromPlatforms} 
+                      variant="secondary"
+                      disabled={isImportingPlatforms}
+                      className="bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700"
+                    >
+                      {isImportingPlatforms ? "Importing..." : "📥 Import Applications"}
+                    </Button>
                   </>
                 )}
                 <Button onClick={() => setShowAddModal(true)} variant="primary">
@@ -1594,6 +1725,27 @@ export default function Jobs() {
                       <option value="High">High</option>
                       <option value="Medium">Medium</option>
                       <option value="Low">Low</option>
+                    </select>
+                  </div>
+
+                  {/* UC-125: Platform Filter */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Platform</label>
+                    <select
+                      value={filters.platform}
+                      onChange={(e) => setFilters({ ...filters, platform: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">All Platforms</option>
+                      <option value="LinkedIn">🔗 LinkedIn</option>
+                      <option value="Indeed">📋 Indeed</option>
+                      <option value="Glassdoor">🚪 Glassdoor</option>
+                      <option value="Company Website">🏢 Company Website</option>
+                      <option value="ZipRecruiter">⚡ ZipRecruiter</option>
+                      <option value="Monster">👾 Monster</option>
+                      <option value="CareerBuilder">🛠️ CareerBuilder</option>
+                      <option value="AngelList">😇 AngelList</option>
+                      <option value="Other">📄 Other</option>
                     </select>
                   </div>
 
@@ -1987,6 +2139,26 @@ export default function Jobs() {
                       <option value="Low">Low</option>
                       <option value="Medium">Medium</option>
                       <option value="High">High</option>
+                    </select>
+                  </div>
+                  {/* UC-125: Platform selector for Add Job */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Platform</label>
+                    <select
+                      value={formData.primaryPlatform}
+                      onChange={(e) => setFormData({ ...formData, primaryPlatform: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select platform...</option>
+                      <option value="LinkedIn">🔗 LinkedIn</option>
+                      <option value="Indeed">📋 Indeed</option>
+                      <option value="Glassdoor">🚪 Glassdoor</option>
+                      <option value="Company Website">🏢 Company Website</option>
+                      <option value="ZipRecruiter">⚡ ZipRecruiter</option>
+                      <option value="Monster">👾 Monster</option>
+                      <option value="CareerBuilder">🛠️ CareerBuilder</option>
+                      <option value="AngelList">😇 AngelList</option>
+                      <option value="Other">📄 Other</option>
                     </select>
                   </div>
                 </div>
@@ -2595,6 +2767,26 @@ export default function Jobs() {
                       <option value="Remote">Remote</option>
                       <option value="Hybrid">Hybrid</option>
                       <option value="On-site">On-site</option>
+                    </select>
+                  </div>
+                  {/* UC-125: Platform selector for Edit Job */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Platform</label>
+                    <select
+                      value={formData.primaryPlatform}
+                      onChange={(e) => setFormData({ ...formData, primaryPlatform: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select platform...</option>
+                      <option value="LinkedIn">🔗 LinkedIn</option>
+                      <option value="Indeed">📋 Indeed</option>
+                      <option value="Glassdoor">🚪 Glassdoor</option>
+                      <option value="Company Website">🏢 Company Website</option>
+                      <option value="ZipRecruiter">⚡ ZipRecruiter</option>
+                      <option value="Monster">👾 Monster</option>
+                      <option value="CareerBuilder">🛠️ CareerBuilder</option>
+                      <option value="AngelList">😇 AngelList</option>
+                      <option value="Other">📄 Other</option>
                     </select>
                   </div>
                 </div>
@@ -3741,6 +3933,103 @@ export default function Jobs() {
                   className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
                 >
                   Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* UC-125: Import Results Modal */}
+      {showImportModal && importResults && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          onClick={() => setShowImportModal(false)}
+        >
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto border border-gray-200 shadow-2xl mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-4 rounded-t-lg">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">📥 Multi-Platform Import Results</h3>
+                <button
+                  onClick={() => setShowImportModal(false)}
+                  className="text-white hover:text-gray-200"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+            <div className="p-6">
+              {/* Summary Stats */}
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                  <div className="text-3xl font-bold text-green-600">{importResults.imported}</div>
+                  <div className="text-sm text-green-700">New Applications</div>
+                </div>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                  <div className="text-3xl font-bold text-blue-600">{importResults.consolidated}</div>
+                  <div className="text-sm text-blue-700">Consolidated</div>
+                </div>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+                  <div className="text-3xl font-bold text-red-600">{importResults.failed}</div>
+                  <div className="text-sm text-red-700">Failed</div>
+                </div>
+              </div>
+
+              {/* Consolidation Notice */}
+              {importResults.consolidated > 0 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  <div className="flex items-start gap-2">
+                    <span className="text-blue-600">ℹ️</span>
+                    <div>
+                      <p className="font-medium text-blue-800">Duplicate applications consolidated!</p>
+                      <p className="text-sm text-blue-700 mt-1">
+                        {importResults.consolidated} application(s) were found to be duplicates (same job applied from different platforms). 
+                        These have been merged into a single entry showing all platforms used.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Details */}
+              <h4 className="font-semibold text-gray-800 mb-3">Import Details</h4>
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {importResults.details?.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className={`flex items-center justify-between p-3 rounded-lg border ${
+                      item.status === 'imported' ? 'bg-green-50 border-green-200' :
+                      item.status === 'consolidated' ? 'bg-blue-50 border-blue-200' :
+                      item.status === 'skipped' ? 'bg-yellow-50 border-yellow-200' :
+                      'bg-red-50 border-red-200'
+                    }`}
+                  >
+                    <div>
+                      <p className="font-medium text-gray-800">{item.title}</p>
+                      <p className="text-sm text-gray-600">{item.company}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                        item.status === 'imported' ? 'bg-green-100 text-green-800' :
+                        item.status === 'consolidated' ? 'bg-blue-100 text-blue-800' :
+                        item.status === 'skipped' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {item.status}
+                      </span>
+                      <p className="text-xs text-gray-500 mt-1">{item.reason}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-end mt-6">
+                <button
+                  onClick={() => setShowImportModal(false)}
+                  className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition"
+                >
+                  Done
                 </button>
               </div>
             </div>

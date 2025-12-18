@@ -77,6 +77,8 @@ describe('jobController focused tests', () => {
 
   it('addJob success creates job', async () => {
   const jobMod = await import('../../models/Job.js');
+    // Mock Job.find for deduplication check (return empty array = no duplicates)
+    jobMod.Job.find = jest.fn().mockResolvedValue([]);
     jobMod.Job.create = jest.fn().mockResolvedValue({ _id: 'j1', industry: 'Tech' });
 
     const { addJob } = await import('../jobController.js');

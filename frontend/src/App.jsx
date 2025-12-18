@@ -26,6 +26,7 @@ const ForgotPassword = lazy(() => import("./pages/auth/ForgotPassword"));
 // Core pages
 const ProfilePage = lazy(() => import("./pages/auth/ProfilePage"));
 const Jobs = lazy(() => import("./pages/auth/Jobs"));
+const MultiPlatformTracker = lazy(() => import("./pages/auth/MultiPlatformTracker"));
 const Projects = lazy(() => import("./pages/auth/Projects"));
 const Portfolio = lazy(() => import("./pages/auth/Portfolio"));
 const ProjectPublic = lazy(() => import("./pages/auth/ProjectPublic"));
@@ -127,6 +128,7 @@ function App() {
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
             <Route path="/jobs" element={<ProtectedRoute><Jobs /></ProtectedRoute>} />
+            <Route path="/multi-platform-tracker" element={<ProtectedRoute><MultiPlatformTracker /></ProtectedRoute>} />
             <Route path="/jobs/:jobId/materials" element={<ProtectedRoute><JobMaterialsPage /></ProtectedRoute>} />
             <Route path="/profile/project/:id" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
             <Route path="/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />

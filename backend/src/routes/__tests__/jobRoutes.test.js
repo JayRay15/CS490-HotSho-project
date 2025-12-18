@@ -25,6 +25,13 @@ const mockGetJobById = jest.fn((req, res) => res.json({ success: true }));
 const mockAddAdditionalDocument = jest.fn((req, res) => res.json({ success: true }));
 const mockRemoveAdditionalDocument = jest.fn((req, res) => res.json({ success: true }));
 const mockLinkCoverLetterToJob = jest.fn((req, res) => res.json({ success: true }));
+// UC-125: Multi-Platform Tracker mocks
+const mockImportJobs = jest.fn((req, res) => res.json({ success: true }));
+const mockExportJobs = jest.fn((req, res) => res.json({ success: true }));
+const mockExportJobsCSV = jest.fn((req, res) => res.json({ success: true }));
+const mockImportFromEmail = jest.fn((req, res) => res.json({ success: true }));
+const mockImportDemoEmails = jest.fn((req, res) => res.json({ success: true }));
+const mockGetApplicationGaps = jest.fn((req, res) => res.json({ success: true }));
 
 jest.unstable_mockModule('../../controllers/jobController.js', () => ({
   getJobs: mockGetJobs,
@@ -47,6 +54,13 @@ jest.unstable_mockModule('../../controllers/jobController.js', () => ({
   addAdditionalDocument: mockAddAdditionalDocument,
   removeAdditionalDocument: mockRemoveAdditionalDocument,
   linkCoverLetterToJob: mockLinkCoverLetterToJob,
+  // UC-125: Multi-Platform Tracker exports
+  importJobs: mockImportJobs,
+  exportJobs: mockExportJobs,
+  exportJobsCSV: mockExportJobsCSV,
+  importFromEmail: mockImportFromEmail,
+  importDemoEmails: mockImportDemoEmails,
+  getApplicationGaps: mockGetApplicationGaps,
 }));
 
 jest.unstable_mockModule('../../controllers/jobScraperController.js', () => ({

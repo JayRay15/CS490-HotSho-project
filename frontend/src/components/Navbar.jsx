@@ -133,6 +133,9 @@ export default function Navbar() {
                             <NavLink to="/jobs" className={navLinkClass} aria-label="Jobs">
                                 Jobs
                             </NavLink>
+                            <NavLink to="/multi-platform-tracker" className={navLinkClass} aria-label="Multi-Platform Tracker">
+                                Multi-Platform Tracker
+                            </NavLink>
                             <NavLink to="/skill-trends" className={navLinkClass} aria-label="Skill Trends">
                                 Skills
                             </NavLink>
@@ -390,6 +393,18 @@ export default function Navbar() {
                             aria-label="Jobs"
                         >
                             Jobs
+                        </NavLink>
+                        <NavLink
+                            to="/multi-platform-tracker"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                }`
+                            }
+                            aria-label="Multi-Platform Tracker"
+                        >
+                            Multi-Platform Tracker
                         </NavLink>
                         <NavLink
                             to="/salary-benchmarks"
