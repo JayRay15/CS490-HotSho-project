@@ -163,6 +163,8 @@ describe('JobController - CRUD Operations', () => {
         userId: 'test-user-123',
         statusHistory: expect.any(Array),
       };
+      // Mock Job.find for deduplication check (return empty array = no duplicates)
+      mockJob.find.mockResolvedValue([]);
       mockJob.create.mockResolvedValue(mockCreatedJob);
 
       await addJob(mockReq, mockRes);
@@ -233,6 +235,8 @@ describe('JobController - CRUD Operations', () => {
         status: 'Interested',
         statusHistory: [{ status: 'Interested', timestamp: expect.any(Date) }],
       };
+      // Mock Job.find for deduplication check (return empty array = no duplicates)
+      mockJob.find.mockResolvedValue([]);
       mockJob.create.mockResolvedValue(mockCreatedJob);
 
       await addJob(mockReq, mockRes);

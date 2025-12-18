@@ -296,6 +296,12 @@ const jobSchema = new mongoose.Schema(
       enum: ['LinkedIn', 'Indeed', 'Glassdoor', 'Company Website', 'ZipRecruiter', 'Monster', 'CareerBuilder', 'AngelList', 'Other', ''],
       default: '',
     },
+    // UC-125: Source email ID for imported applications
+    sourceEmailId: {
+      type: String,
+      trim: true,
+      default: null,
+    },
   },
   {
     timestamps: true,

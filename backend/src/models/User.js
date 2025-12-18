@@ -416,6 +416,20 @@ userSchema.add({
   }
 });
 
+// UC-125: External integrations (Gmail, etc.)
+userSchema.add({
+  integrations: {
+    gmail: {
+      connected: { type: Boolean, default: false },
+      accessToken: { type: String },
+      refreshToken: { type: String },
+      expiresAt: { type: Date },
+      connectedAt: { type: Date },
+      email: { type: String }
+    }
+  }
+});
+
 // UC-096: Job Search Performance Dashboard - Custom Goals
 userSchema.add({
   searchGoals: {

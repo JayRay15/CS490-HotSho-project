@@ -2,6 +2,12 @@ import { Job } from "../models/Job.js";
 import { successResponse, errorResponse, sendResponse, ERROR_CODES, validationErrorResponse } from "../utils/responseFormat.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 import { sendDeadlineRemindersNow } from "../utils/deadlineReminders.js";
+import { 
+  parseApplicationEmail, 
+  areDuplicates, 
+  identifyApplicationGaps, 
+  generateMockEmails 
+} from "../services/emailImportService.js";
 
 // GET /api/jobs - Get all jobs for the current user
 export const getJobs = asyncHandler(async (req, res) => {
@@ -89,6 +95,48 @@ export const addJob = asyncHandler(async (req, res) => {
     const { response, statusCode } = validationErrorResponse(
       "Please fix the following errors before submitting",
       errors
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // UC-125: Check for duplicate applications before creating
+  // This integrates manual entries with the deduplication logic
+  const existingJobs = await Job.find({ userId });
+  const potentialDuplicate = existingJobs.find(existingJob => {
+    return areDuplicates(
+      { title: title.trim(), company: company.trim(), appliedDate: applicationDate },
+      { title: existingJob.title, company: existingJob.company, appliedDate: existingJob.applicationDate }
+    );
+  });
+
+  // If duplicate found, add platform info instead of creating new job
+  if (potentialDuplicate) {
+    const platform = req.body.primaryPlatform || "Manual";
+    const platformEntry = {
+      name: platform,
+      dateApplied: applicationDate || new Date(),
+      url: url || "",
+      status: status || "Applied",
+    };
+
+    // Check if platform already exists
+    const existingPlatform = potentialDuplicate.applicationPlatforms?.find(
+      p => p.name === platform
+    );
+
+    if (!existingPlatform) {
+      potentialDuplicate.applicationPlatforms = potentialDuplicate.applicationPlatforms || [];
+      potentialDuplicate.applicationPlatforms.push(platformEntry);
+      await potentialDuplicate.save();
+    }
+
+    const { response, statusCode } = successResponse(
+      "Duplicate application found and consolidated",
+      { 
+        job: potentialDuplicate, 
+        consolidated: true,
+        message: `This application was merged with an existing entry for ${potentialDuplicate.title} at ${potentialDuplicate.company}`
+      }
     );
     return sendResponse(res, response, statusCode);
   }
@@ -1573,3 +1621,346 @@ export const exportJobs = asyncHandler(async (req, res) => {
   });
   return sendResponse(res, response, statusCode);
 });
+
+// UC-125: GET /api/jobs/export/csv - Export unified application history as CSV
+export const exportJobsCSV = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const jobs = await Job.find({ userId }).sort({ createdAt: -1 });
+
+  // CSV header
+  const headers = [
+    "Title",
+    "Company",
+    "Location",
+    "Status",
+    "Application Date",
+    "Primary Platform",
+    "All Platforms",
+    "Salary Min",
+    "Salary Max",
+    "Job Type",
+    "Work Mode",
+    "URL",
+    "Notes",
+    "Created At",
+  ];
+
+  // Convert jobs to CSV rows
+  const rows = jobs.map((job) => {
+    const platforms = (job.applicationPlatforms || [])
+      .map((p) => p.name)
+      .join("; ");
+    
+    return [
+      `"${(job.title || "").replace(/"/g, '""')}"`,
+      `"${(job.company || "").replace(/"/g, '""')}"`,
+      `"${(job.location || "").replace(/"/g, '""')}"`,
+      `"${job.status || ""}"`,
+      job.applicationDate ? new Date(job.applicationDate).toISOString().split("T")[0] : "",
+      `"${job.primaryPlatform || ""}"`,
+      `"${platforms}"`,
+      job.salary?.min || "",
+      job.salary?.max || "",
+      `"${job.jobType || ""}"`,
+      `"${job.workMode || ""}"`,
+      `"${(job.url || "").replace(/"/g, '""')}"`,
+      `"${(job.notes || "").replace(/"/g, '""').replace(/\n/g, " ")}"`,
+      job.createdAt ? new Date(job.createdAt).toISOString() : "",
+    ].join(",");
+  });
+
+  const csv = [headers.join(","), ...rows].join("\n");
+
+  res.setHeader("Content-Type", "text/csv");
+  res.setHeader("Content-Disposition", `attachment; filename="applications_export_${new Date().toISOString().split("T")[0]}.csv"`);
+  return res.send(csv);
+});
+
+// UC-125: POST /api/jobs/import-email - Import application from forwarded email
+export const importFromEmail = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const { sender, subject, body, receivedDate, messageId } = req.body;
+
+  if (!body && !subject) {
+    const { response, statusCode } = validationErrorResponse(
+      "Email content is required",
+      [{ field: "body", message: "Please provide email subject or body content" }]
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Parse the email to extract application details
+  const parseResult = parseApplicationEmail({
+    sender,
+    subject,
+    body,
+    receivedDate,
+    messageId,
+  });
+
+  if (!parseResult.success) {
+    const { response, statusCode } = errorResponse(
+      parseResult.error || "Could not parse application from email",
+      400,
+      ERROR_CODES.VALIDATION_ERROR
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const { platform, jobDetails, sourceEmailId } = parseResult;
+
+  // Check for existing duplicate
+  const existingJobs = await Job.find({ userId });
+  const duplicate = existingJobs.find(job => 
+    areDuplicates(
+      { title: jobDetails.title, company: jobDetails.company, appliedDate: jobDetails.appliedDate },
+      { title: job.title, company: job.company, appliedDate: job.applicationDate }
+    )
+  );
+
+  if (duplicate) {
+    // Add platform to existing job
+    const platformEntry = {
+      name: platform,
+      dateApplied: jobDetails.appliedDate,
+      status: "Applied",
+      sourceEmailId,
+    };
+
+    const existingPlatform = duplicate.applicationPlatforms?.find(p => p.name === platform);
+    
+    if (!existingPlatform) {
+      duplicate.applicationPlatforms = duplicate.applicationPlatforms || [];
+      duplicate.applicationPlatforms.push(platformEntry);
+      await duplicate.save();
+    }
+
+    const { response, statusCode } = successResponse(
+      "Application consolidated with existing entry",
+      {
+        job: duplicate,
+        consolidated: true,
+        platform,
+        extractedDetails: jobDetails,
+      }
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Create new job from email
+  const newJob = new Job({
+    userId,
+    title: jobDetails.title,
+    company: jobDetails.company,
+    location: jobDetails.location,
+    status: "Applied",
+    applicationDate: jobDetails.appliedDate,
+    primaryPlatform: platform,
+    applicationPlatforms: [{
+      name: platform,
+      dateApplied: jobDetails.appliedDate,
+      status: "Applied",
+      sourceEmailId,
+    }],
+    sourceEmailId,
+    statusHistory: [{
+      status: "Applied",
+      timestamp: new Date(),
+      notes: `Imported from ${platform} email`,
+    }],
+  });
+
+  await newJob.save();
+
+  const { response, statusCode } = successResponse(
+    "Application imported from email successfully",
+    {
+      job: newJob,
+      consolidated: false,
+      platform,
+      extractedDetails: jobDetails,
+    }
+  );
+  return sendResponse(res, response, statusCode);
+});
+
+// UC-125: POST /api/jobs/import-demo-emails - Import demo emails for demonstration
+export const importDemoEmails = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const mockEmails = generateMockEmails();
+  const results = {
+    imported: 0,
+    consolidated: 0,
+    failed: 0,
+    details: [],
+  };
+
+  for (const email of mockEmails) {
+    try {
+      const parseResult = parseApplicationEmail(email);
+
+      if (!parseResult.success) {
+        results.failed++;
+        results.details.push({
+          email: email.subject,
+          status: "failed",
+          reason: parseResult.error,
+        });
+        continue;
+      }
+
+      const { platform, jobDetails, sourceEmailId } = parseResult;
+
+      // Check for duplicates
+      const existingJobs = await Job.find({ userId });
+      const duplicate = existingJobs.find(job =>
+        areDuplicates(
+          { title: jobDetails.title, company: jobDetails.company, appliedDate: jobDetails.appliedDate },
+          { title: job.title, company: job.company, appliedDate: job.applicationDate }
+        )
+      );
+
+      if (duplicate) {
+        const platformEntry = {
+          name: platform,
+          dateApplied: jobDetails.appliedDate,
+          status: "Applied",
+          sourceEmailId: email.messageId,
+        };
+
+        const existingPlatform = duplicate.applicationPlatforms?.find(p => p.name === platform);
+
+        if (!existingPlatform) {
+          duplicate.applicationPlatforms = duplicate.applicationPlatforms || [];
+          duplicate.applicationPlatforms.push(platformEntry);
+          await duplicate.save();
+
+          results.consolidated++;
+          results.details.push({
+            title: jobDetails.title,
+            company: jobDetails.company,
+            platform,
+            status: "consolidated",
+            reason: `Merged with existing ${duplicate.title} at ${duplicate.company}`,
+          });
+        } else {
+          results.details.push({
+            title: jobDetails.title,
+            company: jobDetails.company,
+            platform,
+            status: "skipped",
+            reason: "Platform already exists on this application",
+          });
+        }
+      } else {
+        const newJob = new Job({
+          userId,
+          title: jobDetails.title,
+          company: jobDetails.company,
+          location: jobDetails.location,
+          status: "Applied",
+          applicationDate: jobDetails.appliedDate,
+          primaryPlatform: platform,
+          applicationPlatforms: [{
+            name: platform,
+            dateApplied: jobDetails.appliedDate,
+            status: "Applied",
+            sourceEmailId: email.messageId,
+          }],
+          sourceEmailId: email.messageId,
+          statusHistory: [{
+            status: "Applied",
+            timestamp: new Date(),
+            notes: `Imported from ${platform} email (demo)`,
+          }],
+        });
+
+        await newJob.save();
+        results.imported++;
+        results.details.push({
+          title: jobDetails.title,
+          company: jobDetails.company,
+          platform,
+          status: "imported",
+          reason: "New application created",
+        });
+      }
+    } catch (error) {
+      results.failed++;
+      results.details.push({
+        email: email.subject,
+        status: "failed",
+        reason: error.message,
+      });
+    }
+  }
+
+  const { response, statusCode } = successResponse(
+    `Demo import complete: ${results.imported} imported, ${results.consolidated} consolidated, ${results.failed} failed`,
+    results
+  );
+  return sendResponse(res, response, statusCode);
+});
+
+// UC-125: GET /api/jobs/gaps - Identify gaps in application history
+export const getApplicationGaps = asyncHandler(async (req, res) => {
+  const userId = req.auth?.userId || req.auth?.payload?.sub;
+
+  if (!userId) {
+    const { response, statusCode } = errorResponse(
+      "Unauthorized: missing authentication credentials",
+      401,
+      ERROR_CODES.UNAUTHORIZED
+    );
+    return sendResponse(res, response, statusCode);
+  }
+
+  const { gapDays = 7 } = req.query;
+
+  const jobs = await Job.find({ userId }).sort({ applicationDate: 1 });
+
+  const gaps = identifyApplicationGaps(jobs, parseInt(gapDays, 10));
+
+  const { response, statusCode } = successResponse(
+    gaps.length > 0 
+      ? `Found ${gaps.length} gaps in your application history` 
+      : "No significant gaps found in your application history",
+    {
+      gaps,
+      totalApplications: jobs.length,
+      gapThreshold: parseInt(gapDays, 10),
+    }
+  );
+  return sendResponse(res, response, statusCode);
+});
+
