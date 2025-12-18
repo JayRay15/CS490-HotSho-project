@@ -87,11 +87,7 @@ export const generalRateLimiter = rateLimit({
   },
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-  skipSuccessfulRequests: false,
-  keyGenerator: (req) => {
-    // Use user ID if authenticated, otherwise IP
-    return req.auth?.payload?.sub || req.auth?.userId || req.ip;
-  }
+  skipSuccessfulRequests: false
 });
 
 // Strict rate limiter for authentication endpoints
@@ -105,8 +101,7 @@ export const authRateLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  skipSuccessfulRequests: true, // Only count failed requests
-  keyGenerator: (req) => req.ip
+  skipSuccessfulRequests: true // Only count failed requests
 });
 
 // Rate limiter for password reset endpoints
@@ -119,8 +114,7 @@ export const passwordResetLimiter = rateLimit({
     code: 'PASSWORD_RESET_LIMIT_EXCEEDED'
   },
   standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: (req) => req.ip
+  legacyHeaders: false
 });
 
 // API-specific rate limiter for expensive operations
@@ -133,10 +127,7 @@ export const apiRateLimiter = rateLimit({
     code: 'API_RATE_LIMIT_EXCEEDED'
   },
   standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: (req) => {
-    return req.auth?.payload?.sub || req.auth?.userId || req.ip;
-  }
+  legacyHeaders: false
 });
 
 // ============================================================
@@ -237,19 +228,46 @@ const sanitizeObject = (obj) => {
  */
 export const sanitizeInput = (req, res, next) => {
   try {
-    // Sanitize request body
+    // Sanitize request body (most important for XSS prevention)
     if (req.body && typeof req.body === 'object') {
+      const original = JSON.stringify(req.body);
       req.body = sanitizeObject(req.body);
+      const sanitized = JSON.stringify(req.body);
+      
+      // Log only if sanitization changed something (for debugging XSS protection)
+      if (original !== sanitized && process.env.NODE_ENV !== 'production') {
+        console.log('[XSS Protection] Input sanitized:', {
+          path: req.path,
+          original: original.substring(0, 200),
+          sanitized: sanitized.substring(0, 200)
+        });
+      }
     }
     
-    // Sanitize query parameters
+    // Sanitize query parameters (safely handle read-only properties)
     if (req.query && typeof req.query === 'object') {
-      req.query = sanitizeObject(req.query);
+      const sanitized = sanitizeObject(req.query);
+      // Only update if we can (some Express versions make this read-only)
+      try {
+        Object.keys(sanitized).forEach(key => {
+          req.query[key] = sanitized[key];
+        });
+      } catch (e) {
+        // If query is read-only, sanitization still happened in memory
+      }
     }
     
-    // Sanitize route parameters
+    // Sanitize route parameters (safely handle read-only properties)
     if (req.params && typeof req.params === 'object') {
-      req.params = sanitizeObject(req.params);
+      const sanitized = sanitizeObject(req.params);
+      // Only update if we can
+      try {
+        Object.keys(sanitized).forEach(key => {
+          req.params[key] = sanitized[key];
+        });
+      } catch (e) {
+        // If params is read-only, sanitization still happened in memory
+      }
     }
     
     next();

@@ -75,6 +75,8 @@ import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 import logger from "./utils/logger.js";
 import { initializeSentry, sentryErrorHandler, sentryRequestHandler } from "./utils/sentry.js";
 import { requestLoggingMiddleware, apiPerformanceMiddleware } from "./middleware/requestLogging.js";
+// Security middleware
+import { sanitizeInput, helmetMiddleware } from "./middleware/securityMiddleware.js";
 // Cleanup schedule no longer needed - accounts are deleted immediately
 // import { startCleanupSchedule } from "./utils/cleanupDeletedUsers.js";
 
@@ -103,6 +105,11 @@ const app = express();
 
 // Sentry request handler (must be first middleware)
 app.use(sentryRequestHandler());
+
+// ============================================================================
+// MIDDLEWARE: Security Headers (Helmet)
+// ============================================================================
+app.use(helmetMiddleware);
 
 // Request logging and performance tracking
 app.use(requestLoggingMiddleware);
@@ -175,6 +182,12 @@ app.use(cors({
 // Default is 100kb, we need at least 15MB for PDF files (5MB PDF * 1.33 base64 overhead + other data)
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
+
+// ============================================================================
+// MIDDLEWARE: Security - XSS Protection
+// ============================================================================
+// Sanitize all inputs to prevent XSS attacks
+app.use(sanitizeInput);
 
 // Serve uploaded files statically with aggressive caching
 // These files are user uploads with unique names, so long cache is safe
