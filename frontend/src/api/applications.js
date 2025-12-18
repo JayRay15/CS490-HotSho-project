@@ -221,3 +221,17 @@ export const updateChecklistItem = async (jobId, itemId, updateData) => {
   const response = await axiosInstance.put(`/api/applications/checklists/${jobId}/items/${itemId}`, updateData);
   return response.data;
 };
+
+// ===============================================
+// Application Package Quality Scoring APIs (UC-122)
+// ===============================================
+
+/**
+ * Score an application package quality using AI
+ * @param {Object} scoreData - { jobId, resumeId?, coverLetterId? }
+ * @returns {Promise<Object>} Quality analysis with score and suggestions
+ */
+export const scoreApplicationPackage = async (scoreData) => {
+  const response = await axiosInstance.post('/api/applications/packages/score', scoreData);
+  return response.data;
+};

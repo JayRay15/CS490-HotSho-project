@@ -2401,3 +2401,116 @@ Return ONLY valid JSON, no markdown formatting.`;
   }
 }
 
+/**
+ * Analyze application package quality and generate a score
+ * UC-122: Application Package Quality Scoring
+ * @param {Object} job - The job posting details
+ * @param {Object} resume - The resume content
+ * @param {Object} coverLetter - The cover letter content
+ * @param {Object} userProfile - User's LinkedIn/profile data (optional)
+ * @param {Object} historicalScores - User's average and top scores for comparison
+ * @returns {Object} Quality analysis with score, issues, and suggestions
+ */
+export async function analyzeApplicationPackageQuality(job, resume, coverLetter, userProfile = null, historicalScores = null) {
+  const model = genAI.getGenerativeModel({ model: "models/gemini-flash-latest" });
+
+  const prompt = `You are an expert ATS (Applicant Tracking System) analyst and career coach. Analyze the following job application package and provide a comprehensive quality score with detailed feedback.
+
+**JOB POSTING:**
+Title: ${job.title || 'Not specified'}
+Company: ${job.company || 'Not specified'}
+Description: ${job.description || 'Not provided'}
+Requirements: ${job.requirements || 'Not provided'}
+Location: ${job.location || 'Not specified'}
+Job Type: ${job.jobType || 'Not specified'}
+
+**RESUME:**
+Name: ${resume?.sections?.contactInfo?.name || resume?.name || 'Not provided'}
+Summary: ${resume?.sections?.summary || 'Not provided'}
+Experience: ${JSON.stringify(resume?.sections?.experience || [], null, 2)}
+Skills: ${JSON.stringify(resume?.sections?.skills || [], null, 2)}
+Education: ${JSON.stringify(resume?.sections?.education || [], null, 2)}
+Projects: ${JSON.stringify(resume?.sections?.projects || [], null, 2)}
+Certifications: ${JSON.stringify(resume?.sections?.certifications || [], null, 2)}
+
+**COVER LETTER:**
+Content: ${coverLetter?.content || 'Not provided'}
+
+**USER PROFILE/LINKEDIN (if available):**
+${userProfile ? JSON.stringify(userProfile, null, 2) : 'Not provided'}
+
+**HISTORICAL CONTEXT:**
+${historicalScores ? `User's Average Score: ${historicalScores.averageScore}, Top Score: ${historicalScores.topScore}` : 'No historical data'}
+
+**ANALYSIS TASKS:**
+1. Score alignment between application materials and job requirements (0-100)
+2. Identify missing keywords, skills, or experiences from job description
+3. Flag formatting issues, typos, or inconsistencies across materials
+4. Provide actionable improvement suggestions with priority ranking
+5. Assess overall readiness to submit
+
+**OUTPUT FORMAT (JSON):**
+{
+  "overallScore": <number 0-100>,
+  "categoryScores": {
+    "keywordMatch": <number 0-100>,
+    "skillsAlignment": <number 0-100>,
+    "experienceRelevance": <number 0-100>,
+    "coverLetterQuality": <number 0-100>,
+    "formattingConsistency": <number 0-100>,
+    "atsCompatibility": <number 0-100>
+  },
+  "missingKeywords": [
+    {"keyword": "string", "importance": "critical|high|medium|low", "context": "where it should appear"}
+  ],
+  "missingSkills": [
+    {"skill": "string", "importance": "critical|high|medium|low", "suggestion": "how to address"}
+  ],
+  "formattingIssues": [
+    {"issue": "string", "location": "resume|coverLetter|both", "severity": "critical|high|medium|low"}
+  ],
+  "inconsistencies": [
+    {"issue": "string", "details": "specific inconsistency between materials"}
+  ],
+  "suggestions": [
+    {
+      "priority": 1,
+      "category": "keywords|skills|experience|formatting|content",
+      "suggestion": "specific actionable suggestion",
+      "impact": "high|medium|low",
+      "effort": "quick|moderate|significant"
+    }
+  ],
+  "strengths": ["string array of what's done well"],
+  "readyToSubmit": <boolean>,
+  "readinessMessage": "string explaining submission readiness",
+  "comparisonToAverage": {
+    "difference": <number, positive means above average>,
+    "message": "string comparing to user's historical performance"
+  },
+  "estimatedAtsScore": <number 0-100>,
+  "quickWins": [
+    {"action": "string", "expectedScoreIncrease": <number>}
+  ]
+}
+
+IMPORTANT:
+- Be specific and actionable in all suggestions
+- Prioritize suggestions by impact and effort
+- Consider ATS scanning algorithms in your analysis
+- Flag any red flags that could cause automatic rejection
+- Be encouraging but honest about areas needing improvement
+
+Return ONLY valid JSON, no markdown formatting.`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+    const cleanedText = text.replace(/```json\n?|```\n?/g, '').trim();
+    return JSON.parse(cleanedText);
+  } catch (error) {
+    console.error('Analyze Application Package Quality Error:', error);
+    throw new Error(`Failed to analyze application package: ${error.message}`);
+  }
+}
+
