@@ -9,7 +9,7 @@ import api, { setAuthToken } from "./axios";
  * Get all jobs with their geocoded locations for map display
  * @param {Object} options - Filter options
  * @param {string} options.workMode - Filter by work mode (Remote, Hybrid, On-site)
- * @param {number} options.maxDistance - Filter by maximum distance from home (km)
+ * @param {number} options.maxDistance - Filter by maximum distance from home (miles)
  * @param {number} options.maxCommuteTime - Filter by maximum commute time (minutes)
  * @param {string} options.status - Filter by job status
  * @param {Function} getToken - Clerk getToken function

@@ -41,9 +41,12 @@ describe('db utility', () => {
 
       expect(mockMongoose.connect).toHaveBeenCalledWith(
         'mongodb://localhost:27017/test',
-        {
+        expect.objectContaining({
           serverSelectionTimeoutMS: 5000,
-        }
+          minPoolSize: 2,
+          maxPoolSize: 10,
+          maxIdleTimeMS: 30000,
+        })
       );
       expect(consoleLogSpy).toHaveBeenCalledWith(
         expect.stringContaining('Attempting to connect')

@@ -75,14 +75,14 @@ export const getJobsWithLocations = async (req, res) => {
       return jobObj;
     });
 
-    // Filter by max distance if specified
+    // Filter by max distance if specified (in miles)
     if (maxDistance && user?.homeLocation?.coordinates) {
       const maxDistanceNum = parseFloat(maxDistance);
-      console.log("Filtering by maxDistance:", maxDistanceNum);
+      console.log("Filtering by maxDistance:", maxDistanceNum, "miles");
       jobsWithCommute = jobsWithCommute.filter((job) => {
         if (!job.commuteDetails) return true; // Keep jobs without location data
-        const passes = job.commuteDetails.distance.km <= maxDistanceNum;
-        console.log(`Job ${job.title}: ${job.commuteDetails.distance.km}km <= ${maxDistanceNum}km = ${passes}`);
+        const passes = job.commuteDetails.distance.miles <= maxDistanceNum;
+        console.log(`Job ${job.title}: ${job.commuteDetails.distance.miles}mi <= ${maxDistanceNum}mi = ${passes}`);
         return passes;
       });
     }

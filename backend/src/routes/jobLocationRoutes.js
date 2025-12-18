@@ -26,7 +26,7 @@ router.use(requireAuth());
  * @desc    Get all jobs with their geocoded locations for map display
  * @access  Private
  * @query   workMode - Filter by work mode (Remote, Hybrid, On-site)
- * @query   maxDistance - Filter by maximum distance from home (km)
+ * @query   maxDistance - Filter by maximum distance from home (miles)
  * @query   status - Filter by job status
  */
 router.get("/", getJobsWithLocations);
