@@ -53,8 +53,9 @@ const CustomizationPanel = ({
         {/* Job Type and Presets Row */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">Job Type:</label>
+            <label htmlFor="customization-job-type" className="text-sm font-medium text-gray-700">Job Type:</label>
             <select
+              id="customization-job-type"
               value={selectedJobType}
               onChange={(e) => applyJobTypeConfig(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
@@ -121,7 +122,7 @@ const CustomizationPanel = ({
         
         {/* Sections Grid */}
         <div>
-          <label className="text-sm font-medium text-gray-700 mb-2 block">Section Order & Visibility (Drag to Reorder)</label>
+          <span className="text-sm font-medium text-gray-700 mb-2 block">Section Order & Visibility (Drag to Reorder)</span>
           <DndProvider backend={HTML5Backend}>
             <div className="flex flex-wrap gap-2">
               {sectionOrder.map((key, idx) => {
@@ -158,8 +159,9 @@ const CustomizationPanel = ({
           {/* Job Selector */}
           {jobs.length > 0 && (
             <div className="mb-4">
-              <label className="text-xs font-medium text-gray-700 mb-2 block">Select Job for Optimization:</label>
+              <label htmlFor="job-optimization-select" className="text-xs font-medium text-gray-700 mb-2 block">Select Job for Optimization:</label>
               <select
+                id="job-optimization-select"
                 value={selectedJobForSkills || selectedJobForExperience || ''}
                 onChange={(e) => {
                   const selectedValue = e.target.value;

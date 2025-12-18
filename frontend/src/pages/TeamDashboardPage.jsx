@@ -1408,8 +1408,9 @@ const TeamDashboardPage = () => {
                         <form onSubmit={handleInvitePartner}>
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Email Address *</label>
+                                    <label htmlFor="invite-partner-email" className="block text-sm font-medium text-gray-700 mb-1">Email Address *</label>
                                     <input
+                                        id="invite-partner-email"
                                         type="email"
                                         value={invitePartnerForm.email}
                                         onChange={(e) => setInvitePartnerForm({ ...invitePartnerForm, email: e.target.value })}
@@ -1419,8 +1420,9 @@ const TeamDashboardPage = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Partner Type</label>
+                                    <label htmlFor="invite-partner-type" className="block text-sm font-medium text-gray-700 mb-1">Partner Type</label>
                                     <select
+                                        id="invite-partner-type"
                                         value={invitePartnerForm.partnerType}
                                         onChange={(e) => setInvitePartnerForm({ ...invitePartnerForm, partnerType: e.target.value })}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -1432,8 +1434,9 @@ const TeamDashboardPage = () => {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Personal Message</label>
+                                    <label htmlFor="invite-partner-message" className="block text-sm font-medium text-gray-700 mb-1">Personal Message</label>
                                     <textarea
+                                        id="invite-partner-message"
                                         value={invitePartnerForm.message}
                                         onChange={(e) => setInvitePartnerForm({ ...invitePartnerForm, message: e.target.value })}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -1503,8 +1506,9 @@ const TeamDashboardPage = () => {
                             ))}
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Check-in Frequency</label>
+                                <label htmlFor="privacy-checkin-frequency" className="block text-sm font-medium text-gray-700 mb-1">Check-in Frequency</label>
                                 <select
+                                    id="privacy-checkin-frequency"
                                     value={privacyForm.checkInFrequency}
                                     onChange={(e) => setPrivacyForm({ ...privacyForm, checkInFrequency: e.target.value })}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -1551,8 +1555,9 @@ const TeamDashboardPage = () => {
                             
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Applications Sent</label>
+                                    <label htmlFor="progress-applications" className="block text-sm font-medium text-gray-700 mb-1">Applications Sent</label>
                                     <input
+                                        id="progress-applications"
                                         type="number"
                                         value={shareProgressForm.applicationsSent}
                                         onChange={(e) => setShareProgressForm({ ...shareProgressForm, applicationsSent: parseInt(e.target.value) || 0 })}
@@ -1561,8 +1566,9 @@ const TeamDashboardPage = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Interviews Scheduled</label>
+                                    <label htmlFor="progress-interviews" className="block text-sm font-medium text-gray-700 mb-1">Interviews Scheduled</label>
                                     <input
+                                        id="progress-interviews"
                                         type="number"
                                         value={shareProgressForm.interviewsScheduled}
                                         onChange={(e) => setShareProgressForm({ ...shareProgressForm, interviewsScheduled: parseInt(e.target.value) || 0 })}
@@ -1571,8 +1577,9 @@ const TeamDashboardPage = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Offers Received</label>
+                                    <label htmlFor="progress-offers" className="block text-sm font-medium text-gray-700 mb-1">Offers Received</label>
                                     <input
+                                        id="progress-offers"
                                         type="number"
                                         value={shareProgressForm.offersReceived}
                                         onChange={(e) => setShareProgressForm({ ...shareProgressForm, offersReceived: parseInt(e.target.value) || 0 })}
@@ -1581,8 +1588,9 @@ const TeamDashboardPage = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Weekly Goal</label>
+                                    <label htmlFor="progress-weekly-goal" className="block text-sm font-medium text-gray-700 mb-1">Weekly Goal</label>
                                     <input
+                                        id="progress-weekly-goal"
                                         type="number"
                                         value={shareProgressForm.weeklyGoal}
                                         onChange={(e) => setShareProgressForm({ ...shareProgressForm, weeklyGoal: parseInt(e.target.value) || 0 })}
@@ -1593,9 +1601,10 @@ const TeamDashboardPage = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Add Milestone</label>
+                                <label htmlFor="progress-milestone" className="block text-sm font-medium text-gray-700 mb-1">Add Milestone</label>
                                 <div className="flex gap-2">
                                     <input
+                                        id="progress-milestone"
                                         type="text"
                                         value={shareProgressForm.newMilestone}
                                         onChange={(e) => setShareProgressForm({ ...shareProgressForm, newMilestone: e.target.value })}
@@ -1652,10 +1661,11 @@ const TeamDashboardPage = () => {
                         <form onSubmit={handleInviteMember}>
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    <label htmlFor="invite-member-email" className="block text-sm font-medium text-gray-700 mb-1">
                                         Email Address *
                                     </label>
                                     <input
+                                        id="invite-member-email"
                                         type="email"
                                         value={inviteForm.email}
                                         onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
@@ -1666,10 +1676,11 @@ const TeamDashboardPage = () => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    <label htmlFor="invite-member-role" className="block text-sm font-medium text-gray-700 mb-1">
                                         Role
                                     </label>
                                     <select
+                                        id="invite-member-role"
                                         value={inviteForm.role}
                                         onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value })}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -1683,10 +1694,11 @@ const TeamDashboardPage = () => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    <label htmlFor="invite-member-message" className="block text-sm font-medium text-gray-700 mb-1">
                                         Personal Message
                                     </label>
                                     <textarea
+                                        id="invite-member-message"
                                         value={inviteForm.invitationMessage}
                                         onChange={(e) => setInviteForm({ ...inviteForm, invitationMessage: e.target.value })}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"

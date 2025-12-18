@@ -1047,8 +1047,8 @@ export default function ProfilePage() {
 
                 {/* Certifications modal - renders full Certifications UI */}
                 {showCertModal && (
-                  <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={() => { setShowCertModal(false); setEditingCertification(null); }}>
-                    <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+                  <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} role="button" tabIndex={0} aria-label="Close modal" onClick={() => { setShowCertModal(false); setEditingCertification(null); }} onKeyDown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') { setShowCertModal(false); setEditingCertification(null); } }}>
+                    <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] flex flex-col" role="dialog" aria-modal="true" aria-labelledby="certifications-modal-title" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                       {/* Modal Header */}
                       <div className="flex justify-between items-center p-6 border-b sticky top-0 bg-white z-10">
                         <h3 className="text-xl font-heading font-semibold text-gray-900">Certifications</h3>
@@ -1201,16 +1201,30 @@ export default function ProfilePage() {
         <div
           className="fixed inset-0 flex items-center justify-center z-50"
           style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+          role="button"
+          tabIndex={0}
+          aria-label="Close modal"
           onClick={() => {
             setShowDeleteModal(false);
             setDeletePassword("");
             setError(null);
           }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape' || e.key === 'Enter') {
+              setShowDeleteModal(false);
+              setDeletePassword("");
+              setError(null);
+            }
+          }}
         >
           <div
             className="rounded-lg shadow-2xl max-w-md w-full p-6 mx-4 border"
             style={{ backgroundColor: '#EEEEEE', borderColor: '#E5E7EB' }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-modal-title"
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
           >
             <div className="flex items-start mb-4">
               <div className="shrink-0">
@@ -1238,10 +1252,11 @@ export default function ProfilePage() {
               </div>
             )}
 
-            <label className="block text-sm font-medium mb-2" style={{ color: '#111827' }}>
+            <label htmlFor="delete-account-password" className="block text-sm font-medium mb-2" style={{ color: '#111827' }}>
               Password <span style={{ color: '#DC2626' }}>*</span>
             </label>
             <input
+              id="delete-account-password"
               type="password"
               value={deletePassword}
               onChange={(e) => setDeletePassword(e.target.value)}
@@ -1286,15 +1301,27 @@ export default function ProfilePage() {
         <div
           className="fixed inset-0 flex items-center justify-center z-50"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          role="button"
+          tabIndex={0}
+          aria-label="Close modal"
           onClick={(e) => {
             if (!isDeleting) {
+              handleCancelEducationDelete();
+            }
+          }}
+          onKeyDown={(e) => {
+            if ((e.key === 'Escape' || e.key === 'Enter') && !isDeleting) {
               handleCancelEducationDelete();
             }
           }}
         >
           <div
             className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 border border-gray-200"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="education-delete-modal-title"
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
             <div className="bg-red-50 border-b border-red-100 px-6 py-4">
@@ -1375,15 +1402,27 @@ export default function ProfilePage() {
         <div
           className="fixed inset-0 flex items-center justify-center z-50"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          role="button"
+          tabIndex={0}
+          aria-label="Close modal"
           onClick={(e) => {
             if (!isDeleting) {
+              handleCancelSkillDelete();
+            }
+          }}
+          onKeyDown={(e) => {
+            if ((e.key === 'Escape' || e.key === 'Enter') && !isDeleting) {
               handleCancelSkillDelete();
             }
           }}
         >
           <div
             className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 border border-gray-200"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="skill-delete-modal-title"
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
             <div className="bg-red-50 border-b border-red-100 px-6 py-4">
@@ -1565,11 +1604,19 @@ export default function ProfilePage() {
         <div
           className="fixed inset-0 flex items-center justify-center z-50"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          role="button"
+          tabIndex={0}
+          aria-label="Close modal"
           onClick={(e) => { if (!isProjectDeleting) handleCancelProjectDelete(); }}
+          onKeyDown={(e) => { if ((e.key === 'Escape' || e.key === 'Enter') && !isProjectDeleting) handleCancelProjectDelete(); }}
         >
           <div
             className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 border border-gray-200"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="project-delete-modal-title"
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
             <div className="bg-red-50 border-b border-red-100 px-6 py-4">
@@ -1643,15 +1690,27 @@ export default function ProfilePage() {
         <div
           className="fixed inset-0 flex items-center justify-center z-50"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+          role="button"
+          tabIndex={0}
+          aria-label="Close modal"
           onClick={(e) => {
             if (!isDeleting) {
+              handleCancelEmploymentDelete();
+            }
+          }}
+          onKeyDown={(e) => {
+            if ((e.key === 'Escape' || e.key === 'Enter') && !isDeleting) {
               handleCancelEmploymentDelete();
             }
           }}
         >
           <div
             className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 border border-gray-200"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="employment-delete-modal-title"
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
             <div className="bg-red-50 border-b border-red-100 px-6 py-4">
@@ -1971,8 +2030,8 @@ function EducationModal({ isOpen, onClose, onSuccess, getToken, editingEducation
   const DEGREE_OPTIONS = ["High School", "Associate", "Bachelor's", "Master's", "PhD", "Other"];
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }} onClick={handleClose}>
-      <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto relative border border-gray-200" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }} role="button" tabIndex={0} aria-label="Close modal" onClick={handleClose} onKeyDown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') handleClose(); }}>
+      <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto relative border border-gray-200" role="dialog" aria-modal="true" aria-labelledby="education-modal-title" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
         <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center z-10">
           <h3 className="text-2xl font-heading font-semibold">{isEditMode ? 'Edit Education' : 'Add Education'}</h3>
           <button onClick={handleClose} disabled={isSaving} className="text-gray-400 hover:text-gray-600 transition">
@@ -1995,60 +2054,60 @@ function EducationModal({ isOpen, onClose, onSuccess, getToken, editingEducation
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Institution <span className="text-red-500">*</span></label>
-              <input name="institution" value={formData.institution} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="University of Example" />
+              <label htmlFor="education-institution" className="block text-sm font-medium text-gray-700 mb-2">Institution <span className="text-red-500">*</span></label>
+              <input id="education-institution" name="institution" value={formData.institution} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="University of Example" />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Degree <span className="text-red-500">*</span></label>
-                <select name="degree" value={formData.degree} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                <label htmlFor="education-degree" className="block text-sm font-medium text-gray-700 mb-2">Degree <span className="text-red-500">*</span></label>
+                <select id="education-degree" name="degree" value={formData.degree} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg">
                   <option value="">Select degree...</option>
                   {DEGREE_OPTIONS.map(d => (<option key={d} value={d}>{d}</option>))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Field of Study <span className="text-red-500">*</span></label>
-                <input name="fieldOfStudy" value={formData.fieldOfStudy} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Computer Science" />
+                <label htmlFor="education-field" className="block text-sm font-medium text-gray-700 mb-2">Field of Study <span className="text-red-500">*</span></label>
+                <input id="education-field" name="fieldOfStudy" value={formData.fieldOfStudy} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Computer Science" />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Location (optional)</label>
-              <input name="location" value={formData.location} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="City, State" />
+              <label htmlFor="education-location" className="block text-sm font-medium text-gray-700 mb-2">Location (optional)</label>
+              <input id="education-location" name="location" value={formData.location} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="City, State" />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Start Date (MM/YYYY) <span className="text-red-500">*</span></label>
-                <input name="startDate" value={formData.startDate} onChange={handleInputChange} placeholder="09/2020" maxLength={7} className="w-full px-4 py-2 border border-gray-300 rounded-lg" />
+                <label htmlFor="education-start-date" className="block text-sm font-medium text-gray-700 mb-2">Start Date (MM/YYYY) <span className="text-red-500">*</span></label>
+                <input id="education-start-date" name="startDate" value={formData.startDate} onChange={handleInputChange} placeholder="09/2020" maxLength={7} className="w-full px-4 py-2 border border-gray-300 rounded-lg" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Graduation Date (MM/YYYY) {!formData.current && <span className="text-red-500">*</span>}</label>
-                <input name="endDate" value={formData.endDate} onChange={handleInputChange} placeholder="06/2024" maxLength={7} disabled={formData.current} className="w-full px-4 py-2 border border-gray-300 rounded-lg disabled:bg-gray-100" />
+                <label htmlFor="education-end-date" className="block text-sm font-medium text-gray-700 mb-2">Graduation Date (MM/YYYY) {!formData.current && <span className="text-red-500">*</span>}</label>
+                <input id="education-end-date" name="endDate" value={formData.endDate} onChange={handleInputChange} placeholder="06/2024" maxLength={7} disabled={formData.current} className="w-full px-4 py-2 border border-gray-300 rounded-lg disabled:bg-gray-100" />
               </div>
             </div>
 
             <div className="flex items-center">
-              <input type="checkbox" name="current" checked={formData.current} onChange={handleInputChange} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
-              <label className="ml-2 block text-sm text-gray-700">I am currently enrolled</label>
+              <input id="education-current" type="checkbox" name="current" checked={formData.current} onChange={handleInputChange} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
+              <label htmlFor="education-current" className="ml-2 block text-sm text-gray-700">I am currently enrolled</label>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">GPA (optional)</label>
-                <input name="gpa" value={formData.gpa} onChange={handleInputChange} placeholder="3.75" className="w-full px-4 py-2 border border-gray-300 rounded-lg" />
+                <label htmlFor="education-gpa" className="block text-sm font-medium text-gray-700 mb-2">GPA (optional)</label>
+                <input id="education-gpa" name="gpa" value={formData.gpa} onChange={handleInputChange} placeholder="3.75" className="w-full px-4 py-2 border border-gray-300 rounded-lg" />
               </div>
               <div className="flex items-center">
-                <input type="checkbox" name="gpaPrivate" checked={formData.gpaPrivate} onChange={handleInputChange} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
-                <label className="ml-2 block text-sm text-gray-700">Keep GPA private</label>
+                <input id="education-gpa-private" type="checkbox" name="gpaPrivate" checked={formData.gpaPrivate} onChange={handleInputChange} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
+                <label htmlFor="education-gpa-private" className="ml-2 block text-sm text-gray-700">Keep GPA private</label>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Honors / Achievements</label>
-              <textarea name="achievements" value={formData.achievements} onChange={handleInputChange} rows={4} className="w-full px-4 py-2 border border-gray-300 rounded-lg resize-none" placeholder="Dean's List, Cum Laude, Scholarship..." />
+              <label htmlFor="education-achievements" className="block text-sm font-medium text-gray-700 mb-2">Honors / Achievements</label>
+              <textarea id="education-achievements" name="achievements" value={formData.achievements} onChange={handleInputChange} rows={4} className="w-full px-4 py-2 border border-gray-300 rounded-lg resize-none" placeholder="Dean's List, Cum Laude, Scholarship..." />
             </div>
 
             <div className="flex justify-end space-x-4 pt-6 border-t sticky bottom-0 bg-white">
@@ -2183,8 +2242,8 @@ function SkillModal({ isOpen, onClose, onSuccess, getToken, editingSkill, skillL
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0,0,0,0.48)' }} onClick={handleClose}>
-      <div className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 p-6 border border-gray-200" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0,0,0,0.48)' }} role="button" tabIndex={0} aria-label="Close modal" onClick={handleClose} onKeyDown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') handleClose(); }}>
+      <div className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 p-6 border border-gray-200" role="dialog" aria-modal="true" aria-labelledby="skill-modal-title" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-xl font-semibold">{isEditMode ? 'Edit Skill' : 'Add Skill'}</h3>
           <button onClick={handleClose} className="text-gray-400 hover:text-gray-600">
@@ -2197,8 +2256,8 @@ function SkillModal({ isOpen, onClose, onSuccess, getToken, editingSkill, skillL
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Skill name <span className="text-red-500">*</span></label>
-            <input list="skill-suggestions" name="name" value={formData.name} onChange={handleInputChange} className="w-full px-3 py-2 border rounded" placeholder="e.g. JavaScript" />
+            <label htmlFor="skill-name" className="block text-sm font-medium text-gray-700 mb-1">Skill name <span className="text-red-500">*</span></label>
+            <input id="skill-name" list="skill-suggestions" name="name" value={formData.name} onChange={handleInputChange} className="w-full px-3 py-2 border rounded" placeholder="e.g. JavaScript" />
             <datalist id="skill-suggestions">
               {SUGGESTIONS.map(s => <option key={s} value={s} />)}
             </datalist>
@@ -2206,14 +2265,14 @@ function SkillModal({ isOpen, onClose, onSuccess, getToken, editingSkill, skillL
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-              <select name="category" value={formData.category} onChange={handleInputChange} className="w-full px-3 py-2 border rounded">
+              <label htmlFor="skill-category" className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+              <select id="skill-category" name="category" value={formData.category} onChange={handleInputChange} className="w-full px-3 py-2 border rounded">
                 {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Proficiency</label>
-              <select name="level" value={formData.level} onChange={handleInputChange} className="w-full px-3 py-2 border rounded">
+              <label htmlFor="skill-level" className="block text-sm font-medium text-gray-700 mb-1">Proficiency</label>
+              <select id="skill-level" name="level" value={formData.level} onChange={handleInputChange} className="w-full px-3 py-2 border rounded">
                 {LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
               </select>
             </div>
@@ -2512,15 +2571,23 @@ function EmploymentModal({ isOpen, onClose, onSuccess, getToken, editingJob }) {
     <div
       className="fixed inset-0 flex items-center justify-center z-50"
       style={{ backgroundColor: 'rgba(0, 0, 0, 0.48)' }}
+      role="button"
+      tabIndex={0}
+      aria-label="Close modal"
       onClick={handleClose}
+      onKeyDown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') handleClose(); }}
     >
       <div
         className="bg-white rounded-lg shadow-2xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto relative border border-gray-200"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="employment-modal-title"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
         <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center z-10">
-          <h3 className="text-2xl font-heading font-semibold">{isEditMode ? 'Edit Employment' : 'Add Employment'}</h3>
+          <h3 id="employment-modal-title" className="text-2xl font-heading font-semibold">{isEditMode ? 'Edit Employment' : 'Add Employment'}</h3>
           <button
             onClick={handleClose}
             disabled={isSaving}

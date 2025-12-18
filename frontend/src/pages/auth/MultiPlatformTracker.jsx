@@ -629,8 +629,9 @@ export default function MultiPlatformTracker() {
         {/* Filters */}
         <div className="mb-6 flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">Platform:</label>
+            <label htmlFor="platform-filter-select" className="text-sm font-medium text-gray-700">Platform:</label>
             <select
+              id="platform-filter-select"
               value={selectedPlatform}
               onChange={(e) => setSelectedPlatform(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -645,8 +646,9 @@ export default function MultiPlatformTracker() {
           </div>
           
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">Status:</label>
+            <label htmlFor="status-filter-select" className="text-sm font-medium text-gray-700">Status:</label>
             <select
+              id="status-filter-select"
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -779,10 +781,11 @@ export default function MultiPlatformTracker() {
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="email-sender-input" className="block text-sm font-medium text-gray-700 mb-1">
                     Sender Email (optional)
                   </label>
                   <input
+                    id="email-sender-input"
                     type="email"
                     value={emailData.sender}
                     onChange={(e) => setEmailData({ ...emailData, sender: e.target.value })}
@@ -792,10 +795,11 @@ export default function MultiPlatformTracker() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="email-subject-input" className="block text-sm font-medium text-gray-700 mb-1">
                     Email Subject
                   </label>
                   <input
+                    id="email-subject-input"
                     type="text"
                     value={emailData.subject}
                     onChange={(e) => setEmailData({ ...emailData, subject: e.target.value })}
@@ -805,10 +809,11 @@ export default function MultiPlatformTracker() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="email-body-textarea" className="block text-sm font-medium text-gray-700 mb-1">
                     Email Body *
                   </label>
                   <textarea
+                    id="email-body-textarea"
                     value={emailData.body}
                     onChange={(e) => setEmailData({ ...emailData, body: e.target.value })}
                     placeholder="Paste the email content here..."

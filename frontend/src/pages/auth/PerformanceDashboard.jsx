@@ -924,10 +924,11 @@ function GoalEditorModal({ goals, onChange, onSave, onCancel, saving }) {
             <h3 className="font-semibold text-gray-900 mb-3">Weekly Goals</h3>
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="goal-weekly-applications" className="block text-sm font-medium text-gray-700 mb-1">
                   Applications per Week
                 </label>
                 <input
+                  id="goal-weekly-applications"
                   type="number"
                   min="0"
                   value={goals.weekly?.applications?.target || 10}
@@ -936,10 +937,11 @@ function GoalEditorModal({ goals, onChange, onSave, onCancel, saving }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="goal-weekly-networking" className="block text-sm font-medium text-gray-700 mb-1">
                   Networking Activities per Week
                 </label>
                 <input
+                  id="goal-weekly-networking"
                   type="number"
                   min="0"
                   value={goals.weekly?.networking?.target || 5}
@@ -955,10 +957,11 @@ function GoalEditorModal({ goals, onChange, onSave, onCancel, saving }) {
             <h3 className="font-semibold text-gray-900 mb-3">Monthly Goals</h3>
             <div className="grid md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="goal-monthly-applications" className="block text-sm font-medium text-gray-700 mb-1">
                   Applications
                 </label>
                 <input
+                  id="goal-monthly-applications"
                   type="number"
                   min="0"
                   value={goals.monthly?.applications?.target || 40}
@@ -967,10 +970,11 @@ function GoalEditorModal({ goals, onChange, onSave, onCancel, saving }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="goal-monthly-interviews" className="block text-sm font-medium text-gray-700 mb-1">
                   Interviews
                 </label>
                 <input
+                  id="goal-monthly-interviews"
                   type="number"
                   min="0"
                   value={goals.monthly?.interviews?.target || 4}
@@ -979,10 +983,11 @@ function GoalEditorModal({ goals, onChange, onSave, onCancel, saving }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="goal-monthly-offers" className="block text-sm font-medium text-gray-700 mb-1">
                   Offers
                 </label>
                 <input
+                  id="goal-monthly-offers"
                   type="number"
                   min="0"
                   value={goals.monthly?.offers?.target || 1}
@@ -998,10 +1003,11 @@ function GoalEditorModal({ goals, onChange, onSave, onCancel, saving }) {
             <h3 className="font-semibold text-gray-900 mb-3">Overall Targets</h3>
             <div className="grid md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="goal-target-role" className="block text-sm font-medium text-gray-700 mb-1">
                   Target Role
                 </label>
                 <input
+                  id="goal-target-role"
                   type="text"
                   value={goals.overall?.targetRole || ""}
                   onChange={(e) => handleChange("overall.targetRole", e.target.value)}
@@ -1010,10 +1016,11 @@ function GoalEditorModal({ goals, onChange, onSave, onCancel, saving }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="goal-target-salary" className="block text-sm font-medium text-gray-700 mb-1">
                   Target Salary
                 </label>
                 <input
+                  id="goal-target-salary"
                   type="number"
                   min="0"
                   value={goals.overall?.targetSalary || ""}
@@ -1023,10 +1030,11 @@ function GoalEditorModal({ goals, onChange, onSave, onCancel, saving }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="goal-target-date" className="block text-sm font-medium text-gray-700 mb-1">
                   Target Date
                 </label>
                 <input
+                  id="goal-target-date"
                   type="date"
                   value={goals.overall?.targetDate ? new Date(goals.overall.targetDate).toISOString().split('T')[0] : ""}
                   onChange={(e) => handleChange("overall.targetDate", e.target.value || null)}

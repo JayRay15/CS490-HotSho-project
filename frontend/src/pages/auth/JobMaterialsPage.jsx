@@ -719,8 +719,9 @@ export default function JobMaterialsPage() {
                         </div>
                         <div className="p-4 space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Document Name *</label>
+                                <label htmlFor="document-name-input" className="block text-sm font-medium text-gray-700 mb-1">Document Name *</label>
                                 <input
+                                    id="document-name-input"
                                     type="text"
                                     value={newDocForm.name}
                                     onChange={e => setNewDocForm(prev => ({ ...prev, name: e.target.value }))}
@@ -729,8 +730,9 @@ export default function JobMaterialsPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Document Type</label>
+                                <label htmlFor="document-type-select" className="block text-sm font-medium text-gray-700 mb-1">Document Type</label>
                                 <select
+                                    id="document-type-select"
                                     value={newDocForm.documentType}
                                     onChange={e => setNewDocForm(prev => ({ ...prev, documentType: e.target.value }))}
                                     className="w-full p-2 border border-gray-300 rounded-lg"
@@ -743,8 +745,9 @@ export default function JobMaterialsPage() {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
+                                <label htmlFor="document-notes-textarea" className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
                                 <textarea
+                                    id="document-notes-textarea"
                                     value={newDocForm.notes}
                                     onChange={e => setNewDocForm(prev => ({ ...prev, notes: e.target.value }))}
                                     className="w-full p-2 border border-gray-300 rounded-lg"
@@ -753,8 +756,9 @@ export default function JobMaterialsPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Upload File (optional)</label>
+                                <label htmlFor="document-file-input" className="block text-sm font-medium text-gray-700 mb-1">Upload File (optional)</label>
                                 <input
+                                    id="document-file-input"
                                     type="file"
                                     accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                                     onChange={e => setSelectedFile(e.target.files[0] || null)}
@@ -1033,28 +1037,29 @@ export default function JobMaterialsPage() {
 
                             {/* View Mode - Same as ViewEditCoverLetterModal */}
                             <div className="mb-6">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <span id="cover-letter-name-label" className="block text-sm font-medium text-gray-700 mb-2">
                                     Cover Letter Name
-                                </label>
-                                <div className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50">
+                                </span>
+                                <div aria-labelledby="cover-letter-name-label" className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50">
                                     {linkedCoverLetter.name || "Untitled Cover Letter"}
                                 </div>
                             </div>
 
                             <div className="mb-6">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <span id="cover-letter-style-label" className="block text-sm font-medium text-gray-700 mb-2">
                                     Cover Letter Style
-                                </label>
-                                <div className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 capitalize">
+                                </span>
+                                <div aria-labelledby="cover-letter-style-label" className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 capitalize">
                                     {linkedCoverLetter.style || "formal"}
                                 </div>
                             </div>
 
                             <div className="mb-6">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <span id="cover-letter-content-label" className="block text-sm font-medium text-gray-700 mb-2">
                                     Cover Letter Content
-                                </label>
+                                </span>
                                 <div
+                                    aria-labelledby="cover-letter-content-label"
                                     className="cover-letter-content w-full p-4 border border-gray-300 rounded-lg bg-gray-50 min-h-[400px]"
                                     dangerouslySetInnerHTML={{ __html: formatCoverLetterContent(linkedCoverLetter.content) }}
                                 />

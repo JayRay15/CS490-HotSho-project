@@ -287,19 +287,21 @@ export default function CalendarSettings() {
           {/* Auto-sync toggle */}
           <div className="flex items-center justify-between">
             <div>
-              <label className="font-medium text-gray-900">Automatic Sync</label>
+              <span id="auto-sync-label" className="font-medium text-gray-900">Automatic Sync</span>
               <p className="text-sm text-gray-600">
                 Automatically create calendar events when scheduling interviews
               </p>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
+            <label htmlFor="auto-sync-checkbox" className="relative inline-flex items-center cursor-pointer">
               <input
+                id="auto-sync-checkbox"
                 type="checkbox"
                 checked={preferences.autoSync}
                 onChange={(e) =>
                   setPreferences({ ...preferences, autoSync: e.target.checked })
                 }
                 className="sr-only peer"
+                aria-labelledby="auto-sync-label"
               />
               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
             </label>
@@ -307,10 +309,11 @@ export default function CalendarSettings() {
 
           {/* Default calendar */}
           <div>
-            <label className="block font-medium text-gray-900 mb-2">
+            <label htmlFor="default-calendar-select" className="block font-medium text-gray-900 mb-2">
               Default Calendar
             </label>
             <select
+              id="default-calendar-select"
               value={preferences.defaultCalendar}
               onChange={(e) =>
                 setPreferences({ ...preferences, defaultCalendar: e.target.value })
@@ -332,12 +335,13 @@ export default function CalendarSettings() {
 
           {/* Reminder times */}
           <div>
-            <label className="block font-medium text-gray-900 mb-2">
+            <span id="email-reminders-label" className="block font-medium text-gray-900 mb-2">
               Email Reminders
-            </label>
-            <div className="space-y-2">
-              <label className="flex items-center space-x-2">
+            </span>
+            <div className="space-y-2" role="group" aria-labelledby="email-reminders-label">
+              <label htmlFor="reminder-24h-checkbox" className="flex items-center space-x-2">
                 <input
+                  id="reminder-24h-checkbox"
                   type="checkbox"
                   checked={preferences.reminderMinutes?.includes(1440)}
                   onChange={(e) => {
@@ -350,8 +354,9 @@ export default function CalendarSettings() {
                 />
                 <span className="text-sm text-gray-700">24 hours before</span>
               </label>
-              <label className="flex items-center space-x-2">
+              <label htmlFor="reminder-2h-checkbox" className="flex items-center space-x-2">
                 <input
+                  id="reminder-2h-checkbox"
                   type="checkbox"
                   checked={preferences.reminderMinutes?.includes(120)}
                   onChange={(e) => {
