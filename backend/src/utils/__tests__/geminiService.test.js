@@ -24,6 +24,11 @@ async function importWithMock({ text = '', shouldThrow = false } = {}) {
   jest.resetModules();
   // For ESM environment use unstable_mockModule to mock before dynamic import
   await jest.unstable_mockModule('@google/generative-ai', () => createGenAIMock({ text, shouldThrow }));
+  // Mock apiTrackingService to prevent database connections
+  await jest.unstable_mockModule('../apiTrackingService.js', () => ({
+    trackAPICall: jest.fn().mockResolvedValue(undefined),
+    logAPIError: jest.fn().mockResolvedValue(undefined),
+  }));
   return await import('../geminiService.js');
 }
 
