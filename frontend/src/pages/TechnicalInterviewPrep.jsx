@@ -761,8 +761,9 @@ const TechnicalInterviewPrep = () => {
                 {activeTab === 'coding' && (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Difficulty</label>
+                      <label htmlFor="difficulty-filter-select" className="block text-sm font-medium text-gray-700 mb-2">Difficulty</label>
                       <select
+                        id="difficulty-filter-select"
                         value={difficultyFilter}
                         onChange={(e) => setDifficultyFilter(e.target.value)}
                         className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
@@ -776,8 +777,9 @@ const TechnicalInterviewPrep = () => {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                      <label htmlFor="category-filter-select" className="block text-sm font-medium text-gray-700 mb-2">Category</label>
                       <select
+                        id="category-filter-select"
                         value={categoryFilter}
                         onChange={(e) => setCategoryFilter(e.target.value)}
                         className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
@@ -796,8 +798,9 @@ const TechnicalInterviewPrep = () => {
 
                 {activeTab === 'system-design' && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Level</label>
+                    <label htmlFor="level-filter-select" className="block text-sm font-medium text-gray-700 mb-2">Level</label>
                     <select
+                      id="level-filter-select"
                       value={levelFilter}
                       onChange={(e) => setLevelFilter(e.target.value)}
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
@@ -814,8 +817,9 @@ const TechnicalInterviewPrep = () => {
 
                 {activeTab === 'case-studies' && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
+                    <label htmlFor="type-filter-select" className="block text-sm font-medium text-gray-700 mb-2">Type</label>
                     <select
+                      id="type-filter-select"
                       value={typeFilter}
                       onChange={(e) => setTypeFilter(e.target.value)}
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
@@ -830,9 +834,10 @@ const TechnicalInterviewPrep = () => {
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                  <label className="flex items-center px-4 py-2.5 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-all">
+                  <span id="status-filter-label" className="block text-sm font-medium text-gray-700 mb-2">Status</span>
+                  <label htmlFor="show-completed-checkbox" className="flex items-center px-4 py-2.5 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-all">
                     <input
+                      id="show-completed-checkbox"
                       type="checkbox"
                       checked={showCompleted}
                       onChange={(e) => setShowCompleted(e.target.checked)}

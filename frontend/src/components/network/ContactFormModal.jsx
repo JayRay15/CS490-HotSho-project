@@ -217,11 +217,12 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="contact-firstName" className="block text-sm font-medium text-gray-700 mb-1">
                   First Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
+                  id="contact-firstName"
                   name="firstName"
                   value={formData.firstName}
                   onChange={handleChange}
@@ -230,11 +231,12 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="contact-middleName" className="block text-sm font-medium text-gray-700 mb-1">
                   Middle Name
                 </label>
                 <input
                   type="text"
+                  id="contact-middleName"
                   name="middleName"
                   value={formData.middleName}
                   onChange={handleChange}
@@ -242,11 +244,12 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="contact-lastName" className="block text-sm font-medium text-gray-700 mb-1">
                   Last Name
                 </label>
                 <input
                   type="text"
+                  id="contact-lastName"
                   name="lastName"
                   value={formData.lastName}
                   onChange={handleChange}
@@ -254,9 +257,10 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Prefix</label>
+                <label htmlFor="contact-prefix" className="block text-sm font-medium text-gray-700 mb-1">Prefix</label>
                 <input
                   type="text"
+                  id="contact-prefix"
                   name="prefix"
                   value={formData.prefix}
                   onChange={handleChange}
@@ -264,9 +268,10 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Suffix</label>
+                <label htmlFor="contact-suffix" className="block text-sm font-medium text-gray-700 mb-1">Suffix</label>
                 <input
                   type="text"
+                  id="contact-suffix"
                   name="suffix"
                   value={formData.suffix}
                   onChange={handleChange}
@@ -274,9 +279,10 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nickname</label>
+                <label htmlFor="contact-nickname" className="block text-sm font-medium text-gray-700 mb-1">Nickname</label>
                 <input
                   type="text"
+                  id="contact-nickname"
                   name="nickname"
                   value={formData.nickname}
                   onChange={handleChange}
@@ -284,9 +290,10 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <label htmlFor="contact-email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 <input
                   type="email"
+                  id="contact-email"
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
@@ -294,9 +301,10 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                <label htmlFor="contact-phone" className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
                 <input
                   type="tel"
+                  id="contact-phone"
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
@@ -304,9 +312,10 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Birthday</label>
+                <label htmlFor="contact-birthday" className="block text-sm font-medium text-gray-700 mb-1">Birthday</label>
                 <input
                   type="text"
+                  id="contact-birthday"
                   name="birthday"
                   value={formData.birthday}
                   onChange={handleChange}
@@ -322,9 +331,10 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Professional Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Company</label>
+                <label htmlFor="contact-company" className="block text-sm font-medium text-gray-700 mb-1">Company</label>
                 <input
                   type="text"
+                  id="contact-company"
                   name="company"
                   value={formData.company}
                   onChange={handleChange}
@@ -332,9 +342,10 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Job Title</label>
+                <label htmlFor="contact-jobTitle" className="block text-sm font-medium text-gray-700 mb-1">Job Title</label>
                 <input
                   type="text"
+                  id="contact-jobTitle"
                   name="jobTitle"
                   value={formData.jobTitle}
                   onChange={handleChange}
@@ -342,9 +353,10 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                <label htmlFor="contact-department" className="block text-sm font-medium text-gray-700 mb-1">Department</label>
                 <input
                   type="text"
+                  id="contact-department"
                   name="department"
                   value={formData.department}
                   onChange={handleChange}
@@ -352,9 +364,10 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
+                <label htmlFor="contact-industry" className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
                 <input
                   type="text"
+                  id="contact-industry"
                   name="industry"
                   value={formData.industry}
                   onChange={handleChange}
@@ -362,9 +375,10 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                <label htmlFor="contact-location" className="block text-sm font-medium text-gray-700 mb-1">Location</label>
                 <input
                   type="text"
+                  id="contact-location"
                   name="location"
                   value={formData.location}
                   onChange={handleChange}
@@ -373,11 +387,12 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="contact-linkedInUrl" className="block text-sm font-medium text-gray-700 mb-1">
                   LinkedIn URL
                 </label>
                 <input
                   type="url"
+                  id="contact-linkedInUrl"
                   name="linkedInUrl"
                   value={formData.linkedInUrl}
                   onChange={handleChange}
@@ -393,10 +408,11 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Relationship Details</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="contact-relationshipType" className="block text-sm font-medium text-gray-700 mb-1">
                   Relationship Type
                 </label>
                 <select
+                  id="contact-relationshipType"
                   name="relationshipType"
                   value={formData.relationshipType}
                   onChange={handleChange}
@@ -413,10 +429,11 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="contact-relationshipStrength" className="block text-sm font-medium text-gray-700 mb-1">
                   Relationship Strength
                 </label>
                 <select
+                  id="contact-relationshipStrength"
                   name="relationshipStrength"
                   value={formData.relationshipStrength}
                   onChange={handleChange}
@@ -460,8 +477,9 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Additional Information</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <label htmlFor="contact-notes" className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
                 <textarea
+                  id="contact-notes"
                   name="notes"
                   value={formData.notes}
                   onChange={handleChange}
@@ -471,10 +489,11 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="contact-professionalInterests" className="block text-sm font-medium text-gray-700 mb-1">
                   Professional Interests
                 </label>
                 <textarea
+                  id="contact-professionalInterests"
                   name="professionalInterests"
                   value={formData.professionalInterests}
                   onChange={handleChange}
@@ -484,10 +503,11 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="contact-personalInterests" className="block text-sm font-medium text-gray-700 mb-1">
                   Personal Interests
                 </label>
                 <textarea
+                  id="contact-personalInterests"
                   name="personalInterests"
                   value={formData.personalInterests}
                   onChange={handleChange}
@@ -497,11 +517,12 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="contact-mutualConnections" className="block text-sm font-medium text-gray-700 mb-1">
                   Mutual Connections
                 </label>
                 <input
                   type="text"
+                  id="contact-mutualConnections"
                   name="mutualConnections"
                   value={formData.mutualConnections}
                   onChange={handleChange}
@@ -510,9 +531,10 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tags</label>
+                <label htmlFor="contact-tags" className="block text-sm font-medium text-gray-700 mb-1">Tags</label>
                 <input
                   type="text"
+                  id="contact-tags"
                   name="tags"
                   value={formData.tags}
                   onChange={handleChange}
@@ -528,11 +550,12 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Follow-up Reminder</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="contact-nextFollowUpDate" className="block text-sm font-medium text-gray-700 mb-1">
                   Next Follow-up Date
                 </label>
                 <input
                   type="date"
+                  id="contact-nextFollowUpDate"
                   name="nextFollowUpDate"
                   value={formData.nextFollowUpDate}
                   onChange={handleChange}
@@ -570,9 +593,10 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
                 <div className="mb-4 p-4 bg-gray-50 rounded-lg space-y-3">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                      <label htmlFor="interaction-date" className="block text-sm font-medium text-gray-700 mb-1">Date</label>
                       <input
                         type="date"
+                        id="interaction-date"
                         name="date"
                         value={newInteraction.date}
                         onChange={handleInteractionChange}
@@ -580,8 +604,9 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                      <label htmlFor="interaction-type" className="block text-sm font-medium text-gray-700 mb-1">Type</label>
                       <select
+                        id="interaction-type"
                         name="type"
                         value={newInteraction.type}
                         onChange={handleInteractionChange}
@@ -598,8 +623,9 @@ export default function ContactFormModal({ contact, onClose, onSave }) {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                    <label htmlFor="interaction-notes" className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
                     <textarea
+                      id="interaction-notes"
                       name="notes"
                       value={newInteraction.notes}
                       onChange={handleInteractionChange}

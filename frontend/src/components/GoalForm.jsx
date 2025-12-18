@@ -214,10 +214,11 @@ const GoalForm = ({ goal, isEdit = false }) => {
           
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="goal-title" className="block text-sm font-medium text-gray-700 mb-2">
                 Goal Title *
               </label>
               <input
+                id="goal-title"
                 type="text"
                 name="title"
                 value={formData.title}
@@ -229,10 +230,11 @@ const GoalForm = ({ goal, isEdit = false }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="goal-description" className="block text-sm font-medium text-gray-700 mb-2">
                 Description *
               </label>
               <textarea
+                id="goal-description"
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
@@ -245,10 +247,11 @@ const GoalForm = ({ goal, isEdit = false }) => {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="goal-category" className="block text-sm font-medium text-gray-700 mb-2">
                   Category *
                 </label>
                 <select
+                  id="goal-category"
                   name="category"
                   value={formData.category}
                   onChange={handleChange}
@@ -262,10 +265,11 @@ const GoalForm = ({ goal, isEdit = false }) => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="goal-type" className="block text-sm font-medium text-gray-700 mb-2">
                   Type *
                 </label>
                 <select
+                  id="goal-type"
                   name="type"
                   value={formData.type}
                   onChange={handleChange}
@@ -279,10 +283,11 @@ const GoalForm = ({ goal, isEdit = false }) => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="goal-priority" className="block text-sm font-medium text-gray-700 mb-2">
                   Priority *
                 </label>
                 <select
+                  id="goal-priority"
                   name="priority"
                   value={formData.priority}
                   onChange={handleChange}
@@ -309,10 +314,11 @@ const GoalForm = ({ goal, isEdit = false }) => {
           <div className="space-y-4">
             {/* Specific */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="goal-specific" className="block text-sm font-medium text-gray-700 mb-2">
                 <span className="text-primary-600 font-bold">S</span>pecific: What exactly do you want to accomplish? *
               </label>
               <textarea
+                id="goal-specific"
                 name="specific"
                 value={formData.specific}
                 onChange={handleChange}
@@ -325,12 +331,13 @@ const GoalForm = ({ goal, isEdit = false }) => {
 
             {/* Measurable */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="goal-measurable-metric" className="block text-sm font-medium text-gray-700 mb-2">
                 <span className="text-primary-600 font-bold">M</span>easurable: How will you measure progress? *
               </label>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                   <input
+                    id="goal-measurable-metric"
                     type="text"
                     name="measurable.metric"
                     value={formData.measurable.metric}
@@ -382,10 +389,11 @@ const GoalForm = ({ goal, isEdit = false }) => {
 
             {/* Achievable */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="goal-achievable" className="block text-sm font-medium text-gray-700 mb-2">
                 <span className="text-primary-600 font-bold">A</span>chievable: Why is this goal realistic? *
               </label>
               <textarea
+                id="goal-achievable"
                 name="achievable"
                 value={formData.achievable}
                 onChange={handleChange}
@@ -398,10 +406,11 @@ const GoalForm = ({ goal, isEdit = false }) => {
 
             {/* Relevant */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="goal-relevant" className="block text-sm font-medium text-gray-700 mb-2">
                 <span className="text-primary-600 font-bold">R</span>elevant: Why is this goal important? *
               </label>
               <textarea
+                id="goal-relevant"
                 name="relevant"
                 value={formData.relevant}
                 onChange={handleChange}
@@ -414,13 +423,14 @@ const GoalForm = ({ goal, isEdit = false }) => {
 
             {/* Time-bound */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <span className="block text-sm font-medium text-gray-700 mb-2">
                 <span className="text-primary-600 font-bold">T</span>ime-bound: When will you achieve this? *
-              </label>
+              </span>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-gray-600 mb-1">Start Date</label>
+                  <label htmlFor="goal-start-date" className="block text-xs text-gray-600 mb-1">Start Date</label>
                   <input
+                    id="goal-start-date"
                     type="date"
                     name="timeBound.startDate"
                     value={formData.timeBound.startDate}
@@ -430,8 +440,9 @@ const GoalForm = ({ goal, isEdit = false }) => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-600 mb-1">Target Completion Date</label>
+                  <label htmlFor="goal-target-date" className="block text-xs text-gray-600 mb-1">Target Completion Date</label>
                   <input
+                    id="goal-target-date"
                     type="date"
                     name="timeBound.targetDate"
                     value={formData.timeBound.targetDate}

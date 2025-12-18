@@ -1272,8 +1272,9 @@ const PeerSupportPage = () => {
                             </div>
                             <form onSubmit={handleCreateGroup} className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Group Name</label>
+                                    <label htmlFor="create-group-name" className="block text-sm font-medium text-gray-700 mb-1">Group Name</label>
                                     <input
+                                        id="create-group-name"
                                         type="text"
                                         value={createGroupForm.name}
                                         onChange={(e) => setCreateGroupForm({...createGroupForm, name: e.target.value})}
@@ -1282,8 +1283,9 @@ const PeerSupportPage = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                    <label htmlFor="create-group-description" className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                                     <textarea
+                                        id="create-group-description"
                                         value={createGroupForm.description}
                                         onChange={(e) => setCreateGroupForm({...createGroupForm, description: e.target.value})}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -1292,8 +1294,9 @@ const PeerSupportPage = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                                    <label htmlFor="create-group-category" className="block text-sm font-medium text-gray-700 mb-1">Category</label>
                                     <select
+                                        id="create-group-category"
                                         value={createGroupForm.category}
                                         onChange={(e) => setCreateGroupForm({...createGroupForm, category: e.target.value})}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -1306,8 +1309,9 @@ const PeerSupportPage = () => {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Group Type</label>
+                                    <label htmlFor="create-group-type" className="block text-sm font-medium text-gray-700 mb-1">Group Type</label>
                                     <select
+                                        id="create-group-type"
                                         value={createGroupForm.groupType}
                                         onChange={(e) => setCreateGroupForm({...createGroupForm, groupType: e.target.value})}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -1348,8 +1352,9 @@ const PeerSupportPage = () => {
                             </div>
                             <form onSubmit={handleCreateDiscussion} className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                                    <label htmlFor="discussion-title" className="block text-sm font-medium text-gray-700 mb-1">Title</label>
                                     <input
+                                        id="discussion-title"
                                         type="text"
                                         value={discussionForm.title}
                                         onChange={(e) => setDiscussionForm({...discussionForm, title: e.target.value})}
@@ -1358,8 +1363,9 @@ const PeerSupportPage = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
+                                    <label htmlFor="discussion-content" className="block text-sm font-medium text-gray-700 mb-1">Content</label>
                                     <textarea
+                                        id="discussion-content"
                                         value={discussionForm.content}
                                         onChange={(e) => setDiscussionForm({...discussionForm, content: e.target.value})}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -1368,8 +1374,9 @@ const PeerSupportPage = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                                    <label htmlFor="discussion-type" className="block text-sm font-medium text-gray-700 mb-1">Type</label>
                                     <select
+                                        id="discussion-type"
                                         value={discussionForm.discussionType}
                                         onChange={(e) => setDiscussionForm({...discussionForm, discussionType: e.target.value})}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"

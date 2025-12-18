@@ -204,10 +204,11 @@ export default function ForgotPassword() {
         {step === 1 ? (
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-medium mb-2">
+              <label htmlFor="email-address-input" className="block text-gray-700 text-sm font-medium mb-2">
                 Email Address
               </label>
               <input
+                id="email-address-input"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -232,10 +233,11 @@ export default function ForgotPassword() {
           <form onSubmit={handleResetPassword}>
             {/* Email field - shown in step 2 for link-based resets */}
             <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-medium mb-2">
+              <label htmlFor="reset-email-input" className="block text-gray-700 text-sm font-medium mb-2">
                 Email Address
               </label>
               <input
+                id="reset-email-input"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -252,11 +254,12 @@ export default function ForgotPassword() {
             </div>
 
             <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-medium mb-2">
+              <label htmlFor="verification-code-input" className="block text-gray-700 text-sm font-medium mb-2">
                 Verification Code
                 {fromLink && <span className="text-green-600 ml-2">✓ Auto-filled</span>}
               </label>
               <input
+                id="verification-code-input"
                 type="text"
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
@@ -275,10 +278,11 @@ export default function ForgotPassword() {
             </div>
 
             <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-medium mb-2">
+              <label htmlFor="new-password-input" className="block text-gray-700 text-sm font-medium mb-2">
                 New Password
               </label>
               <input
+                id="new-password-input"
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
@@ -294,10 +298,11 @@ export default function ForgotPassword() {
             </div>
 
             <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-medium mb-2">
+              <label htmlFor="confirm-password-input" className="block text-gray-700 text-sm font-medium mb-2">
                 Confirm Password
               </label>
               <input
+                id="confirm-password-input"
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}

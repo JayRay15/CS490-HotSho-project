@@ -484,10 +484,11 @@ function CreateTestTab({ resumes, coverLetters, onCreated, getToken }) {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Test Name */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="test-name-input" className="block text-sm font-medium text-gray-700 mb-1">
             Test Name *
           </label>
           <input
+            id="test-name-input"
             type="text"
             value={formData.name}
             onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
@@ -499,10 +500,11 @@ function CreateTestTab({ resumes, coverLetters, onCreated, getToken }) {
 
         {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="test-description-textarea" className="block text-sm font-medium text-gray-700 mb-1">
             Description
           </label>
           <textarea
+            id="test-description-textarea"
             value={formData.description}
             onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
             placeholder="Describe what you're testing..."
@@ -513,10 +515,10 @@ function CreateTestTab({ resumes, coverLetters, onCreated, getToken }) {
 
         {/* Material Type */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <span id="material-type-label" className="block text-sm font-medium text-gray-700 mb-2">
             What are you testing?
-          </label>
-          <div className="flex gap-4">
+          </span>
+          <div className="flex gap-4" role="group" aria-labelledby="material-type-label">
             <button
               type="button"
               onClick={() => setFormData(prev => ({ ...prev, materialType: "resume", versionIds: [] }))}
@@ -548,9 +550,9 @@ function CreateTestTab({ resumes, coverLetters, onCreated, getToken }) {
 
         {/* Version Selection */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <span id="version-selection-label" className="block text-sm font-medium text-gray-700 mb-2">
             Select Versions to Compare * (minimum 2)
-          </label>
+          </span>
           {availableMaterials.length < 2 ? (
             <div className="p-4 bg-yellow-50 rounded-lg text-yellow-700">
               You need at least 2 {formData.materialType === "resume" ? "resumes" : "cover letters"} to create an A/B test.
@@ -595,10 +597,11 @@ function CreateTestTab({ resumes, coverLetters, onCreated, getToken }) {
         {/* Sample Size */}
         <div className="grid md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="min-sample-size-input" className="block text-sm font-medium text-gray-700 mb-1">
               Minimum Sample Size (per version)
             </label>
             <input
+              id="min-sample-size-input"
               type="number"
               value={formData.minSampleSize}
               onChange={(e) => setFormData(prev => ({ ...prev, minSampleSize: parseInt(e.target.value) || 10 }))}
@@ -609,10 +612,11 @@ function CreateTestTab({ resumes, coverLetters, onCreated, getToken }) {
             <p className="text-xs text-gray-500 mt-1">Minimum 10 recommended for statistical significance</p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="target-sample-size-input" className="block text-sm font-medium text-gray-700 mb-1">
               Target Sample Size (per version)
             </label>
             <input
+              id="target-sample-size-input"
               type="number"
               value={formData.targetSampleSize}
               onChange={(e) => setFormData(prev => ({ ...prev, targetSampleSize: parseInt(e.target.value) || 20 }))}
