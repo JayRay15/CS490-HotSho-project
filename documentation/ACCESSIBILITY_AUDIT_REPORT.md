@@ -9,12 +9,12 @@
 
 ## Executive Summary
 
-| Metric | Value |
-|--------|-------|
-| **Total Files Scanned** | 223 |
-| **Total Issues Found** | 1,328 |
-| **Critical Issues (Errors)** | 633 |
-| **High Priority (Warnings)** | 695 |
+| Metric | Value | After Fixes |
+|--------|-------|-------------|
+| **Total Files Scanned** | 223 | 223 |
+| **Total Issues Found** | 1,328 | 1,292 |
+| **Critical Issues (Errors)** | 633 | 603 |
+| **High Priority (Warnings)** | 695 | 689 |
 
 ### Issue Breakdown
 

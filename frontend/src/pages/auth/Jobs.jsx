@@ -1507,8 +1507,9 @@ export default function Jobs() {
           <Card variant="primary" className="mb-6">
             {/* Search Bar - Full Width */}
             <div className="mb-4">
-              <label className="block text-base font-medium text-gray-700 mb-2">Search Jobs</label>
+              <label htmlFor="job-search" className="block text-base font-medium text-gray-700 mb-2">Search Jobs</label>
               <input
+                id="job-search"
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -1520,8 +1521,9 @@ export default function Jobs() {
             {/* Filters Row */}
             <div className="flex flex-col md:flex-row gap-4">
               <div className="w-full md:w-56 min-w-0">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Filter by Status</label>
+                <label htmlFor="filter-status" className="block text-sm font-medium text-gray-700 mb-1">Filter by Status</label>
                 <select
+                  id="filter-status"
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
                   className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1535,8 +1537,9 @@ export default function Jobs() {
                 </select>
               </div>
               <div className="w-full md:w-56 min-w-0">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
+                <label htmlFor="sort-by" className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
                 <select
+                  id="sort-by"
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
                   className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1549,8 +1552,9 @@ export default function Jobs() {
                 </select>
               </div>
               <div className="w-full md:w-36 min-w-0">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Order</label>
+                <label htmlFor="sort-order" className="block text-sm font-medium text-gray-700 mb-1">Order</label>
                 <select
+                  id="sort-order"
                   value={sortOrder}
                   onChange={(e) => setSortOrder(e.target.value)}
                   className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1651,8 +1655,9 @@ export default function Jobs() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Location Filter */}
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Location</label>
+                    <label htmlFor="filter-location" className="block text-xs font-medium text-gray-700 mb-1">Location</label>
                     <input
+                      id="filter-location"
                       type="text"
                       placeholder="e.g., New York, Remote"
                       value={filters.location}
@@ -1663,8 +1668,9 @@ export default function Jobs() {
 
                   {/* Job Type Filter */}
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Job Type</label>
+                    <label htmlFor="filter-job-type" className="block text-xs font-medium text-gray-700 mb-1">Job Type</label>
                     <select
+                      id="filter-job-type"
                       value={filters.jobType}
                       onChange={(e) => setFilters({ ...filters, jobType: e.target.value })}
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1679,8 +1685,9 @@ export default function Jobs() {
 
                   {/* Industry Filter */}
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Industry</label>
+                    <label htmlFor="filter-industry" className="block text-xs font-medium text-gray-700 mb-1">Industry</label>
                     <select
+                      id="filter-industry"
                       value={filters.industry}
                       onChange={(e) => setFilters({ ...filters, industry: e.target.value })}
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1700,8 +1707,9 @@ export default function Jobs() {
 
                   {/* Work Mode Filter */}
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Work Mode</label>
+                    <label htmlFor="filter-work-mode" className="block text-xs font-medium text-gray-700 mb-1">Work Mode</label>
                     <select
+                      id="filter-work-mode"
                       value={filters.workMode}
                       onChange={(e) => setFilters({ ...filters, workMode: e.target.value })}
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1715,8 +1723,9 @@ export default function Jobs() {
 
                   {/* Priority Filter */}
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Priority</label>
+                    <label htmlFor="filter-priority" className="block text-xs font-medium text-gray-700 mb-1">Priority</label>
                     <select
+                      id="filter-priority"
                       value={filters.priority}
                       onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1730,8 +1739,9 @@ export default function Jobs() {
 
                   {/* UC-125: Platform Filter */}
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Platform</label>
+                    <label htmlFor="filter-platform" className="block text-xs font-medium text-gray-700 mb-1">Platform</label>
                     <select
+                      id="filter-platform"
                       value={filters.platform}
                       onChange={(e) => setFilters({ ...filters, platform: e.target.value })}
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1751,8 +1761,9 @@ export default function Jobs() {
 
                   {/* Salary Min */}
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Min Salary ($)</label>
+                    <label htmlFor="filter-salary-min" className="block text-xs font-medium text-gray-700 mb-1">Min Salary ($)</label>
                     <input
+                      id="filter-salary-min"
                       type="number"
                       placeholder="e.g., 50000"
                       value={filters.salaryMin}
@@ -1763,8 +1774,9 @@ export default function Jobs() {
 
                   {/* Salary Max */}
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Max Salary ($)</label>
+                    <label htmlFor="filter-salary-max" className="block text-xs font-medium text-gray-700 mb-1">Max Salary ($)</label>
                     <input
+                      id="filter-salary-max"
                       type="number"
                       placeholder="e.g., 150000"
                       value={filters.salaryMax}
@@ -1775,8 +1787,9 @@ export default function Jobs() {
 
                   {/* Tags Filter */}
                   <div style={{ display: "none" }}>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Tags (comma-separated)</label>
+                    <label htmlFor="filter-tags" className="block text-xs font-medium text-gray-700 mb-1">Tags (comma-separated)</label>
                     <input
+                      id="filter-tags"
                       type="text"
                       placeholder="e.g., react, python"
                       value={filters.tags}
@@ -1787,8 +1800,9 @@ export default function Jobs() {
 
                   {/* Application Date From */}
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Applied From</label>
+                    <label htmlFor="filter-applied-from" className="block text-xs font-medium text-gray-700 mb-1">Applied From</label>
                     <input
+                      id="filter-applied-from"
                       type="date"
                       value={filters.applicationDateFrom}
                       onChange={(e) => setFilters({ ...filters, applicationDateFrom: e.target.value })}
@@ -1798,8 +1812,9 @@ export default function Jobs() {
 
                   {/* Application Date To */}
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Applied To</label>
+                    <label htmlFor="filter-applied-to" className="block text-xs font-medium text-gray-700 mb-1">Applied To</label>
                     <input
+                      id="filter-applied-to"
                       type="date"
                       value={filters.applicationDateTo}
                       onChange={(e) => setFilters({ ...filters, applicationDateTo: e.target.value })}
@@ -1809,8 +1824,9 @@ export default function Jobs() {
 
                   {/* Deadline From */}
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Deadline From</label>
+                    <label htmlFor="filter-deadline-from" className="block text-xs font-medium text-gray-700 mb-1">Deadline From</label>
                     <input
+                      id="filter-deadline-from"
                       type="date"
                       value={filters.deadlineFrom}
                       onChange={(e) => setFilters({ ...filters, deadlineFrom: e.target.value })}
@@ -1820,8 +1836,9 @@ export default function Jobs() {
 
                   {/* Deadline To */}
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Deadline To</label>
+                    <label htmlFor="filter-deadline-to" className="block text-xs font-medium text-gray-700 mb-1">Deadline To</label>
                     <input
+                      id="filter-deadline-to"
                       type="date"
                       value={filters.deadlineTo}
                       onChange={(e) => setFilters({ ...filters, deadlineTo: e.target.value })}
@@ -2005,11 +2022,20 @@ export default function Jobs() {
             setShowAddModal(false);
             resetForm();
           }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setShowAddModal(false);
+              resetForm();
+            }
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="add-job-modal-title"
         >
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 shadow-2xl mx-4" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 shadow-2xl mx-4" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} role="document">
             <div className="bg-gray-50 border-b px-6 py-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-heading font-semibold text-gray-900">Add New Job</h3>
+                <h3 id="add-job-modal-title" className="text-lg font-heading font-semibold text-gray-900">Add New Job</h3>
                 <button
                   onClick={() => {
                     setShowAddModal(false);
@@ -2045,8 +2071,9 @@ export default function Jobs() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <label htmlFor="add-job-status" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                     <select
+                      id="add-job-status"
                       value={formData.status}
                       onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -2083,8 +2110,9 @@ export default function Jobs() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Job Type</label>
+                    <label htmlFor="add-job-type" className="block text-sm font-medium text-gray-700 mb-1">Job Type</label>
                     <select
+                      id="add-job-type"
                       value={formData.jobType}
                       onChange={(e) => setFormData({ ...formData, jobType: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -2098,8 +2126,9 @@ export default function Jobs() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
+                    <label htmlFor="add-job-industry" className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
                     <select
+                      id="add-job-industry"
                       value={formData.industry}
                       onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -2117,8 +2146,9 @@ export default function Jobs() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Work Mode</label>
+                    <label htmlFor="add-job-work-mode" className="block text-sm font-medium text-gray-700 mb-1">Work Mode</label>
                     <select
+                      id="add-job-work-mode"
                       value={formData.workMode}
                       onChange={(e) => setFormData({ ...formData, workMode: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -2130,8 +2160,9 @@ export default function Jobs() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                    <label htmlFor="add-job-priority" className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
                     <select
+                      id="add-job-priority"
                       value={formData.priority}
                       onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -2143,8 +2174,9 @@ export default function Jobs() {
                   </div>
                   {/* UC-125: Platform selector for Add Job */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Platform</label>
+                    <label htmlFor="add-job-platform" className="block text-sm font-medium text-gray-700 mb-1">Platform</label>
                     <select
+                      id="add-job-platform"
                       value={formData.primaryPlatform}
                       onChange={(e) => setFormData({ ...formData, primaryPlatform: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -2165,12 +2197,14 @@ export default function Jobs() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <InputField
+                    id="add-job-app-date"
                     label="Application Date"
                     type="date"
                     value={formData.applicationDate}
                     onChange={(e) => setFormData({ ...formData, applicationDate: e.target.value })}
                   />
                   <InputField
+                    id="add-job-deadline"
                     label="Deadline"
                     type="date"
                     value={formData.deadline}
@@ -2180,7 +2214,7 @@ export default function Jobs() {
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block text-sm font-medium text-gray-700">Job URL</label>
+                    <label htmlFor="add-job-url" className="block text-sm font-medium text-gray-700">Job URL</label>
                     {formData.url && (
                       <button
                         type="button"
@@ -2208,6 +2242,7 @@ export default function Jobs() {
                     )}
                   </div>
                   <input
+                    id="add-job-url"
                     type="url"
                     value={formData.url}
                     onChange={(e) => setFormData({ ...formData, url: e.target.value })}
@@ -2622,6 +2657,8 @@ export default function Jobs() {
                     style={{ backgroundColor: '#777C6D' }}
                     onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
                     onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
+                    onFocus={(e) => e.currentTarget.style.backgroundColor = '#656A5C'}
+                    onBlur={(e) => e.currentTarget.style.backgroundColor = '#777C6D'}
                   >
                     Add Job
                   </button>
@@ -2642,11 +2679,21 @@ export default function Jobs() {
             setEditingJob(null);
             resetForm();
           }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setShowEditModal(false);
+              setEditingJob(null);
+              resetForm();
+            }
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edit-job-modal-title"
         >
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 shadow-2xl mx-4" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 shadow-2xl mx-4" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} role="document">
             <div className="bg-gray-50 border-b px-6 py-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-heading font-semibold text-gray-900">Edit Job</h3>
+                <h3 id="edit-job-modal-title" className="text-lg font-heading font-semibold text-gray-900">Edit Job</h3>
                 <button
                   onClick={() => {
                     setShowEditModal(false);
@@ -2690,8 +2737,9 @@ export default function Jobs() {
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   />
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                    <label htmlFor="edit-job-priority" className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
                     <select
+                      id="edit-job-priority"
                       value={formData.priority}
                       onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -2720,8 +2768,9 @@ export default function Jobs() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Job Type</label>
+                    <label htmlFor="edit-job-type" className="block text-sm font-medium text-gray-700 mb-1">Job Type</label>
                     <select
+                      id="edit-job-type"
                       value={formData.jobType}
                       onChange={(e) => setFormData({ ...formData, jobType: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -2735,8 +2784,9 @@ export default function Jobs() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
+                    <label htmlFor="edit-job-industry" className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
                     <select
+                      id="edit-job-industry"
                       value={formData.industry}
                       onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -2757,8 +2807,9 @@ export default function Jobs() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Work Mode</label>
+                    <label htmlFor="edit-job-work-mode" className="block text-sm font-medium text-gray-700 mb-1">Work Mode</label>
                     <select
+                      id="edit-job-work-mode"
                       value={formData.workMode}
                       onChange={(e) => setFormData({ ...formData, workMode: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -2771,8 +2822,9 @@ export default function Jobs() {
                   </div>
                   {/* UC-125: Platform selector for Edit Job */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Platform</label>
+                    <label htmlFor="edit-job-platform" className="block text-sm font-medium text-gray-700 mb-1">Platform</label>
                     <select
+                      id="edit-job-platform"
                       value={formData.primaryPlatform}
                       onChange={(e) => setFormData({ ...formData, primaryPlatform: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -2808,7 +2860,7 @@ export default function Jobs() {
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block text-sm font-medium text-gray-700">Job URL</label>
+                    <label htmlFor="edit-job-url" className="block text-sm font-medium text-gray-700">Job URL</label>
                     {formData.url && (
                       <button
                         type="button"
@@ -2836,6 +2888,7 @@ export default function Jobs() {
                     )}
                   </div>
                   <input
+                    id="edit-job-url"
                     type="url"
                     value={formData.url}
                     onChange={(e) => setFormData({ ...formData, url: e.target.value })}
