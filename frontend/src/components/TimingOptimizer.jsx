@@ -29,6 +29,9 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
   const [confirmModal, setConfirmModal] = useState(null);
+  const [calendarView, setCalendarView] = useState(true); // Toggle between calendar and list view
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedSchedule, setSelectedSchedule] = useState(null); // For calendar click details
 
   useEffect(() => {
     loadData();
@@ -234,6 +237,63 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
         return 'bg-blue-100 text-blue-800 border-blue-300';
     }
   };
+
+  // Calendar helper functions
+  const formatYmd = (d) => {
+    const dt = new Date(d);
+    const y = dt.getFullYear();
+    const m = `${dt.getMonth() + 1}`.padStart(2, "0");
+    const day = `${dt.getDate()}`.padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
+  const generateCalendarWeeks = () => {
+    const start = new Date(currentMonth);
+    start.setDate(1);
+    const end = new Date(currentMonth);
+    end.setMonth(end.getMonth() + 1);
+    end.setDate(0);
+
+    const days = [];
+    const cursor = new Date(start);
+    cursor.setDate(start.getDate() - start.getDay());
+
+    const last = new Date(end);
+    last.setDate(end.getDate() + (6 - end.getDay()));
+
+    while (cursor <= last) {
+      days.push(new Date(cursor));
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    const weeks = [];
+    for (let i = 0; i < days.length; i += 7) {
+      weeks.push(days.slice(i, i + 7));
+    }
+    return weeks;
+  };
+
+  const getScheduledForDay = (date) => {
+    const key = formatYmd(date);
+    return scheduledSubmissions.filter(s => {
+      const schedDate = new Date(s.scheduledTime);
+      return formatYmd(schedDate) === key;
+    });
+  };
+
+  const goToPrevMonth = () => {
+    const d = new Date(currentMonth);
+    d.setMonth(d.getMonth() - 1);
+    setCurrentMonth(d);
+  };
+
+  const goToNextMonth = () => {
+    const d = new Date(currentMonth);
+    d.setMonth(d.getMonth() + 1);
+    setCurrentMonth(d);
+  };
+
+  const isSameMonth = (d) => d.getMonth() === currentMonth.getMonth();
 
   if (loading) {
     return (
@@ -881,12 +941,143 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
                 </div>
               ) : (
                 <>
-                  <div className="bg-primary-50 border border-primary-200 rounded-lg p-4 mb-4">
-                    <p className="text-sm text-primary-800">
-                      <strong>{scheduledSubmissions.length}</strong> application{scheduledSubmissions.length !== 1 ? 's' : ''} scheduled
-                    </p>
+                  {/* View Toggle and Summary */}
+                  <div className="flex items-center justify-between">
+                    <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+                      <p className="text-sm text-primary-800">
+                        <strong>{scheduledSubmissions.length}</strong> application{scheduledSubmissions.length !== 1 ? 's' : ''} scheduled
+                      </p>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setCalendarView(true)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                          calendarView 
+                            ? 'bg-gray-900 text-white shadow-md' 
+                            : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        📅 Calendar View
+                      </button>
+                      <button
+                        onClick={() => setCalendarView(false)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                          !calendarView 
+                            ? 'bg-gray-900 text-white shadow-md' 
+                            : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        📋 List View
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Calendar View */}
+                  {calendarView && (
+                    <div className="bg-white rounded-lg border border-gray-200">
+                      {/* Calendar Header */}
+                      <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                        <button 
+                          onClick={goToPrevMonth}
+                          className="px-3 py-1 text-sm rounded bg-gray-100 hover:bg-gray-200 font-medium"
+                        >
+                          ← Prev
+                        </button>
+                        <div className="font-semibold text-lg">
+                          {currentMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+                        </div>
+                        <button 
+                          onClick={goToNextMonth}
+                          className="px-3 py-1 text-sm rounded bg-gray-100 hover:bg-gray-200 font-medium"
+                        >
+                          Next →
+                        </button>
+                      </div>
+                      
+                      {/* Calendar Legend */}
+                      <div className="flex items-center gap-4 px-4 py-2 bg-gray-50 border-b border-gray-200 text-xs">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full bg-primary-500"></div>
+                          <span className="text-gray-600">Scheduled</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                          <span className="text-gray-600">Completed</span>
+                        </div>
+                      </div>
+
+                      {/* Day Headers */}
+                      <div className="grid grid-cols-7 text-xs text-gray-600 p-2 bg-gray-50">
+                        {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d) => (
+                          <div key={d} className="text-center font-semibold py-1">{d}</div>
+                        ))}
+                      </div>
+
+                      {/* Calendar Grid */}
+                      <div className="grid grid-cols-7 gap-px bg-gray-200">
+                        {generateCalendarWeeks().flat().map((date, idx) => {
+                          const key = formatYmd(date);
+                          const scheduledForDay = getScheduledForDay(date);
+                          const muted = !isSameMonth(date);
+                          const isToday = formatYmd(new Date()) === key;
+                          
+                          return (
+                            <div 
+                              key={key+idx} 
+                              className={`bg-white p-2 min-h-[100px] ${muted ? 'opacity-40' : ''} ${
+                                isToday ? 'ring-2 ring-primary-500 ring-inset' : ''
+                              }`}
+                            >
+                              <div className={`text-xs font-medium ${
+                                isToday ? 'text-primary-700 font-bold' : 'text-gray-700'
+                              }`}>
+                                {date.getDate()}
+                              </div>
+                              
+                              {/* Scheduled Applications */}
+                              {scheduledForDay.length > 0 && (
+                                <div className="mt-1 space-y-1">
+                                  {scheduledForDay.slice(0, 3).map((scheduled) => {
+                                    const isPast = new Date(scheduled.scheduledTime) < new Date();
+                                    const scheduledDate = new Date(scheduled.scheduledTime);
+                                    
+                                    return (
+                                      <div 
+                                        key={scheduled._id || scheduled.jobId} 
+                                        className={`text-[10px] p-1 rounded cursor-pointer transition-all hover:scale-105 hover:shadow-md ${
+                                          isPast 
+                                            ? 'bg-green-100 text-green-800 border border-green-300' 
+                                            : 'bg-primary-100 text-primary-800 border border-primary-300'
+                                        }`}
+                                        title={`${scheduled.jobTitle} at ${scheduled.jobCompany}\n${scheduledDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}\n${scheduled.autoSubmit ? 'Auto-Submit' : 'Reminder Only'}\nClick for details`}
+                                        onClick={() => setSelectedSchedule(scheduled)}
+                                      >
+                                        <div className="font-medium truncate">
+                                          {isPast ? '✓' : '⏰'} {scheduledDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </div>
+                                        <div className="truncate text-[9px] opacity-90">
+                                          {scheduled.jobCompany}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                  {scheduledForDay.length > 3 && (
+                                    <div className="text-[9px] text-gray-500 mt-1">
+                                      +{scheduledForDay.length - 3} more
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                   
+                  {/* List View */}
+                  {!calendarView && (
                   <div className="space-y-3">
                     {scheduledSubmissions.map((scheduled, index) => {
                       const scheduledDate = new Date(scheduled.scheduledTime);
@@ -996,6 +1187,7 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
                       );
                     })}
                   </div>
+                  )}
                 </>
               )}
             </div>
@@ -1083,6 +1275,133 @@ const TimingOptimizer = ({ job, onClose, onScheduled }) => {
                 {confirmModal.type === 'submit' ? 'Submit Now' : 'Yes, Cancel'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Calendar Item Detail Modal */}
+      {selectedSchedule && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-60 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-lg w-full mx-4 shadow-xl">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-gray-900 mb-1">
+                  {selectedSchedule.jobTitle || 'Job Application'}
+                </h3>
+                <p className="text-gray-600">
+                  {selectedSchedule.jobCompany || 'Company'}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedSchedule(null)}
+                className="text-gray-400 hover:text-gray-600 text-2xl font-bold ml-4"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="text-2xl">📅</div>
+                <div>
+                  <div className="text-sm text-gray-600 font-medium">Scheduled Time</div>
+                  <div className="text-gray-900">
+                    {new Date(selectedSchedule.scheduledTime).toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      month: 'long',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}
+                  </div>
+                  <div className="text-gray-900 font-medium">
+                    {new Date(selectedSchedule.scheduledTime).toLocaleTimeString([], { 
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                <div className="text-2xl">{selectedSchedule.autoSubmit ? '🤖' : '🔔'}</div>
+                <div>
+                  <div className="text-sm text-gray-600 font-medium">Submission Type</div>
+                  <div className="text-gray-900">
+                    {selectedSchedule.autoSubmit ? 'Auto-Submit' : 'Reminder Only'}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {selectedSchedule.autoSubmit 
+                      ? 'Application will be submitted automatically' 
+                      : 'You will receive a reminder email'}
+                  </div>
+                </div>
+              </div>
+
+              {selectedSchedule.reminderSent && (
+                <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+                  <span>✉️</span>
+                  <span>Reminder email sent</span>
+                </div>
+              )}
+
+              {new Date(selectedSchedule.scheduledTime) < new Date() && (
+                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
+                  <span>✅</span>
+                  <span>This scheduled submission has been completed</span>
+                </div>
+              )}
+            </div>
+
+            {new Date(selectedSchedule.scheduledTime) >= new Date() && (
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => {
+                    setConfirmModal({
+                      type: 'submit',
+                      jobId: selectedSchedule.jobId,
+                      jobCompany: selectedSchedule.jobCompany
+                    });
+                    setSelectedSchedule(null);
+                  }}
+                  className="w-full px-4 py-2 text-white bg-gray-800 hover:bg-gray-900 rounded-lg transition-colors font-medium"
+                >
+                  Submit Application Now
+                </button>
+                <button
+                  onClick={() => {
+                    setScheduledTime(new Date(selectedSchedule.scheduledTime).toISOString().slice(0, 16));
+                    setAutoSubmit(selectedSchedule.autoSubmit);
+                    setActiveTab('recommendation');
+                    setSelectedSchedule(null);
+                  }}
+                  className="w-full px-4 py-2 text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 rounded-lg transition-colors font-medium"
+                >
+                  Reschedule
+                </button>
+                <button
+                  onClick={() => {
+                    setConfirmModal({
+                      type: 'cancel',
+                      jobId: selectedSchedule.jobId,
+                      jobCompany: selectedSchedule.jobCompany
+                    });
+                    setSelectedSchedule(null);
+                  }}
+                  className="w-full px-4 py-2 text-gray-600 bg-white hover:bg-gray-50 border border-gray-300 rounded-lg transition-colors"
+                >
+                  Cancel Schedule
+                </button>
+              </div>
+            )}
+
+            {new Date(selectedSchedule.scheduledTime) < new Date() && (
+              <button
+                onClick={() => setSelectedSchedule(null)}
+                className="w-full px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors font-medium"
+              >
+                Close
+              </button>
+            )}
           </div>
         </div>
       )}
