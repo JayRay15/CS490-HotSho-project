@@ -7,8 +7,137 @@ import {
   WRITING_STYLE 
 } from '../config/coverLetterTones.js';
 import dotenv from 'dotenv';
+import { trackAPICall, logAPIError } from './apiTrackingService.js';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+/**
+ * Tracked model wrapper that automatically tracks all generateContent calls
+ * This replaces direct calls to genAI.getGenerativeModel to add API tracking
+ */
+function getTrackedGenerativeModel(options) {
+  const model = genAI.getGenerativeModel(options);
+  const originalGenerateContent = model.generateContent.bind(model);
+  
+  // Override generateContent with tracked version
+  model.generateContent = async (prompt) => {
+    const startTime = Date.now();
+    try {
+      const result = await originalGenerateContent(prompt);
+      const responseTime = Date.now() - startTime;
+      
+      // Track successful call (fire and forget to not slow down response)
+      trackAPICall({
+        service: 'gemini',
+        endpoint: 'generateContent',
+        method: 'POST',
+        responseTime,
+        statusCode: 200,
+        success: true,
+        requestSize: JSON.stringify(prompt || '').length,
+        responseSize: 0 // Response size tracked separately if needed
+      }).catch(err => console.error('Tracking error:', err.message));
+      
+      return result;
+    } catch (error) {
+      const responseTime = Date.now() - startTime;
+      
+      // Determine status code
+      let statusCode = 500;
+      if (error.message?.includes('RESOURCE_EXHAUSTED') || error.message?.includes('429')) statusCode = 429;
+      else if (error.message?.includes('INVALID_ARGUMENT')) statusCode = 400;
+      else if (error.message?.includes('PERMISSION_DENIED')) statusCode = 403;
+      
+      // Track failed call
+      trackAPICall({
+        service: 'gemini',
+        endpoint: 'generateContent',
+        method: 'POST',
+        responseTime,
+        statusCode,
+        success: false,
+        errorMessage: error.message,
+        errorCode: error.code
+      }).catch(err => console.error('Tracking error:', err.message));
+      
+      // Log error
+      logAPIError({
+        service: 'gemini',
+        endpoint: 'generateContent',
+        method: 'POST',
+        statusCode,
+        errorCode: error.code,
+        errorMessage: error.message,
+        errorStack: error.stack
+      }).catch(err => console.error('Error logging failed:', err.message));
+      
+      throw error;
+    }
+  };
+  
+  return model;
+}
+
+/**
+ * Helper function to wrap Gemini API calls with tracking
+ * @param {string} endpoint - The endpoint name for tracking
+ * @param {Function} apiCall - The async function that makes the Gemini call
+ * @returns {Promise} The result of the API call
+ */
+async function trackedGeminiCall(endpoint, apiCall) {
+  const startTime = Date.now();
+  try {
+    const result = await apiCall();
+    const responseTime = Date.now() - startTime;
+    
+    // Track successful call
+    await trackAPICall({
+      service: 'gemini',
+      endpoint,
+      method: 'POST',
+      responseTime,
+      statusCode: 200,
+      success: true,
+      requestSize: 0,
+      responseSize: JSON.stringify(result || '').length
+    });
+    
+    return result;
+  } catch (error) {
+    const responseTime = Date.now() - startTime;
+    
+    // Determine status code
+    let statusCode = 500;
+    if (error.message?.includes('RESOURCE_EXHAUSTED') || error.message?.includes('429')) statusCode = 429;
+    else if (error.message?.includes('INVALID_ARGUMENT')) statusCode = 400;
+    else if (error.message?.includes('PERMISSION_DENIED')) statusCode = 403;
+    
+    // Track failed call
+    await trackAPICall({
+      service: 'gemini',
+      endpoint,
+      method: 'POST',
+      responseTime,
+      statusCode,
+      success: false,
+      errorMessage: error.message,
+      errorCode: error.code
+    });
+    
+    // Log error details
+    await logAPIError({
+      service: 'gemini',
+      endpoint,
+      method: 'POST',
+      statusCode,
+      errorCode: error.code,
+      errorMessage: error.message,
+      errorStack: error.stack
+    });
+    
+    throw error;
+  }
+}
 
 /**
  * Generate text using Gemini AI
@@ -17,15 +146,12 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
  * @returns {Promise<string>} Generated text
  */
 export async function generateText(prompt, options = {}) {
-  try {
-    const model = genAI.getGenerativeModel({ model: "models/gemini-flash-latest" });
+  return trackedGeminiCall('generateText', async () => {
+    const model = getTrackedGenerativeModel({ model: "models/gemini-flash-latest" });
     const result = await model.generateContent(prompt);
     const response = result.response;
     return response.text();
-  } catch (error) {
-    console.error('Error generating text with Gemini:', error);
-    throw new Error(`Failed to generate text: ${error.message}`);
-  }
+  });
 }
 
 /**
@@ -37,7 +163,7 @@ export async function generateText(prompt, options = {}) {
  * @returns {Array} Array of generated resume content variations
  */
 export async function generateResumeContentVariations(jobPosting, userProfile, template, numVariations = 3) {
-  const model = genAI.getGenerativeModel({ model: "models/gemini-flash-latest" });
+  const model = getTrackedGenerativeModel({ model: "models/gemini-flash-latest" });
 
   const prompt = `You are an expert resume writer and career coach. Generate ${numVariations} DIFFERENT variations of tailored resume content based on the job posting and user's profile. Each variation should approach the content from a different angle or emphasis.
 
@@ -122,7 +248,9 @@ For EACH variation, generate:
 Return ONLY valid JSON, no markdown formatting.`;
 
   try {
-    const result = await model.generateContent(prompt);
+    const result = await trackedGeminiCall('generateResumeContentVariations', async () => {
+      return model.generateContent(prompt);
+    });
     const response = await result.response;
     const text = response.text();
     
@@ -165,7 +293,7 @@ export async function generateResumeContent(jobPosting, userProfile, template) {
     template.layout = {};
   }
   
-  const model = genAI.getGenerativeModel({ model: "models/gemini-flash-latest" });
+  const model = getTrackedGenerativeModel({ model: "models/gemini-flash-latest" });
 
   const prompt = `You are an expert resume writer and career coach. Generate tailored resume content based on the job posting and user's profile.
 
@@ -286,7 +414,9 @@ Generate:
 Return ONLY valid JSON, no markdown formatting. Make all content professional and resume-ready.`;
 
   try {
-    const result = await model.generateContent(prompt);
+    const result = await trackedGeminiCall('generateResumeContent', async () => {
+      return model.generateContent(prompt);
+    });
     const response = await result.response;
     const text = response.text();
     
@@ -343,7 +473,7 @@ Return ONLY valid JSON, no markdown formatting. Make all content professional an
  * @returns {Object} Regenerated section content
  */
 export async function regenerateSection(section, jobPosting, userProfile, currentContent) {
-  const model = genAI.getGenerativeModel({ model: "models/gemini-flash-latest" });
+  const model = getTrackedGenerativeModel({ model: "models/gemini-flash-latest" });
 
   let prompt = '';
   
@@ -396,7 +526,9 @@ Return only a JSON array of skill names: ["skill1", "skill2", ...]`;
   }
 
   try {
-    const result = await model.generateContent(prompt);
+    const result = await trackedGeminiCall('regenerateSection', async () => {
+      return model.generateContent(prompt);
+    });
     const response = await result.response;
     let text = response.text().trim();
     
@@ -430,7 +562,7 @@ Return only a JSON array of skill names: ["skill1", "skill2", ...]`;
  * @returns {Object} ATS analysis with score and suggestions
  */
 export async function analyzeATSCompatibility(resumeContent, jobPosting) {
-  const model = genAI.getGenerativeModel({ model: "models/gemini-flash-latest" });
+  const model = getTrackedGenerativeModel({ model: "models/gemini-flash-latest" });
 
   const prompt = `Analyze this resume content for ATS (Applicant Tracking System) compatibility against the job posting.
 
@@ -487,7 +619,7 @@ Return as JSON:
  * @returns {Object} Skills optimization with reordering, gaps, and matching score
  */
 export async function optimizeResumeSkills(resume, jobPosting, userProfile) {
-  const model = genAI.getGenerativeModel({ model: "models/gemini-flash-latest" });
+  const model = getTrackedGenerativeModel({ model: "models/gemini-flash-latest" });
 
   const prompt = `You are an expert resume optimization specialist. Analyze the job requirements and optimize the skills section for maximum impact.
 
@@ -565,7 +697,7 @@ Return ONLY valid JSON, no markdown formatting. Focus on actionable, specific re
  * @returns {Object} Experience tailoring with suggestions and variations
  */
 export async function tailorExperience(resume, jobPosting, userProfile) {
-  const model = genAI.getGenerativeModel({ model: "models/gemini-flash-latest" });
+  const model = getTrackedGenerativeModel({ model: "models/gemini-flash-latest" });
 
   const currentExperience = resume.sections?.experience || [];
   
@@ -712,7 +844,7 @@ export async function generateCoverLetter({
   customInstructions = ''
 }) {
   try {
-    const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+    const model = getTrackedGenerativeModel({ model: 'models/gemini-flash-latest' });
 
     // Build user profile summary
     const profileSummary = buildProfileSummary(userProfile);
@@ -1097,7 +1229,7 @@ function extractParagraphs(text, startIndex, endIndex) {
  */
 export async function analyzeCompanyCulture(jobDescription) {
   try {
-    const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+    const model = getTrackedGenerativeModel({ model: 'models/gemini-flash-latest' });
 
     const prompt = `Analyze the following job description and provide insights about the company culture, values, and tone:
 
@@ -1156,7 +1288,7 @@ function detectRecommendedTone(analysis) {
  */
 export async function checkSpellingAndGrammar(text) {
   try {
-    const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+    const model = getTrackedGenerativeModel({ model: 'models/gemini-flash-latest' });
 
     const prompt = `You are an expert proofreader and grammar checker. Analyze the following cover letter text and identify all spelling errors, grammar mistakes, and punctuation issues.
 
@@ -1217,7 +1349,7 @@ Return ONLY valid JSON, no markdown formatting.`;
  */
 export async function getSynonymSuggestions(word, context) {
   try {
-    const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+    const model = getTrackedGenerativeModel({ model: 'models/gemini-flash-latest' });
 
     const prompt = `Suggest professional synonyms for the word/phrase "${word}" in the context of a cover letter.
 
@@ -1272,7 +1404,7 @@ Return ONLY valid JSON, no markdown formatting.`;
  */
 export async function analyzeReadability(text) {
   try {
-    const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+    const model = getTrackedGenerativeModel({ model: 'models/gemini-flash-latest' });
 
     const prompt = `Analyze the readability and writing quality of this cover letter text. Provide detailed feedback and improvement suggestions.
 
@@ -1343,7 +1475,7 @@ Return ONLY valid JSON, no markdown formatting.`;
  */
 export async function suggestRestructuring(text, type = 'sentence') {
   try {
-    const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+    const model = getTrackedGenerativeModel({ model: 'models/gemini-flash-latest' });
 
     const prompt = `Suggest better ways to structure this ${type} from a cover letter. Provide multiple variations with different emphases.
 
@@ -1401,7 +1533,7 @@ Return ONLY valid JSON, no markdown formatting.`;
  */
 export async function generateReferralTemplate(job, contact, userProfile, tone = 'professional') {
   try {
-    const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+    const model = getTrackedGenerativeModel({ model: 'models/gemini-flash-latest' });
 
     // Build relationship context
     const relationshipStrength = contact.relationshipStrength || 'New';
@@ -1513,7 +1645,7 @@ Return ONLY valid JSON, no markdown formatting.`;
  * @returns {Object} Comprehensive feedback with scores, analysis, and suggestions
  */
 export async function generateInterviewResponseFeedback(question, response, category, targetDuration = 120, context = {}) {
-  const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+  const model = getTrackedGenerativeModel({ model: 'models/gemini-flash-latest' });
 
   const contextInfo = context.jobTitle || context.company || context.industry
     ? `\n**CONTEXT:**
@@ -1828,7 +1960,7 @@ function calculateTimingScore(lastContactDate, nextFollowUpDate) {
  * @returns {Promise<Object>} Generated reference request email and guidance
  */
 export async function generateReferenceRequestEmail(reference, job, userProfile) {
-  const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+  const model = getTrackedGenerativeModel({ model: 'models/gemini-flash-latest' });
 
   const relationshipContext = reference.relationshipType || 'Professional Contact';
   const lastContact = reference.lastContactDate 
@@ -1934,7 +2066,7 @@ Return ONLY valid JSON, no markdown formatting. Keep the email concise (200-300 
  * @returns {Array} Array of interview questions
  */
 export async function generateInterviewQuestions(category, context = {}, count = 5) {
-  const model = genAI.getGenerativeModel({ model: 'models/gemini-flash-latest' });
+  const model = getTrackedGenerativeModel({ model: 'models/gemini-flash-latest' });
 
   const contextInfo = context.jobTitle || context.company || context.industry
     ? `\n**CONTEXT:**
@@ -1995,7 +2127,7 @@ Return ONLY valid JSON array, no markdown formatting.`;
  * @returns {Promise<Object>} Goal recommendations with strategies and resources
  */
 export async function generateGoalRecommendations(userProfile, currentGoals = [], jobSearchData = {}) {
-  const model = genAI.getGenerativeModel({ model: "models/gemini-flash-latest" });
+  const model = getTrackedGenerativeModel({ model: "models/gemini-flash-latest" });
 
   const prompt = `You are an expert career coach and goal-setting strategist. Analyze the user's profile and current goals to generate personalized career goal recommendations.
 
@@ -2087,7 +2219,7 @@ Return ONLY valid JSON, no markdown formatting.`;
  * @returns {Promise<Object>} Progress insights and recommendations
  */
 export async function analyzeGoalProgress(goal, userProfile = {}) {
-  const model = genAI.getGenerativeModel({ model: "models/gemini-flash-latest" });
+  const model = getTrackedGenerativeModel({ model: "models/gemini-flash-latest" });
 
   const progressHistory = goal.progressUpdates?.slice(-10) || [];
   const recentMilestones = goal.milestones?.slice(-5) || [];
@@ -2198,7 +2330,7 @@ Return ONLY valid JSON, no markdown formatting.`;
  * @returns {Promise<Object>} Celebration message and achievement insights
  */
 export async function generateAchievementCelebration(goal, userProfile = {}, allGoals = []) {
-  const model = genAI.getGenerativeModel({ model: "models/gemini-flash-latest" });
+  const model = getTrackedGenerativeModel({ model: "models/gemini-flash-latest" });
 
   const completedGoals = allGoals.filter(g => g.status === 'Completed');
   const timeToComplete = goal.timeBound?.completedDate && goal.timeBound?.startDate
@@ -2295,7 +2427,7 @@ Return ONLY valid JSON, no markdown formatting.`;
  * @returns {Promise<Object>} Success patterns and optimization strategies
  */
 export async function identifySuccessPatterns(goals, userProfile = {}) {
-  const model = genAI.getGenerativeModel({ model: "models/gemini-flash-latest" });
+  const model = getTrackedGenerativeModel({ model: "models/gemini-flash-latest" });
 
   const completedGoals = goals.filter(g => g.status === 'Completed');
   const failedGoals = goals.filter(g => g.status === 'Abandoned' || g.status === 'At Risk');
@@ -2412,7 +2544,7 @@ Return ONLY valid JSON, no markdown formatting.`;
  * @returns {Object} Quality analysis with score, issues, and suggestions
  */
 export async function analyzeApplicationPackageQuality(job, resume, coverLetter, userProfile = null, historicalScores = null) {
-  const model = genAI.getGenerativeModel({ model: "models/gemini-flash-latest" });
+  const model = getTrackedGenerativeModel({ model: "models/gemini-flash-latest" });
 
   const prompt = `You are an expert ATS (Applicant Tracking System) analyst and career coach. Analyze the following job application package and provide a comprehensive quality score with detailed feedback.
 

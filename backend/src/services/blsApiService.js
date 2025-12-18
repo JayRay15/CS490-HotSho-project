@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { trackAPICall, logAPIError } from '../utils/apiTrackingService.js';
 
 /**
  * UC-112: Salary Data Integration - Bureau of Labor Statistics Service
@@ -920,6 +921,7 @@ const fetchLiveBLSData = async (occupationCode, areaCode = '0000000') => {
     
     console.log(`[BLS API] Fetching live data for occupation ${occupationCode}...`);
     
+    const startTime = Date.now();
     const response = await axios.post(
       `${BLS_API_BASE_URL}/timeseries/data/`,
       requestBody,
@@ -928,6 +930,18 @@ const fetchLiveBLSData = async (occupationCode, areaCode = '0000000') => {
         timeout: 10000 // 10 second timeout
       }
     );
+    
+    // Track successful API call
+    trackAPICall({
+      service: 'bls',
+      endpoint: '/timeseries/data/',
+      method: 'POST',
+      responseTime: Date.now() - startTime,
+      statusCode: 200,
+      success: true,
+      requestSize: JSON.stringify(requestBody).length,
+      responseSize: JSON.stringify(response.data || '').length
+    }).catch(err => console.error('BLS tracking error:', err.message));
     
     if (response.data?.status === 'REQUEST_SUCCEEDED' && response.data?.Results?.series) {
       const seriesData = response.data.Results.series;
@@ -955,6 +969,18 @@ const fetchLiveBLSData = async (occupationCode, areaCode = '0000000') => {
     
   } catch (error) {
     console.log(`[BLS API] API call failed: ${error.message}. Using fallback data.`);
+    
+    // Track failed API call
+    logAPIError({
+      service: 'bls',
+      endpoint: '/timeseries/data/',
+      method: 'POST',
+      errorType: error.code || 'UNKNOWN_ERROR',
+      errorMessage: error.message,
+      statusCode: error.response?.status || 500,
+      stackTrace: error.stack
+    }).catch(err => console.error('BLS error tracking failed:', err.message));
+    
     return null;
   }
 };

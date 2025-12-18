@@ -10,6 +10,7 @@
  */
 
 import axios from 'axios';
+import { trackAPICall, logAPIError } from './apiTrackingService.js';
 
 // API Base URLs
 const OPENALEX_BASE = 'https://api.openalex.org';
@@ -57,10 +58,22 @@ export const searchOpenAlexAuthors = async (params = {}) => {
     queryParams.set('per_page', limit.toString());
     queryParams.set('mailto', OPENALEX_EMAIL);
 
+    const startTime = Date.now();
     const response = await axios.get(`${url}?${queryParams.toString()}`, {
       timeout: 10000,
       headers: { 'Accept': 'application/json' }
     });
+
+    // Track successful API call
+    trackAPICall({
+      service: 'openalex',
+      endpoint: '/authors',
+      method: 'GET',
+      responseTime: Date.now() - startTime,
+      statusCode: 200,
+      success: true,
+      responseSize: JSON.stringify(response.data || '').length
+    }).catch(err => console.error('OpenAlex tracking error:', err.message));
 
     const authors = response.data?.results || [];
 
@@ -92,6 +105,16 @@ export const searchOpenAlexAuthors = async (params = {}) => {
     }));
 
   } catch (error) {
+    // Track failed API call
+    logAPIError({
+      service: 'openalex',
+      endpoint: '/authors',
+      method: 'GET',
+      errorType: error.code || 'UNKNOWN_ERROR',
+      errorMessage: error.message,
+      statusCode: error.response?.status || 500
+    }).catch(err => console.error('OpenAlex error tracking failed:', err.message));
+
     console.error('OpenAlex API error:', error.message);
     return [];
   }

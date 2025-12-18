@@ -3,6 +3,8 @@
  * Supports multiple news sources and intelligent categorization
  */
 
+import { trackAPICall, logAPIError } from './apiTrackingService.js';
+
 // News categories and their keywords
 const NEWS_CATEGORIES = {
     funding: ['funding', 'investment', 'series', 'capital', 'raised', 'venture', 'ipo'],
@@ -177,6 +179,7 @@ export async function fetchNewsAPINews(companyName) {
         fromDate.setDate(fromDate.getDate() - 30);
         
         // Search for company news
+        const startTime = Date.now();
         const response = await axios.get('https://newsapi.org/v2/everything', {
             params: {
                 q: companyName,
@@ -189,6 +192,17 @@ export async function fetchNewsAPINews(companyName) {
             },
             timeout: 10000
         });
+
+        // Track successful API call
+        trackAPICall({
+            service: 'newsapi',
+            endpoint: '/v2/everything',
+            method: 'GET',
+            responseTime: Date.now() - startTime,
+            statusCode: 200,
+            success: true,
+            responseSize: JSON.stringify(response.data || '').length
+        }).catch(err => console.error('NewsAPI tracking error:', err.message));
 
         if (!response.data.articles || response.data.articles.length === 0) {
             return [];
@@ -205,6 +219,16 @@ export async function fetchNewsAPINews(companyName) {
 
         return newsItems.map(item => processNewsItem(item, companyName));
     } catch (error) {
+        // Track failed API call
+        logAPIError({
+            service: 'newsapi',
+            endpoint: '/v2/everything',
+            method: 'GET',
+            errorType: error.code || 'UNKNOWN_ERROR',
+            errorMessage: error.message,
+            statusCode: error.response?.status || 500
+        }).catch(err => console.error('NewsAPI error tracking failed:', err.message));
+
         if (error.response?.status === 429) {
             console.error('NewsAPI rate limit exceeded');
         } else if (error.response?.status === 401) {

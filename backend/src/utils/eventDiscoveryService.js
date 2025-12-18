@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { trackAPICall, logAPIError } from './apiTrackingService.js';
 
 /**
  * Event Discovery Service using Eventbrite API
@@ -80,6 +81,7 @@ export const searchEvents = async (searchParams = {}) => {
       params['online_events_only'] = true;
     }
 
+    const startTime = Date.now();
     const response = await axios.get(`${EVENTBRITE_BASE_URL}/destination/search/`, {
       params,
       headers: {
@@ -87,6 +89,17 @@ export const searchEvents = async (searchParams = {}) => {
       },
       timeout: 10000
     });
+
+    // Track successful API call
+    trackAPICall({
+      service: 'eventbrite',
+      endpoint: '/destination/search/',
+      method: 'GET',
+      responseTime: Date.now() - startTime,
+      statusCode: 200,
+      success: true,
+      responseSize: JSON.stringify(response.data || '').length
+    }).catch(err => console.error('Eventbrite tracking error:', err.message));
 
     // Transform Eventbrite events to our format
     const events = response.data?.events?.results || response.data?.results || [];
@@ -103,6 +116,16 @@ export const searchEvents = async (searchParams = {}) => {
       }
     };
   } catch (error) {
+    // Track failed API call
+    logAPIError({
+      service: 'eventbrite',
+      endpoint: '/destination/search/',
+      method: 'GET',
+      errorType: error.code || 'UNKNOWN_ERROR',
+      errorMessage: error.message,
+      statusCode: error.response?.status || 500
+    }).catch(err => console.error('Eventbrite error tracking failed:', err.message));
+
     console.error('Error searching Eventbrite events:', error.response?.data || error.message);
     console.error('API URL attempted:', `${EVENTBRITE_BASE_URL}/destination/search/`);
     console.error('Request params:', error.config?.params);

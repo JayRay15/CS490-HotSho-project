@@ -157,7 +157,7 @@ const OverviewTab = ({ dashboard, loading, onRefresh }) => {
         );
     }
 
-    if (!dashboard) {
+    if (!dashboard || !dashboard.overview) {
         return (
             <div className="text-center py-12 text-gray-500">
                 No data available. Click refresh to load dashboard data.
@@ -165,7 +165,9 @@ const OverviewTab = ({ dashboard, loading, onRefresh }) => {
         );
     }
 
-    const { overview, services, alerts, quotaStatuses } = dashboard;
+    const { overview, services = [], alerts = [], quotaStatuses = [] } = dashboard;
+    const today = overview?.today || { requests: 0, successRate: 0 };
+    const weekly = overview?.weekly || { requests: 0, successRate: 0 };
 
     return (
         <div className="space-y-6">
@@ -173,31 +175,31 @@ const OverviewTab = ({ dashboard, loading, onRefresh }) => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <MetricCard
                     title="Today's Requests"
-                    value={overview.today.requests.toLocaleString()}
-                    subtitle={`${overview.today.successRate}% success rate`}
+                    value={(today.requests || 0).toLocaleString()}
+                    subtitle={`${today.successRate || 0}% success rate`}
                     icon={Activity}
                     color="blue"
                 />
                 <MetricCard
                     title="Weekly Requests"
-                    value={overview.weekly.requests.toLocaleString()}
-                    subtitle={`${overview.weekly.successRate}% success rate`}
+                    value={(weekly.requests || 0).toLocaleString()}
+                    subtitle={`${weekly.successRate || 0}% success rate`}
                     icon={BarChart3}
                     color="purple"
                 />
                 <MetricCard
                     title="Recent Errors"
-                    value={overview.recentErrorCount}
+                    value={overview?.recentErrorCount || 0}
                     subtitle="Last 24 hours"
                     icon={AlertCircle}
-                    color={overview.recentErrorCount > 10 ? 'red' : 'yellow'}
+                    color={(overview?.recentErrorCount || 0) > 10 ? 'red' : 'yellow'}
                 />
                 <MetricCard
                     title="Active Alerts"
-                    value={overview.activeAlertCount}
+                    value={overview?.activeAlertCount || 0}
                     subtitle="Unacknowledged"
                     icon={Bell}
-                    color={overview.activeAlertCount > 0 ? 'red' : 'green'}
+                    color={(overview?.activeAlertCount || 0) > 0 ? 'red' : 'green'}
                 />
             </div>
 
@@ -285,6 +287,7 @@ const OverviewTab = ({ dashboard, loading, onRefresh }) => {
 const ErrorsTab = ({ getToken }) => {
     const [errors, setErrors] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState(null);
     const [filters, setFilters] = useState({
         service: '',
         resolved: '',
@@ -295,14 +298,19 @@ const ErrorsTab = ({ getToken }) => {
     const fetchErrors = useCallback(async () => {
         try {
             setLoading(true);
+            setFetchError(null);
             const token = await getToken();
             setAuthToken(token);
 
             const response = await apiMonitoring.getErrorLogs(filters);
-            setErrors(response.data.errors);
-            setPagination(response.data.pagination);
+            // Handle response structure
+            const data = response?.data || response;
+            setErrors(data?.errors || []);
+            setPagination(data?.pagination || {});
         } catch (error) {
             console.error('Failed to fetch errors:', error);
+            setFetchError(error?.message || 'Failed to load errors');
+            setErrors([]);
         } finally {
             setLoading(false);
         }
@@ -349,6 +357,16 @@ const ErrorsTab = ({ getToken }) => {
                     <option value="true">Resolved</option>
                 </select>
             </div>
+
+            {/* Error Display */}
+            {fetchError && (
+                <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                    <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                        <AlertCircle className="w-5 h-5" />
+                        <span>{fetchError}</span>
+                    </div>
+                </div>
+            )}
 
             {/* Errors List */}
             <Card>
@@ -440,6 +458,7 @@ const ErrorsTab = ({ getToken }) => {
 const AlertsTab = ({ getToken }) => {
     const [alerts, setAlerts] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState(null);
     const [filters, setFilters] = useState({
         acknowledged: 'false',
         severity: '',
@@ -449,13 +468,18 @@ const AlertsTab = ({ getToken }) => {
     const fetchAlerts = useCallback(async () => {
         try {
             setLoading(true);
+            setFetchError(null);
             const token = await getToken();
             setAuthToken(token);
 
             const response = await apiMonitoring.getAlerts(filters);
-            setAlerts(response.data.alerts);
+            // Handle response structure
+            const data = response?.data || response;
+            setAlerts(data?.alerts || []);
         } catch (error) {
             console.error('Failed to fetch alerts:', error);
+            setFetchError(error?.message || 'Failed to load alerts');
+            setAlerts([]);
         } finally {
             setLoading(false);
         }
@@ -519,6 +543,16 @@ const AlertsTab = ({ getToken }) => {
                     <option value="low">Low</option>
                 </select>
             </div>
+
+            {/* Error Display */}
+            {fetchError && (
+                <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                    <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                        <AlertCircle className="w-5 h-5" />
+                        <span>{fetchError}</span>
+                    </div>
+                </div>
+            )}
 
             {/* Alerts List */}
             <Card>
@@ -586,9 +620,12 @@ const PerformanceTab = ({ getToken }) => {
             setAuthToken(token);
 
             const response = await apiMonitoring.getPerformanceMetrics(days);
-            setPerformance(response.data);
+            // Handle response structure
+            const data = response?.data || response;
+            setPerformance(data);
         } catch (error) {
             console.error('Failed to fetch performance:', error);
+            setPerformance(null);
         } finally {
             setLoading(false);
         }
@@ -740,9 +777,12 @@ const ReportsTab = ({ getToken }) => {
             setAuthToken(token);
 
             const response = await apiMonitoring.getWeeklyReport();
-            setReport(response.data);
+            // Handle response structure
+            const data = response?.data || response;
+            setReport(data);
         } catch (error) {
             console.error('Failed to fetch report:', error);
+            setReport(null);
         } finally {
             setLoading(false);
         }
@@ -919,17 +959,26 @@ export default function APIMonitoringDashboard() {
     const [dashboard, setDashboard] = useState(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState(null);
 
     const fetchDashboard = useCallback(async () => {
         try {
             setRefreshing(true);
+            setError(null);
             const token = await getToken();
             setAuthToken(token);
 
             const response = await apiMonitoring.getDashboard();
-            setDashboard(response.data);
+            // Handle both response structures: {data: {...}} or direct data
+            const dashboardData = response?.data || response;
+            if (dashboardData) {
+                setDashboard(dashboardData);
+            } else {
+                setError('No data received from server');
+            }
         } catch (error) {
             console.error('Failed to fetch dashboard:', error);
+            setError(error?.message || 'Failed to load dashboard data');
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -995,6 +1044,14 @@ export default function APIMonitoringDashboard() {
             </div>
 
             {/* Tab Content */}
+            {error && (
+                <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                    <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                        <AlertCircle className="w-5 h-5" />
+                        <span>{error}</span>
+                    </div>
+                </div>
+            )}
             {activeTab === 'overview' && (
                 <OverviewTab dashboard={dashboard} loading={loading} onRefresh={fetchDashboard} />
             )}

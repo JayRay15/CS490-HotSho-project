@@ -5,6 +5,7 @@
  */
 
 import GeocodingCache from "../models/GeocodingCache.js";
+import { trackAPICall, logAPIError } from "./apiTrackingService.js";
 
 // Rate limiting - Nominatim requires max 1 request per second
 let lastRequestTime = 0;
@@ -65,6 +66,7 @@ async function fetchFromNominatim(locationString) {
 
     console.log("fetchFromNominatim: Fetching URL:", url);
 
+    const startTime = Date.now();
     const response = await fetch(url, {
       headers: {
         "User-Agent": USER_AGENT,
@@ -75,10 +77,32 @@ async function fetchFromNominatim(locationString) {
     console.log("fetchFromNominatim: Response status:", response.status);
 
     if (!response.ok) {
+      // Track failed API call
+      logAPIError({
+        service: 'nominatim',
+        endpoint: '/search',
+        method: 'GET',
+        errorType: 'HTTP_ERROR',
+        errorMessage: `Nominatim API error: ${response.status}`,
+        statusCode: response.status
+      }).catch(err => console.error('Nominatim error tracking failed:', err.message));
+      
       throw new Error(`Nominatim API error: ${response.status}`);
     }
 
     const data = await response.json();
+    
+    // Track successful API call
+    trackAPICall({
+      service: 'nominatim',
+      endpoint: '/search',
+      method: 'GET',
+      responseTime: Date.now() - startTime,
+      statusCode: 200,
+      success: true,
+      responseSize: JSON.stringify(data || '').length
+    }).catch(err => console.error('Nominatim tracking error:', err.message));
+    
     console.log("fetchFromNominatim: Response data length:", data?.length || 0);
 
     if (!data || data.length === 0) {

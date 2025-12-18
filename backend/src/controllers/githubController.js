@@ -1,5 +1,6 @@
 import GitHubProfile from "../models/GitHubProfile.js";
 import axios from "axios";
+import { trackAPICall, logAPIError } from "../utils/apiTrackingService.js";
 
 // GitHub API base URL
 const GITHUB_API_BASE = "https://api.github.com";
@@ -16,10 +17,33 @@ const fetchGitHubAPI = async (endpoint, token = null) => {
     headers["Authorization"] = `token ${token}`;
   }
   
+  const startTime = Date.now();
   try {
     const response = await axios.get(`${GITHUB_API_BASE}${endpoint}`, { headers });
+    
+    // Track successful API call
+    trackAPICall({
+      service: 'github',
+      endpoint: endpoint,
+      method: 'GET',
+      responseTime: Date.now() - startTime,
+      statusCode: 200,
+      success: true,
+      responseSize: JSON.stringify(response.data || '').length
+    }).catch(err => console.error('GitHub tracking error:', err.message));
+    
     return response.data;
   } catch (error) {
+    // Track failed API call
+    logAPIError({
+      service: 'github',
+      endpoint: endpoint,
+      method: 'GET',
+      errorType: error.code || 'UNKNOWN_ERROR',
+      errorMessage: error.message,
+      statusCode: error.response?.status || 500
+    }).catch(err => console.error('GitHub error tracking failed:', err.message));
+
     if (error.response) {
       throw new Error(`GitHub API Error: ${error.response.status} - ${error.response.data.message || 'Unknown error'}`);
     }

@@ -61,7 +61,10 @@ export const getErrorLogs = async (options = {}) => {
     if (options.service) params.service = options.service;
     if (options.startDate) params.startDate = options.startDate;
     if (options.endDate) params.endDate = options.endDate;
-    if (options.resolved !== undefined) params.resolved = options.resolved;
+    // Only include resolved filter if it's a valid boolean string (not empty)
+    if (options.resolved === 'true' || options.resolved === 'false') {
+        params.resolved = options.resolved;
+    }
     if (options.page) params.page = options.page;
     if (options.limit) params.limit = options.limit;
 
@@ -96,7 +99,10 @@ export const getAlerts = async (options = {}) => {
     if (options.service) params.service = options.service;
     if (options.alertType) params.alertType = options.alertType;
     if (options.severity) params.severity = options.severity;
-    if (options.acknowledged !== undefined) params.acknowledged = options.acknowledged;
+    // Only include acknowledged filter if it's a valid boolean string (not empty)
+    if (options.acknowledged === 'true' || options.acknowledged === 'false') {
+        params.acknowledged = options.acknowledged;
+    }
     if (options.page) params.page = options.page;
     if (options.limit) params.limit = options.limit;
 
