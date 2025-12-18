@@ -346,16 +346,18 @@ export default function MultiPlatformTracker() {
       
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `applications_export_${new Date().toISOString().split("T")[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `applications_${new Date().toISOString().split("T")[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       URL.revokeObjectURL(url);
+      
+      setScanMessage({ type: 'success', text: 'Export successful!' });
     } catch (error) {
       console.error("Error exporting:", error);
-      setScanMessage({ type: 'error', text: 'Failed to export' });
+      setScanMessage({ type: 'error', text: 'Failed to export applications' });
     } finally {
       setExporting(false);
     }
