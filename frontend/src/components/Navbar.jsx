@@ -252,6 +252,9 @@ export default function Navbar() {
                                             <>
                                                 <div className="border-t border-gray-200 my-1"></div>
                                                 <div className="px-4 py-1 text-xs font-semibold text-gray-500 uppercase">Admin</div>
+                                                <NavLink to="/admin/pre-launch-checklist" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Pre-Launch Checklist" onClick={() => setCareerDropdownOpen(false)}>
+                                                    ✅ Pre-Launch Checklist
+                                                </NavLink>
                                                 <NavLink to="/admin/api-monitoring" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="API Monitoring" onClick={() => setCareerDropdownOpen(false)}>
                                                     📊 API Monitoring
                                                 </NavLink>
@@ -263,6 +266,14 @@ export default function Navbar() {
                                                 </NavLink>
                                             </>
                                         )}
+                                        {/* Legal links - accessible to all users */}
+                                        <div className="border-t border-gray-200 my-1"></div>
+                                        <NavLink to="/terms" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Terms of Service" onClick={() => setCareerDropdownOpen(false)}>
+                                            📜 Terms of Service
+                                        </NavLink>
+                                        <NavLink to="/privacy" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Privacy Policy" onClick={() => setCareerDropdownOpen(false)}>
+                                            🔒 Privacy Policy
+                                        </NavLink>
                                     </div>
                                 )}
                             </div>
@@ -738,6 +749,18 @@ export default function Navbar() {
                                     🖥️ System Monitoring
                                 </NavLink>
                                 <NavLink
+                                    to="/admin/pre-launch-checklist"
+                                    className={({ isActive }) =>
+                                        `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                            ? 'bg-primary-900 text-white shadow-md'
+                                            : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                        }`
+                                    }
+                                    aria-label="Pre-Launch Checklist"
+                                >
+                                    ✅ Pre-Launch Checklist
+                                </NavLink>
+                                <NavLink
                                     to="/admin/test-errors"
                                     className={({ isActive }) =>
                                         `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
@@ -751,6 +774,32 @@ export default function Navbar() {
                                 </NavLink>
                             </>
                         )}
+                        {/* Legal links - accessible to all users */}
+                        <div className="border-t border-gray-500 my-2 mx-4"></div>
+                        <NavLink
+                            to="/terms"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                }`
+                            }
+                            aria-label="Terms of Service"
+                        >
+                            📜 Terms of Service
+                        </NavLink>
+                        <NavLink
+                            to="/privacy"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                }`
+                            }
+                            aria-label="Privacy Policy"
+                        >
+                            🔒 Privacy Policy
+                        </NavLink>
                         {/* Sign Out button for mobile */}
                         <div className="pt-3 pb-2 px-4">
                             <button

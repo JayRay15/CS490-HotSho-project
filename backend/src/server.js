@@ -62,6 +62,7 @@ import followUpReminderRoutes from "./routes/followUpReminderRoutes.js";
 import abTestRoutes from "./routes/abTestRoutes.js";
 import offerRoutes from "./routes/offerRoutes.js";
 import gmailRoutes from "./routes/gmailRoutes.js";
+import preLaunchChecklistRoutes from "./routes/preLaunchChecklistRoutes.js";
 import { getPublicProject } from "./controllers/profileController.js";
 import { viewSharedReport } from "./controllers/reportController.js";
 import { startDeadlineReminderSchedule } from "./utils/deadlineReminders.js";
@@ -285,6 +286,8 @@ app.use("/api/offers", offerRoutes);
 console.log('✅ Offer Comparison routes registered at /api/offers');
 app.use("/api/gmail", gmailRoutes);
 console.log('✅ Gmail Integration routes registered at /api/gmail');
+app.use("/api/pre-launch-checklist", preLaunchChecklistRoutes);
+console.log('✅ Pre-Launch Checklist routes registered at /api/pre-launch-checklist');
 
 // Mount profile routes under /api/profile (existing) and also under /api/users
 // so frontend requests to /api/users/... (used elsewhere in the app) resolve correctly.

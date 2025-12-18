@@ -37,6 +37,11 @@ const JobMaterialsPage = lazy(() => import("./pages/auth/JobMaterialsPage"));
 const SharedResumeView = lazy(() => import("./pages/public/SharedResumeView"));
 const SharedCoverLetterView = lazy(() => import("./pages/public/SharedCoverLetterView"));
 const SharedReportView = lazy(() => import("./pages/SharedReportView"));
+const TermsOfService = lazy(() => import("./pages/public/TermsOfService"));
+const PrivacyPolicy = lazy(() => import("./pages/public/PrivacyPolicy"));
+
+// Admin/Management pages
+const PreLaunchChecklist = lazy(() => import("./pages/PreLaunchChecklist"));
 
 // Salary & Offers
 const SalaryResearch = lazy(() => import("./components/SalaryResearch"));
@@ -138,6 +143,8 @@ function App() {
             <Route path="/resumes" element={<ProtectedRoute><ResumeTemplates /></ProtectedRoute>} />
             <Route path="/share/:token" element={<SharedResumeView />} />
             <Route path="/share/cover-letter/:token" element={<SharedCoverLetterView />} />
+            <Route path="/terms" element={<TermsOfService />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/salary-research/:jobId" element={<ProtectedRoute><SalaryResearch /></ProtectedRoute>} />
             <Route path="/salary-negotiation/:jobId" element={<ProtectedRoute><SalaryNegotiationPrep /></ProtectedRoute>} />
             <Route path="/salary-benchmarks" element={<ProtectedRoute><SalaryBenchmarksExplorer /></ProtectedRoute>} />
@@ -205,6 +212,7 @@ function App() {
             <Route path="/admin/api-monitoring" element={<AdminRoute><APIMonitoringDashboard /></AdminRoute>} />
             <Route path="/admin/system-monitoring" element={<AdminRoute><SystemMonitoringDashboard /></AdminRoute>} />
             <Route path="/admin/test-errors" element={<AdminRoute><TestErrorPage /></AdminRoute>} />
+            <Route path="/admin/pre-launch-checklist" element={<AdminRoute><PreLaunchChecklist /></AdminRoute>} />
           </Routes>
         </Suspense>
       </Router>
