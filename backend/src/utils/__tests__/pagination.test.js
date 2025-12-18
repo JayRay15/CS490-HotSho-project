@@ -185,16 +185,20 @@ describe('Pagination Utility', () => {
       const data = [{ id: 1 }, { id: 2 }];
       const total = 50;
 
-      mockModel.find.mockReturnValue({
+      const mockQuery = {
+        lean: jest.fn().mockReturnThis(),
         skip: jest.fn().mockReturnThis(),
         limit: jest.fn().mockReturnThis(),
         sort: jest.fn().mockResolvedValue(data)
-      });
+      };
+
+      mockModel.find.mockReturnValue(mockQuery);
       mockModel.countDocuments.mockResolvedValue(total);
 
       const result = await executePaginatedQuery(mockModel, filter, pagination);
 
       expect(mockModel.find).toHaveBeenCalledWith(filter);
+      expect(mockQuery.lean).toHaveBeenCalled();
       expect(result.data).toEqual(data);
       expect(result.pagination.totalItems).toBe(total);
     });
@@ -204,17 +208,21 @@ describe('Pagination Utility', () => {
       const pagination = { skip: 0, limit: 20, sort: {} };
       const options = { select: 'name email' };
 
-      mockModel.find.mockReturnValue({
-        select: jest.fn().mockReturnThis(),
+      const mockSelect = jest.fn().mockReturnThis();
+      const mockQuery = {
+        select: mockSelect,
+        lean: jest.fn().mockReturnThis(),
         skip: jest.fn().mockReturnThis(),
         limit: jest.fn().mockReturnThis(),
         sort: jest.fn().mockResolvedValue([])
-      });
+      };
+
+      mockModel.find.mockReturnValue(mockQuery);
       mockModel.countDocuments.mockResolvedValue(0);
 
       await executePaginatedQuery(mockModel, filter, pagination, options);
 
-      expect(mockModel.find().select).toHaveBeenCalledWith('name email');
+      expect(mockSelect).toHaveBeenCalledWith('name email');
     });
 
     it('should apply populate option', async () => {
@@ -222,17 +230,21 @@ describe('Pagination Utility', () => {
       const pagination = { skip: 0, limit: 20, sort: {} };
       const options = { populate: 'user' };
 
-      mockModel.find.mockReturnValue({
-        populate: jest.fn().mockReturnThis(),
+      const mockPopulate = jest.fn().mockReturnThis();
+      const mockQuery = {
+        populate: mockPopulate,
+        lean: jest.fn().mockReturnThis(),
         skip: jest.fn().mockReturnThis(),
         limit: jest.fn().mockReturnThis(),
         sort: jest.fn().mockResolvedValue([])
-      });
+      };
+
+      mockModel.find.mockReturnValue(mockQuery);
       mockModel.countDocuments.mockResolvedValue(0);
 
       await executePaginatedQuery(mockModel, filter, pagination, options);
 
-      expect(mockModel.find().populate).toHaveBeenCalledWith('user');
+      expect(mockPopulate).toHaveBeenCalledWith('user');
     });
 
     it('should respect lean option', async () => {
@@ -240,17 +252,21 @@ describe('Pagination Utility', () => {
       const pagination = { skip: 0, limit: 20, sort: {} };
       const options = { lean: false };
 
-      mockModel.find.mockReturnValue({
+      const mockLean = jest.fn().mockReturnThis();
+      const mockQuery = {
+        lean: mockLean,
         skip: jest.fn().mockReturnThis(),
         limit: jest.fn().mockReturnThis(),
         sort: jest.fn().mockResolvedValue([])
-      });
+      };
+
+      mockModel.find.mockReturnValue(mockQuery);
       mockModel.countDocuments.mockResolvedValue(0);
 
       await executePaginatedQuery(mockModel, filter, pagination, options);
 
       // When lean is false, lean() should not be called
-      expect(mockModel.find().lean).not.toHaveBeenCalled();
+      expect(mockLean).not.toHaveBeenCalled();
     });
   });
 

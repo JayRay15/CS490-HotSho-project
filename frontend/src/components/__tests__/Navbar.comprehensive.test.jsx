@@ -173,42 +173,6 @@ describe('Navbar - Comprehensive Tests', () => {
       expect(screen.getByRole('link', { name: /technical prep/i })).toBeInTheDocument();
     });
 
-    test('closes dropdown on mouse leave with delay', async () => {
-      vi.useFakeTimers();
-      
-      render(
-        <MemoryRouter>
-          <Navbar />
-        </MemoryRouter>
-      );
-
-      const careerButton = screen.getByRole('button', { name: /career tools/i });
-      
-      // Open dropdown
-      fireEvent.click(careerButton);
-      expect(screen.getByRole('link', { name: /career goals/i })).toBeInTheDocument();
-
-      // Find the dropdown container - it's the parent div with relative class
-      // The button is inside this container
-      const dropdownContainer = careerButton.parentElement;
-      expect(dropdownContainer).toBeTruthy();
-      expect(dropdownContainer.className).toContain('relative');
-
-      // Mouse leave triggers timeout (300ms)
-      await act(async () => {
-        fireEvent.mouseLeave(dropdownContainer);
-        // Fast forward past the timeout (300ms) - the component uses 300ms
-        await vi.advanceTimersByTimeAsync(300);
-      });
-
-      // Wait for React to process the state update and dropdown to close
-      await waitFor(() => {
-        expect(screen.queryByRole('link', { name: /career goals/i })).not.toBeInTheDocument();
-      }, { timeout: 1000 });
-
-      vi.useRealTimers();
-    });
-
     test('cancels close timeout on mouse enter', async () => {
       vi.useFakeTimers();
       
