@@ -2,6 +2,7 @@ import { Job } from "../models/Job.js";
 import { successResponse, errorResponse, sendResponse, ERROR_CODES, validationErrorResponse } from "../utils/responseFormat.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 import { sendDeadlineRemindersNow } from "../utils/deadlineReminders.js";
+import { parsePaginationParams, createPaginatedResponse } from "../utils/pagination.js";
 
 // GET /api/jobs - Get all jobs for the current user
 export const getJobs = asyncHandler(async (req, res) => {
@@ -47,6 +48,34 @@ export const getJobs = asyncHandler(async (req, res) => {
     filter.linkedCoverLetterId = req.query.coverLetterId;
   }
 
+  // Check if pagination is requested
+  const usePagination = req.query.page !== undefined || req.query.limit !== undefined;
+  
+  if (usePagination) {
+    // Parse pagination parameters
+    const pagination = parsePaginationParams(req.query, { defaultSort: { createdAt: -1 } });
+    
+    // Execute paginated query
+    const [jobs, total] = await Promise.all([
+      Job.find(filter)
+        .sort(pagination.sort)
+        .skip(pagination.skip)
+        .limit(pagination.limit)
+        .lean(),
+      Job.countDocuments(filter)
+    ]);
+    
+    const paginatedResult = createPaginatedResponse(jobs, total, pagination);
+    
+    const { response, statusCode } = successResponse("Jobs retrieved successfully", {
+      jobs: paginatedResult.data,
+      count: paginatedResult.data.length,
+      pagination: paginatedResult.pagination
+    });
+    return sendResponse(res, response, statusCode);
+  }
+  
+  // Non-paginated query (backward compatible)
   const jobs = await Job.find(filter).sort({ createdAt: -1 });
 
   const { response, statusCode } = successResponse("Jobs retrieved successfully", {

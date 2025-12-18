@@ -13,7 +13,7 @@ import {
     Zap
 } from 'lucide-react';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 /**
  * System Monitoring Dashboard
@@ -35,16 +35,16 @@ export default function SystemMonitoringDashboard() {
         try {
             setError(null);
 
-            // Fetch health data (no auth required)
+            // Fetch detailed health data from monitoring routes
             const healthRes = await fetch(`${API_BASE_URL}/api/monitoring/health/detailed`);
             const health = await healthRes.json();
             setHealthData(health);
-
+            
             // Fetch metrics data
             const metricsRes = await fetch(`${API_BASE_URL}/api/monitoring/metrics`);
             const metrics = await metricsRes.json();
             setMetricsData(metrics);
-
+            
             // Fetch dashboard data
             const dashboardRes = await fetch(`${API_BASE_URL}/api/monitoring/dashboard`);
             const dashboard = await dashboardRes.json();

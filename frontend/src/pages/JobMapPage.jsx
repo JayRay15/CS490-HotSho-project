@@ -379,7 +379,7 @@ const JobMapPage = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Max Distance (km)
+                Max Distance (mi)
               </label>
               <input
                 type="number"
