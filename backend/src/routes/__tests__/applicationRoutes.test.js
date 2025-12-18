@@ -11,6 +11,7 @@ const controllerMocks = {
   getApplicationPackages: jest.fn(),
   updateApplicationPackage: jest.fn(),
   deleteApplicationPackage: jest.fn(),
+  scoreApplicationPackage: jest.fn(),
   scheduleApplication: jest.fn(),
   getScheduledApplications: jest.fn(),
   createAutomationRule: jest.fn(),
