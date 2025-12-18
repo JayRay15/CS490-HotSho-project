@@ -57,8 +57,10 @@ describe('iCalendar Utility', () => {
       const icsContent = generateICSFile(mockInterview, mockUser);
 
       // Notes are in the description, may be escaped with newlines, so check for key words
-      // The text may be split across lines in the ICS format
-      expect(icsContent).toMatch(/Prepare.*coding.*questions/i);
+      // The text may be split across lines in the ICS format due to line folding
+      // ICS line folding uses CRLF followed by a space, so we unfold before matching
+      const unfoldedContent = icsContent.replace(/\r?\n /g, '');
+      expect(unfoldedContent).toMatch(/Prepare.*coding.*questions/i);
     });
 
     it('should handle interview without interviewer', () => {
