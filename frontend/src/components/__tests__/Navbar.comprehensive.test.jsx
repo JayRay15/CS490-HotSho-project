@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -188,14 +188,23 @@ describe('Navbar - Comprehensive Tests', () => {
       fireEvent.click(careerButton);
       expect(screen.getByRole('link', { name: /career goals/i })).toBeInTheDocument();
 
-      // Mouse leave triggers timeout
+      // Find the dropdown container - it's the parent div with relative class
+      // The button is inside this container
       const dropdownContainer = careerButton.parentElement;
-      fireEvent.mouseLeave(dropdownContainer);
+      expect(dropdownContainer).toBeTruthy();
+      expect(dropdownContainer.className).toContain('relative');
 
-      // Fast forward past the timeout
-      await vi.advanceTimersByTimeAsync(350);
+      // Mouse leave triggers timeout (300ms)
+      await act(async () => {
+        fireEvent.mouseLeave(dropdownContainer);
+        // Fast forward past the timeout (300ms) - the component uses 300ms
+        await vi.advanceTimersByTimeAsync(300);
+      });
 
-      expect(screen.queryByRole('link', { name: /career goals/i })).not.toBeInTheDocument();
+      // Wait for React to process the state update and dropdown to close
+      await waitFor(() => {
+        expect(screen.queryByRole('link', { name: /career goals/i })).not.toBeInTheDocument();
+      }, { timeout: 1000 });
 
       vi.useRealTimers();
     });
