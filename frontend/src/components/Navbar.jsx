@@ -5,16 +5,32 @@ import { useUser } from "@clerk/clerk-react";
 import api, { setAuthToken } from "../api/axios";
 import Logo from "./Logo";
 import FollowUpReminderNotification from "./FollowUpReminderNotification";
+import { useIsAdmin } from "./AdminRoute";
 
 export default function Navbar() {
     const { getToken, signOut } = useAuth();
-    const { user } = useUser();
+    const { user, isLoaded } = useUser();
     const navigate = useNavigate();
     const location = useLocation();
     const [profilePicture, setProfilePicture] = useState(null);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [careerDropdownOpen, setCareerDropdownOpen] = useState(false);
     const [dropdownTimeout, setDropdownTimeout] = useState(null);
+
+    // Force reload user data on mount to get latest metadata
+    useEffect(() => {
+        if (user && isLoaded) {
+            user.reload().catch(console.error);
+        }
+    }, [isLoaded]);
+
+    // Check admin status directly from user metadata
+    const isAdmin = user?.publicMetadata?.role === "admin" || user?.publicMetadata?.isAdmin === true;
+
+    // Debug: Log user metadata to console
+    console.log("Navbar Debug - User:", user?.id);
+    console.log("Navbar Debug - publicMetadata:", JSON.stringify(user?.publicMetadata));
+    console.log("Navbar Debug - isAdmin:", isAdmin);
 
     // Full sign out - clears all sessions and storage
     const handleFullSignOut = async () => {
@@ -194,6 +210,9 @@ export default function Navbar() {
                                         <NavLink to="/my-performance" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="My Performance" onClick={() => setCareerDropdownOpen(false)}>
                                             My Performance
                                         </NavLink>
+                                        <NavLink to="/ab-testing" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="A/B Testing" onClick={() => setCareerDropdownOpen(false)}>
+                                            🧪 A/B Testing
+                                        </NavLink>
                                         <NavLink to="/predictive-analytics" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Predictive Analytics" onClick={() => setCareerDropdownOpen(false)}>
                                             Predictive Analytics
                                         </NavLink>
@@ -225,23 +244,30 @@ export default function Navbar() {
                                         <NavLink to="/settings/linkedin" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="LinkedIn Settings" onClick={() => setCareerDropdownOpen(false)}>
                                             💼 LinkedIn Settings
                                         </NavLink>
-                                        <NavLink to="/admin/api-monitoring" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="API Monitoring" onClick={() => setCareerDropdownOpen(false)}>
-                                            📊 API Monitoring
-                                        </NavLink>
-                                        <NavLink to="/admin/system-monitoring" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="System Monitoring" onClick={() => setCareerDropdownOpen(false)}>
-                                            🖥️ System Monitoring
-                                        </NavLink>
-                                        <NavLink to="/admin/test-errors" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Test Errors" onClick={() => setCareerDropdownOpen(false)}>
-                                            🐛 Test Errors
-                                        </NavLink>
+                                        {/* Admin-only links */}
+                                        {isAdmin && (
+                                            <>
+                                                <div className="border-t border-gray-200 my-1"></div>
+                                                <div className="px-4 py-1 text-xs font-semibold text-gray-500 uppercase">Admin</div>
+                                                <NavLink to="/admin/api-monitoring" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="API Monitoring" onClick={() => setCareerDropdownOpen(false)}>
+                                                    📊 API Monitoring
+                                                </NavLink>
+                                                <NavLink to="/admin/system-monitoring" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="System Monitoring" onClick={() => setCareerDropdownOpen(false)}>
+                                                    🖥️ System Monitoring
+                                                </NavLink>
+                                                <NavLink to="/admin/test-errors" className="block px-4 py-2 text-gray-700 hover:bg-gray-100" aria-label="Test Errors" onClick={() => setCareerDropdownOpen(false)}>
+                                                    🐛 Test Errors
+                                                </NavLink>
+                                            </>
+                                        )}
                                     </div>
                                 )}
                             </div>
                             <div className="ml-3 flex items-center gap-3">
                                 {/* Follow-up Reminder Notification */}
-                                <FollowUpReminderNotification 
-                                  onViewAll={() => navigate('/jobs')}
-                                  onOpenFollowUpTemplates={(job) => navigate('/jobs')}
+                                <FollowUpReminderNotification
+                                    onViewAll={() => navigate('/jobs')}
+                                    onOpenFollowUpTemplates={(job) => navigate('/jobs')}
                                 />
                                 {/* User avatar */}
                                 <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
@@ -513,6 +539,18 @@ export default function Navbar() {
                             My Performance
                         </NavLink>
                         <NavLink
+                            to="/ab-testing"
+                            className={({ isActive }) =>
+                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                    ? 'bg-primary-900 text-white shadow-md'
+                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                }`
+                            }
+                            aria-label="A/B Testing"
+                        >
+                            🧪 A/B Testing
+                        </NavLink>
+                        <NavLink
                             to="/predictive-analytics"
                             className={({ isActive }) =>
                                 `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
@@ -632,30 +670,49 @@ export default function Navbar() {
                         >
                             💼 LinkedIn Settings
                         </NavLink>
-                        <NavLink
-                            to="/admin/system-monitoring"
-                            className={({ isActive }) =>
-                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
-                                    ? 'bg-primary-900 text-white shadow-md'
-                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
-                                }`
-                            }
-                            aria-label="System Monitoring"
-                        >
-                            🖥️ System Monitoring
-                        </NavLink>
-                        <NavLink
-                            to="/admin/test-errors"
-                            className={({ isActive }) =>
-                                `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
-                                    ? 'bg-primary-900 text-white shadow-md'
-                                    : 'text-white hover:bg-primary-700 active:bg-primary-900'
-                                }`
-                            }
-                            aria-label="Test Errors"
-                        >
-                            🐛 Test Errors
-                        </NavLink>
+                        {/* Admin-only links in mobile menu */}
+                        {isAdmin && (
+                            <>
+                                <div className="border-t border-primary-600 my-2 mx-4"></div>
+                                <div className="px-4 py-1 text-xs font-semibold text-primary-300 uppercase">Admin</div>
+                                <NavLink
+                                    to="/admin/api-monitoring"
+                                    className={({ isActive }) =>
+                                        `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                            ? 'bg-primary-900 text-white shadow-md'
+                                            : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                        }`
+                                    }
+                                    aria-label="API Monitoring"
+                                >
+                                    📊 API Monitoring
+                                </NavLink>
+                                <NavLink
+                                    to="/admin/system-monitoring"
+                                    className={({ isActive }) =>
+                                        `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                            ? 'bg-primary-900 text-white shadow-md'
+                                            : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                        }`
+                                    }
+                                    aria-label="System Monitoring"
+                                >
+                                    🖥️ System Monitoring
+                                </NavLink>
+                                <NavLink
+                                    to="/admin/test-errors"
+                                    className={({ isActive }) =>
+                                        `block px-4 py-2 rounded-lg transition-all font-medium focus:outline-none focus:ring-2 focus:ring-white ${isActive
+                                            ? 'bg-primary-900 text-white shadow-md'
+                                            : 'text-white hover:bg-primary-700 active:bg-primary-900'
+                                        }`
+                                    }
+                                    aria-label="Test Errors"
+                                >
+                                    🐛 Test Errors
+                                </NavLink>
+                            </>
+                        )}
                         {/* Sign Out button for mobile */}
                         <div className="pt-3 pb-2 px-4">
                             <button

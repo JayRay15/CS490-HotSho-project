@@ -26,6 +26,7 @@
     "@sentry/node": "^10.29.0",
     "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
+    "compression": "^1.8.1",
     "cors": "^2.8.5",
     "csrf-csrf": "^4.0.3",
     "docx": "^9.5.1",
