@@ -291,10 +291,13 @@ export const measure = (name, startMark, endMark) => {
  * Initialize performance monitoring on app start
  */
 export const initPerformanceMonitoring = (options = {}) => {
+    // Get the API base URL from environment variables (with fallback for production)
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    
     const {
-        reportToConsole = process.env.NODE_ENV === 'development',
-        reportToAnalytics = process.env.NODE_ENV === 'production',
-        analyticsEndpoint = '/api/monitoring/web-vitals',
+        reportToConsole = import.meta.env.MODE === 'development',
+        reportToAnalytics = import.meta.env.MODE === 'production',
+        analyticsEndpoint = `${apiBaseUrl}/api/monitoring/web-vitals`,
     } = options;
 
     const handleReport = (metric) => {
