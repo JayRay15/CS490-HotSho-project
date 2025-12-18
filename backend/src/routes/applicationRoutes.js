@@ -7,6 +7,9 @@ import {
   updateApplicationPackage,
   deleteApplicationPackage,
   
+  // Application Package Quality Scoring (UC-122)
+  scoreApplicationPackage,
+  
   // Application Scheduling
   scheduleApplication,
   getScheduledApplications,
@@ -45,6 +48,11 @@ router.post('/packages', generateApplicationPackage);
 router.get('/packages', getApplicationPackages);
 router.put('/packages/:packageId', updateApplicationPackage);
 router.delete('/packages/:packageId', deleteApplicationPackage);
+
+// ===============================================
+// Application Package Quality Scoring (UC-122)
+// ===============================================
+router.post('/packages/score', scoreApplicationPackage);
 
 // ===============================================
 // Application Scheduling Routes

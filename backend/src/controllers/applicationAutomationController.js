@@ -6,6 +6,7 @@ import { CoverLetter } from '../models/CoverLetter.js';
 import { User } from '../models/User.js';
 import { successResponse, errorResponse, sendResponse, ERROR_CODES, validationErrorResponse } from '../utils/responseFormat.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
+import { analyzeApplicationPackageQuality } from '../utils/geminiService.js';
 
 // ===============================================
 // Application Package Management
@@ -555,3 +556,107 @@ export const getAllChecklists = asyncHandler(async (req, res) => {
   const { response, statusCode } = successResponse('Checklists retrieved', checklists);
   return sendResponse(res, response, statusCode);
 });
+
+/**
+ * Score application package quality using AI
+ * UC-122: Application Package Quality Scoring
+ * POST /api/applications/packages/score
+ */
+export const scoreApplicationPackage = asyncHandler(async (req, res) => {
+  const sub = req.auth?.payload?.sub || req.auth?.userId;
+  const { jobId, resumeId, coverLetterId } = req.body;
+
+  if (!jobId) {
+    const { response, statusCode } = validationErrorResponse('Job ID is required', [{ field: 'jobId', message: 'Job ID is required' }]);
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Fetch job details
+  const job = await Job.findOne({ _id: jobId, userId: sub });
+  if (!job) {
+    const { response, statusCode } = errorResponse('Job not found', 404, ERROR_CODES.NOT_FOUND);
+    return sendResponse(res, response, statusCode);
+  }
+
+  // Fetch resume - use provided ID, linked ID, or most recent
+  let resume = null;
+  const targetResumeId = resumeId || job.linkedResumeId;
+  if (targetResumeId) {
+    resume = await Resume.findOne({ _id: targetResumeId, userId: sub });
+  }
+  if (!resume) {
+    resume = await Resume.findOne({ userId: sub }).sort({ updatedAt: -1 });
+  }
+
+  // Fetch cover letter - use provided ID, linked ID, or most recent
+  let coverLetter = null;
+  const targetCoverLetterId = coverLetterId || job.linkedCoverLetterId;
+  if (targetCoverLetterId) {
+    coverLetter = await CoverLetter.findOne({ _id: targetCoverLetterId, userId: sub });
+  }
+  if (!coverLetter) {
+    coverLetter = await CoverLetter.findOne({ userId: sub }).sort({ updatedAt: -1 });
+  }
+
+  // Get user profile for LinkedIn data if available
+  const user = await User.findOne({ auth0Id: sub });
+  const userProfile = user ? {
+    headline: user.headline,
+    linkedIn: user.linkedIn,
+    website: user.website,
+    skills: user.skills,
+    experience: user.experience
+  } : null;
+
+  // Calculate historical scores for comparison
+  // Get previous quality scores from application packages
+  const previousPackages = await ApplicationPackage.find({ 
+    userId: sub, 
+    'qualityScore.overallScore': { $exists: true } 
+  }).select('qualityScore.overallScore');
+  
+  let historicalScores = null;
+  if (previousPackages.length > 0) {
+    const scores = previousPackages.map(p => p.qualityScore.overallScore);
+    const averageScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+    const topScore = Math.max(...scores);
+    historicalScores = { averageScore, topScore };
+  }
+
+  // Analyze application package quality using AI
+  const qualityAnalysis = await analyzeApplicationPackageQuality(
+    job,
+    resume,
+    coverLetter,
+    userProfile,
+    historicalScores
+  );
+
+  // Store the quality score in the job for tracking
+  job.lastQualityScore = {
+    score: qualityAnalysis.overallScore,
+    analyzedAt: new Date(),
+    resumeId: resume?._id,
+    coverLetterId: coverLetter?._id
+  };
+  await job.save();
+
+  // Also update application package if exists
+  const existingPackage = await ApplicationPackage.findOne({ jobId, userId: sub });
+  if (existingPackage) {
+    existingPackage.qualityScore = qualityAnalysis;
+    existingPackage.lastAnalyzedAt = new Date();
+    await existingPackage.save();
+  }
+
+  const { response, statusCode } = successResponse('Application package quality analyzed', {
+    jobId,
+    resumeId: resume?._id,
+    coverLetterId: coverLetter?._id,
+    qualityAnalysis,
+    historicalScores,
+    meetsThreshold: qualityAnalysis.overallScore >= 70
+  });
+  return sendResponse(res, response, statusCode);
+});
+

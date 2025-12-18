@@ -6,6 +6,7 @@ import Card from "../../components/Card";
 import Button from "../../components/Button";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import ResumeSectionsDisplay from "../../components/resume/ResumeSectionsDisplay";
+import ApplicationQualityScore from "../../components/ApplicationQualityScore";
 import { setAuthToken } from "../../api/axios";
 import { getJob, linkResumeToJob, linkCoverLetterToJob, addAdditionalDocument, removeAdditionalDocument } from "../../api/jobs";
 import { fetchResumes } from "../../api/resumes";
@@ -617,6 +618,30 @@ export default function JobMaterialsPage() {
                             </Card>
                         )}
                     </div>
+                </div>
+
+                {/* Application Quality Score Section - UC-122 */}
+                <div className="mt-8">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xl font-semibold text-gray-900">🎯 Application Quality Score</h2>
+                    </div>
+                    <ApplicationQualityScore
+                        jobId={jobId}
+                        resumeId={linkedResume?._id}
+                        coverLetterId={linkedCoverLetter?._id}
+                        onScoreUpdate={(data) => {
+                            // Update job with latest score if needed
+                            if (data?.qualityAnalysis?.overallScore) {
+                                setJob(prev => ({
+                                    ...prev,
+                                    lastQualityScore: {
+                                        score: data.qualityAnalysis.overallScore,
+                                        analyzedAt: new Date().toISOString()
+                                    }
+                                }));
+                            }
+                        }}
+                    />
                 </div>
 
                 {/* Additional Documents Section */}
