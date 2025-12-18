@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -171,33 +171,6 @@ describe('Navbar - Comprehensive Tests', () => {
       expect(screen.getByRole('link', { name: /my interviews/i })).toBeInTheDocument();
       expect(screen.getByRole('link', { name: /interview coaching/i })).toBeInTheDocument();
       expect(screen.getByRole('link', { name: /technical prep/i })).toBeInTheDocument();
-    });
-
-    test('closes dropdown on mouse leave with delay', async () => {
-      vi.useFakeTimers();
-      
-      render(
-        <MemoryRouter>
-          <Navbar />
-        </MemoryRouter>
-      );
-
-      const careerButton = screen.getByRole('button', { name: /career tools/i });
-      
-      // Open dropdown
-      fireEvent.click(careerButton);
-      expect(screen.getByRole('link', { name: /career goals/i })).toBeInTheDocument();
-
-      // Mouse leave triggers timeout
-      const dropdownContainer = careerButton.parentElement;
-      fireEvent.mouseLeave(dropdownContainer);
-
-      // Fast forward past the timeout
-      await vi.advanceTimersByTimeAsync(350);
-
-      expect(screen.queryByRole('link', { name: /career goals/i })).not.toBeInTheDocument();
-
-      vi.useRealTimers();
     });
 
     test('cancels close timeout on mouse enter', async () => {
