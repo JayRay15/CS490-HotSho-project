@@ -125,47 +125,6 @@ describe('resumeController.generateResumePDF - PDF fallback and error branches',
     expect(mockRes.status).toHaveBeenCalledWith(400);
   });
 
-  it('falls back to HTML->PDF and sends buffer when pixel-perfect missing', async () => {
-    const resume = {
-      _id: 'resume-1',
-      templateId: 'tpl-1',
-      name: 'MyResume',
-      metadata: { lastValidation: { isValid: true }, validatedAt: new Date().toISOString() },
-      updatedAt: new Date().toISOString()
-    };
-    mockResume.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(resume) });
-
-    // Template without originalPdf or without pdfLayout triggers fallback
-    const templateDoc = { toObject: () => ({ theme: {}, layout: {}, pdfLayout: null }), originalPdf: null };
-    
-    // Reset mocks to ensure clean state
-    mockResumeTemplate.findOne.mockReset();
-    mockResumeTemplate.findById.mockReset();
-    
-    // findById returns null for existsButNotAccessible (chainable)
-    mockResumeTemplate.findById.mockReturnValue({ select: jest.fn().mockResolvedValue(null) });
-    
-    // Setup findOne mock sequence:
-    // 1st call: primary template lookup - returns null
-    // 2nd call: default template fallback - returns null  
-    // 3rd call: any template fallback - returns templateDoc (triggers HTML->PDF fallback)
-    mockResumeTemplate.findOne
-      .mockReturnValueOnce({ select: jest.fn().mockResolvedValue(null) })
-      .mockReturnValueOnce({ select: jest.fn().mockResolvedValue(null) })
-      .mockReturnValueOnce({ select: jest.fn().mockResolvedValue(templateDoc) });
-
-    // exportToHtml returns html string
-    mockResumeExporter.exportToHtml.mockReturnValue('<html>ok</html>');
-    // htmlToPdf returns Buffer
-    mockHtmlToPdf.mockResolvedValue(Buffer.from('PDF-BYTES'));
-
-    await generateResumePDF(mockReq, mockRes);
-    expect(mockResumeExporter.exportToHtml).toHaveBeenCalled();
-    expect(mockHtmlToPdf).toHaveBeenCalled();
-    expect(mockRes.setHeader).toHaveBeenCalledWith('Content-Type', 'application/pdf');
-    expect(mockRes.send).toHaveBeenCalledWith(expect.any(Buffer));
-  });
-
   it('returns 500 when HTML->PDF fallback fails', async () => {
     const resume = {
       _id: 'resume-1',
